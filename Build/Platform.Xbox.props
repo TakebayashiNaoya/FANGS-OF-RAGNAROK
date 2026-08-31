@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Platform.Xbox.props
+  DebugXbox / PreviewXbox / ReleaseXbox（Xbox One = 開発者モードの UWP）。
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <ApplicationType>Windows Store</ApplicationType>
+    <ApplicationTypeRevision>10.0</ApplicationTypeRevision>
+    <!-- MSB8036 対策。UWP の SDK 解決は空になりうるので明示する -->
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformMinVersion>10.0.19041.0</WindowsTargetPlatformMinVersion>
+    <!-- APPX0702 対策。.winmd は作らない -->
+    <GenerateWindowsMetadata>false</GenerateWindowsMetadata>
+    <FangPlatformDefines>FANG_PLATFORM_WINDOWS=0;FANG_PLATFORM_UWP=1;FANG_TARGET_XBOX=1;WINAPI_FAMILY=WINAPI_FAMILY_APP;WIN32_LEAN_AND_MEAN;NOMINMAX;UNICODE;_UNICODE</FangPlatformDefines>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <!-- D8016 対策。C++/CX（/ZW）は C++20 と併用できないので C++/WinRT を使う -->
+      <CompileAsWinRT>false</CompileAsWinRT>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+</Project>

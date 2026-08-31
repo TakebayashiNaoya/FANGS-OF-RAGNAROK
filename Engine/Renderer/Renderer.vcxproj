@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Preview|x64"><Configuration>Preview</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="DebugXbox|x64"><Configuration>DebugXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="PreviewXbox|x64"><Configuration>PreviewXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="ReleaseXbox|x64"><Configuration>ReleaseXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{DE5615AE-B641-4056-F88E-249AD9E949D0}</ProjectGuid>
+    <RootNamespace>Renderer</RootNamespace>
+    <ProjectName>Renderer</ProjectName>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="FangModule">
+    <FangModuleDependencies>Core;RHI</FangModuleDependencies>
+  </PropertyGroup>
+
+  <Import Project="$(FangRoot)Build\Module.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
+  <ItemGroup>
+    <ClInclude Include="Public\Renderer\Renderer.h" />
+    <ClInclude Include="Public\Renderer\RendererLog.h" />
+    <ClInclude Include="Public\Renderer\TriangleRenderer.h" />
+    <ClInclude Include="Private\Pch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Private\Pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Private\Renderer.cpp" />
+    <ClCompile Include="Private\TriangleRenderer.cpp" />
+  </ItemGroup>
+  <!-- FANG_FILES_END -->
+
+  <!-- シェーダーはビルド時に FXC でヘッダ化して埋め込む（UWP に実行時コンパイルが無いため）。生成ツールの対象外なので手で書く -->
+  <ItemGroup>
+    <FXCompile Include="Shaders\TriangleVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <EntryPointName>VertexMain</EntryPointName>
+    </FXCompile>
+    <FXCompile Include="Shaders\TrianglePS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <EntryPointName>PixelMain</EntryPointName>
+    </FXCompile>
+    <None Include="Shaders\Triangle.hlsli" />
+  </ItemGroup>
+  <ItemDefinitionGroup>
+    <FXCompile>
+      <ShaderModel>5.1</ShaderModel>
+      <HeaderFileOutput>$(IntDir)Shaders\%(Filename).h</HeaderFileOutput>
+      <VariableName>g_%(Filename)</VariableName>
+      <ObjectFileOutput></ObjectFileOutput>
+    </FXCompile>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(IntDir)Shaders;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

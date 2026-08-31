@@ -1,0 +1,112 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Private">
+      <UniqueIdentifier>{F5EC48AD-1698-4F77-2B19-CF832D2A4072}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Private\Log">
+      <UniqueIdentifier>{A369A963-75D9-F5DA-5ADD-84C7B59472DC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Private\Memory">
+      <UniqueIdentifier>{103BFE20-13BB-4981-7A85-F04142DE6F7F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Private\Windows">
+      <UniqueIdentifier>{340E0F88-C1B3-D5E3-E6E2-388CB4585A36}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Private\Xbox">
+      <UniqueIdentifier>{7DFC57C0-21BA-A1C7-BE0D-214A8F46D655}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Public">
+      <UniqueIdentifier>{4F5D17AE-8385-7B72-A40C-A9A6E39FADB5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Public\Core">
+      <UniqueIdentifier>{5A4834DA-372B-AB9E-50E7-0AAAF68F4178}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Public\Core\Log">
+      <UniqueIdentifier>{0E418A35-8000-4839-9512-5B9F7AED49E5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Public\Core\Memory">
+      <UniqueIdentifier>{CD375B33-F498-6D87-3331-2E302F8F65AD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Public\Core\Platform">
+      <UniqueIdentifier>{740F4094-DBEE-4995-F91B-B022EF5BA34D}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Public\Core\Core.h">
+      <Filter>Public\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Core\CoreLog.h">
+      <Filter>Public\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Core\CoreMacros.h">
+      <Filter>Public\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Core\Log\Assert.h">
+      <Filter>Public\Core\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Core\Log\Log.h">
+      <Filter>Public\Core\Log</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Core\Memory\Allocator.h">
+      <Filter>Public\Core\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Core\Memory\UniquePtr.h">
+      <Filter>Public\Core\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Core\Platform\SystemFont.h">
+      <Filter>Public\Core\Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Core\Platform\UWPApplication.h">
+      <Filter>Public\Core\Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Core\Platform\Window.h">
+      <Filter>Public\Core\Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\Pch.h">
+      <Filter>Private</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\Log\PlatformLogSink.h">
+      <Filter>Private\Log</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Private\Core.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Pch.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Log\Assert.cpp">
+      <Filter>Private\Log</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Log\Log.cpp">
+      <Filter>Private\Log</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Memory\Allocator.cpp">
+      <Filter>Private\Memory</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Windows\PlatformLogSink.cpp">
+      <Filter>Private\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Windows\SystemFont.cpp">
+      <Filter>Private\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Windows\Window.cpp">
+      <Filter>Private\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Xbox\PlatformLogSink.cpp">
+      <Filter>Private\Xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Xbox\SystemFont.cpp">
+      <Filter>Private\Xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Xbox\UWPApplication.cpp">
+      <Filter>Private\Xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Xbox\Window.cpp">
+      <Filter>Private\Xbox</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
