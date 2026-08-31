@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Preview|x64"><Configuration>Preview</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="DebugXbox|x64"><Configuration>DebugXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="PreviewXbox|x64"><Configuration>PreviewXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="ReleaseXbox|x64"><Configuration>ReleaseXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{D1E14E1F-022B-D084-BDC6-36683F7B57E2}</ProjectGuid>
+    <RootNamespace>GameUWP</RootNamespace>
+    <ProjectName>GameUWP</ProjectName>
+    <DefaultLanguage>ja-JP</DefaultLanguage>
+    <AppContainerApplication>true</AppContainerApplication>
+    <EnableDotNetNativeCompatibleProfile>false</EnableDotNetNativeCompatibleProfile>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="FangModule">
+    <FangModuleDependencies>Core;RHI;Runtime</FangModuleDependencies>
+    <FangModuleDependencies Condition="'$(FangConfigurationBase)' != 'Release'">$(FangModuleDependencies);Editor</FangModuleDependencies>
+  </PropertyGroup>
+
+  <Import Project="$(FangRoot)Build\Program.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- Microsoft.Cpp.AppContainerApplication.props が PCH 使用・/W3・platform.winmd の /FU を無条件に入れるので戻す（そのままだと C1010 になる）-->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <ForcedUsingFiles />
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <!-- APPX0702 対策。C++/WinRT を使うので .winmd は作らない -->
+      <GenerateWindowsMetadata>false</GenerateWindowsMetadata>
+      <!-- C++/WinRT（RoGetActivationFactory など）の解決に要る -->
+      <AdditionalDependencies>WindowsApp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <AppxManifest Include="$(MSBuildProjectDirectory)\Package.appxmanifest">
+      <SubType>Designer</SubType>
+    </AppxManifest>
+    <!-- UWP は OS のフォントを読めないので、日本語フォント(OFL)を同梱する。
+         C++ の UWP では DeploymentContent=true の項目だけがパッケージに入る -->
+    <None Include="Assets\Fonts\MPLUS1p-Regular.ttf">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="Assets\Fonts\OFL.txt">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <Image Include="$(MSBuildProjectDirectory)\Assets\StoreLogo.png" />
+    <Image Include="$(MSBuildProjectDirectory)\Assets\Square150x150Logo.png" />
+    <Image Include="$(MSBuildProjectDirectory)\Assets\Square44x44Logo.png" />
+    <Image Include="$(MSBuildProjectDirectory)\Assets\SplashScreen.png" />
+  </ItemGroup>
+
+  <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
+  <ItemGroup>
+    <ClInclude Include="Source\GameMain.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Source\GameMain.cpp" />
+    <ClCompile Include="Source\UWP\MainUWP.cpp" />
+  </ItemGroup>
+  <!-- FANG_FILES_END -->
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

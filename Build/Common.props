@@ -1,0 +1,86 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Common.props
+  全プロジェクト共通の設定。
+  Directory.Build.props から Import されるため、Microsoft.Cpp.props より前に評価される。
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup Label="FangConfiguration">
+    <!-- Xbox は構成名の接尾辞で分ける（プラットフォームは x64 のみ）-->
+    <FangIsXbox>false</FangIsXbox>
+    <FangIsXbox Condition="$(Configuration.EndsWith('Xbox'))">true</FangIsXbox>
+    <FangConfigurationBase>$(Configuration.Replace('Xbox',''))</FangConfigurationBase>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Toolset">
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseDebugLibraries Condition="'$(FangConfigurationBase)' == 'Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(FangConfigurationBase)' != 'Debug'">false</UseDebugLibraries>
+    <WholeProgramOptimization Condition="'$(FangConfigurationBase)' == 'Release'">true</WholeProgramOptimization>
+    <LinkIncremental Condition="'$(FangConfigurationBase)' != 'Debug'">false</LinkIncremental>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Output">
+    <OutDir>$(FangRoot)Bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(FangRoot)Intermediate\$(MSBuildProjectName)\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+
+  <Import Project="$(FangRoot)Build\Platform.Windows.props" Condition="'$(FangIsXbox)' != 'true'" />
+  <Import Project="$(FangRoot)Build\Platform.Xbox.props"    Condition="'$(FangIsXbox)' == 'true'" />
+
+  <PropertyGroup Label="FeatureFlags">
+    <!-- 構成名ではなく機能フラグを見る。全構成で 0/1 を必ず定義する -->
+    <FangFeatureDefines Condition="'$(FangConfigurationBase)' == 'Debug'">FANG_DEBUG=1;FANG_PREVIEW=0;FANG_RELEASE=0;FANG_ENABLE_ASSERT=1;FANG_ENABLE_LOG=1;FANG_ENABLE_EDITOR=1;FANG_ENABLE_HOT_RELOAD=1;FANG_ENABLE_DEBUG_DRAW=1;FANG_ENABLE_PROFILER=1;FANG_ENABLE_GPU_VALIDATION=1</FangFeatureDefines>
+    <FangFeatureDefines Condition="'$(FangConfigurationBase)' == 'Preview'">FANG_DEBUG=0;FANG_PREVIEW=1;FANG_RELEASE=0;FANG_ENABLE_ASSERT=1;FANG_ENABLE_LOG=1;FANG_ENABLE_EDITOR=1;FANG_ENABLE_HOT_RELOAD=1;FANG_ENABLE_DEBUG_DRAW=1;FANG_ENABLE_PROFILER=1;FANG_ENABLE_GPU_VALIDATION=0</FangFeatureDefines>
+    <FangFeatureDefines Condition="'$(FangConfigurationBase)' == 'Release'">FANG_DEBUG=0;FANG_PREVIEW=0;FANG_RELEASE=1;FANG_ENABLE_ASSERT=0;FANG_ENABLE_LOG=0;FANG_ENABLE_EDITOR=0;FANG_ENABLE_HOT_RELOAD=0;FANG_ENABLE_DEBUG_DRAW=0;FANG_ENABLE_PROFILER=0;FANG_ENABLE_GPU_VALIDATION=0</FangFeatureDefines>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalOptions>/Zc:__cplusplus /Zc:preprocessor /utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+
+      <!-- 例外 / RTTI はオフ（D-6）。有効にしてよいのは Core/Platform/UWP の TU だけ -->
+      <ExceptionHandling>false</ExceptionHandling>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+
+      <!-- CRT は UWP に合わせて全構成 DLL 版（Windows も揃える）-->
+      <RuntimeLibrary Condition="'$(FangConfigurationBase)' == 'Debug'">MultiThreadedDebugDLL</RuntimeLibrary>
+      <RuntimeLibrary Condition="'$(FangConfigurationBase)' != 'Debug'">MultiThreadedDLL</RuntimeLibrary>
+
+      <!-- /ZI（エディット コンティニュ）にされると /GL と衝突するので明示的に固定する -->
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <DebugInformationFormatDefined>true</DebugInformationFormatDefined>
+
+      <Optimization Condition="'$(FangConfigurationBase)' == 'Debug'">Disabled</Optimization>
+      <!-- Debug でも FANG_FORCEINLINE を効かせるため /Ob1 -->
+      <InlineFunctionExpansion Condition="'$(FangConfigurationBase)' == 'Debug'">OnlyExplicitInline</InlineFunctionExpansion>
+      <BasicRuntimeChecks Condition="'$(FangConfigurationBase)' == 'Debug'">EnableFastChecks</BasicRuntimeChecks>
+      <Optimization Condition="'$(FangConfigurationBase)' != 'Debug'">MaxSpeed</Optimization>
+      <IntrinsicFunctions Condition="'$(FangConfigurationBase)' != 'Debug'">true</IntrinsicFunctions>
+      <FunctionLevelLinking Condition="'$(FangConfigurationBase)' != 'Debug'">true</FunctionLevelLinking>
+      <WholeProgramOptimization Condition="'$(FangConfigurationBase)' == 'Release'">true</WholeProgramOptimization>
+
+      <PreprocessorDefinitions>$(FangFeatureDefines);$(FangPlatformDefines);_HAS_EXCEPTIONS=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <LinkTimeCodeGeneration Condition="'$(FangConfigurationBase)' == 'Release'">UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <OptimizeReferences Condition="'$(FangConfigurationBase)' != 'Debug'">true</OptimizeReferences>
+      <EnableCOMDATFolding Condition="'$(FangConfigurationBase)' != 'Debug'">true</EnableCOMDATFolding>
+      <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
+    </Link>
+
+    <Lib>
+      <LinkTimeCodeGeneration Condition="'$(FangConfigurationBase)' == 'Release'">true</LinkTimeCodeGeneration>
+    </Lib>
+  </ItemDefinitionGroup>
+
+</Project>

@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Preview|x64"><Configuration>Preview</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="DebugXbox|x64"><Configuration>DebugXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="PreviewXbox|x64"><Configuration>PreviewXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="ReleaseXbox|x64"><Configuration>ReleaseXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{3EA9A5D6-7E03-233C-9D5F-0F5F3D3551E4}</ProjectGuid>
+    <RootNamespace>Core</RootNamespace>
+    <ProjectName>Core</ProjectName>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="FangModule">
+    <FangModuleDependencies></FangModuleDependencies>
+  </PropertyGroup>
+
+  <Import Project="$(FangRoot)Build\Module.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
+  <ItemGroup>
+    <ClInclude Include="Public\Core\Core.h" />
+    <ClInclude Include="Public\Core\CoreLog.h" />
+    <ClInclude Include="Public\Core\CoreMacros.h" />
+    <ClInclude Include="Public\Core\Log\Assert.h" />
+    <ClInclude Include="Public\Core\Log\Log.h" />
+    <ClInclude Include="Public\Core\Memory\Allocator.h" />
+    <ClInclude Include="Public\Core\Memory\UniquePtr.h" />
+    <ClInclude Include="Public\Core\Platform\SystemFont.h" />
+    <ClInclude Include="Public\Core\Platform\UWPApplication.h" />
+    <ClInclude Include="Public\Core\Platform\Window.h" />
+    <ClInclude Include="Private\Pch.h" />
+    <ClInclude Include="Private\Log\PlatformLogSink.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Private\Core.cpp" />
+    <ClCompile Include="Private\Pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Private\Log\Assert.cpp" />
+    <ClCompile Include="Private\Log\Log.cpp" />
+    <ClCompile Include="Private\Memory\Allocator.cpp" />
+    <ClCompile Include="Private\Windows\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' != 'true'" />
+    <ClCompile Include="Private\Windows\SystemFont.cpp" Condition="'$(FangIsXbox)' != 'true'" />
+    <ClCompile Include="Private\Windows\Window.cpp" Condition="'$(FangIsXbox)' != 'true'" />
+    <ClCompile Include="Private\Xbox\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' == 'true'" />
+    <ClCompile Include="Private\Xbox\SystemFont.cpp" Condition="'$(FangIsXbox)' == 'true'" />
+    <ClCompile Include="Private\Xbox\UWPApplication.cpp" Condition="'$(FangIsXbox)' == 'true'" />
+    <ClCompile Include="Private\Xbox\Window.cpp" Condition="'$(FangIsXbox)' == 'true'" />
+  </ItemGroup>
+  <!-- FANG_FILES_END -->
+
+  <!-- C++/WinRT を使う TU だけ例外を有効にする（D-6 の例外規定）。生成ツールの対象外なので手で書く。
+       PCH は例外オフでコンパイルされているので、この 2 つだけ使わない（Pch.h は普通の include として読まれる）-->
+  <ItemGroup Condition="'$(FangIsXbox)' == 'true'">
+    <ClCompile Update="Private\Xbox\SystemFont.cpp;Private\Xbox\UWPApplication.cpp;Private\Xbox\Window.cpp">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PreprocessorDefinitions>$(FangFeatureDefines);$(FangPlatformDefines);_HAS_EXCEPTIONS=1</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+
+</Project>

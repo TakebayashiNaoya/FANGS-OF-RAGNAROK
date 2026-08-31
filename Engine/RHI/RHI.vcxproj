@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Preview|x64"><Configuration>Preview</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="DebugXbox|x64"><Configuration>DebugXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="PreviewXbox|x64"><Configuration>PreviewXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="ReleaseXbox|x64"><Configuration>ReleaseXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{2D305B6C-637F-398E-2054-B26688E68BFD}</ProjectGuid>
+    <RootNamespace>RHI</RootNamespace>
+    <ProjectName>RHI</ProjectName>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="FangModule">
+    <FangModuleDependencies>Core</FangModuleDependencies>
+  </PropertyGroup>
+
+  <Import Project="$(FangRoot)Build\Module.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
+  <ItemGroup>
+    <ClInclude Include="Public\RHI\CommandList.h" />
+    <ClInclude Include="Public\RHI\GraphicsDevice.h" />
+    <ClInclude Include="Public\RHI\RHI.h" />
+    <ClInclude Include="Public\RHI\RHIHandles.h" />
+    <ClInclude Include="Public\RHI\RHILog.h" />
+    <ClInclude Include="Public\RHI\ShaderCompiler.h" />
+    <ClInclude Include="Private\D3D12Common.h" />
+    <ClInclude Include="Private\Pch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Private\GraphicsDevice.cpp" />
+    <ClCompile Include="Private\Pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Private\RHI.cpp" />
+    <ClCompile Include="Private\ShaderCompiler.cpp" />
+  </ItemGroup>
+  <!-- FANG_FILES_END -->
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

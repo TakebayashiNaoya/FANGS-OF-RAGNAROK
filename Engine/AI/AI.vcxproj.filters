@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Private">
+      <UniqueIdentifier>{F5EC48AD-1698-4F77-2B19-CF832D2A4072}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Public">
+      <UniqueIdentifier>{4F5D17AE-8385-7B72-A40C-A9A6E39FADB5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Public\AI">
+      <UniqueIdentifier>{39C3960B-55F0-AEA2-C76B-280B75C79354}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Public\AI\AI.h">
+      <Filter>Public\AI</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\Pch.h">
+      <Filter>Private</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Private\AI.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Pch.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Directory.Build.props
+  ソリューション配下の全 .vcxproj が MSBuild によって自動で読み込む。
+  中身は Build/Common.props の Import だけに保つ。
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <!-- 単体の .vcxproj をビルドしても解決できるよう $(SolutionDir) ではなくこの位置から決める -->
+    <FangRoot>$(MSBuildThisFileDirectory)</FangRoot>
+  </PropertyGroup>
+
+  <Import Project="$(FangRoot)Build\Common.props" />
+
+</Project>
