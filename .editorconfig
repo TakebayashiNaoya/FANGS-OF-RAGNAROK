@@ -1,5 +1,5 @@
 # FANGS OF RAGNAROK — EditorConfig
-# 規約のうち「機械的に強制できる部分」はここに置く。人間向けの説明は docs/Engine/03_コーディング規約.md。
+# 規約のうち「機械的に強制できる部分」はここに置く。
 # Visual Studio は保存時にこの設定を適用する（インデント・改行・文字コード・C++ 整形）。
 root = true
 

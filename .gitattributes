@@ -6,9 +6,13 @@
 # Visual Studio が扱うファイル
 *.sln text eol=crlf
 *.vcxproj text eol=crlf
+*.vcxitems text eol=crlf
 *.vcxproj.filters text eol=crlf
 *.props text eol=crlf
 *.targets text eol=crlf
+
+# サードパーティは上流のまま置く（改行を変えると上流との差分が取れなくなる）
+ThirdParty/** -text
 
 # バイナリ（差分を取らない）
 *.png binary
