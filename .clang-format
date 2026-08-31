@@ -1,0 +1,110 @@
+# FANGS OF RAGNAROK — clang-format
+# .editorconfig の cpp_* と同じ見た目になるよう設定。
+# VS では「ツール > オプション > テキストエディター > C/C++ > コードスタイル > 書式設定」で
+# clang-format を有効にすると、このファイルが使われる。
+---
+Language: Cpp
+Standard: c++20
+BasedOnStyle: Microsoft
+
+# 基本
+IndentWidth: 4
+TabWidth: 4
+UseTab: ForContinuationAndIndentation
+# 行頭のインデントと継続行（初期化子リスト・折り返した引数）はタブ、行内の位置合わせ（末尾コメント等）はスペース。
+# 行内をタブにするとタブ幅設定の違う環境で整列が崩れるため。
+ContinuationIndentWidth: 4
+
+# if / for / while の 1 行本体にも必ず {} を付ける（規約 §2）
+InsertBraces: true
+ColumnLimit: 120
+NamespaceIndentation: None
+AccessModifierOffset: -4
+IndentCaseLabels: false
+IndentPPDirectives: None
+
+# 波括弧（Allman。ラムダだけは短ければ 1 行、長ければ { を同じ行に置く）
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: true
+  AfterClass: true
+  AfterControlStatement: Always
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  AfterExternBlock: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  IndentBraces: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+# クラス内の短い関数（アクセサ）は 1 行のまま。クラス外の関数は空でない限り展開する
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: All
+AllowShortCaseLabelsOnASingleLine: false
+
+# ポインタ・参照は型側に付ける（int* p / const T& v）
+PointerAlignment: Left
+ReferenceAlignment: Left
+QualifierAlignment: Left
+
+# インクルード順（規約 §4 と一致させる）
+#   1. 対になるヘッダ（自動判定）
+#   2. Engine 内のヘッダ
+#   3. Game 内のヘッダ / サードパーティ
+#   4. C 系ヘッダ (<xxx.h>)
+#   5. プラットフォーム SDK
+#   6. C++ 標準ライブラリ
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"(Core|RHI|Renderer|Collision|Animation|Resource|Scene|Input|Audio|UI|AI|Effects|Runtime|Editor)/'
+    Priority: 2
+  - Regex: '^"Game/'
+    Priority: 3
+  - Regex: '^<(d3d12|dxgi|windows|Windows|xdk|gdk|GameInput|XInput)'
+    Priority: 5
+  - Regex: '^<.*\.h>'
+    Priority: 4
+  - Regex: '^<[^.]*>'
+    Priority: 6
+  - Regex: '.*'
+    Priority: 3
+
+# 改行・整列
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignTrailingComments: false
+AlignOperands: Align
+BinPackArguments: false
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+BreakConstructorInitializers: BeforeComma
+ConstructorInitializerIndentWidth: 4
+BreakInheritanceList: BeforeComma
+Cpp11BracedListStyle: false
+SpaceBeforeCpp11BracedList: false
+SpacesInContainerLiterals: true
+FixNamespaceComments: true
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 2
+# Always にすると関数間・include と namespace の間の空行が 1 行に詰められる（規約は 2 行）ので Leave
+SeparateDefinitionBlocks: Leave
+ReflowComments: false
+SpaceAfterCStyleCast: false
+SpaceBeforeParens: ControlStatements
+SpacesBeforeTrailingComments: 1
+InsertNewlineAtEOF: true
+EmptyLineBeforeAccessModifier: Always
+EmptyLineAfterAccessModifier: Never
+...

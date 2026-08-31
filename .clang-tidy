@@ -1,0 +1,68 @@
+# FANGS OF RAGNAROK — clang-tidy
+# 命名規則（規約 §3）を静的にチェックする。
+# VS では「プロジェクトのプロパティ > コード分析 > 全般 > Clang-Tidy を有効にする」で使われる。
+---
+Checks: >
+  -*,
+  readability-identifier-naming,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  performance-*,
+  modernize-use-override,
+  modernize-use-nullptr,
+  modernize-use-using,
+  modernize-deprecated-headers,
+  modernize-concat-nested-namespaces,
+  cppcoreguidelines-pro-type-cstyle-cast,
+  misc-unused-using-decls,
+  readability-braces-around-statements,
+  readability-redundant-smartptr-get
+WarningsAsErrors: ''
+HeaderFilterRegex: '(Engine|Game|Tools|Tests)/.*'
+FormatStyle: file
+CheckOptions:
+  # 型
+  - { key: readability-identifier-naming.NamespaceCase,            value: lower_case }
+  - { key: readability-identifier-naming.ClassCase,                value: CamelCase }
+  - { key: readability-identifier-naming.StructCase,               value: CamelCase }
+  - { key: readability-identifier-naming.UnionCase,                value: CamelCase }
+  - { key: readability-identifier-naming.EnumCase,                 value: CamelCase }
+  - { key: readability-identifier-naming.EnumPrefix,               value: En }
+  - { key: readability-identifier-naming.EnumConstantCase,         value: CamelCase }
+  - { key: readability-identifier-naming.TypeAliasCase,            value: CamelCase }
+  - { key: readability-identifier-naming.TypedefCase,              value: CamelCase }
+  - { key: readability-identifier-naming.TemplateParameterCase,    value: CamelCase }
+  - { key: readability-identifier-naming.AbstractClassPrefix,      value: I }
+  # 関数
+  - { key: readability-identifier-naming.FunctionCase,             value: CamelCase }
+  - { key: readability-identifier-naming.MethodCase,               value: CamelCase }
+  # 変数
+  - { key: readability-identifier-naming.VariableCase,             value: camelBack }
+  - { key: readability-identifier-naming.ParameterCase,            value: camelBack }
+  - { key: readability-identifier-naming.LocalVariableCase,        value: camelBack }
+  - { key: readability-identifier-naming.PrivateMemberCase,        value: camelBack }
+  - { key: readability-identifier-naming.PrivateMemberPrefix,      value: m_ }
+  - { key: readability-identifier-naming.ProtectedMemberCase,      value: camelBack }
+  - { key: readability-identifier-naming.ProtectedMemberPrefix,    value: m_ }
+  - { key: readability-identifier-naming.PublicMemberCase,         value: camelBack }
+  - { key: readability-identifier-naming.ClassMemberCase,          value: camelBack }
+  - { key: readability-identifier-naming.ClassMemberPrefix,        value: s_ }
+  - { key: readability-identifier-naming.StaticVariableCase,       value: camelBack }
+  - { key: readability-identifier-naming.StaticVariablePrefix,     value: s_ }
+  - { key: readability-identifier-naming.GlobalVariableCase,       value: camelBack }
+  - { key: readability-identifier-naming.GlobalVariablePrefix,     value: g_ }
+  # 定数（UPPER_SNAKE。接頭辞なし）
+  # ConstexprVariableCase は設定しない: 設定すると関数内の constexpr まで UPPER_CASE になる。
+  # 未設定なら constexpr はスコープごとの Constant ルール（クラス / グローバル = UPPER、ローカル = camel）に従う。
+  - { key: readability-identifier-naming.GlobalConstantCase,       value: UPPER_CASE }
+  - { key: readability-identifier-naming.ClassConstantCase,        value: UPPER_CASE }
+  - { key: readability-identifier-naming.StaticConstantCase,       value: UPPER_CASE }
+  - { key: readability-identifier-naming.LocalConstantCase,        value: camelBack }
+  - { key: readability-identifier-naming.ConstantParameterCase,    value: camelBack }
+  - { key: readability-identifier-naming.ConstantMemberCase,       value: camelBack }
+  - { key: readability-identifier-naming.ConstantMemberPrefix,     value: m_ }
+  # マクロ
+  - { key: readability-identifier-naming.MacroDefinitionCase,      value: UPPER_CASE }
+  - { key: readability-identifier-naming.MacroDefinitionPrefix,    value: FANG_ }
+...
