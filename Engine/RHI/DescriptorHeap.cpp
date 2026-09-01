@@ -20,8 +20,10 @@ namespace fang::rhi
 		shaderVisibleHeapDesc.NumDescriptors = SHADER_VISIBLE_DESCRIPTOR_COUNT;
 		shaderVisibleHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		shaderVisibleHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		if (!CheckHresult(device.CreateDescriptorHeap(&shaderVisibleHeapDesc, IID_PPV_ARGS(&m_heap)),
-						  "シェーダ可視ディスクリプタヒープの生成"))
+		if (!CheckHresult(
+				device.CreateDescriptorHeap(&shaderVisibleHeapDesc, IID_PPV_ARGS(&m_heap)),
+				"シェーダ可視ディスクリプタヒープの生成"
+			))
 		{
 			return false;
 		}

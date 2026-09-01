@@ -59,10 +59,12 @@ namespace fang::editor
 			// .ttc は複数のフォントの束なので、先頭（レギュラー）を指定する。
 			fontConfig.FontNo = 0;
 
-			if (io.Fonts->AddFontFromFileTTF(fontPath.c_str(),
-											 FONT_SIZE_IN_PIXELS,
-											 &fontConfig,
-											 io.Fonts->GetGlyphRangesJapanese()) == nullptr)
+			if (io.Fonts->AddFontFromFileTTF(
+					fontPath.c_str(),
+					FONT_SIZE_IN_PIXELS,
+					&fontConfig,
+					io.Fonts->GetGlyphRangesJapanese()
+				) == nullptr)
 			{
 				FANG_LOG_WARNING(Editor, "フォントを読めなかった: {}", fontPath);
 				return;
@@ -231,9 +233,11 @@ namespace fang::editor
 		m_indexCapacity  = 0;
 	}
 
-	void EditorUI::RenderDrawData(rhi::GraphicsDevice& device,
-								  rhi::CommandList&    commandList,
-								  const ImDrawData&    drawData)
+	void EditorUI::RenderDrawData(
+		rhi::GraphicsDevice& device,
+		rhi::CommandList&    commandList,
+		const ImDrawData&    drawData
+	)
 	{
 		if (drawData.TotalVtxCount <= 0)
 		{
@@ -266,8 +270,10 @@ namespace fang::editor
 		commandList.SetVertexBuffer(m_vertexBuffer);
 		commandList.SetIndexBuffer(m_indexBuffer);
 		commandList.SetRootConstants(projectionMatrix, 16);
-		commandList.SetViewport(static_cast<uint32_t>(drawData.DisplaySize.x),
-								static_cast<uint32_t>(drawData.DisplaySize.y));
+		commandList.SetViewport(
+			static_cast<uint32_t>(drawData.DisplaySize.x),
+			static_cast<uint32_t>(drawData.DisplaySize.y)
+		);
 
 		// TODO: ImTextureID からハンドルを引く。今はフォントアトラスしか無い。
 		commandList.SetTexture(m_fontTexture);
@@ -295,9 +301,11 @@ namespace fang::editor
 				}
 
 				commandList.SetScissor(clipLeft, clipTop, clipRight, clipBottom);
-				commandList.DrawIndexed(drawCommand.ElemCount,
-										drawCommand.IdxOffset + globalIndexOffset,
-										static_cast<int32_t>(drawCommand.VtxOffset) + globalVertexOffset);
+				commandList.DrawIndexed(
+					drawCommand.ElemCount,
+					drawCommand.IdxOffset + globalIndexOffset,
+					static_cast<int32_t>(drawCommand.VtxOffset) + globalVertexOffset
+				);
 			}
 
 			globalIndexOffset += static_cast<uint32_t>(drawList.IdxBuffer.Size);
@@ -315,18 +323,22 @@ namespace fang::editor
 			// 前フレームの描画は EndFrame で待ち終わっているので、その場で作り直してよい。
 			device.DestroyBuffer(m_vertexBuffer);
 			m_vertexCapacity = requiredVertexCount + BUFFER_GROWTH_MARGIN;
-			m_vertexBuffer   = device.CreateDynamicBuffer(m_vertexCapacity * static_cast<uint32_t>(sizeof(ImDrawVert)),
-														  static_cast<uint32_t>(sizeof(ImDrawVert)),
-														  rhi::EnBufferKind::Vertex);
+			m_vertexBuffer   = device.CreateDynamicBuffer(
+				m_vertexCapacity * static_cast<uint32_t>(sizeof(ImDrawVert)),
+				static_cast<uint32_t>(sizeof(ImDrawVert)),
+				rhi::EnBufferKind::Vertex
+			);
 		}
 
 		if (requiredIndexCount > m_indexCapacity)
 		{
 			device.DestroyBuffer(m_indexBuffer);
 			m_indexCapacity = requiredIndexCount + BUFFER_GROWTH_MARGIN;
-			m_indexBuffer   = device.CreateDynamicBuffer(m_indexCapacity * static_cast<uint32_t>(sizeof(ImDrawIdx)),
-														 static_cast<uint32_t>(sizeof(ImDrawIdx)),
-														 rhi::EnBufferKind::Index);
+			m_indexBuffer   = device.CreateDynamicBuffer(
+				m_indexCapacity * static_cast<uint32_t>(sizeof(ImDrawIdx)),
+				static_cast<uint32_t>(sizeof(ImDrawIdx)),
+				rhi::EnBufferKind::Index
+			);
 		}
 
 		return m_vertexBuffer.IsValid() && m_indexBuffer.IsValid();
@@ -342,19 +354,27 @@ namespace fang::editor
 		for (int listIndex = 0; listIndex < drawData.CmdListsCount; ++listIndex)
 		{
 			const ImDrawList& drawList = *drawData.CmdLists[listIndex];
-			m_vertexStaging.insert(m_vertexStaging.end(),
-								   drawList.VtxBuffer.Data,
-								   drawList.VtxBuffer.Data + drawList.VtxBuffer.Size);
-			m_indexStaging.insert(m_indexStaging.end(),
-								  drawList.IdxBuffer.Data,
-								  drawList.IdxBuffer.Data + drawList.IdxBuffer.Size);
+			m_vertexStaging.insert(
+				m_vertexStaging.end(),
+				drawList.VtxBuffer.Data,
+				drawList.VtxBuffer.Data + drawList.VtxBuffer.Size
+			);
+			m_indexStaging.insert(
+				m_indexStaging.end(),
+				drawList.IdxBuffer.Data,
+				drawList.IdxBuffer.Data + drawList.IdxBuffer.Size
+			);
 		}
 
-		device.UpdateBuffer(m_vertexBuffer,
-							m_vertexStaging.data(),
-							static_cast<uint32_t>(m_vertexStaging.size() * sizeof(ImDrawVert)));
-		device.UpdateBuffer(m_indexBuffer,
-							m_indexStaging.data(),
-							static_cast<uint32_t>(m_indexStaging.size() * sizeof(ImDrawIdx)));
+		device.UpdateBuffer(
+			m_vertexBuffer,
+			m_vertexStaging.data(),
+			static_cast<uint32_t>(m_vertexStaging.size() * sizeof(ImDrawVert))
+		);
+		device.UpdateBuffer(
+			m_indexBuffer,
+			m_indexStaging.data(),
+			static_cast<uint32_t>(m_indexStaging.size() * sizeof(ImDrawIdx))
+		);
 	}
 } // namespace fang::editor

@@ -8,12 +8,14 @@
 
 namespace fang::rhi
 {
-	bool SwapChain::Initialize(IDXGIFactory6&      factory,
-							   ID3D12Device&       device,
-							   ID3D12CommandQueue& commandQueue,
-							   void*               windowHandle,
-							   uint32_t            width,
-							   uint32_t            height)
+	bool SwapChain::Initialize(
+		IDXGIFactory6&      factory,
+		ID3D12Device&       device,
+		ID3D12CommandQueue& commandQueue,
+		void*               windowHandle,
+		uint32_t            width,
+		uint32_t            height
+	)
 	{
 		m_width  = width;
 		m_height = height;
@@ -29,19 +31,23 @@ namespace fang::rhi
 
 		ComPtr<IDXGISwapChain1> swapChain;
 #if FANG_PLATFORM_WINDOWS
-		const HRESULT swapChainResult = factory.CreateSwapChainForHwnd(&commandQueue,
-																	   static_cast<HWND>(windowHandle),
-																	   &swapChainDesc,
-																	   nullptr,
-																	   nullptr,
-																	   &swapChain);
+		const HRESULT swapChainResult = factory.CreateSwapChainForHwnd(
+			&commandQueue,
+			static_cast<HWND>(windowHandle),
+			&swapChainDesc,
+			nullptr,
+			nullptr,
+			&swapChain
+		);
 #else
 		// UWP は CoreWindow を IUnknown* にして渡す。
-		const HRESULT swapChainResult = factory.CreateSwapChainForCoreWindow(&commandQueue,
-																			 static_cast<IUnknown*>(windowHandle),
-																			 &swapChainDesc,
-																			 nullptr,
-																			 &swapChain);
+		const HRESULT swapChainResult = factory.CreateSwapChainForCoreWindow(
+			&commandQueue,
+			static_cast<IUnknown*>(windowHandle),
+			&swapChainDesc,
+			nullptr,
+			&swapChain
+		);
 #endif
 		if (!CheckHresult(swapChainResult, "スワップチェーンの生成"))
 		{
@@ -58,8 +64,10 @@ namespace fang::rhi
 		D3D12_DESCRIPTOR_HEAP_DESC renderTargetViewHeapDesc{};
 		renderTargetViewHeapDesc.NumDescriptors = BACK_BUFFER_COUNT;
 		renderTargetViewHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		if (!CheckHresult(device.CreateDescriptorHeap(&renderTargetViewHeapDesc, IID_PPV_ARGS(&m_renderTargetViewHeap)),
-						  "レンダーターゲットビューのヒープ生成"))
+		if (!CheckHresult(
+				device.CreateDescriptorHeap(&renderTargetViewHeapDesc, IID_PPV_ARGS(&m_renderTargetViewHeap)),
+				"レンダーターゲットビューのヒープ生成"
+			))
 		{
 			return false;
 		}
@@ -76,8 +84,10 @@ namespace fang::rhi
 			m_backBuffers[bufferIndex].Reset();
 		}
 
-		if (!CheckHresult(m_swapChain->ResizeBuffers(BACK_BUFFER_COUNT, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0),
-						  "スワップチェーンのリサイズ"))
+		if (!CheckHresult(
+				m_swapChain->ResizeBuffers(BACK_BUFFER_COUNT, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0),
+				"スワップチェーンのリサイズ"
+			))
 		{
 			return;
 		}
@@ -127,8 +137,10 @@ namespace fang::rhi
 		D3D12_CPU_DESCRIPTOR_HANDLE renderTargetView = m_renderTargetViewHeap->GetCPUDescriptorHandleForHeapStart();
 		for (uint32_t bufferIndex = 0; bufferIndex < BACK_BUFFER_COUNT; ++bufferIndex)
 		{
-			if (!CheckHresult(m_swapChain->GetBuffer(bufferIndex, IID_PPV_ARGS(&m_backBuffers[bufferIndex])),
-							  "バックバッファの取得"))
+			if (!CheckHresult(
+					m_swapChain->GetBuffer(bufferIndex, IID_PPV_ARGS(&m_backBuffers[bufferIndex])),
+					"バックバッファの取得"
+				))
 			{
 				return false;
 			}

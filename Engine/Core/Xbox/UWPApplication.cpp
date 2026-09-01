@@ -28,8 +28,9 @@ namespace fang
 			void Initialize(const winrt_core::CoreApplicationView& applicationView)
 			{
 				// Activate しないとスプラッシュ画面のまま止まる。
-				applicationView.Activated(
-					[](auto&&, auto&&) { winrt_ui::CoreWindow::GetForCurrentThread().Activate(); });
+				applicationView.Activated([](auto&&, auto&&) {
+					winrt_ui::CoreWindow::GetForCurrentThread().Activate();
+				});
 			}
 
 			void SetWindow(const winrt_ui::CoreWindow&) {}

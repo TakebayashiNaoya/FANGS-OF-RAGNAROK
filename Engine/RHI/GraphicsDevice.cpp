@@ -70,10 +70,11 @@ namespace fang::rhi
 		}
 
 		ComPtr<IDXGIAdapter1> adapter;
-		for (UINT adapterIndex = 0;
-			 m_factory->EnumAdapterByGpuPreference(adapterIndex,
-												   DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
-												   IID_PPV_ARGS(&adapter)) != DXGI_ERROR_NOT_FOUND;
+		for (UINT adapterIndex = 0; m_factory->EnumAdapterByGpuPreference(
+										adapterIndex,
+										DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE,
+										IID_PPV_ARGS(&adapter)
+									) != DXGI_ERROR_NOT_FOUND;
 			 ++adapterIndex)
 		{
 			DXGI_ADAPTER_DESC1 adapterDesc{};
@@ -112,28 +113,35 @@ namespace fang::rhi
 		featureLevels.NumFeatureLevels        = FANG_COUNT_OF(CANDIDATE_FEATURE_LEVELS);
 		featureLevels.pFeatureLevelsRequested = CANDIDATE_FEATURE_LEVELS;
 		if (SUCCEEDED(
-				m_device->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &featureLevels, sizeof(featureLevels))))
+				m_device->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &featureLevels, sizeof(featureLevels))
+			))
 		{
-			FANG_LOG_INFO(RHI,
-						  "D3D12 デバイスを作った (Feature Level {})",
-						  ToDisplayName(featureLevels.MaxSupportedFeatureLevel));
+			FANG_LOG_INFO(
+				RHI,
+				"D3D12 デバイスを作った (Feature Level {})",
+				ToDisplayName(featureLevels.MaxSupportedFeatureLevel)
+			);
 		}
 
 		D3D12_COMMAND_QUEUE_DESC queueDesc{};
 		queueDesc.Type  = D3D12_COMMAND_LIST_TYPE_DIRECT;
 		queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-		if (!CheckHresult(m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue)),
-						  "コマンドキューの生成"))
+		if (!CheckHresult(
+				m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&m_commandQueue)),
+				"コマンドキューの生成"
+			))
 		{
 			return false;
 		}
 
-		if (!m_swapChain.Initialize(*m_factory.Get(),
-									*m_device.Get(),
-									*m_commandQueue.Get(),
-									desc.windowHandle,
-									desc.width,
-									desc.height))
+		if (!m_swapChain.Initialize(
+				*m_factory.Get(),
+				*m_device.Get(),
+				*m_commandQueue.Get(),
+				desc.windowHandle,
+				desc.width,
+				desc.height
+			))
 		{
 			return false;
 		}
@@ -145,20 +153,28 @@ namespace fang::rhi
 
 		for (uint32_t bufferIndex = 0; bufferIndex < BACK_BUFFER_COUNT; ++bufferIndex)
 		{
-			if (!CheckHresult(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
-															   IID_PPV_ARGS(&m_commandAllocators[bufferIndex])),
-							  "コマンドアロケータの生成"))
+			if (!CheckHresult(
+					m_device->CreateCommandAllocator(
+						D3D12_COMMAND_LIST_TYPE_DIRECT,
+						IID_PPV_ARGS(&m_commandAllocators[bufferIndex])
+					),
+					"コマンドアロケータの生成"
+				))
 			{
 				return false;
 			}
 		}
 
-		if (!CheckHresult(m_device->CreateCommandList(0,
-													  D3D12_COMMAND_LIST_TYPE_DIRECT,
-													  m_commandAllocators[m_swapChain.GetFrameIndex()].Get(),
-													  nullptr,
-													  IID_PPV_ARGS(&m_commandList)),
-						  "コマンドリストの生成"))
+		if (!CheckHresult(
+				m_device->CreateCommandList(
+					0,
+					D3D12_COMMAND_LIST_TYPE_DIRECT,
+					m_commandAllocators[m_swapChain.GetFrameIndex()].Get(),
+					nullptr,
+					IID_PPV_ARGS(&m_commandList)
+				),
+				"コマンドリストの生成"
+			))
 		{
 			return false;
 		}
@@ -224,19 +240,23 @@ namespace fang::rhi
 		m_pipelines.Destroy(handle);
 	}
 
-	BufferHandle GraphicsDevice::CreateBuffer(const void*  data,
-											  uint32_t     sizeInBytes,
-											  uint32_t     strideInBytes,
-											  EnBufferKind kind)
+	BufferHandle GraphicsDevice::CreateBuffer(
+		const void*  data,
+		uint32_t     sizeInBytes,
+		uint32_t     strideInBytes,
+		EnBufferKind kind
+	)
 	{
 		FANG_ASSERT(m_isInitialized, "GraphicsDevice が初期化されていない");
 
 		return m_buffers.Create(*m_device.Get(), data, sizeInBytes, strideInBytes, kind);
 	}
 
-	BufferHandle GraphicsDevice::CreateDynamicBuffer(uint32_t     capacityInBytes,
-													 uint32_t     strideInBytes,
-													 EnBufferKind kind)
+	BufferHandle GraphicsDevice::CreateDynamicBuffer(
+		uint32_t     capacityInBytes,
+		uint32_t     strideInBytes,
+		EnBufferKind kind
+	)
 	{
 		FANG_ASSERT(m_isInitialized, "GraphicsDevice が初期化されていない");
 

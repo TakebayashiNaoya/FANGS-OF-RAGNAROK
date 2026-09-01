@@ -62,10 +62,12 @@ namespace fang::rhi
 		 * @param kind 頂点バッファかインデックスバッファか。
 		 * @return 失敗したら無効なハンドル。
 		 */
-		[[nodiscard]] BufferHandle CreateBuffer(const void*  data,
-												uint32_t     sizeInBytes,
-												uint32_t     strideInBytes,
-												EnBufferKind kind);
+		[[nodiscard]] BufferHandle CreateBuffer(
+			const void*  data,
+			uint32_t     sizeInBytes,
+			uint32_t     strideInBytes,
+			EnBufferKind kind
+		);
 
 		/**
 		 * @brief 毎フレーム書き換えるバッファを作る。中身は空で、UpdateBuffer で書き込む。
@@ -74,9 +76,11 @@ namespace fang::rhi
 		 * @param kind 頂点バッファかインデックスバッファか。
 		 * @return 失敗したら無効なハンドル。
 		 */
-		[[nodiscard]] BufferHandle CreateDynamicBuffer(uint32_t     capacityInBytes,
-													   uint32_t     strideInBytes,
-													   EnBufferKind kind);
+		[[nodiscard]] BufferHandle CreateDynamicBuffer(
+			uint32_t     capacityInBytes,
+			uint32_t     strideInBytes,
+			EnBufferKind kind
+		);
 
 		/**
 		 * @brief バッファの先頭から data を書き込む。

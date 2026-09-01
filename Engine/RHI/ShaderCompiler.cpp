@@ -19,10 +19,12 @@ namespace fang::rhi
 {
 #if FANG_PLATFORM_WINDOWS
 
-	bool CompileShaderFromSource(std::string_view      source,
-								 std::string_view      entryPointName,
-								 EnShaderStage         stage,
-								 std::vector<uint8_t>* outBytecode)
+	bool CompileShaderFromSource(
+		std::string_view      source,
+		std::string_view      entryPointName,
+		EnShaderStage         stage,
+		std::vector<uint8_t>* outBytecode
+	)
 	{
 		FANG_ASSERT(outBytecode != nullptr, "出力先が nullptr");
 
@@ -37,17 +39,19 @@ namespace fang::rhi
 
 		Microsoft::WRL::ComPtr<ID3DBlob> compiled;
 		Microsoft::WRL::ComPtr<ID3DBlob> errors;
-		const HRESULT                    result = ::D3DCompile(source.data(),
-															   source.size(),
-															   nullptr,
-															   nullptr,
-															   nullptr,
-															   entryPoint.c_str(),
-															   targetName,
-															   compileFlags,
-															   0,
-															   &compiled,
-															   &errors);
+		const HRESULT                    result = ::D3DCompile(
+			source.data(),
+			source.size(),
+			nullptr,
+			nullptr,
+			nullptr,
+			entryPoint.c_str(),
+			targetName,
+			compileFlags,
+			0,
+			&compiled,
+			&errors
+		);
 
 		if (FAILED(result))
 		{

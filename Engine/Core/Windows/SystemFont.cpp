@@ -40,28 +40,32 @@ namespace fang
 				continue;
 			}
 
-			const int byteCount = ::WideCharToMultiByte(CP_UTF8,
-														0,
-														path.c_str(),
-														static_cast<int>(path.size()),
-														nullptr,
-														0,
-														nullptr,
-														nullptr);
+			const int byteCount = ::WideCharToMultiByte(
+				CP_UTF8,
+				0,
+				path.c_str(),
+				static_cast<int>(path.size()),
+				nullptr,
+				0,
+				nullptr,
+				nullptr
+			);
 			if (byteCount <= 0)
 			{
 				continue;
 			}
 
 			std::string utf8Path(static_cast<size_t>(byteCount), '\0');
-			::WideCharToMultiByte(CP_UTF8,
-								  0,
-								  path.c_str(),
-								  static_cast<int>(path.size()),
-								  utf8Path.data(),
-								  byteCount,
-								  nullptr,
-								  nullptr);
+			::WideCharToMultiByte(
+				CP_UTF8,
+				0,
+				path.c_str(),
+				static_cast<int>(path.size()),
+				utf8Path.data(),
+				byteCount,
+				nullptr,
+				nullptr
+			);
 
 			return utf8Path;
 		}

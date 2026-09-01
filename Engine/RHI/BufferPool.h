@@ -36,20 +36,24 @@ namespace fang::rhi
 		 * @brief バッファを作って data を書き込む。
 		 * @return 失敗したら無効なハンドル。
 		 */
-		[[nodiscard]] BufferHandle Create(ID3D12Device& device,
-										  const void*   data,
-										  uint32_t      sizeInBytes,
-										  uint32_t      strideInBytes,
-										  EnBufferKind  kind);
+		[[nodiscard]] BufferHandle Create(
+			ID3D12Device& device,
+			const void*   data,
+			uint32_t      sizeInBytes,
+			uint32_t      strideInBytes,
+			EnBufferKind  kind
+		);
 
 		/**
 		 * @brief 中身が空のバッファを作る。書き込みは Update で行う。
 		 * @return 失敗したら無効なハンドル。
 		 */
-		[[nodiscard]] BufferHandle CreateDynamic(ID3D12Device& device,
-												 uint32_t      capacityInBytes,
-												 uint32_t      strideInBytes,
-												 EnBufferKind  kind);
+		[[nodiscard]] BufferHandle CreateDynamic(
+			ID3D12Device& device,
+			uint32_t      capacityInBytes,
+			uint32_t      strideInBytes,
+			EnBufferKind  kind
+		);
 
 		/** @brief バッファの先頭から data を書き込む。容量を超えるとアサートに掛かる。 */
 		void Update(BufferHandle handle, const void* data, uint32_t sizeInBytes);

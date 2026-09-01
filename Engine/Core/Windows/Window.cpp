@@ -25,9 +25,11 @@ namespace fang
 				case WM_CREATE:
 				{
 					const CREATESTRUCTW* createStruct = reinterpret_cast<const CREATESTRUCTW*>(lParam);
-					::SetWindowLongPtrW(windowHandle,
-										GWLP_USERDATA,
-										reinterpret_cast<LONG_PTR>(createStruct->lpCreateParams));
+					::SetWindowLongPtrW(
+						windowHandle,
+						GWLP_USERDATA,
+						reinterpret_cast<LONG_PTR>(createStruct->lpCreateParams)
+					);
 					return 0;
 				}
 
@@ -92,18 +94,20 @@ namespace fang
 		RECT windowRect{ 0, 0, static_cast<LONG>(desc.width), static_cast<LONG>(desc.height) };
 		::AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
 
-		const HWND windowHandle = ::CreateWindowExW(0,
-													WINDOW_CLASS_NAME,
-													desc.title,
-													WS_OVERLAPPEDWINDOW,
-													CW_USEDEFAULT,
-													CW_USEDEFAULT,
-													windowRect.right - windowRect.left,
-													windowRect.bottom - windowRect.top,
-													nullptr,
-													nullptr,
-													instanceHandle,
-													this);
+		const HWND windowHandle = ::CreateWindowExW(
+			0,
+			WINDOW_CLASS_NAME,
+			desc.title,
+			WS_OVERLAPPEDWINDOW,
+			CW_USEDEFAULT,
+			CW_USEDEFAULT,
+			windowRect.right - windowRect.left,
+			windowRect.bottom - windowRect.top,
+			nullptr,
+			nullptr,
+			instanceHandle,
+			this
+		);
 
 		if (windowHandle == nullptr)
 		{

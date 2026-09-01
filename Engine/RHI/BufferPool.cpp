@@ -10,11 +10,13 @@
 
 namespace fang::rhi
 {
-	BufferHandle BufferPool::Create(ID3D12Device& device,
-									const void*   data,
-									uint32_t      sizeInBytes,
-									uint32_t      strideInBytes,
-									EnBufferKind  kind)
+	BufferHandle BufferPool::Create(
+		ID3D12Device& device,
+		const void*   data,
+		uint32_t      sizeInBytes,
+		uint32_t      strideInBytes,
+		EnBufferKind  kind
+	)
 	{
 		const BufferHandle handle = CreateDynamic(device, sizeInBytes, strideInBytes, kind);
 		if (handle.IsValid())
@@ -25,10 +27,12 @@ namespace fang::rhi
 		return handle;
 	}
 
-	BufferHandle BufferPool::CreateDynamic(ID3D12Device& device,
-										   uint32_t      capacityInBytes,
-										   uint32_t      strideInBytes,
-										   EnBufferKind  kind)
+	BufferHandle BufferPool::CreateDynamic(
+		ID3D12Device& device,
+		uint32_t      capacityInBytes,
+		uint32_t      strideInBytes,
+		EnBufferKind  kind
+	)
 	{
 		// Phase 1 はアップロードヒープに置いたままにする。既定ヒープへの転送は Phase 3。
 		Entry entry;

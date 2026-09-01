@@ -23,12 +23,14 @@ namespace fang::rhi
 		 * @param windowHandle Windows なら HWND、UWP なら CoreWindow の IUnknown*。
 		 * @return 失敗したら false。
 		 */
-		[[nodiscard]] bool Initialize(IDXGIFactory6&      factory,
-									  ID3D12Device&       device,
-									  ID3D12CommandQueue& commandQueue,
-									  void*               windowHandle,
-									  uint32_t            width,
-									  uint32_t            height);
+		[[nodiscard]] bool Initialize(
+			IDXGIFactory6&      factory,
+			ID3D12Device&       device,
+			ID3D12CommandQueue& commandQueue,
+			void*               windowHandle,
+			uint32_t            width,
+			uint32_t            height
+		);
 
 		/**
 		 * @brief バックバッファを作り直す。

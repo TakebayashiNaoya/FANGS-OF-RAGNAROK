@@ -66,9 +66,12 @@ namespace fang
 			s_sizeChangedToken = window.SizeChanged(
 				[this](const winrt_ui::CoreWindow& sender, const winrt_ui::WindowSizeChangedEventArgs&) {
 					const double newScale = GetDisplayScale();
-					OnResized(ToPhysicalPixels(sender.Bounds().Width, newScale),
-							  ToPhysicalPixels(sender.Bounds().Height, newScale));
-				});
+					OnResized(
+						ToPhysicalPixels(sender.Bounds().Width, newScale),
+						ToPhysicalPixels(sender.Bounds().Height, newScale)
+					);
+				}
+			);
 
 			s_closedToken = window.Closed([this](auto&&, auto&&) { m_isCloseRequested = true; });
 
@@ -79,9 +82,11 @@ namespace fang
 		}
 		catch (const winrt::hresult_error& error)
 		{
-			FANG_LOG_ERROR(Core,
-						   "CoreWindow の初期化に失敗した (HRESULT=0x{:08X})",
-						   static_cast<uint32_t>(error.code().value));
+			FANG_LOG_ERROR(
+				Core,
+				"CoreWindow の初期化に失敗した (HRESULT=0x{:08X})",
+				static_cast<uint32_t>(error.code().value)
+			);
 			return false;
 		}
 	}

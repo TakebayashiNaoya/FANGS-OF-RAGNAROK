@@ -38,9 +38,11 @@ namespace fang::rhi
 	}
 
 	/** @brief アップロードヒープにバッファを作る。 */
-	[[nodiscard]] inline bool CreateUploadBuffer(ID3D12Device*           device,
-												 uint32_t                sizeInBytes,
-												 ComPtr<ID3D12Resource>& outResource)
+	[[nodiscard]] inline bool CreateUploadBuffer(
+		ID3D12Device*           device,
+		uint32_t                sizeInBytes,
+		ComPtr<ID3D12Resource>& outResource
+	)
 	{
 		D3D12_HEAP_PROPERTIES heapProperties{};
 		heapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -55,12 +57,16 @@ namespace fang::rhi
 		resourceDesc.SampleDesc.Count = 1;
 		resourceDesc.Layout           = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-		return CheckHresult(device->CreateCommittedResource(&heapProperties,
-															D3D12_HEAP_FLAG_NONE,
-															&resourceDesc,
-															D3D12_RESOURCE_STATE_GENERIC_READ,
-															nullptr,
-															IID_PPV_ARGS(&outResource)),
-							"アップロードバッファの生成");
+		return CheckHresult(
+			device->CreateCommittedResource(
+				&heapProperties,
+				D3D12_HEAP_FLAG_NONE,
+				&resourceDesc,
+				D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr,
+				IID_PPV_ARGS(&outResource)
+			),
+			"アップロードバッファの生成"
+		);
 	}
 } // namespace fang::rhi

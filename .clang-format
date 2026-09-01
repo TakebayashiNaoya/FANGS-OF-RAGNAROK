@@ -83,7 +83,8 @@ IncludeCategories:
     Priority: 3
 
 # 改行・整列
-AlignAfterOpenBracket: Align
+# 引数が収まらないときは開き括弧の直後で改行し、1 個 1 行・閉じ括弧は独立行（前作と同じ形）。
+AlignAfterOpenBracket: BlockIndent
 AlignConsecutiveAssignments:
   Enabled: true
   AcrossEmptyLines: false

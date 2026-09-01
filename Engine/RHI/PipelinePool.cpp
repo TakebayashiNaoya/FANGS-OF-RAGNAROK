@@ -75,21 +75,29 @@ namespace fang::rhi
 
 		ComPtr<ID3DBlob> serializedRootSignature;
 		ComPtr<ID3DBlob> errors;
-		if (!CheckHresult(::D3D12SerializeRootSignature(&rootSignatureDesc,
-														D3D_ROOT_SIGNATURE_VERSION_1,
-														&serializedRootSignature,
-														&errors),
-						  "ルートシグネチャのシリアライズ"))
+		if (!CheckHresult(
+				::D3D12SerializeRootSignature(
+					&rootSignatureDesc,
+					D3D_ROOT_SIGNATURE_VERSION_1,
+					&serializedRootSignature,
+					&errors
+				),
+				"ルートシグネチャのシリアライズ"
+			))
 		{
 			return PipelineHandle{};
 		}
 
 		Entry entry;
-		if (!CheckHresult(device.CreateRootSignature(0,
-													 serializedRootSignature->GetBufferPointer(),
-													 serializedRootSignature->GetBufferSize(),
-													 IID_PPV_ARGS(&entry.rootSignature)),
-						  "ルートシグネチャの生成"))
+		if (!CheckHresult(
+				device.CreateRootSignature(
+					0,
+					serializedRootSignature->GetBufferPointer(),
+					serializedRootSignature->GetBufferSize(),
+					IID_PPV_ARGS(&entry.rootSignature)
+				),
+				"ルートシグネチャの生成"
+			))
 		{
 			return PipelineHandle{};
 		}
@@ -137,8 +145,10 @@ namespace fang::rhi
 			blend.BlendOpAlpha   = D3D12_BLEND_OP_ADD;
 		}
 
-		if (!CheckHresult(device.CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(&entry.pipelineState)),
-						  "パイプラインステートの生成"))
+		if (!CheckHresult(
+				device.CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(&entry.pipelineState)),
+				"パイプラインステートの生成"
+			))
 		{
 			return PipelineHandle{};
 		}

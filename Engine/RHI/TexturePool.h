@@ -34,13 +34,15 @@ namespace fang::rhi
 		 * @param pixels RGBA 各 8 bit のピクセル列。左上から右へ、行間の詰め物なし（1 行 = width * 4 バイト）。
 		 * @return 失敗したら無効なハンドル。
 		 */
-		[[nodiscard]] TextureHandle Create(ID3D12Device&       device,
-										   ID3D12CommandQueue& commandQueue,
-										   GPUFence&           fence,
-										   DescriptorHeap&     descriptorHeap,
-										   const void*         pixels,
-										   uint32_t            width,
-										   uint32_t            height);
+		[[nodiscard]] TextureHandle Create(
+			ID3D12Device&       device,
+			ID3D12CommandQueue& commandQueue,
+			GPUFence&           fence,
+			DescriptorHeap&     descriptorHeap,
+			const void*         pixels,
+			uint32_t            width,
+			uint32_t            height
+		);
 
 		/** @brief スロットを空きに戻す。無効・解放済みのハンドルなら何もしない。 */
 		void Destroy(TextureHandle handle);

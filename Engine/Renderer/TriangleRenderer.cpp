@@ -56,10 +56,12 @@ namespace fang
 			return false;
 		}
 
-		m_vertexBuffer = device.CreateBuffer(TRIANGLE_VERTICES,
-											 sizeof(TRIANGLE_VERTICES),
-											 sizeof(TriangleVertex),
-											 rhi::EnBufferKind::Vertex);
+		m_vertexBuffer = device.CreateBuffer(
+			TRIANGLE_VERTICES,
+			sizeof(TRIANGLE_VERTICES),
+			sizeof(TriangleVertex),
+			rhi::EnBufferKind::Vertex
+		);
 		if (!m_vertexBuffer.IsValid())
 		{
 			return false;

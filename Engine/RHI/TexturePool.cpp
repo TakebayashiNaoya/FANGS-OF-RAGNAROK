@@ -10,13 +10,15 @@
 
 namespace fang::rhi
 {
-	TextureHandle TexturePool::Create(ID3D12Device&       device,
-									  ID3D12CommandQueue& commandQueue,
-									  GPUFence&           fence,
-									  DescriptorHeap&     descriptorHeap,
-									  const void*         pixels,
-									  uint32_t            width,
-									  uint32_t            height)
+	TextureHandle TexturePool::Create(
+		ID3D12Device&       device,
+		ID3D12CommandQueue& commandQueue,
+		GPUFence&           fence,
+		DescriptorHeap&     descriptorHeap,
+		const void*         pixels,
+		uint32_t            width,
+		uint32_t            height
+	)
 	{
 		uint32_t descriptorIndex = 0;
 		if (!descriptorHeap.Allocate(descriptorIndex))
@@ -38,13 +40,17 @@ namespace fang::rhi
 		textureDesc.Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 
 		Entry entry;
-		if (!CheckHresult(device.CreateCommittedResource(&defaultHeapProperties,
-														 D3D12_HEAP_FLAG_NONE,
-														 &textureDesc,
-														 D3D12_RESOURCE_STATE_COPY_DEST,
-														 nullptr,
-														 IID_PPV_ARGS(&entry.resource)),
-						  "テクスチャの生成"))
+		if (!CheckHresult(
+				device.CreateCommittedResource(
+					&defaultHeapProperties,
+					D3D12_HEAP_FLAG_NONE,
+					&textureDesc,
+					D3D12_RESOURCE_STATE_COPY_DEST,
+					nullptr,
+					IID_PPV_ARGS(&entry.resource)
+				),
+				"テクスチャの生成"
+			))
 		{
 			return TextureHandle{};
 		}
@@ -61,8 +67,10 @@ namespace fang::rhi
 
 		uint8_t*    mapped = nullptr;
 		D3D12_RANGE readRange{ 0, 0 };
-		if (!CheckHresult(uploadBuffer->Map(0, &readRange, reinterpret_cast<void**>(&mapped)),
-						  "テクスチャ転送用の Map"))
+		if (!CheckHresult(
+				uploadBuffer->Map(0, &readRange, reinterpret_cast<void**>(&mapped)),
+				"テクスチャ転送用の Map"
+			))
 		{
 			return TextureHandle{};
 		}
@@ -71,9 +79,11 @@ namespace fang::rhi
 		const uint8_t* source = static_cast<const uint8_t*>(pixels);
 		for (uint32_t row = 0; row < height; ++row)
 		{
-			std::memcpy(mapped + footprint.Offset + static_cast<size_t>(row) * footprint.Footprint.RowPitch,
-						source + static_cast<size_t>(row) * width * 4,
-						static_cast<size_t>(width) * 4);
+			std::memcpy(
+				mapped + footprint.Offset + static_cast<size_t>(row) * footprint.Footprint.RowPitch,
+				source + static_cast<size_t>(row) * width * 4,
+				static_cast<size_t>(width) * 4
+			);
 		}
 
 		uploadBuffer->Unmap(0, nullptr);
@@ -81,18 +91,24 @@ namespace fang::rhi
 		// 転送はフレームの外で済ませたいので、その場で 1 本流して待つ。
 		ComPtr<ID3D12CommandAllocator>    uploadAllocator;
 		ComPtr<ID3D12GraphicsCommandList> uploadCommandList;
-		if (!CheckHresult(device.CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&uploadAllocator)),
-						  "転送用コマンドアロケータの生成"))
+		if (!CheckHresult(
+				device.CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&uploadAllocator)),
+				"転送用コマンドアロケータの生成"
+			))
 		{
 			return TextureHandle{};
 		}
 
-		if (!CheckHresult(device.CreateCommandList(0,
-												   D3D12_COMMAND_LIST_TYPE_DIRECT,
-												   uploadAllocator.Get(),
-												   nullptr,
-												   IID_PPV_ARGS(&uploadCommandList)),
-						  "転送用コマンドリストの生成"))
+		if (!CheckHresult(
+				device.CreateCommandList(
+					0,
+					D3D12_COMMAND_LIST_TYPE_DIRECT,
+					uploadAllocator.Get(),
+					nullptr,
+					IID_PPV_ARGS(&uploadCommandList)
+				),
+				"転送用コマンドリストの生成"
+			))
 		{
 			return TextureHandle{};
 		}
@@ -133,9 +149,11 @@ namespace fang::rhi
 		viewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		viewDesc.Texture2D.MipLevels     = 1;
 
-		device.CreateShaderResourceView(entry.resource.Get(),
-										&viewDesc,
-										descriptorHeap.GetCPUHandle(entry.descriptorIndex));
+		device.CreateShaderResourceView(
+			entry.resource.Get(),
+			&viewDesc,
+			descriptorHeap.GetCPUHandle(entry.descriptorIndex)
+		);
 
 		entry.isAlive = true;
 
