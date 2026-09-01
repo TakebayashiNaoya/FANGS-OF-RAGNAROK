@@ -49,8 +49,8 @@ namespace fang
 	class HeapAllocator final : public IAllocator
 	{
 	public:
-		[[nodiscard]] void* Allocate(size_t size, size_t alignment = DEFAULT_ALIGNMENT) override;
-		void Deallocate(void* memory) override;
+		[[nodiscard]] void*       Allocate(size_t size, size_t alignment = DEFAULT_ALIGNMENT) override;
+		void                      Deallocate(void* memory) override;
 		[[nodiscard]] const char* GetName() const override { return "Heap"; }
 
 		/** @brief エンジン全体で使う既定のヒープ。 */

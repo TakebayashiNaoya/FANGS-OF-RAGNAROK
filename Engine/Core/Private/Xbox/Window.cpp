@@ -21,8 +21,8 @@ namespace fang
 
 		// CoreWindow はスレッドに 1 枚しか無いので、購読の記録はここで持つ。
 		winrt_ui::CoreWindow s_coreWindow{ nullptr };
-		winrt::event_token s_sizeChangedToken{};
-		winrt::event_token s_closedToken{};
+		winrt::event_token   s_sizeChangedToken{};
+		winrt::event_token   s_closedToken{};
 
 		/** @brief 論理ピクセル(DIP)を物理ピクセルに直す。 */
 		uint32_t ToPhysicalPixels(float deviceIndependentPixels, double scale)
@@ -63,13 +63,12 @@ namespace fang
 			// 参照カウントは増やさない借用。CoreWindow はアプリと同寿命なのでぶら下がらない。
 			m_nativeHandle = winrt::get_unknown(window);
 
-			s_sizeChangedToken =
-				window.SizeChanged([this](const winrt_ui::CoreWindow& sender, const winrt_ui::WindowSizeChangedEventArgs&)
-			{
-				const double newScale = GetDisplayScale();
-				OnResized(ToPhysicalPixels(sender.Bounds().Width, newScale),
-						  ToPhysicalPixels(sender.Bounds().Height, newScale));
-			});
+			s_sizeChangedToken = window.SizeChanged(
+				[this](const winrt_ui::CoreWindow& sender, const winrt_ui::WindowSizeChangedEventArgs&) {
+					const double newScale = GetDisplayScale();
+					OnResized(ToPhysicalPixels(sender.Bounds().Width, newScale),
+							  ToPhysicalPixels(sender.Bounds().Height, newScale));
+				});
 
 			s_closedToken = window.Closed([this](auto&&, auto&&) { m_isCloseRequested = true; });
 

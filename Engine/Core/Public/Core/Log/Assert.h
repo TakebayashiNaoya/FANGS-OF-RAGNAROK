@@ -14,10 +14,10 @@ namespace fang
 	 * @details 呼ぶのは FANG_ASSERT / FANG_VERIFY / FANG_FATAL だけ。
 	 * @threading 任意のスレッド。
 	 */
-	[[noreturn]] void OnAssertFailed(const char* expression,
+	[[noreturn]] void OnAssertFailed(const char*      expression,
 									 std::string_view message,
-									 const char* fileName,
-									 int lineNumber);
+									 const char*      fileName,
+									 int              lineNumber);
 } // namespace fang
 
 #if FANG_ENABLE_ASSERT

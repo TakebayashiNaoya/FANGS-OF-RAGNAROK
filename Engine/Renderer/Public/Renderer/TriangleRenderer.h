@@ -46,8 +46,9 @@ namespace fang
 		 */
 		void Draw(rhi::CommandList& commandList, uint32_t width, uint32_t height) const;
 
+
 	private:
-		rhi::PipelineHandle m_pipeline;
-		rhi::BufferHandle m_vertexBuffer;
+		rhi::PipelineHandle m_pipeline;     /**< 三角形用のシェーダとステートの組。 */
+		rhi::BufferHandle   m_vertexBuffer; /**< 頂点 3 個分の固定バッファ。 */
 	};
 } // namespace fang

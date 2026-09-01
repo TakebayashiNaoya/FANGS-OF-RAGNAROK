@@ -58,36 +58,38 @@ namespace fang::rhi
 	/**
 	 * @brief GraphicsDevice の中身。
 	 * @details Public のヘッダから d3d12.h を追い出すためだけの入れ物。
+	 *          Pimpl イディオムの実装側で、ヘッダには前方宣言とポインタしかない。
+	 *          狙いと代償は GraphicsDevice.h の m_impl のコメントにまとめてある。
 	 */
 	class GraphicsDevice::Impl
 	{
 	public:
 		struct PipelineEntry
 		{
-			ComPtr<ID3D12RootSignature> rootSignature;
-			ComPtr<ID3D12PipelineState> pipelineState;
-			uint32_t generation = 0;                   /**< ハンドルの世代と突き合わせる。 */
-			bool isAlive        = false;               /**< false なら空きスロット。次の生成で再利用される。 */
+			ComPtr<ID3D12RootSignature> rootSignature;  /**< シェーダに渡す資源の口（ルート定数・テクスチャ）の並び。 */
+			ComPtr<ID3D12PipelineState> pipelineState;  /**< シェーダとステート一式を焼き固めたもの。 */
+			uint32_t                    generation = 0; /**< ハンドルの世代と突き合わせる。 */
+			bool                        isAlive    = false; /**< false なら空きスロット。次の生成で再利用される。 */
 		};
 
 		struct BufferEntry
 		{
-			ComPtr<ID3D12Resource> resource;
-			D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
-			D3D12_INDEX_BUFFER_VIEW indexBufferView{};
-			uint8_t* mappedPointer   = nullptr;              /**< Map したまま持つ。動的バッファ以外は nullptr。 */
-			uint32_t capacityInBytes = 0;                    /**< 確保した大きさ。書き込みが超えないか確かめる。 */
-			EnBufferKind kind        = EnBufferKind::Vertex;
-			uint32_t generation      = 0;
-			bool isAlive             = false;
+			ComPtr<ID3D12Resource>   resource;           /**< バッファの実体。 */
+			D3D12_VERTEX_BUFFER_VIEW vertexBufferView{}; /**< Vertex のときに使う。GPU アドレス・大きさ・ストライド。 */
+			D3D12_INDEX_BUFFER_VIEW  indexBufferView{};  /**< Index のときに使う。 */
+			uint8_t*                 mappedPointer   = nullptr; /**< Map したまま持つ。動的バッファ以外は nullptr。 */
+			uint32_t                 capacityInBytes = 0;       /**< 確保した大きさ。書き込みが超えないか確かめる。 */
+			EnBufferKind             kind            = EnBufferKind::Vertex; /**< どちらのビューが有効かを決める。 */
+			uint32_t                 generation      = 0;                    /**< ハンドルの世代と突き合わせる。 */
+			bool                     isAlive         = false; /**< false なら空きスロット。次の生成で再利用される。 */
 		};
 
 		struct TextureEntry
 		{
-			ComPtr<ID3D12Resource> resource;
-			uint32_t descriptorIndex = 0;     /**< シェーダ可視ヒープ上の位置。 */
-			uint32_t generation      = 0;
-			bool isAlive             = false;
+			ComPtr<ID3D12Resource> resource;                /**< テクスチャの実体。 */
+			uint32_t               descriptorIndex = 0;     /**< シェーダ可視ヒープ上の位置。 */
+			uint32_t               generation      = 0;     /**< ハンドルの世代と突き合わせる。 */
+			bool                   isAlive         = false; /**< false なら空きスロット。次の生成で再利用される。 */
 		};
 
 		[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentRenderTargetView() const
@@ -97,9 +99,16 @@ namespace fang::rhi
 			return handle;
 		}
 
-		/** @brief 直前に積んだ分を GPU が消化するまで待つ。 */
+		/**
+		 * @brief 直前に積んだ分を GPU が消化するまで待つ。
+		 * @details キューに積んだコマンドは積んだ瞬間には実行されておらず、GPU が自分のペースで消化する（CPU と GPU は非同期）。
+		 *          この関数を抜けた時点で「ここまでに積んだ仕事は GPU 上で完全に終わっている」ことが保証される。
+		 *          ただし CPU と GPU の並走を完全に止めるので高価。
+		 *          使いどころは Resize / Shutdown / EndFrame（Phase 1 の割り切り）に限る。
+		 */
 		void WaitForGpu()
 		{
+			// 初期化が途中で失敗した状態で Shutdown から呼ばれても落ちないための守り。
 			if (commandQueue == nullptr || fence == nullptr)
 			{
 				return;
@@ -108,6 +117,10 @@ namespace fang::rhi
 			// フェンスの値はフレーム番号ごとに分けず、単調増加の 1 本にする。
 			// バックバッファごとに別々の値を積むと、値が前後して「もう完了している」と誤判定する。
 			const uint64_t valueToWait = nextFenceValue;
+
+			// Signal は「ここまでの仕事を全部終えたら fence に valueToWait を書け」という
+			// 注文をキューの末尾に積む。キューは先入れ先出しなので、
+			// 「fence に値が書かれた ⇔ それより前の仕事が全部終わった」が成立する。
 			if (!CheckHresult(commandQueue->Signal(fence.Get(), valueToWait), "フェンスの Signal"))
 			{
 				return;
@@ -115,42 +128,45 @@ namespace fang::rhi
 
 			++nextFenceValue;
 
+			// まず現在値を覗くだけ（待たない）。もう届いていれば何もせず帰る。
 			if (fence->GetCompletedValue() < valueToWait)
 			{
+				// まだなら「fence が valueToWait に達したらこのイベントを点灯して」と予約し、
+				// スレッドを OS に預けて眠る。ビジーループで CPU を焼かないための作法。
 				FANG_VERIFY(SUCCEEDED(fence->SetEventOnCompletion(valueToWait, fenceEvent)));
 				::WaitForSingleObject(fenceEvent, INFINITE);
 			}
 		}
 
-		ComPtr<IDXGIFactory6> factory;
-		ComPtr<ID3D12Device> device;
-		ComPtr<ID3D12CommandQueue> commandQueue;
-		ComPtr<IDXGISwapChain3> swapChain;
-		ComPtr<ID3D12DescriptorHeap> renderTargetViewHeap;
-		ComPtr<ID3D12DescriptorHeap> shaderVisibleHeap;
-		ComPtr<ID3D12Resource> backBuffers[BACK_BUFFER_COUNT];
-		ComPtr<ID3D12CommandAllocator> commandAllocators[BACK_BUFFER_COUNT];
-		ComPtr<ID3D12GraphicsCommandList> commandList;
-		ComPtr<ID3D12Fence> fence;
+		ComPtr<IDXGIFactory6>             factory;              /**< アダプタ列挙とスワップチェーン生成の入口。 */
+		ComPtr<ID3D12Device>              device;               /**< D3D12 の本体。全リソースの生成元。 */
+		ComPtr<ID3D12CommandQueue>        commandQueue;         /**< コマンドを GPU に流す唯一の列。 */
+		ComPtr<IDXGISwapChain3>           swapChain;            /**< バックバッファの束。Present で画面に出す。 */
+		ComPtr<ID3D12DescriptorHeap>      renderTargetViewHeap; /**< バックバッファ用 RTV の置き場。 */
+		ComPtr<ID3D12DescriptorHeap>      shaderVisibleHeap;    /**< シェーダから見える SRV の置き場。 */
+		ComPtr<ID3D12Resource>            backBuffers[BACK_BUFFER_COUNT]; /**< 描画先。frameIndex が指す 1 枚に描く。 */
+		ComPtr<ID3D12CommandAllocator>    commandAllocators[BACK_BUFFER_COUNT]; /**< コマンドの記録メモリ。 */
+		ComPtr<ID3D12GraphicsCommandList> commandList; /**< コマンドの記録口。毎フレーム Reset する。 */
+		ComPtr<ID3D12Fence>               fence;       /**< GPU の進み具合を知るカウンタ。WaitForGpu で使う。 */
 
 		uint64_t nextFenceValue = 1;       /**< 次に Signal する値。単調増加させる。 */
-		HANDLE fenceEvent       = nullptr; /**< フェンスの完了を待つための OS のイベント。 */
+		HANDLE   fenceEvent     = nullptr; /**< フェンスの完了を待つための OS のイベント。 */
 
 		uint32_t renderTargetViewSize        = 0; /**< RTV 1 個分のバイト数。GPU ごとに違う。 */
 		uint32_t shaderVisibleDescriptorSize = 0; /**< SRV 1 個分のバイト数。 */
 		uint32_t nextShaderVisibleDescriptor = 0; /**< 次に使う SRV の位置。今は返却しないので増える一方。 */
 
-		uint32_t frameIndex = 0;     /**< 今描いているバックバッファの番号。 */
-		uint32_t width      = 0;
-		uint32_t height     = 0;
-		bool isFrameOpen    = false; /**< BeginFrame と EndFrame の間なら true。 */
+		uint32_t frameIndex  = 0;     /**< 今描いているバックバッファの番号。 */
+		uint32_t width       = 0;     /**< バックバッファの幅（ピクセル）。 */
+		uint32_t height      = 0;     /**< バックバッファの高さ（ピクセル）。 */
+		bool     isFrameOpen = false; /**< BeginFrame と EndFrame の間なら true。 */
 
 		// TODO: Core の Array<T> とプールができたら差し替える。
-		std::vector<PipelineEntry> pipelines;
-		std::vector<BufferEntry> buffers;
-		std::vector<TextureEntry> textures;
+		std::vector<PipelineEntry> pipelines; /**< PipelineHandle.index で引く台帳。 */
+		std::vector<BufferEntry>   buffers;   /**< BufferHandle.index で引く台帳。 */
+		std::vector<TextureEntry>  textures;  /**< TextureHandle.index で引く台帳。 */
 
-		CommandList commandListWrapper;
+		CommandList commandListWrapper; /**< BeginFrame が返す公開型。中身は commandList を指す。 */
 	};
 
 	GraphicsDevice::GraphicsDevice() = default;
@@ -400,7 +416,7 @@ namespace fang::rhi
 		textureRange.BaseShaderRegister = 0;
 
 		D3D12_ROOT_PARAMETER rootParameters[2]{};
-		uint32_t rootParameterCount = 0;
+		uint32_t             rootParameterCount = 0;
 
 		if (desc.rootConstantCount > 0)
 		{
@@ -572,9 +588,9 @@ namespace fang::rhi
 		}
 	} // namespace
 
-	BufferHandle GraphicsDevice::CreateBuffer(const void* data,
-											  uint32_t sizeInBytes,
-											  uint32_t strideInBytes,
+	BufferHandle GraphicsDevice::CreateBuffer(const void*  data,
+											  uint32_t     sizeInBytes,
+											  uint32_t     strideInBytes,
 											  EnBufferKind kind)
 	{
 		const BufferHandle handle = CreateDynamicBuffer(sizeInBytes, strideInBytes, kind);
@@ -586,8 +602,8 @@ namespace fang::rhi
 		return handle;
 	}
 
-	BufferHandle GraphicsDevice::CreateDynamicBuffer(uint32_t capacityInBytes,
-													 uint32_t strideInBytes,
+	BufferHandle GraphicsDevice::CreateDynamicBuffer(uint32_t     capacityInBytes,
+													 uint32_t     strideInBytes,
 													 EnBufferKind kind)
 	{
 		FANG_ASSERT(m_impl != nullptr, "GraphicsDevice が初期化されていない");
@@ -601,7 +617,7 @@ namespace fang::rhi
 			return BufferHandle{};
 		}
 
-		void* mapped = nullptr;
+		void*       mapped = nullptr;
 		D3D12_RANGE readRange{ 0, 0 };
 		if (!CheckHresult(entry.resource->Map(0, &readRange, &mapped), "バッファの Map"))
 		{
@@ -712,7 +728,7 @@ namespace fang::rhi
 		}
 
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
-		UINT64 uploadSize = 0;
+		UINT64                             uploadSize = 0;
 		impl.device->GetCopyableFootprints(&textureDesc, 0, 1, 0, &footprint, nullptr, nullptr, &uploadSize);
 
 		ComPtr<ID3D12Resource> uploadBuffer;
@@ -721,7 +737,7 @@ namespace fang::rhi
 			return TextureHandle{};
 		}
 
-		uint8_t* mapped = nullptr;
+		uint8_t*    mapped = nullptr;
 		D3D12_RANGE readRange{ 0, 0 };
 		if (!CheckHresult(uploadBuffer->Map(0, &readRange, reinterpret_cast<void**>(&mapped)),
 						  "テクスチャ転送用の Map"))
@@ -741,7 +757,7 @@ namespace fang::rhi
 		uploadBuffer->Unmap(0, nullptr);
 
 		// 転送はフレームの外で済ませたいので、その場で 1 本流して待つ。
-		ComPtr<ID3D12CommandAllocator> uploadAllocator;
+		ComPtr<ID3D12CommandAllocator>    uploadAllocator;
 		ComPtr<ID3D12GraphicsCommandList> uploadCommandList;
 		if (!CheckHresult(
 				impl.device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&uploadAllocator)),

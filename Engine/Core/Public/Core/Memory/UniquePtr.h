@@ -74,15 +74,16 @@ namespace fang
 		}
 
 		/** @brief 借用の生ポインタ。所有権は動かない。 */
-		[[nodiscard]] FANG_FORCEINLINE T* Get() const { return m_object; }
+		[[nodiscard]] FANG_FORCEINLINE T*   Get() const { return m_object; }
 		[[nodiscard]] FANG_FORCEINLINE bool IsValid() const { return m_object != nullptr; }
 
 		[[nodiscard]] FANG_FORCEINLINE T* operator->() const { return m_object; }
 		[[nodiscard]] FANG_FORCEINLINE T& operator*() const { return *m_object; }
 
+
 	private:
-		IAllocator* m_allocator = nullptr;
-		T* m_object             = nullptr;
+		IAllocator* m_allocator = nullptr; /**< m_object を Delete するときに使う。 */
+		T*          m_object    = nullptr; /**< 所有しているオブジェクト。空なら nullptr。 */
 	};
 
 	/** @brief アロケータ上に作って UniquePtr で受け取る。 */

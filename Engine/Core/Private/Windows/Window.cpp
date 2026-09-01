@@ -135,15 +135,32 @@ namespace fang
 
 	bool Window::PumpMessages()
 	{
+		// 取り出したメッセージ 1 通の入れ物。キューが空で 1 通も取れなかった場合に
+		// 未初期化のゴミを読まないよう {} でゼロ初期化しておく。
 		MSG message{};
+
+		// GetMessageW はキューが空だとメッセージが来るまで眠ってしまい、毎フレーム
+		// 描画したいゲームには使えない。PeekMessageW は空なら即 FALSE で返るので、
+		// 「今溜まっている分だけ全部さばいてフレームループへ戻る」ことができる。
+		// 引数: 第2=nullptr（特定ウィンドウ宛に絞らず、このスレッド宛全部）、
+		//       第3,4=0,0（メッセージ種類のフィルタなし）、
+		//       PM_REMOVE（読んだらキューから取り除く）。
 		while (::PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE) != FALSE)
 		{
+			// WM_QUIT は PostQuitMessage が積む「スレッド宛」のメッセージで、宛先
+			// ウィンドウを持たない（hwnd が null）。DispatchMessageW に渡しても
+			// WndProc には届かず捨てられるだけなので、配達に回す前にここで横取りする。
 			if (message.message == WM_QUIT)
 			{
 				m_isCloseRequested = true;
 			}
 
+			// WM_KEYDOWN（物理キー）が文字入力に相当するなら WM_CHAR（文字）を
+			// 新たにキューへ積む。エディタのテキスト入力はこれがないと文字が打てない。
 			::TranslateMessage(&message);
+
+			// message.hwnd を見て、そのウィンドウが登録している WndProc を呼び出す。
+			// WM_CLOSE / WM_DESTROY の処理が実際に走るのはこの呼び出しの中。
 			::DispatchMessageW(&message);
 		}
 

@@ -72,10 +72,11 @@ namespace fang::rhi
 		 */
 		void DrawIndexed(uint32_t indexCount, uint32_t startIndex, int32_t baseVertex);
 
+
 	private:
 		friend class GraphicsDevice;
 
-		GraphicsDevice* m_device  = nullptr;
-		void* m_nativeCommandList = nullptr;
+		GraphicsDevice* m_device  = nullptr; /**< 生成元。ハンドルを D3D12 の実体に引くために使う。 */
+		void* m_nativeCommandList = nullptr; /**< 実体は ID3D12GraphicsCommandList*。ヘッダに型を出さないため void*。 */
 	};
 } // namespace fang::rhi

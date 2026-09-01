@@ -58,9 +58,12 @@ namespace fang
 		// TODO: Core/Platform に時間を測る口を作る（Phase 2）。
 		auto previousTime = std::chrono::steady_clock::now();
 
+		// ウィンドウを閉じるまでループする。WM_QUIT を受け取ると PumpMessages() が false を返す。
 		while (window.PumpMessages())
 		{
-			const auto currentTime       = std::chrono::steady_clock::now();
+			// 今の時間。
+			const auto currentTime = std::chrono::steady_clock::now();
+			// 前回からの経過時間（秒）。
 			const float deltaTimeSeconds = std::chrono::duration<float>(currentTime - previousTime).count();
 
 			previousTime = currentTime;

@@ -28,8 +28,8 @@ namespace fang::rhi
 	 * @return 成功したら true。失敗の内容はログに出る。
 	 * @threading 任意のスレッド。
 	 */
-	[[nodiscard]] bool CompileShaderFromSource(std::string_view source,
-											   std::string_view entryPointName,
-											   EnShaderStage stage,
+	[[nodiscard]] bool CompileShaderFromSource(std::string_view      source,
+											   std::string_view      entryPointName,
+											   EnShaderStage         stage,
 											   std::vector<uint8_t>* outBytecode);
 } // namespace fang::rhi

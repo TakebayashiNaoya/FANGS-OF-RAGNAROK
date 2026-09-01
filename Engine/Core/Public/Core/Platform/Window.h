@@ -13,9 +13,9 @@ namespace fang
 	/** @brief ウィンドウの生成条件。 */
 	struct WindowDesc
 	{
-		const wchar_t* title = L"FANGS OF RAGNAROK";
-		uint32_t width       = 1280;
-		uint32_t height      = 720;
+		const wchar_t* title  = L"FANGS OF RAGNAROK"; /**< タイトルバーに出す文字列。 */
+		uint32_t       width  = 1280;                 /**< クライアント領域の幅（ピクセル）。枠は含まない。 */
+		uint32_t       height = 720;                  /**< クライアント領域の高さ（ピクセル）。 */
 	};
 
 	/**
@@ -65,11 +65,12 @@ namespace fang
 		/** @brief サイズが変わったことを記録する。プラットフォーム実装から呼ぶ用で、ゲームからは呼ばない。 */
 		void OnResized(uint32_t width, uint32_t height);
 
+
 	private:
-		void* m_nativeHandle    = nullptr; /**< Windows なら HWND。 */
-		uint32_t m_width        = 0;       /**< クライアント領域の幅。枠は含まない。 */
-		uint32_t m_height       = 0;
-		bool m_isCloseRequested = false;   /**< WM_QUIT を受け取ったか。 */
-		bool m_isSizeChanged    = false;   /**< ConsumeSizeChange() で読むと下がる。 */
+		void*    m_nativeHandle     = nullptr; /**< Windows なら HWND。 */
+		uint32_t m_width            = 0;       /**< クライアント領域の幅。枠は含まない。 */
+		uint32_t m_height           = 0;       /**< クライアント領域の高さ。 */
+		bool     m_isCloseRequested = false;   /**< WM_QUIT を受け取ったか。 */
+		bool     m_isSizeChanged    = false;   /**< ConsumeSizeChange() で読むと下がる。 */
 	};
 } // namespace fang

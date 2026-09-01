@@ -2,8 +2,8 @@
  * @file MainUWP.cpp
  * @brief UWP のエントリポイント。
  */
-#include "GameMain.h"
 #include "Core/Platform/UWPApplication.h"
+#include "GameMain.h"
 
 
 // プラットフォームのエントリポイントなので、ここだけ <windows.h> を許す。

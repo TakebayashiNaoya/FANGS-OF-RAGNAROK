@@ -22,7 +22,7 @@ namespace fang
 
 	std::string GetSystemUIFontPath()
 	{
-		wchar_t fontsDirectory[MAX_PATH]{};
+		wchar_t    fontsDirectory[MAX_PATH]{};
 		const UINT length = ::GetWindowsDirectoryW(fontsDirectory, MAX_PATH);
 		if (length == 0)
 		{

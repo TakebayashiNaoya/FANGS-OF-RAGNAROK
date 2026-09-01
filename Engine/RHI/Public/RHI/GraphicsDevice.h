@@ -32,18 +32,18 @@ namespace fang::rhi
 	/** @brief 頂点属性 1 つ。 */
 	struct VertexAttribute
 	{
-		const char* semanticName = nullptr;                /**< HLSL 側の名前。"POSITION" など。 */
-		uint32_t semanticIndex   = 0;                      /**< 同名が複数あるときの番号。TEXCOORD0 / 1 など。 */
-		EnVertexFormat format    = EnVertexFormat::Float3;
-		uint32_t offsetInBytes   = 0;                      /**< 頂点構造体の先頭からの位置。 */
+		const char*    semanticName  = nullptr;                /**< HLSL 側の名前。"POSITION" など。 */
+		uint32_t       semanticIndex = 0;                      /**< 同名が複数あるときの番号。TEXCOORD0 / 1 など。 */
+		EnVertexFormat format        = EnVertexFormat::Float3; /**< この属性 1 個の型。 */
+		uint32_t       offsetInBytes = 0;                      /**< 頂点構造体の先頭からの位置。 */
 	};
 
 	/** @brief パイプラインの生成条件。 */
 	struct GraphicsPipelineDesc
 	{
-		std::span<const uint8_t> vertexShaderBytecode;
-		std::span<const uint8_t> pixelShaderBytecode;
-		std::span<const VertexAttribute> vertexLayout;
+		std::span<const uint8_t> vertexShaderBytecode; /**< コンパイル済み頂点シェーダ。ShaderCompiler の出力を渡す。 */
+		std::span<const uint8_t> pixelShaderBytecode;  /**< コンパイル済みピクセルシェーダ。 */
+		std::span<const VertexAttribute> vertexLayout; /**< 頂点構造体の並び。 */
 
 		/** @brief b0 に置くルート定数の数（32 bit 単位）。0 なら作らない。 */
 		uint32_t rootConstantCount = 0;
@@ -57,19 +57,19 @@ namespace fang::rhi
 	/** @brief デバイスの生成条件。 */
 	struct GraphicsDeviceDesc
 	{
-		void* windowHandle       = nullptr; /**< Windows なら HWND、UWP なら CoreWindow の IUnknown*。 */
-		uint32_t width           = 0;
-		uint32_t height          = 0;
-		bool isDebugLayerEnabled = false;   /**< D3D12 のデバッグレイヤーを有効にするか。Debug 構成だけ。 */
+		void*    windowHandle        = nullptr; /**< Windows なら HWND、UWP なら CoreWindow の IUnknown*。 */
+		uint32_t width               = 0;       /**< バックバッファの幅（ピクセル）。 */
+		uint32_t height              = 0;       /**< バックバッファの高さ（ピクセル）。 */
+		bool     isDebugLayerEnabled = false;   /**< D3D12 のデバッグレイヤーを有効にするか。Debug 構成だけ。 */
 	};
 
 	/** @brief 画面をクリアする色。 */
 	struct ClearColor
 	{
-		float red   = 0.0f;
-		float green = 0.0f;
-		float blue  = 0.0f;
-		float alpha = 1.0f;
+		float red   = 0.0f; /**< 0.0〜1.0。 */
+		float green = 0.0f; /**< 0.0〜1.0。 */
+		float blue  = 0.0f; /**< 0.0〜1.0。 */
+		float alpha = 1.0f; /**< 0.0〜1.0。不透明が 1.0。 */
 	};
 
 	/**
@@ -113,9 +113,9 @@ namespace fang::rhi
 		 * @param kind 頂点バッファかインデックスバッファか。
 		 * @return 失敗したら無効なハンドル。
 		 */
-		[[nodiscard]] BufferHandle CreateBuffer(const void* data,
-												uint32_t sizeInBytes,
-												uint32_t strideInBytes,
+		[[nodiscard]] BufferHandle CreateBuffer(const void*  data,
+												uint32_t     sizeInBytes,
+												uint32_t     strideInBytes,
 												EnBufferKind kind);
 
 		/**
@@ -125,8 +125,8 @@ namespace fang::rhi
 		 * @param kind 頂点バッファかインデックスバッファか。
 		 * @return 失敗したら無効なハンドル。
 		 */
-		[[nodiscard]] BufferHandle CreateDynamicBuffer(uint32_t capacityInBytes,
-													   uint32_t strideInBytes,
+		[[nodiscard]] BufferHandle CreateDynamicBuffer(uint32_t     capacityInBytes,
+													   uint32_t     strideInBytes,
 													   EnBufferKind kind);
 
 		/**
@@ -170,9 +170,24 @@ namespace fang::rhi
 		/** @brief 積んだコマンドを送って Present し、GPU の完了を待つ。 */
 		void EndFrame();
 
+
 	private:
 		friend class CommandList;
 
+		// Pimpl イディオム。中身（D3D12 の型を持つメンバ）は GraphicsDevice.cpp の
+		// GraphicsDevice::Impl に全部置き、このヘッダには「存在する」という前方宣言と
+		// ポインタだけを書く。中身の分からない型でもポインタなら宣言できる性質を利用している。
+		//
+		// 狙い:
+		//  1. d3d12.h / windows.h をこのヘッダから締め出す。RHI に依存する全モジュールが
+		//     Win32 のマクロ汚染などを吸い込まずに済む。
+		//  2. 公開ヘッダに API 固有の型が出ないので、将来別のグラフィックス API に
+		//     差し替えるときも .cpp の Impl を入れ替えるだけで済む。
+		//  3. Impl のメンバを変えてもヘッダが変わらず、再コンパイルが .cpp 1 個で済む。
+		//
+		// 代償: 実体はヒープ確保（Initialize で New / Shutdown で Delete）になり、
+		// メンバアクセスに一段の間接参照を挟む。各関数の冒頭にある
+		// Impl& impl = *m_impl; はその間接参照を一度だけ剥がすための定型句。
 		class Impl;
 		Impl* m_impl = nullptr;
 	};

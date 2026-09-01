@@ -106,9 +106,9 @@ namespace fang::editor
 				return false;
 			}
 
-			unsigned char* pixels = nullptr;
-			int atlasWidth        = 0;
-			int atlasHeight       = 0;
+			unsigned char* pixels      = nullptr;
+			int            atlasWidth  = 0;
+			int            atlasHeight = 0;
 			ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &atlasWidth, &atlasHeight);
 
 			m_fontTexture =
@@ -171,8 +171,8 @@ namespace fang::editor
 			// TODO: ImTextureID からハンドルを引く。今はフォントアトラスしか無い。
 			commandList.SetTexture(m_fontTexture);
 
-			uint32_t globalIndexOffset = 0;
-			int32_t globalVertexOffset = 0;
+			uint32_t globalIndexOffset  = 0;
+			int32_t  globalVertexOffset = 0;
 			for (int listIndex = 0; listIndex < drawData.CmdListsCount; ++listIndex)
 			{
 				const ImDrawList& drawList = *drawData.CmdLists[listIndex];
@@ -203,6 +203,7 @@ namespace fang::editor
 				globalVertexOffset += drawList.VtxBuffer.Size;
 			}
 		}
+
 
 	private:
 		[[nodiscard]] bool EnsureBufferCapacity(rhi::GraphicsDevice& device, const ImDrawData& drawData)
@@ -259,16 +260,16 @@ namespace fang::editor
 								static_cast<uint32_t>(m_indexStaging.size() * sizeof(ImDrawIdx)));
 		}
 
-		rhi::PipelineHandle m_pipeline;
-		rhi::TextureHandle m_fontTexture;
-		rhi::BufferHandle m_vertexBuffer;
-		rhi::BufferHandle m_indexBuffer;
-		uint32_t m_vertexCapacity = 0;    /**< 今のバッファに入る頂点数。足りなくなったら作り直す。 */
-		uint32_t m_indexCapacity  = 0;
+		rhi::PipelineHandle m_pipeline;           /**< ImGui 描画用のパイプライン。 */
+		rhi::TextureHandle  m_fontTexture;        /**< フォントアトラス。ImGui が焼いたビットマップの転送先。 */
+		rhi::BufferHandle   m_vertexBuffer;       /**< 毎フレーム書き換える動的頂点バッファ。 */
+		rhi::BufferHandle   m_indexBuffer;        /**< 毎フレーム書き換える動的インデックスバッファ。 */
+		uint32_t            m_vertexCapacity = 0; /**< 今のバッファに入る頂点数。足りなくなったら作り直す。 */
+		uint32_t            m_indexCapacity  = 0; /**< 今のバッファに入るインデックス数。足りなくなったら作り直す。 */
 
 		// TODO: フレームアロケータができたら差し替える（Phase 2）。
-		std::vector<ImDrawVert> m_vertexStaging;
-		std::vector<ImDrawIdx> m_indexStaging;
+		std::vector<ImDrawVert> m_vertexStaging; /**< 全描画リストの頂点をまとめて 1 回で転送するための作業領域。 */
+		std::vector<ImDrawIdx>  m_indexStaging;  /**< 同上のインデックス版。 */
 	};
 
 	/***************************************************************************************************/

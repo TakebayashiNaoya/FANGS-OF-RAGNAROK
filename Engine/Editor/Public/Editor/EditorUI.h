@@ -53,12 +53,13 @@ namespace fang::editor
 		/** @brief 組み立てた UI を積む。BuildFrame と同じフレームで呼ぶ。 */
 		void Render(rhi::GraphicsDevice& device, rhi::CommandList& commandList);
 
+
 	private:
 		class Backend;
 
 		void BuildEngineInfoWindow(const Window& window, float deltaTimeSeconds);
 
-		Backend* m_backend         = nullptr;
-		bool m_isDemoWindowVisible = false;
+		Backend* m_backend = nullptr; /**< ImGui を知る実装本体。ヘッダから imgui.h を追い出すための Pimpl。 */
+		bool     m_isDemoWindowVisible = false; /**< ImGui のデモウィンドウを出すか。機能の見本市。 */
 	};
 } // namespace fang::editor
