@@ -57,6 +57,8 @@ namespace fang::rhi
 		/** @brief バックバッファを取り直して RTV を張り直す。Initialize と Resize で共通。 */
 		[[nodiscard]] bool CreateRenderTargetViews(ID3D12Device& device);
 
+
+	private:
 		ComPtr<IDXGISwapChain3>      m_swapChain;            /**< バックバッファの束。Present で画面に出す。 */
 		ComPtr<ID3D12DescriptorHeap> m_renderTargetViewHeap; /**< バックバッファ用 RTV の置き場。 */
 		ComPtr<ID3D12Resource>       m_backBuffers[BACK_BUFFER_COUNT]; /**< 描画先。m_frameIndex が指す 1 枚に描く。 */

@@ -68,6 +68,8 @@ namespace fang::editor
 
 		void BuildEngineInfoWindow(const Window& window, float deltaTimeSeconds);
 
+
+	private:
 		rhi::PipelineHandle m_pipeline;           /**< ImGui 描画用のパイプライン。 */
 		rhi::TextureHandle  m_fontTexture;        /**< フォントアトラス。ImGui が焼いたビットマップの転送先。 */
 		rhi::BufferHandle   m_vertexBuffer;       /**< 毎フレーム書き換える動的頂点バッファ。 */
