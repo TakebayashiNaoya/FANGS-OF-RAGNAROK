@@ -31,24 +31,66 @@
     <ClInclude Include="Public\RHI\ShaderCompiler.h">
       <Filter>Public\RHI</Filter>
     </ClInclude>
+    <ClInclude Include="Private\BufferPool.h">
+      <Filter>Private</Filter>
+    </ClInclude>
     <ClInclude Include="Private\D3D12Common.h">
+      <Filter>Private</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\DescriptorHeap.h">
+      <Filter>Private</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\GPUFence.h">
+      <Filter>Private</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\GraphicsDeviceImpl.h">
       <Filter>Private</Filter>
     </ClInclude>
     <ClInclude Include="Private\Pch.h">
       <Filter>Private</Filter>
     </ClInclude>
+    <ClInclude Include="Private\PipelinePool.h">
+      <Filter>Private</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\SwapChain.h">
+      <Filter>Private</Filter>
+    </ClInclude>
+    <ClInclude Include="Private\TexturePool.h">
+      <Filter>Private</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Private\BufferPool.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\CommandList.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\DescriptorHeap.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\GPUFence.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
     <ClCompile Include="Private\GraphicsDevice.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\Pch.cpp">
       <Filter>Private</Filter>
     </ClCompile>
+    <ClCompile Include="Private\PipelinePool.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
     <ClCompile Include="Private\RHI.cpp">
       <Filter>Private</Filter>
     </ClCompile>
     <ClCompile Include="Private\ShaderCompiler.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\SwapChain.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\TexturePool.cpp">
       <Filter>Private</Filter>
     </ClCompile>
   </ItemGroup>

@@ -32,16 +32,30 @@
     <ClInclude Include="Public\RHI\RHIHandles.h" />
     <ClInclude Include="Public\RHI\RHILog.h" />
     <ClInclude Include="Public\RHI\ShaderCompiler.h" />
+    <ClInclude Include="Private\BufferPool.h" />
     <ClInclude Include="Private\D3D12Common.h" />
+    <ClInclude Include="Private\DescriptorHeap.h" />
+    <ClInclude Include="Private\GPUFence.h" />
+    <ClInclude Include="Private\GraphicsDeviceImpl.h" />
     <ClInclude Include="Private\Pch.h" />
+    <ClInclude Include="Private\PipelinePool.h" />
+    <ClInclude Include="Private\SwapChain.h" />
+    <ClInclude Include="Private\TexturePool.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Private\BufferPool.cpp" />
+    <ClCompile Include="Private\CommandList.cpp" />
+    <ClCompile Include="Private\DescriptorHeap.cpp" />
+    <ClCompile Include="Private\GPUFence.cpp" />
     <ClCompile Include="Private\GraphicsDevice.cpp" />
     <ClCompile Include="Private\Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Private\PipelinePool.cpp" />
     <ClCompile Include="Private\RHI.cpp" />
     <ClCompile Include="Private\ShaderCompiler.cpp" />
+    <ClCompile Include="Private\SwapChain.cpp" />
+    <ClCompile Include="Private\TexturePool.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 
