@@ -2,96 +2,35 @@
 <!-- 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Private">
-      <UniqueIdentifier>{F5EC48AD-1698-4F77-2B19-CF832D2A4072}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Public">
-      <UniqueIdentifier>{4F5D17AE-8385-7B72-A40C-A9A6E39FADB5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Public\RHI">
-      <UniqueIdentifier>{1AD08B04-68FE-282F-2DF6-67BCADD34A6F}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Public\RHI\CommandList.h">
-      <Filter>Public\RHI</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\RHI\GraphicsDevice.h">
-      <Filter>Public\RHI</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\RHI\RHI.h">
-      <Filter>Public\RHI</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\RHI\RHIHandles.h">
-      <Filter>Public\RHI</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\RHI\RHILog.h">
-      <Filter>Public\RHI</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\RHI\ShaderCompiler.h">
-      <Filter>Public\RHI</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\BufferPool.h">
-      <Filter>Private</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\D3D12Common.h">
-      <Filter>Private</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\DescriptorHeap.h">
-      <Filter>Private</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\GPUFence.h">
-      <Filter>Private</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\GraphicsDeviceImpl.h">
-      <Filter>Private</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\Pch.h">
-      <Filter>Private</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\PipelinePool.h">
-      <Filter>Private</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\SwapChain.h">
-      <Filter>Private</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\TexturePool.h">
-      <Filter>Private</Filter>
-    </ClInclude>
+    <ClInclude Include="BufferPool.h" />
+    <ClInclude Include="CommandList.h" />
+    <ClInclude Include="D3D12Common.h" />
+    <ClInclude Include="DescriptorHeap.h" />
+    <ClInclude Include="GPUFence.h" />
+    <ClInclude Include="GraphicsDevice.h" />
+    <ClInclude Include="Pch.h" />
+    <ClInclude Include="PipelinePool.h" />
+    <ClInclude Include="RHI.h" />
+    <ClInclude Include="RHIHandles.h" />
+    <ClInclude Include="RHILog.h" />
+    <ClInclude Include="RHITypes.h" />
+    <ClInclude Include="ShaderCompiler.h" />
+    <ClInclude Include="SwapChain.h" />
+    <ClInclude Include="TexturePool.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\BufferPool.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\CommandList.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\DescriptorHeap.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\GPUFence.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\GraphicsDevice.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Pch.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\PipelinePool.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\RHI.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\ShaderCompiler.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\SwapChain.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\TexturePool.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
+    <ClCompile Include="BufferPool.cpp" />
+    <ClCompile Include="CommandList.cpp" />
+    <ClCompile Include="DescriptorHeap.cpp" />
+    <ClCompile Include="GPUFence.cpp" />
+    <ClCompile Include="GraphicsDevice.cpp" />
+    <ClCompile Include="Pch.cpp" />
+    <ClCompile Include="PipelinePool.cpp" />
+    <ClCompile Include="RHI.cpp" />
+    <ClCompile Include="ShaderCompiler.cpp" />
+    <ClCompile Include="SwapChain.cpp" />
+    <ClCompile Include="TexturePool.cpp" />
   </ItemGroup>
 </Project>

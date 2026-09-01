@@ -15,7 +15,8 @@
 
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\Public;$(MSBuildProjectDirectory)\Private;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!-- Engine\ はモジュール名から始まる include 用。モジュール直下はサブフォルダの cpp が "Pch.h" を見つけるため -->
+      <AdditionalIncludeDirectories>$(FangRoot)Engine;$(MSBuildProjectDirectory);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>Pch.h</PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile>$(IntDir)$(MSBuildProjectName).pch</PrecompiledHeaderOutputFile>

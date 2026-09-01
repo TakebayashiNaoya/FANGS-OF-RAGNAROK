@@ -26,36 +26,36 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
-    <ClInclude Include="Public\RHI\CommandList.h" />
-    <ClInclude Include="Public\RHI\GraphicsDevice.h" />
-    <ClInclude Include="Public\RHI\RHI.h" />
-    <ClInclude Include="Public\RHI\RHIHandles.h" />
-    <ClInclude Include="Public\RHI\RHILog.h" />
-    <ClInclude Include="Public\RHI\ShaderCompiler.h" />
-    <ClInclude Include="Private\BufferPool.h" />
-    <ClInclude Include="Private\D3D12Common.h" />
-    <ClInclude Include="Private\DescriptorHeap.h" />
-    <ClInclude Include="Private\GPUFence.h" />
-    <ClInclude Include="Private\GraphicsDeviceImpl.h" />
-    <ClInclude Include="Private\Pch.h" />
-    <ClInclude Include="Private\PipelinePool.h" />
-    <ClInclude Include="Private\SwapChain.h" />
-    <ClInclude Include="Private\TexturePool.h" />
+    <ClInclude Include="BufferPool.h" />
+    <ClInclude Include="CommandList.h" />
+    <ClInclude Include="D3D12Common.h" />
+    <ClInclude Include="DescriptorHeap.h" />
+    <ClInclude Include="GPUFence.h" />
+    <ClInclude Include="GraphicsDevice.h" />
+    <ClInclude Include="Pch.h" />
+    <ClInclude Include="PipelinePool.h" />
+    <ClInclude Include="RHI.h" />
+    <ClInclude Include="RHIHandles.h" />
+    <ClInclude Include="RHILog.h" />
+    <ClInclude Include="RHITypes.h" />
+    <ClInclude Include="ShaderCompiler.h" />
+    <ClInclude Include="SwapChain.h" />
+    <ClInclude Include="TexturePool.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\BufferPool.cpp" />
-    <ClCompile Include="Private\CommandList.cpp" />
-    <ClCompile Include="Private\DescriptorHeap.cpp" />
-    <ClCompile Include="Private\GPUFence.cpp" />
-    <ClCompile Include="Private\GraphicsDevice.cpp" />
-    <ClCompile Include="Private\Pch.cpp">
+    <ClCompile Include="BufferPool.cpp" />
+    <ClCompile Include="CommandList.cpp" />
+    <ClCompile Include="DescriptorHeap.cpp" />
+    <ClCompile Include="GPUFence.cpp" />
+    <ClCompile Include="GraphicsDevice.cpp" />
+    <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Private\PipelinePool.cpp" />
-    <ClCompile Include="Private\RHI.cpp" />
-    <ClCompile Include="Private\ShaderCompiler.cpp" />
-    <ClCompile Include="Private\SwapChain.cpp" />
-    <ClCompile Include="Private\TexturePool.cpp" />
+    <ClCompile Include="PipelinePool.cpp" />
+    <ClCompile Include="RHI.cpp" />
+    <ClCompile Include="ShaderCompiler.cpp" />
+    <ClCompile Include="SwapChain.cpp" />
+    <ClCompile Include="TexturePool.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 

@@ -26,12 +26,12 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
-    <ClInclude Include="Public\Input\Input.h" />
-    <ClInclude Include="Private\Pch.h" />
+    <ClInclude Include="Input.h" />
+    <ClInclude Include="Pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\Input.cpp" />
-    <ClCompile Include="Private\Pch.cpp">
+    <ClCompile Include="Input.cpp" />
+    <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>

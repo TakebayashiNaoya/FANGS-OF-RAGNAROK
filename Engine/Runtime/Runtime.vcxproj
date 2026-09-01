@@ -26,17 +26,17 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
-    <ClInclude Include="Public\Runtime\Application.h" />
-    <ClInclude Include="Public\Runtime\Runtime.h" />
-    <ClInclude Include="Public\Runtime\RuntimeLog.h" />
-    <ClInclude Include="Private\Pch.h" />
+    <ClInclude Include="Application.h" />
+    <ClInclude Include="Pch.h" />
+    <ClInclude Include="Runtime.h" />
+    <ClInclude Include="RuntimeLog.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\Application.cpp" />
-    <ClCompile Include="Private\Pch.cpp">
+    <ClCompile Include="Application.cpp" />
+    <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Private\Runtime.cpp" />
+    <ClCompile Include="Runtime.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 

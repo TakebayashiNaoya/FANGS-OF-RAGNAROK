@@ -2,30 +2,13 @@
 <!-- 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Private">
-      <UniqueIdentifier>{F5EC48AD-1698-4F77-2B19-CF832D2A4072}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Public">
-      <UniqueIdentifier>{4F5D17AE-8385-7B72-A40C-A9A6E39FADB5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Public\Effects">
-      <UniqueIdentifier>{1B4B4013-4F50-54D5-20F2-34D3CEF6FEC4}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Public\Effects\Effects.h">
-      <Filter>Public\Effects</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\Pch.h">
-      <Filter>Private</Filter>
-    </ClInclude>
+    <ClInclude Include="Effects.h" />
+    <ClInclude Include="Pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\Effects.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Pch.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
+    <ClCompile Include="Effects.cpp" />
+    <ClCompile Include="Pch.cpp" />
   </ItemGroup>
 </Project>

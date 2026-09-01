@@ -1,17 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <!--
   Dependencies.props
-  $(FangModuleDependencies)（例: Core;RHI）から、参照先モジュールの
-  プロジェクト参照とインクルードパスの両方を作る。
+  $(FangModuleDependencies)（例: Core;RHI）から、参照先モジュールのプロジェクト参照を作る。
   依存を .vcxproj 側に 1 行で書けるようにするため。
-  ここで足したパス以外は通らないので、参照していないモジュールの include はコンパイルエラーになる。
+  include パスは Engine\ 1 本なので、宣言していないモジュールも include だけは通ってしまう。
+  依存漏れはリンク時（未解決の外部シンボル）に出る。
 -->
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-
-  <PropertyGroup>
-    <!-- 項目一覧式は ItemDefinitionGroup に書けないので、文字列置換でパスを組み立てる -->
-    <FangDependencyIncludes Condition="'$(FangModuleDependencies)' != ''">$(FangRoot)Engine\$(FangModuleDependencies.Replace(';','\Public;$(FangRoot)Engine\'))\Public</FangDependencyIncludes>
-  </PropertyGroup>
 
   <ItemGroup>
     <FangDependency Include="$(FangModuleDependencies)" />
@@ -20,8 +15,8 @@
 
   <ItemDefinitionGroup>
     <ClCompile>
-      <!-- プロパティ関数の戻り値は ; がエスケープされるので、ここで戻さないと /I 1 個にまとまってしまう -->
-      <AdditionalIncludeDirectories>$([MSBuild]::Unescape($(FangDependencyIncludes)));%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!-- include は "Core/Log/Log.h" のようにモジュール名から書くので、通すのは Engine\ だけでよい -->
+      <AdditionalIncludeDirectories>$(FangRoot)Engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
 

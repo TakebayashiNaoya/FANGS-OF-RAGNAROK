@@ -26,14 +26,14 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
-    <ClInclude Include="Public\Resource\Resource.h" />
-    <ClInclude Include="Private\Pch.h" />
+    <ClInclude Include="Pch.h" />
+    <ClInclude Include="Resource.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\Pch.cpp">
+    <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Private\Resource.cpp" />
+    <ClCompile Include="Resource.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 

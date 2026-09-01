@@ -27,20 +27,20 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
-    <ClInclude Include="Public\Editor\Editor.h" />
-    <ClInclude Include="Public\Editor\EditorLog.h" />
-    <ClInclude Include="Public\Editor\EditorUI.h" />
-    <ClInclude Include="Private\ImGuiPlatformInput.h" />
-    <ClInclude Include="Private\Pch.h" />
+    <ClInclude Include="Editor.h" />
+    <ClInclude Include="EditorLog.h" />
+    <ClInclude Include="EditorUI.h" />
+    <ClInclude Include="ImGuiPlatformInput.h" />
+    <ClInclude Include="Pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\Editor.cpp" />
-    <ClCompile Include="Private\EditorUI.cpp" />
-    <ClCompile Include="Private\Pch.cpp">
+    <ClCompile Include="Editor.cpp" />
+    <ClCompile Include="EditorUI.cpp" />
+    <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Private\Windows\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' != 'true'" />
-    <ClCompile Include="Private\Xbox\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' == 'true'" />
+    <ClCompile Include="Windows\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' != 'true'" />
+    <ClCompile Include="Xbox\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' == 'true'" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 
