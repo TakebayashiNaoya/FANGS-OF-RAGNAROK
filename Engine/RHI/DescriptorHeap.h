@@ -26,6 +26,8 @@ namespace fang::rhi
 		/** @brief シェーダに渡すための GPU 側のハンドル。 */
 		[[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(uint32_t index) const;
 
+
+	public:
 		/**
 		 * @brief ヒープを作る。
 		 * @return 失敗したら false。

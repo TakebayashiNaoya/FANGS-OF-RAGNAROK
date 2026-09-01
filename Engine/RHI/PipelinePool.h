@@ -31,6 +31,8 @@ namespace fang::rhi
 		/** @brief ハンドルから中身を引く。無効・解放済みならアサートに掛かる。 */
 		[[nodiscard]] const Entry& Get(PipelineHandle handle) const;
 
+
+	public:
 		/**
 		 * @brief パイプラインを作って台帳に登録する。
 		 * @return 失敗したら無効なハンドル。

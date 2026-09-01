@@ -35,6 +35,8 @@ namespace fang::rhi
 		/** @brief ハンドルから中身を引く。無効・解放済みならアサートに掛かる。 */
 		[[nodiscard]] const Entry& Get(BufferHandle handle) const;
 
+
+	public:
 		/**
 		 * @brief バッファを作って data を書き込む。
 		 * @return 失敗したら無効なハンドル。

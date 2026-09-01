@@ -59,6 +59,8 @@ namespace fang
 		[[nodiscard]] FANG_FORCEINLINE T* operator->() const { return m_object; }
 		[[nodiscard]] FANG_FORCEINLINE T& operator*() const { return *m_object; }
 
+
+	public:
 		/** @brief 中身を壊して空にする。 */
 		void Reset()
 		{

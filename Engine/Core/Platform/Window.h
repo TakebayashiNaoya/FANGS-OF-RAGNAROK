@@ -40,6 +40,8 @@ namespace fang
 		/** @brief クライアント領域の高さ（ピクセル）。 */
 		[[nodiscard]] FANG_FORCEINLINE uint32_t GetHeight() const { return m_height; }
 
+
+	public:
 		/**
 		 * @brief ウィンドウを作って表示する。
 		 * @param desc 生成条件。width / height はクライアント領域の大きさ（ピクセル）。枠は含まない。

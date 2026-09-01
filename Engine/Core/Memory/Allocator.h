@@ -26,6 +26,8 @@ namespace fang
 		/** @brief 人が読む名前。ログとプロファイラ用。 */
 		[[nodiscard]] virtual const char* GetName() const = 0;
 
+
+	public:
 		/**
 		 * @brief 確保する。
 		 * @param size 確保するバイト数。
@@ -54,6 +56,8 @@ namespace fang
 		/** @brief エンジン全体で使う既定のヒープ。 */
 		[[nodiscard]] static HeapAllocator& GetInstance();
 
+
+	public:
 		[[nodiscard]] void* Allocate(size_t size, size_t alignment = DEFAULT_ALIGNMENT) override;
 		void                Deallocate(void* memory) override;
 	};

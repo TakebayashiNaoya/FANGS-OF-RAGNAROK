@@ -25,6 +25,8 @@ namespace fang::rhi
 		[[nodiscard]] uint32_t GetHeight() const { return m_height; }
 		[[nodiscard]] uint32_t GetFrameIndex() const { return m_frameIndex; }
 
+
+	public:
 		/**
 		 * @brief スワップチェーンとバックバッファの RTV を作る。
 		 * @param windowHandle Windows なら HWND、UWP なら CoreWindow の IUnknown*。

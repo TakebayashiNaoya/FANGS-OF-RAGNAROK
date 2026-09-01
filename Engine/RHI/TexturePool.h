@@ -32,6 +32,8 @@ namespace fang::rhi
 		/** @brief ハンドルから中身を引く。無効・解放済みならアサートに掛かる。 */
 		[[nodiscard]] const Entry& Get(TextureHandle handle) const;
 
+
+	public:
 		/**
 		 * @brief テクスチャを作って中身を転送し、SRV を張る。
 		 * @param pixels RGBA 各 8 bit のピクセル列。左上から右へ、行間の詰め物なし（1 行 = width * 4 バイト）。
