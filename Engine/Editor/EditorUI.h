@@ -81,7 +81,7 @@ namespace fang::editor
 		std::vector<ImDrawVert> m_vertexStaging; /**< 全描画リストの頂点をまとめて 1 回で転送するための作業領域。 */
 		std::vector<ImDrawIdx>  m_indexStaging;  /**< 同上のインデックス版。 */
 
-		bool m_isInitialized       = false; /**< Initialize が通ったか。Shutdown の二重呼び出しを弾く。 */
-		bool m_isDemoWindowVisible = false; /**< ImGui のデモウィンドウを出すか。機能の見本市。 */
+		bool m_isInitialized       = false;      /**< Initialize が通ったか。Shutdown の二重呼び出しを弾く。 */
+		bool m_isDemoWindowVisible = false;      /**< ImGui のデモウィンドウを出すか。機能の見本市。 */
 	};
 } // namespace fang::editor

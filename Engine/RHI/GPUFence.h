@@ -39,7 +39,7 @@ namespace fang::rhi
 
 
 	private:
-		ComPtr<ID3D12Fence> m_fence; /**< GPU の進み具合を知るカウンタ。 */
+		ComPtr<ID3D12Fence> m_fence;         /**< GPU の進み具合を知るカウンタ。 */
 
 		uint64_t m_nextFenceValue = 1;       /**< 次に Signal する値。単調増加させる。 */
 		HANDLE   m_fenceEvent     = nullptr; /**< フェンスの完了を待つための OS のイベント。 */

@@ -100,8 +100,10 @@ AlignConsecutiveDeclarations:
 # 以前は位置を手で付けて Leave で保っていたが、AlignConsecutiveDeclarations が
 # 整列対象の行の手動パディングを 1 スペースに潰すため、Leave では維持できなくなった。
 # Always はコメントの無い行で整列グループが切れるので、離れた行同士は揃わないことがある。
+# OverEmptyLines: 2 で、空行 2 行までは整列グループを継続する（意味のまとまりで空けた行を跨いで揃える）。
 AlignTrailingComments:
   Kind: Always
+  OverEmptyLines: 2
 AlignOperands: Align
 BinPackArguments: false
 BinPackParameters: false

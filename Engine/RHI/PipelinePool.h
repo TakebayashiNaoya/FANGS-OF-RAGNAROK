@@ -22,9 +22,9 @@ namespace fang::rhi
 	public:
 		struct Entry
 		{
-			ComPtr<ID3D12RootSignature> rootSignature;  /**< シェーダに渡す資源の口（ルート定数・テクスチャ）の並び。 */
-			ComPtr<ID3D12PipelineState> pipelineState;  /**< シェーダとステート一式を焼き固めたもの。 */
-			uint32_t                    generation = 0; /**< ハンドルの世代と突き合わせる。 */
+			ComPtr<ID3D12RootSignature> rootSignature;      /**< シェーダに渡す資源（ルート定数・テクスチャ）の並び。 */
+			ComPtr<ID3D12PipelineState> pipelineState;      /**< シェーダとステート一式を焼き固めたもの。 */
+			uint32_t                    generation = 0;     /**< ハンドルの世代と突き合わせる。 */
 			bool                        isAlive    = false; /**< false なら空きスロット。次の生成で再利用される。 */
 		};
 

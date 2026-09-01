@@ -131,18 +131,18 @@ namespace fang::rhi
 		ComPtr<ID3D12Device>       m_device;       /**< D3D12 の本体。全リソースの生成元。 */
 		ComPtr<ID3D12CommandQueue> m_commandQueue; /**< コマンドを GPU に流す唯一の列。 */
 
-		SwapChain      m_swapChain;         /**< バックバッファの束と RTV。画面の大きさもここが持つ。 */
-		DescriptorHeap m_shaderVisibleHeap; /**< シェーダから見える SRV の置き場。 */
-		GPUFence       m_fence;             /**< GPU の進み具合を知るカウンタ。WaitForGPU で使う。 */
+		SwapChain      m_swapChain;                /**< バックバッファの束と RTV。画面の大きさもここが持つ。 */
+		DescriptorHeap m_shaderVisibleHeap;        /**< シェーダから見える SRV の置き場。 */
+		GPUFence       m_fence;                    /**< GPU の進み具合を知るカウンタ。WaitForGPU で使う。 */
 
-		PipelinePool m_pipelines; /**< PipelineHandle で引く台帳。 */
-		BufferPool   m_buffers;   /**< BufferHandle で引く台帳。 */
-		TexturePool  m_textures;  /**< TextureHandle で引く台帳。 */
+		PipelinePool m_pipelines;                  /**< PipelineHandle で引く台帳。 */
+		BufferPool   m_buffers;                    /**< BufferHandle で引く台帳。 */
+		TexturePool  m_textures;                   /**< TextureHandle で引く台帳。 */
 
 		ComPtr<ID3D12CommandAllocator>    m_commandAllocators[BACK_BUFFER_COUNT]; /**< コマンドの記録メモリ。 */
 		ComPtr<ID3D12GraphicsCommandList> m_commandList; /**< コマンドの記録口。毎フレーム Reset する。 */
 
-		CommandList m_commandListWrapper; /**< BeginFrame が返す公開型。中身は m_commandList を指す。 */
+		CommandList m_commandListWrapper;                /**< BeginFrame が返す公開型。中身は m_commandList を指す。 */
 
 		/** @brief Initialize に入った時点で立つ。途中で失敗しても Shutdown が片付けられるようにするため。 */
 		bool m_isInitialized = false;

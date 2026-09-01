@@ -48,7 +48,7 @@ namespace fang::rhi
 	private:
 		ComPtr<ID3D12DescriptorHeap> m_heap; /**< シェーダから見える SRV の置き場。 */
 
-		uint32_t m_descriptorSize = 0; /**< SRV 1 個分のバイト数。 */
-		uint32_t m_nextDescriptor = 0; /**< 次に使う SRV の位置。今は返却しないので増える一方。 */
+		uint32_t m_descriptorSize = 0;       /**< SRV 1 個分のバイト数。 */
+		uint32_t m_nextDescriptor = 0;       /**< 次に使う SRV の位置。今は返却しないので増える一方。 */
 	};
 } // namespace fang::rhi
