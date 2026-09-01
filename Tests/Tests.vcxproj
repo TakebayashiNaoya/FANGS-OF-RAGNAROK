@@ -31,7 +31,11 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
+    <ClCompile Include="Source\JobSystemStressTests.cpp" />
+    <ClCompile Include="Source\JobSystemTests.cpp" />
     <ClCompile Include="Source\Main.cpp" />
+    <ClCompile Include="Source\ParallelForTests.cpp" />
+    <ClCompile Include="Source\WorkStealingDequeTests.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 

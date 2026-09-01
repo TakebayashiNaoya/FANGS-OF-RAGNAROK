@@ -4,6 +4,7 @@
  */
 #include "Pch.h"
 #include "Runtime/Application.h"
+#include "Core/Job/JobSystem.h"
 #include "Core/Log/Assert.h"
 #include "Core/Platform/Window.h"
 #include "RHI/GraphicsDevice.h"
@@ -24,6 +25,14 @@ namespace fang
 
 	int RunApplication(IApplication& application)
 	{
+		// ジョブシステムはここが持ち、使う側へ参照で渡す。Engine ができたらそこへぶら下げ直す。
+		// TODO: 更新と描画をジョブに分けるときに IApplication へ渡す（Phase 2）。
+		JobSystem jobSystem;
+		if (!jobSystem.Initialize(JobSystemDesc{}))
+		{
+			FANG_FATAL("ジョブシステムを開始できなかった");
+		}
+
 		Window window;
 		if (!window.Initialize(WindowDesc{}))
 		{
@@ -97,6 +106,7 @@ namespace fang
 		triangleRenderer.Shutdown(device);
 		device.Shutdown();
 		window.Shutdown();
+		jobSystem.Shutdown();
 
 		return 0;
 	}
