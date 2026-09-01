@@ -311,35 +311,43 @@ namespace fang::rhi
 		FANG_ASSERT(m_isInitialized, "GraphicsDevice が初期化されていない");
 		FANG_ASSERT(!m_isFrameOpen, "BeginFrame が二重に呼ばれている");
 
+		// 前にこのバックバッファ用へ記録したコマンドのメモリを巻き戻して再利用する。
+		// EndFrame で毎フレーム GPU の完了を待っているので、GPU が使用中のメモリを巻き戻す事故は起きない。
+		// Reset が失敗するのは主にデバイスロストで、呼び出し側は nullptr を見てフレームループを畳む。
 		ID3D12CommandAllocator* allocator = m_commandAllocators[m_swapChain.GetFrameIndex()].Get();
 		if (!CheckHresult(allocator->Reset(), "コマンドアロケータの Reset"))
 		{
 			return nullptr;
 		}
 
+		// 記録口を「記録開始」状態に戻す。
 		if (!CheckHresult(m_commandList->Reset(allocator, nullptr), "コマンドリストの Reset"))
 		{
 			return nullptr;
 		}
 
+		// このフレームでシェーダから見えるディスクリプタの置き場を宣言する。
 		ID3D12DescriptorHeap* heaps[] = { m_shaderVisibleHeap.GetNative() };
 		m_commandList->SetDescriptorHeaps(FANG_COUNT_OF(heaps), heaps);
 
+		// リソースバリア: このバックバッファを「表示用」から「描き込み先」へ切り替える宣言。
 		D3D12_RESOURCE_BARRIER barrier{};
-		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;					  // 「用途の遷移」の宣言。
+		barrier.Transition.pResource   = m_swapChain.GetCurrentBackBuffer();      // 今回のバックバッファを指す
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;			  // これまでの用途は「表示用」
+		barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_RENDER_TARGET;	  // 今回の用途は「描き込み先」
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES; // 全てのミップマップを対象にする
+		m_commandList->ResourceBarrier(1, &barrier);                              // 1 個のバリアを積む
 
-		barrier.Transition.pResource   = m_swapChain.GetCurrentBackBuffer();
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-		barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		m_commandList->ResourceBarrier(1, &barrier);
-
+		// 今回のバックバッファを描画先に据えて、背景色で塗りつぶす。
 		const D3D12_CPU_DESCRIPTOR_HANDLE renderTargetView = m_swapChain.GetCurrentRenderTargetView();
 		m_commandList->OMSetRenderTargets(1, &renderTargetView, FALSE, nullptr);
 
+		// クリア色を RGBA の float 配列に変換して渡す。D3D12 は 0.0〜1.0 の範囲で読む。
 		const float clearValues[4] = { clearColor.red, clearColor.green, clearColor.blue, clearColor.alpha };
 		m_commandList->ClearRenderTargetView(renderTargetView, clearValues, 0, nullptr);
 
+		// 公開型の記録口に生のコマンドリストを差して貸し出す。EndFrame で回収する。
 		m_commandListWrapper.m_nativeCommandList = m_commandList.Get();
 
 		m_isFrameOpen = true;
@@ -356,6 +364,7 @@ namespace fang::rhi
 			return;
 		}
 
+		// BeginFrame の逆向きバリア。「描き込み先」から「表示用」へ戻してから Present する。
 		D3D12_RESOURCE_BARRIER barrier{};
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 

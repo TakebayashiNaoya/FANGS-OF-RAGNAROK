@@ -61,13 +61,12 @@ namespace fang
 		// ウィンドウを閉じるまでループする。WM_QUIT を受け取ると PumpMessages() が false を返す。
 		while (window.PumpMessages())
 		{
-			// 今の時間。
-			const auto currentTime = std::chrono::steady_clock::now();
-			// 前回からの経過時間（秒）。
+			// 前フレームからの経過時間を秒で計算する。
+			const auto  currentTime      = std::chrono::steady_clock::now();
 			const float deltaTimeSeconds = std::chrono::duration<float>(currentTime - previousTime).count();
+			previousTime                 = currentTime;
 
-			previousTime = currentTime;
-
+			// ウィンドウのサイズが変わったら、GPU 側のバックバッファもリサイズする。
 			if (window.ConsumeSizeChange())
 			{
 				device.Resize(window.GetWidth(), window.GetHeight());
@@ -76,13 +75,17 @@ namespace fang
 			// TODO: 更新と描画を別スレッドに分け、1 フレームずらして並走させる（Phase 2）。
 			application.OnUpdate(window, deltaTimeSeconds);
 
+			// このフレームの記録準備（記録メモリの巻き戻し、バックバッファの描き込み先への切り替え、クリア）を
+			// 頼み、描画コマンドの書き込み先を受け取る。EndFrame まで有効。
 			rhi::CommandList* commandList = device.BeginFrame(BACKGROUND_COLOR);
 			if (commandList == nullptr)
 			{
 				break;
 			}
 
+			// 三角形を描く。描画コマンドを積むだけで、まだ GPU は動かない。
 			triangleRenderer.Draw(*commandList, window.GetWidth(), window.GetHeight());
+			// 上の層に描画コマンドを積ませる。
 			application.OnRender(device, *commandList);
 
 			device.EndFrame();
