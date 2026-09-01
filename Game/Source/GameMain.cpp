@@ -29,9 +29,9 @@ namespace fang::game
 		{
 		public:
 			[[nodiscard]] bool Initialize(rhi::GraphicsDevice&, const Window&) { return true; }
-			void BuildFrame(const Window&, float) {}
-			void Render(rhi::GraphicsDevice&, rhi::CommandList&) {}
-			void Shutdown(rhi::GraphicsDevice&) {}
+			void               BuildFrame(const Window&, float) {}
+			void               Render(rhi::GraphicsDevice&, rhi::CommandList&) {}
+			void               Shutdown(rhi::GraphicsDevice&) {}
 		};
 
 #endif
@@ -64,7 +64,7 @@ namespace fang::game
 
 
 		private:
-			EditorUI m_editorUI;
+			EditorUI m_editorUI; /**< エディタ UI。Release 構成では空の代役に差し替わる。 */
 		};
 	} // namespace
 

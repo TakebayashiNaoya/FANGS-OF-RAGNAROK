@@ -57,12 +57,15 @@ class Project:
 
 def MakeEngineModule(name):
     return Project(
+        # Public / Private は廃止したので、モジュール直下をそのまま走査する
         project_path=os.path.join(ROOT_DIRECTORY, "Engine", name, name + ".vcxproj"),
-        source_roots=["Public", "Private"],
+        source_roots=["."],
         platform_directories={
             "Windows": WINDOWS_ONLY_CONDITION,
             "Xbox": XBOX_ONLY_CONDITION,
         },
+        # ビルドの中間生成物。VS が .vcxproj の隣に作る
+        skip_directories=["Generated Files"],
     )
 
 
@@ -114,7 +117,12 @@ def FindFiles(project):
                 if extension not in HEADER_EXTENSIONS + SOURCE_EXTENSIONS:
                     continue
 
-                relative_path = os.path.join(relative_directory, file_name)
+                # source_roots が "." のときは relpath が "." になるので、頭に .\ を付けない
+                if relative_directory == os.curdir:
+                    relative_path = file_name
+                else:
+                    relative_path = os.path.join(relative_directory, file_name)
+
                 found.append((relative_path.replace("/", "\\"), condition))
 
     return found
@@ -132,7 +140,7 @@ def BuildItemElement(item_type, relative_path, condition):
         attributes += ' Condition="%s"' % condition
 
     # PCH を作る TU だけは追加のメタデータが要る
-    if relative_path.lower() == "private\\pch.cpp":
+    if relative_path.lower() == "pch.cpp":
         return ("    <%s %s>\r\n"
                 "      <PrecompiledHeader>Create</PrecompiledHeader>\r\n"
                 "    </%s>\r\n") % (item_type, attributes, item_type)

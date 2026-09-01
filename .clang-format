@@ -83,18 +83,27 @@ IncludeCategories:
     Priority: 3
 
 # 改行・整列
-AlignAfterOpenBracket: Align
+# 引数が収まらないときは開き括弧の直後で改行し、1 個 1 行・閉じ括弧は独立行（前作と同じ形）。
+AlignAfterOpenBracket: BlockIndent
 AlignConsecutiveAssignments:
   Enabled: true
   AcrossEmptyLines: false
   AcrossComments: false
   AlignCompound: false
   PadOperators: true
-AlignConsecutiveDeclarations: None
-# 末尾コメントは、ブロックで一番長い宣言 + 空白 1 個の位置に頭を揃える。
-# Always はコメントの無い長い行で整列グループが切れて揃わないので、位置は手で付けて Leave で保つ。
+# 連続する変数宣言は型の後ろに空白を足し、変数名の頭を揃える。
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+# 末尾コメントの整列も clang-format に任せる。
+# 以前は位置を手で付けて Leave で保っていたが、AlignConsecutiveDeclarations が
+# 整列対象の行の手動パディングを 1 スペースに潰すため、Leave では維持できなくなった。
+# Always はコメントの無い行で整列グループが切れるので、離れた行同士は揃わないことがある。
+# 空行をまたぐ整列（OverEmptyLines）はしない。まとめて揃えると一番幅の広い宣言に桁が引きずられ、
+# 120 桁に収まらなくなって整列自体が壊れるため。意味のまとまりごとに空行で区切って、その中で揃える。
 AlignTrailingComments:
-  Kind: Leave
+  Kind: Always
 AlignOperands: Align
 BinPackArguments: false
 BinPackParameters: false

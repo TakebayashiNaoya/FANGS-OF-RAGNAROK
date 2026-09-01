@@ -26,6 +26,8 @@
   </PropertyGroup>
 
   <Import Project="$(FangRoot)Build\Program.props" />
+  <!-- Editor/EditorUI.h が imgui.h を include するので、Editor をリンクする構成では include パスが要る -->
+  <Import Project="$(FangRoot)Build\ThirdParty.imgui.props" Condition="'$(FangConfigurationBase)' != 'Release'" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
 
   <!-- Microsoft.Cpp.AppContainerApplication.props が PCH 使用・/W3・platform.winmd の /FU を無条件に入れるので戻す（そのままだと C1010 になる）-->

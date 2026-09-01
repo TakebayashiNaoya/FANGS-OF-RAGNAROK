@@ -26,41 +26,41 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
-    <ClInclude Include="Public\Core\Core.h" />
-    <ClInclude Include="Public\Core\CoreLog.h" />
-    <ClInclude Include="Public\Core\CoreMacros.h" />
-    <ClInclude Include="Public\Core\Log\Assert.h" />
-    <ClInclude Include="Public\Core\Log\Log.h" />
-    <ClInclude Include="Public\Core\Memory\Allocator.h" />
-    <ClInclude Include="Public\Core\Memory\UniquePtr.h" />
-    <ClInclude Include="Public\Core\Platform\SystemFont.h" />
-    <ClInclude Include="Public\Core\Platform\UWPApplication.h" />
-    <ClInclude Include="Public\Core\Platform\Window.h" />
-    <ClInclude Include="Private\Pch.h" />
-    <ClInclude Include="Private\Log\PlatformLogSink.h" />
+    <ClInclude Include="Core.h" />
+    <ClInclude Include="CoreLog.h" />
+    <ClInclude Include="CoreMacros.h" />
+    <ClInclude Include="Pch.h" />
+    <ClInclude Include="Log\Assert.h" />
+    <ClInclude Include="Log\Log.h" />
+    <ClInclude Include="Log\PlatformLogSink.h" />
+    <ClInclude Include="Memory\Allocator.h" />
+    <ClInclude Include="Memory\UniquePtr.h" />
+    <ClInclude Include="Platform\SystemFont.h" />
+    <ClInclude Include="Platform\UWPApplication.h" />
+    <ClInclude Include="Platform\Window.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\Core.cpp" />
-    <ClCompile Include="Private\Pch.cpp">
+    <ClCompile Include="Core.cpp" />
+    <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Private\Log\Assert.cpp" />
-    <ClCompile Include="Private\Log\Log.cpp" />
-    <ClCompile Include="Private\Memory\Allocator.cpp" />
-    <ClCompile Include="Private\Windows\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' != 'true'" />
-    <ClCompile Include="Private\Windows\SystemFont.cpp" Condition="'$(FangIsXbox)' != 'true'" />
-    <ClCompile Include="Private\Windows\Window.cpp" Condition="'$(FangIsXbox)' != 'true'" />
-    <ClCompile Include="Private\Xbox\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' == 'true'" />
-    <ClCompile Include="Private\Xbox\SystemFont.cpp" Condition="'$(FangIsXbox)' == 'true'" />
-    <ClCompile Include="Private\Xbox\UWPApplication.cpp" Condition="'$(FangIsXbox)' == 'true'" />
-    <ClCompile Include="Private\Xbox\Window.cpp" Condition="'$(FangIsXbox)' == 'true'" />
+    <ClCompile Include="Log\Assert.cpp" />
+    <ClCompile Include="Log\Log.cpp" />
+    <ClCompile Include="Memory\Allocator.cpp" />
+    <ClCompile Include="Windows\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' != 'true'" />
+    <ClCompile Include="Windows\SystemFont.cpp" Condition="'$(FangIsXbox)' != 'true'" />
+    <ClCompile Include="Windows\Window.cpp" Condition="'$(FangIsXbox)' != 'true'" />
+    <ClCompile Include="Xbox\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' == 'true'" />
+    <ClCompile Include="Xbox\SystemFont.cpp" Condition="'$(FangIsXbox)' == 'true'" />
+    <ClCompile Include="Xbox\UWPApplication.cpp" Condition="'$(FangIsXbox)' == 'true'" />
+    <ClCompile Include="Xbox\Window.cpp" Condition="'$(FangIsXbox)' == 'true'" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 
   <!-- C++/WinRT を使う TU だけ例外を有効にする（D-6 の例外規定）。生成ツールの対象外なので手で書く。
        PCH は例外オフでコンパイルされているので、この 2 つだけ使わない（Pch.h は普通の include として読まれる）-->
   <ItemGroup Condition="'$(FangIsXbox)' == 'true'">
-    <ClCompile Update="Private\Xbox\SystemFont.cpp;Private\Xbox\UWPApplication.cpp;Private\Xbox\Window.cpp">
+    <ClCompile Update="Xbox\SystemFont.cpp;Xbox\UWPApplication.cpp;Xbox\Window.cpp">
       <ExceptionHandling>Sync</ExceptionHandling>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PreprocessorDefinitions>$(FangFeatureDefines);$(FangPlatformDefines);_HAS_EXCEPTIONS=1</PreprocessorDefinitions>

@@ -5,7 +5,8 @@
 #include "GameMain.h"
 
 
-// プラットフォームのエントリポイントなので、ここだけ <windows.h> を許す。
+// wWinMain の署名に要るので直接入れる。
+// RHI 経由でも（GraphicsDevice.h ➡ d3d12.h で）入ってくるが、この TU は RHI を見ないので自前で。
 #include <windows.h>
 
 

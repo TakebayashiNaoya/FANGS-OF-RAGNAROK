@@ -2,54 +2,29 @@
 <!-- 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Private">
-      <UniqueIdentifier>{F5EC48AD-1698-4F77-2B19-CF832D2A4072}</UniqueIdentifier>
+    <Filter Include="Windows">
+      <UniqueIdentifier>{19C5FCE6-0536-1AA4-7EBB-59879FAD8342}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Private\Windows">
-      <UniqueIdentifier>{340E0F88-C1B3-D5E3-E6E2-388CB4585A36}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Private\Xbox">
-      <UniqueIdentifier>{7DFC57C0-21BA-A1C7-BE0D-214A8F46D655}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Public">
-      <UniqueIdentifier>{4F5D17AE-8385-7B72-A40C-A9A6E39FADB5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Public\Editor">
-      <UniqueIdentifier>{9A0EF729-98DC-BEB2-C311-32DFEDFD8ABF}</UniqueIdentifier>
+    <Filter Include="Xbox">
+      <UniqueIdentifier>{363B5402-C3C2-12FB-8A33-2365B24BE827}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Public\Editor\Editor.h">
-      <Filter>Public\Editor</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\Editor\EditorLog.h">
-      <Filter>Public\Editor</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\Editor\EditorUI.h">
-      <Filter>Public\Editor</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\ImGuiPlatformInput.h">
-      <Filter>Private</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\Pch.h">
-      <Filter>Private</Filter>
-    </ClInclude>
+    <ClInclude Include="Editor.h" />
+    <ClInclude Include="EditorLog.h" />
+    <ClInclude Include="EditorUI.h" />
+    <ClInclude Include="ImGuiPlatformInput.h" />
+    <ClInclude Include="Pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\Editor.cpp">
-      <Filter>Private</Filter>
+    <ClCompile Include="Editor.cpp" />
+    <ClCompile Include="EditorUI.cpp" />
+    <ClCompile Include="Pch.cpp" />
+    <ClCompile Include="Windows\ImGuiPlatformInput.cpp">
+      <Filter>Windows</Filter>
     </ClCompile>
-    <ClCompile Include="Private\EditorUI.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Pch.cpp">
-      <Filter>Private</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Windows\ImGuiPlatformInput.cpp">
-      <Filter>Private\Windows</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Xbox\ImGuiPlatformInput.cpp">
-      <Filter>Private\Xbox</Filter>
+    <ClCompile Include="Xbox\ImGuiPlatformInput.cpp">
+      <Filter>Xbox</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

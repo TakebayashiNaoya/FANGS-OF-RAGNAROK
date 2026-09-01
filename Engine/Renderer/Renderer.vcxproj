@@ -26,17 +26,17 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
-    <ClInclude Include="Public\Renderer\Renderer.h" />
-    <ClInclude Include="Public\Renderer\RendererLog.h" />
-    <ClInclude Include="Public\Renderer\TriangleRenderer.h" />
-    <ClInclude Include="Private\Pch.h" />
+    <ClInclude Include="Pch.h" />
+    <ClInclude Include="Renderer.h" />
+    <ClInclude Include="RendererLog.h" />
+    <ClInclude Include="TriangleRenderer.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Private\Pch.cpp">
+    <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Private\Renderer.cpp" />
-    <ClCompile Include="Private\TriangleRenderer.cpp" />
+    <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="TriangleRenderer.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 

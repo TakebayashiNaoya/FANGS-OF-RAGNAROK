@@ -25,6 +25,8 @@
   </PropertyGroup>
 
   <Import Project="$(FangRoot)Build\Program.props" />
+  <!-- Editor/EditorUI.h が imgui.h を include するので、Editor をリンクする構成では include パスが要る -->
+  <Import Project="$(FangRoot)Build\ThirdParty.imgui.props" Condition="'$(FangConfigurationBase)' != 'Release'" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
 
   <ItemDefinitionGroup>
