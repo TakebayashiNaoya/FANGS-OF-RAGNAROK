@@ -79,7 +79,7 @@ namespace fang::editor
 		FANG_ASSERT(!m_isInitialized, "EditorUI::Shutdown が呼ばれていない");
 	}
 
-	bool EditorUI::Initialize(rhi::GraphicsDevice& device, const Window& window)
+	bool EditorUI::Initialize(const EngineContext& context, rhi::GraphicsDevice& device, const Window& window)
 	{
 		FANG_ASSERT(!m_isInitialized, "EditorUI を二重に初期化している");
 
@@ -108,6 +108,12 @@ namespace fang::editor
 			return false;
 		}
 
+		if (!m_jobSystemPanel.Initialize(context))
+		{
+			FANG_LOG_ERROR(Editor, "ジョブシステムのパネルを作れなかった");
+			return false;
+		}
+
 		FANG_LOG_INFO(Editor, "エディタ UI を初期化した");
 
 		return true;
@@ -120,6 +126,7 @@ namespace fang::editor
 			return;
 		}
 
+		m_jobSystemPanel.Shutdown();
 		ShutdownBackend(device);
 		m_isInitialized = false;
 
@@ -139,6 +146,7 @@ namespace fang::editor
 		ImGui::NewFrame();
 
 		BuildEngineInfoWindow(window, deltaTimeSeconds);
+		m_jobSystemPanel.BuildFrame(deltaTimeSeconds);
 
 		// ImGui 付属のデモ。中身は英語なので既定では出さない。
 		if (m_isDemoWindowVisible)

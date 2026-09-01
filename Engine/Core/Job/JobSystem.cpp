@@ -180,6 +180,12 @@ namespace fang
 
 		m_freeListHead.store(PackListHead(0, 0), std::memory_order_relaxed);
 
+#if FANG_ENABLE_PROFILER
+		m_jobsInUse.store(0, std::memory_order_relaxed);
+		m_peakJobsInUse.store(0, std::memory_order_relaxed);
+		m_inlineExecutedJobCount.store(0, std::memory_order_relaxed);
+#endif
+
 		m_workers = NewArray<Worker>(allocator, static_cast<size_t>(workerCount) + 1);
 		if (m_workers == nullptr)
 		{
@@ -369,6 +375,26 @@ namespace fang
 		FANG_ASSERT(workerIndex < m_executorCount, "ワーカー番号 {} は範囲外", workerIndex);
 		return m_workers[workerIndex].executedJobCount.load(std::memory_order_relaxed);
 	}
+
+	uint32_t JobSystem::GetJobsInUseCount() const
+	{
+		return m_jobsInUse.load(std::memory_order_relaxed);
+	}
+
+	uint32_t JobSystem::GetPeakJobsInUseCount() const
+	{
+		return m_peakJobsInUse.load(std::memory_order_relaxed);
+	}
+
+	void JobSystem::ResetPeakJobsInUseCount()
+	{
+		m_peakJobsInUse.store(m_jobsInUse.load(std::memory_order_relaxed), std::memory_order_relaxed);
+	}
+
+	uint64_t JobSystem::GetInlineExecutedJobCount() const
+	{
+		return m_inlineExecutedJobCount.load(std::memory_order_relaxed);
+	}
 #endif
 
 	uint32_t JobSystem::FindWorkerIndex() const
@@ -403,6 +429,16 @@ namespace fang
 			if (m_freeListHead
 					.compare_exchange_weak(head, nextHead, std::memory_order_acq_rel, std::memory_order_acquire))
 			{
+#if FANG_ENABLE_PROFILER
+				// 増やした後の値が今の使用数。高水位は超えたときだけ書くので、普段は load 1 回で済む。
+				const uint32_t jobsInUse     = m_jobsInUse.fetch_add(1, std::memory_order_relaxed) + 1;
+				uint32_t       peakJobsInUse = m_peakJobsInUse.load(std::memory_order_relaxed);
+				while (peakJobsInUse < jobsInUse &&
+					   !m_peakJobsInUse.compare_exchange_weak(peakJobsInUse, jobsInUse, std::memory_order_relaxed))
+				{
+				}
+#endif
+
 				return jobIndex;
 			}
 		}
@@ -419,6 +455,10 @@ namespace fang
 			if (m_freeListHead
 					.compare_exchange_weak(head, nextHead, std::memory_order_release, std::memory_order_relaxed))
 			{
+#if FANG_ENABLE_PROFILER
+				m_jobsInUse.fetch_sub(1, std::memory_order_relaxed);
+#endif
+
 				return;
 			}
 		}
@@ -480,6 +520,11 @@ namespace fang
 
 	void JobSystem::ExecuteInline(const JobDesc& desc, JobCounter* finishCounter, uint32_t workerIndex)
 	{
+#if FANG_ENABLE_PROFILER
+		// ここを通った分は executedJobCount に乗らないので、別に数えておかないとパネルから消える。
+		m_inlineExecutedJobCount.fetch_add(1, std::memory_order_relaxed);
+#endif
+
 		// プールから取れなかったときの縮退。引数の寿命を揃えるため、ジョブと同じようにここへ写してから呼ぶ。
 		alignas(8) unsigned char argumentBuffer[MAX_ARGUMENT_SIZE]{};
 		if (desc.argumentSize > 0)

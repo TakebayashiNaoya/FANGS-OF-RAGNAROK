@@ -4,6 +4,9 @@
  */
 #pragma once
 
+#include "Runtime/EngineContext.h"
+
+
 namespace fang
 {
 	class Window;
@@ -28,8 +31,15 @@ namespace fang
 	public:
 		virtual ~IApplication() = default;
 
-		/** @brief デバイスができた直後に 1 回。false を返すと起動を中止する。 */
-		[[nodiscard]] virtual bool OnInitialize(rhi::GraphicsDevice& device, const Window& window) = 0;
+		/**
+		 * @brief デバイスができた直後に 1 回。false を返すと起動を中止する。
+		 * @param context 中身の寿命はフレームループより長い。参照を持ち続けてよい。
+		 */
+		[[nodiscard]] virtual bool OnInitialize(
+			const EngineContext& context,
+			rhi::GraphicsDevice& device,
+			const Window&        window
+		) = 0;
 
 		/** @brief 毎フレーム、描画を始める前に呼ばれる。ゲームの状態を進める。 */
 		virtual void OnUpdate(const Window& window, float deltaTimeSeconds) = 0;

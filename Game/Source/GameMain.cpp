@@ -28,7 +28,7 @@ namespace fang::game
 		class EditorUI
 		{
 		public:
-			[[nodiscard]] bool Initialize(rhi::GraphicsDevice&, const Window&) { return true; }
+			[[nodiscard]] bool Initialize(const EngineContext&, rhi::GraphicsDevice&, const Window&) { return true; }
 			void               BuildFrame(const Window&, float) {}
 			void               Render(rhi::GraphicsDevice&, rhi::CommandList&) {}
 			void               Shutdown(rhi::GraphicsDevice&) {}
@@ -44,9 +44,13 @@ namespace fang::game
 		class FangsOfRagnarok final : public IApplication
 		{
 		public:
-			[[nodiscard]] bool OnInitialize(rhi::GraphicsDevice& device, const Window& window) override
+			[[nodiscard]] bool OnInitialize(
+				const EngineContext& context,
+				rhi::GraphicsDevice& device,
+				const Window&        window
+			) override
 			{
-				return m_editorUI.Initialize(device, window);
+				return m_editorUI.Initialize(context, device, window);
 			}
 
 			void OnUpdate(const Window& window, float deltaTimeSeconds) override
