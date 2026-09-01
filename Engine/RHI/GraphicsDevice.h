@@ -56,10 +56,10 @@ namespace fang::rhi
 
 		/**
 		 * @brief 中身を変えないバッファを作って data を書き込む。
-		 * @param data 書き込む中身。sizeInBytes 分読んだらもう参照しないので、呼び出し後は破棄してよい。
-		 * @param sizeInBytes data の大きさ（バイト）。
+		 * @param data          書き込む中身。sizeInBytes 分読んだらもう参照しないので、呼び出し後は破棄してよい。
+		 * @param sizeInBytes   data の大きさ（バイト）。
 		 * @param strideInBytes Vertex なら頂点 1 個の大きさ。Index ならインデックス 1 個の大きさ（2 か 4）。
-		 * @param kind 頂点バッファかインデックスバッファか。
+		 * @param kind          頂点バッファかインデックスバッファか。
 		 * @return 失敗したら無効なハンドル。
 		 */
 		[[nodiscard]] BufferHandle CreateBuffer(
@@ -72,8 +72,8 @@ namespace fang::rhi
 		/**
 		 * @brief 毎フレーム書き換えるバッファを作る。中身は空で、UpdateBuffer で書き込む。
 		 * @param capacityInBytes 確保する大きさ（バイト）。後から増やせないので最大量で確保する。
-		 * @param strideInBytes CreateBuffer と同じ。
-		 * @param kind 頂点バッファかインデックスバッファか。
+		 * @param strideInBytes   CreateBuffer と同じ。
+		 * @param kind            頂点バッファかインデックスバッファか。
 		 * @return 失敗したら無効なハンドル。
 		 */
 		[[nodiscard]] BufferHandle CreateDynamicBuffer(
@@ -84,8 +84,8 @@ namespace fang::rhi
 
 		/**
 		 * @brief バッファの先頭から data を書き込む。
-		 * @param handle 書き込み先。CreateBuffer / CreateDynamicBuffer が返したもの。
-		 * @param data 書き込む中身。
+		 * @param handle      書き込み先。CreateBuffer / CreateDynamicBuffer が返したもの。
+		 * @param data        書き込む中身。
 		 * @param sizeInBytes data の大きさ（バイト）。作ったときの容量を超えるとアサートに掛かる。
 		 */
 		void UpdateBuffer(BufferHandle handle, const void* data, uint32_t sizeInBytes);
@@ -96,7 +96,7 @@ namespace fang::rhi
 		/**
 		 * @brief テクスチャを作って中身を転送する。転送が終わるまでこの中で待つので、起動時やロード時に呼ぶ。
 		 * @param pixels RGBA 各 8 bit のピクセル列。左上から右へ、行間の詰め物なし（1 行 = width * 4 バイト）。
-		 * @param width 横のピクセル数。
+		 * @param width  横のピクセル数。
 		 * @param height 縦のピクセル数。
 		 * @return 失敗したら無効なハンドル。
 		 */
@@ -107,7 +107,7 @@ namespace fang::rhi
 
 		/**
 		 * @brief バックバッファを作り直す。ウィンドウのサイズが変わったときに呼ぶ。
-		 * @param width 新しい横幅（ピクセル）。0 や前回と同じ値なら何もしない。
+		 * @param width  新しい横幅（ピクセル）。0 や前回と同じ値なら何もしない。
 		 * @param height 新しい高さ（ピクセル）。
 		 * @details BeginFrame と EndFrame の間では呼べない。
 		 */

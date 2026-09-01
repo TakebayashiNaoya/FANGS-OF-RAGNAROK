@@ -30,7 +30,7 @@ namespace fang
 	public:
 		/**
 		 * @brief 確保する。
-		 * @param size 確保するバイト数。
+		 * @param size      確保するバイト数。
 		 * @param alignment 先頭アドレスの境界（バイト）。2 のべき乗であること。
 		 * @return 確保した領域。失敗したら nullptr。
 		 */
@@ -78,7 +78,7 @@ namespace fang
 	/**
 	 * @brief New で作ったオブジェクトを壊して返す。
 	 * @param allocator New のときと同じアロケータであること。
-	 * @param object nullptr を渡してよい（何もしない）。
+	 * @param object    nullptr を渡してよい（何もしない）。
 	 */
 	template <typename T> inline void Delete(IAllocator& allocator, T* object)
 	{

@@ -41,8 +41,8 @@ namespace fang
 		/**
 		 * @brief 開いているフレームに描画コマンドを積む。
 		 * @param commandList BeginFrame が返したコマンドリスト。
-		 * @param width 描画先の横幅（ピクセル）。ビューポートに使う。
-		 * @param height 描画先の高さ（ピクセル）。
+		 * @param width       描画先の横幅（ピクセル）。ビューポートに使う。
+		 * @param height      描画先の高さ（ピクセル）。
 		 */
 		void Draw(rhi::CommandList& commandList, uint32_t width, uint32_t height) const;
 

@@ -22,8 +22,8 @@ namespace fang::rhi
 	 * @brief HLSL の文字列をコンパイルしてバイトコードを返す。
 	 * @details Phase 1 の暫定。ビルド時コンパイル（DXC）にするかは未決。
 	 *          UWP では d3dcompiler が使えないので、Xbox 構成では必ず失敗する。
-	 * @param source HLSL のソースコード文字列。ファイルパスではなく中身を渡す。
-	 * @param entryPointName シェーダの入口になる関数名。"VSMain" など。
+	 * @param source           HLSL のソースコード文字列。ファイルパスではなく中身を渡す。
+	 * @param entryPointName   シェーダの入口になる関数名。"VSMain" など。
 	 * @param[out] outBytecode 成功したときだけ書き換える。nullptr は不可。
 	 * @return 成功したら true。失敗の内容はログに出る。
 	 * @threading 任意のスレッド。
