@@ -31,6 +31,15 @@ namespace fang
 		Window() = default;
 		~Window();
 
+		/** @brief RHI にスワップチェーンを作らせるための OS のハンドル（Windows なら HWND）。 */
+		[[nodiscard]] FANG_FORCEINLINE void* GetNativeHandle() const { return m_nativeHandle; }
+
+		/** @brief クライアント領域の幅（ピクセル）。枠は含まない。 */
+		[[nodiscard]] FANG_FORCEINLINE uint32_t GetWidth() const { return m_width; }
+
+		/** @brief クライアント領域の高さ（ピクセル）。 */
+		[[nodiscard]] FANG_FORCEINLINE uint32_t GetHeight() const { return m_height; }
+
 		/**
 		 * @brief ウィンドウを作って表示する。
 		 * @param desc 生成条件。width / height はクライアント領域の大きさ（ピクセル）。枠は含まない。
@@ -52,15 +61,6 @@ namespace fang
 		 * @details 呼ぶ側はこれが true のときだけスワップチェーンを作り直せばよい。
 		 */
 		[[nodiscard]] bool ConsumeSizeChange();
-
-		/** @brief RHI にスワップチェーンを作らせるための OS のハンドル（Windows なら HWND）。 */
-		[[nodiscard]] FANG_FORCEINLINE void* GetNativeHandle() const { return m_nativeHandle; }
-
-		/** @brief クライアント領域の幅（ピクセル）。枠は含まない。 */
-		[[nodiscard]] FANG_FORCEINLINE uint32_t GetWidth() const { return m_width; }
-
-		/** @brief クライアント領域の高さ（ピクセル）。 */
-		[[nodiscard]] FANG_FORCEINLINE uint32_t GetHeight() const { return m_height; }
 
 		/** @brief サイズが変わったことを記録する。プラットフォーム実装から呼ぶ用で、ゲームからは呼ばない。 */
 		void OnResized(uint32_t width, uint32_t height);

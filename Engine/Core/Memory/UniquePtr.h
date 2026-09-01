@@ -52,6 +52,13 @@ namespace fang
 
 		~UniquePtr() { Reset(); }
 
+		/** @brief 借用の生ポインタ。所有権は動かない。 */
+		[[nodiscard]] FANG_FORCEINLINE T*   Get() const { return m_object; }
+		[[nodiscard]] FANG_FORCEINLINE bool IsValid() const { return m_object != nullptr; }
+
+		[[nodiscard]] FANG_FORCEINLINE T* operator->() const { return m_object; }
+		[[nodiscard]] FANG_FORCEINLINE T& operator*() const { return *m_object; }
+
 		/** @brief 中身を壊して空にする。 */
 		void Reset()
 		{
@@ -72,13 +79,6 @@ namespace fang
 			m_allocator = nullptr;
 			return released;
 		}
-
-		/** @brief 借用の生ポインタ。所有権は動かない。 */
-		[[nodiscard]] FANG_FORCEINLINE T*   Get() const { return m_object; }
-		[[nodiscard]] FANG_FORCEINLINE bool IsValid() const { return m_object != nullptr; }
-
-		[[nodiscard]] FANG_FORCEINLINE T* operator->() const { return m_object; }
-		[[nodiscard]] FANG_FORCEINLINE T& operator*() const { return *m_object; }
 
 
 	private:

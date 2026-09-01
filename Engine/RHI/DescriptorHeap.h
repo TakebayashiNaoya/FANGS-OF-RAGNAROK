@@ -17,6 +17,15 @@ namespace fang::rhi
 	class DescriptorHeap
 	{
 	public:
+		/** @brief コマンドリストに差すためのヒープ本体。 */
+		[[nodiscard]] ID3D12DescriptorHeap* GetNative() const { return m_heap.Get(); }
+
+		/** @brief ビューを書き込むための CPU 側のハンドル。 */
+		[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(uint32_t index) const;
+
+		/** @brief シェーダに渡すための GPU 側のハンドル。 */
+		[[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(uint32_t index) const;
+
 		/**
 		 * @brief ヒープを作る。
 		 * @return 失敗したら false。
@@ -32,15 +41,6 @@ namespace fang::rhi
 		 * @return 満杯なら false。
 		 */
 		[[nodiscard]] bool Allocate(uint32_t& outIndex);
-
-		/** @brief コマンドリストに差すためのヒープ本体。 */
-		[[nodiscard]] ID3D12DescriptorHeap* GetNative() const { return m_heap.Get(); }
-
-		/** @brief ビューを書き込むための CPU 側のハンドル。 */
-		[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetCPUHandle(uint32_t index) const;
-
-		/** @brief シェーダに渡すための GPU 側のハンドル。 */
-		[[nodiscard]] D3D12_GPU_DESCRIPTOR_HANDLE GetGPUHandle(uint32_t index) const;
 
 
 	private:

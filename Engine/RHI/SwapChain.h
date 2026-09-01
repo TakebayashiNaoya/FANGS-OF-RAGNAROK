@@ -18,6 +18,13 @@ namespace fang::rhi
 	class SwapChain
 	{
 	public:
+		[[nodiscard]] ID3D12Resource* GetCurrentBackBuffer() const { return m_backBuffers[m_frameIndex].Get(); }
+		[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentRenderTargetView() const;
+
+		[[nodiscard]] uint32_t GetWidth() const { return m_width; }
+		[[nodiscard]] uint32_t GetHeight() const { return m_height; }
+		[[nodiscard]] uint32_t GetFrameIndex() const { return m_frameIndex; }
+
 		/**
 		 * @brief スワップチェーンとバックバッファの RTV を作る。
 		 * @param windowHandle Windows なら HWND、UWP なら CoreWindow の IUnknown*。
@@ -46,13 +53,6 @@ namespace fang::rhi
 
 		/** @brief 次に描くバックバッファの番号を取り直す。Present の後に呼ぶ。 */
 		void UpdateFrameIndex();
-
-		[[nodiscard]] ID3D12Resource* GetCurrentBackBuffer() const { return m_backBuffers[m_frameIndex].Get(); }
-		[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentRenderTargetView() const;
-
-		[[nodiscard]] uint32_t GetWidth() const { return m_width; }
-		[[nodiscard]] uint32_t GetHeight() const { return m_height; }
-		[[nodiscard]] uint32_t GetFrameIndex() const { return m_frameIndex; }
 
 
 	private:

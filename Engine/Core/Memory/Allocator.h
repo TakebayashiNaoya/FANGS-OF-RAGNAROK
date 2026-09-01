@@ -23,6 +23,9 @@ namespace fang
 
 		virtual ~IAllocator() = default;
 
+		/** @brief 人が読む名前。ログとプロファイラ用。 */
+		[[nodiscard]] virtual const char* GetName() const = 0;
+
 		/**
 		 * @brief 確保する。
 		 * @param size 確保するバイト数。
@@ -36,9 +39,6 @@ namespace fang
 		 * @param memory Allocate が返したポインタ。nullptr を渡してよい（何もしない）。
 		 */
 		virtual void Deallocate(void* memory) = 0;
-
-		/** @brief 人が読む名前。ログとプロファイラ用。 */
-		[[nodiscard]] virtual const char* GetName() const = 0;
 	};
 
 	/**
@@ -49,12 +49,13 @@ namespace fang
 	class HeapAllocator final : public IAllocator
 	{
 	public:
-		[[nodiscard]] void*       Allocate(size_t size, size_t alignment = DEFAULT_ALIGNMENT) override;
-		void                      Deallocate(void* memory) override;
 		[[nodiscard]] const char* GetName() const override { return "Heap"; }
 
 		/** @brief エンジン全体で使う既定のヒープ。 */
 		[[nodiscard]] static HeapAllocator& GetInstance();
+
+		[[nodiscard]] void* Allocate(size_t size, size_t alignment = DEFAULT_ALIGNMENT) override;
+		void                Deallocate(void* memory) override;
 	};
 
 	/** @brief アロケータ上にオブジェクトを作る。確保に失敗したら nullptr（コンストラクタは呼ばれない）。 */

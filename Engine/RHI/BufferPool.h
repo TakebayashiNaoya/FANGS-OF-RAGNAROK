@@ -32,6 +32,9 @@ namespace fang::rhi
 			bool                     isAlive         = false; /**< false なら空きスロット。次の生成で再利用される。 */
 		};
 
+		/** @brief ハンドルから中身を引く。無効・解放済みならアサートに掛かる。 */
+		[[nodiscard]] const Entry& Get(BufferHandle handle) const;
+
 		/**
 		 * @brief バッファを作って data を書き込む。
 		 * @return 失敗したら無効なハンドル。
@@ -63,9 +66,6 @@ namespace fang::rhi
 
 		/** @brief 台帳ごと捨てる。二重に呼んでも安全。 */
 		void Shutdown();
-
-		/** @brief ハンドルから中身を引く。無効・解放済みならアサートに掛かる。 */
-		[[nodiscard]] const Entry& Get(BufferHandle handle) const;
 
 
 	private:
