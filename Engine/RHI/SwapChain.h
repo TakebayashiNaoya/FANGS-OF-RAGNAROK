@@ -18,11 +18,19 @@ namespace fang::rhi
 	class SwapChain
 	{
 	public:
+		/** @brief 今描いている 1 枚。Initialize より前と Shutdown より後は nullptr。 */
 		[[nodiscard]] ID3D12Resource* GetCurrentBackBuffer() const { return m_backBuffers[m_frameIndex].Get(); }
+
+		/** @brief 今描いている 1 枚の RTV。OMSetRenderTargets にそのまま渡せる。Initialize 後にだけ呼べる。 */
 		[[nodiscard]] D3D12_CPU_DESCRIPTOR_HANDLE GetCurrentRenderTargetView() const;
 
+		/** @brief バックバッファの幅（ピクセル）。Resize が成功すると変わる。 */
 		[[nodiscard]] uint32_t GetWidth() const { return m_width; }
+
+		/** @brief バックバッファの高さ（ピクセル）。 */
 		[[nodiscard]] uint32_t GetHeight() const { return m_height; }
+
+		/** @brief 今描いているバックバッファの番号（0 〜 BACK_BUFFER_COUNT - 1）。UpdateFrameIndex で次に進む。 */
 		[[nodiscard]] uint32_t GetFrameIndex() const { return m_frameIndex; }
 
 

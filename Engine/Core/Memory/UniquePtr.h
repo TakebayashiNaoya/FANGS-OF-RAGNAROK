@@ -53,10 +53,15 @@ namespace fang
 		~UniquePtr() { Reset(); }
 
 		/** @brief 借用の生ポインタ。所有権は動かない。 */
-		[[nodiscard]] FANG_FORCEINLINE T*   Get() const { return m_object; }
+		[[nodiscard]] FANG_FORCEINLINE T* Get() const { return m_object; }
+
+		/** @brief 中身を持っていれば true。Reset / Release の後は false。 */
 		[[nodiscard]] FANG_FORCEINLINE bool IsValid() const { return m_object != nullptr; }
 
+		/** @brief 中身のメンバに触る。空（IsValid() が false）のときに呼んではいけない。 */
 		[[nodiscard]] FANG_FORCEINLINE T* operator->() const { return m_object; }
+
+		/** @brief 中身の参照。空（IsValid() が false）のときに呼んではいけない。 */
 		[[nodiscard]] FANG_FORCEINLINE T& operator*() const { return *m_object; }
 
 

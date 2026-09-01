@@ -22,6 +22,10 @@ namespace fang::rhi
 		uint32_t index      = INVALID_INDEX; /**< 配列上の位置。 */
 		uint32_t generation = 0;             /**< スロットが再利用された回数。古いハンドルを見分けるためのもの。 */
 
+		/**
+		 * @brief 生成に成功したハンドルなら true。既定構築と生成失敗の戻り値は false。
+		 * @details 見るのは index だけ。解放済みかどうかは分からない（世代の照合は台帳側でやる）。
+		 */
 		[[nodiscard]] FANG_FORCEINLINE bool IsValid() const { return index != INVALID_INDEX; }
 	};
 

@@ -51,6 +51,7 @@ namespace fang
 	class HeapAllocator final : public IAllocator
 	{
 	public:
+		/** @brief 人が読む名前。常に "Heap"。 */
 		[[nodiscard]] const char* GetName() const override { return "Heap"; }
 
 		/** @brief エンジン全体で使う既定のヒープ。 */
