@@ -2,6 +2,9 @@
 <!-- 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="Job">
+      <UniqueIdentifier>{F6D9ADAF-D421-D071-E3AA-0FD46F30B136}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Log">
       <UniqueIdentifier>{2799DCE6-3CA6-2EA9-7019-4FDF53099B59}</UniqueIdentifier>
     </Filter>
@@ -23,6 +26,18 @@
     <ClInclude Include="CoreLog.h" />
     <ClInclude Include="CoreMacros.h" />
     <ClInclude Include="Pch.h" />
+    <ClInclude Include="Job\JobCounter.h">
+      <Filter>Job</Filter>
+    </ClInclude>
+    <ClInclude Include="Job\JobSystem.h">
+      <Filter>Job</Filter>
+    </ClInclude>
+    <ClInclude Include="Job\ParallelFor.h">
+      <Filter>Job</Filter>
+    </ClInclude>
+    <ClInclude Include="Job\WorkStealingDeque.h">
+      <Filter>Job</Filter>
+    </ClInclude>
     <ClInclude Include="Log\Assert.h">
       <Filter>Log</Filter>
     </ClInclude>
@@ -41,6 +56,9 @@
     <ClInclude Include="Platform\SystemFont.h">
       <Filter>Platform</Filter>
     </ClInclude>
+    <ClInclude Include="Platform\Thread.h">
+      <Filter>Platform</Filter>
+    </ClInclude>
     <ClInclude Include="Platform\UWPApplication.h">
       <Filter>Platform</Filter>
     </ClInclude>
@@ -51,6 +69,9 @@
   <ItemGroup>
     <ClCompile Include="Core.cpp" />
     <ClCompile Include="Pch.cpp" />
+    <ClCompile Include="Job\JobSystem.cpp">
+      <Filter>Job</Filter>
+    </ClCompile>
     <ClCompile Include="Log\Assert.cpp">
       <Filter>Log</Filter>
     </ClCompile>
@@ -66,6 +87,9 @@
     <ClCompile Include="Windows\SystemFont.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
+    <ClCompile Include="Windows\Thread.cpp">
+      <Filter>Windows</Filter>
+    </ClCompile>
     <ClCompile Include="Windows\Window.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
@@ -73,6 +97,9 @@
       <Filter>Xbox</Filter>
     </ClCompile>
     <ClCompile Include="Xbox\SystemFont.cpp">
+      <Filter>Xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="Xbox\Thread.cpp">
       <Filter>Xbox</Filter>
     </ClCompile>
     <ClCompile Include="Xbox\UWPApplication.cpp">

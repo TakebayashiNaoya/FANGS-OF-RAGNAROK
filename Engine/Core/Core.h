@@ -8,11 +8,15 @@
 
 #include "Core/CoreLog.h"
 #include "Core/CoreMacros.h"
+#include "Core/Job/JobCounter.h"
+#include "Core/Job/JobSystem.h"
+#include "Core/Job/ParallelFor.h"
 #include "Core/Log/Assert.h"
 #include "Core/Log/Log.h"
 #include "Core/Memory/Allocator.h"
 #include "Core/Memory/UniquePtr.h"
 #include "Core/Platform/SystemFont.h"
+#include "Core/Platform/Thread.h"
 #include "Core/Platform/Window.h"
 
 
