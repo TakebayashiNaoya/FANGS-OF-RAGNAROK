@@ -25,11 +25,13 @@ namespace fang::rhi
 			ComPtr<ID3D12Resource>   resource;           /**< バッファの実体。 */
 			D3D12_VERTEX_BUFFER_VIEW vertexBufferView{}; /**< Vertex のときに使う。GPU アドレス・大きさ・ストライド。 */
 			D3D12_INDEX_BUFFER_VIEW  indexBufferView{};  /**< Index のときに使う。 */
-			uint8_t*                 mappedPointer   = nullptr; /**< Map したまま持つ。動的バッファ以外は nullptr。 */
-			uint32_t                 capacityInBytes = 0;       /**< 確保した大きさ。書き込みが超えないか確かめる。 */
-			EnBufferKind             kind            = EnBufferKind::Vertex; /**< どちらのビューが有効かを決める。 */
-			uint32_t                 generation      = 0;                    /**< ハンドルの世代と突き合わせる。 */
-			bool                     isAlive         = false; /**< false なら空きスロット。次の生成で再利用される。 */
+
+			uint8_t* mappedPointer   = nullptr; /**< Map したまま持つ。動的バッファ以外は nullptr。 */
+			uint32_t capacityInBytes = 0;       /**< 確保した大きさ。書き込みが超えないか確かめる。 */
+
+			EnBufferKind kind       = EnBufferKind::Vertex; /**< どちらのビューが有効かを決める。 */
+			uint32_t     generation = 0;                    /**< ハンドルの世代と突き合わせる。 */
+			bool         isAlive    = false;                /**< false なら空きスロット。次の生成で再利用される。 */
 		};
 
 		/** @brief ハンドルから中身を引く。無効・解放済みならアサートに掛かる。 */

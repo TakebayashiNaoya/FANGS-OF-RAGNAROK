@@ -75,10 +75,10 @@ namespace fang::rhi
 		ComPtr<ID3D12DescriptorHeap> m_renderTargetViewHeap;           /**< バックバッファ用 RTV の置き場。 */
 		ComPtr<ID3D12Resource>       m_backBuffers[BACK_BUFFER_COUNT]; /**< 描画先。m_frameIndex が指す 1 枚に描く。 */
 
-		uint32_t m_renderTargetViewSize = 0;                           /**< RTV 1 個分のバイト数。GPU ごとに違う。 */
+		uint32_t m_renderTargetViewSize = 0; /**< RTV 1 個分のバイト数。GPU ごとに違う。 */
 
-		uint32_t m_frameIndex = 0;                                     /**< 今描いているバックバッファの番号。 */
-		uint32_t m_width      = 0;                                     /**< バックバッファの幅（ピクセル）。 */
-		uint32_t m_height     = 0;                                     /**< バックバッファの高さ（ピクセル）。 */
+		uint32_t m_frameIndex = 0; /**< 今描いているバックバッファの番号。 */
+		uint32_t m_width      = 0; /**< バックバッファの幅（ピクセル）。 */
+		uint32_t m_height     = 0; /**< バックバッファの高さ（ピクセル）。 */
 	};
 } // namespace fang::rhi
