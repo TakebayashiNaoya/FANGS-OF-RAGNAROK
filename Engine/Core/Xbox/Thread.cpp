@@ -1,6 +1,6 @@
 ﻿/**
  * @file Thread.cpp
- * @brief スレッドまわりの実装（Xbox / UWP）。物理コア数の取得とスレッド名付け。
+ * @brief スレッドまわりの実装（Xbox / UWP）。使えるコア数の取得とスレッド名付け。
  */
 #include "Pch.h"
 #include "Core/Platform/Thread.h"
@@ -18,17 +18,11 @@ namespace fang
 	} // namespace
 
 
-	uint32_t GetPhysicalCoreCount()
+	uint32_t GetUsableCoreCount()
 	{
-		// Jaguar 系のコアは SMT を持たないので、見えている論理プロセッサ数がそのまま物理コア数になる。
-		// ただし共有コアが除かれた値が返ることがあり、それに合わせるとワーカーが足りなくなる。
-		// 共有コアも使う前提なので、既知の構成を下限として扱う。
-		SYSTEM_INFO systemInfo{};
-		::GetNativeSystemInfo(&systemInfo);
-
-		const uint32_t processorCount = static_cast<uint32_t>(systemInfo.dwNumberOfProcessors);
-
-		return processorCount > XBOX_AVAILABLE_CORE_COUNT ? processorCount : XBOX_AVAILABLE_CORE_COUNT;
+		// OS に尋ねるとハード全体の 8 が返るが、それは「使える数」ではない。実機実測でワーカーが
+		// 7 本になり、6 コアへの過剰予約になっていたため、既知の割り当てに固定する。
+		return XBOX_AVAILABLE_CORE_COUNT;
 	}
 
 

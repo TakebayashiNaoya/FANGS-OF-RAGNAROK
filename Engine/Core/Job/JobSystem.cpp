@@ -157,7 +157,7 @@ namespace fang
 		if (workerCount == 0)
 		{
 			// メインスレッドも Wait の間は実行に参加するので、常駐ワーカーは 1 本減らす。
-			const uint32_t coreCount = GetPhysicalCoreCount();
+			const uint32_t coreCount = GetUsableCoreCount();
 			workerCount              = coreCount > 1 ? coreCount - 1 : 1;
 		}
 
