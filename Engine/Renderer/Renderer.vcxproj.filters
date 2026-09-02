@@ -4,12 +4,14 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="MeshRenderer.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RendererLog.h" />
     <ClInclude Include="TriangleRenderer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="MeshRenderer.cpp" />
     <ClCompile Include="Pch.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="TriangleRenderer.cpp" />

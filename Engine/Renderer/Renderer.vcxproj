@@ -26,12 +26,14 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
+    <ClInclude Include="MeshRenderer.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RendererLog.h" />
     <ClInclude Include="TriangleRenderer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="MeshRenderer.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -50,7 +52,16 @@
       <ShaderType>Pixel</ShaderType>
       <EntryPointName>PixelMain</EntryPointName>
     </FXCompile>
+    <FXCompile Include="Shaders\MeshVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <EntryPointName>VertexMain</EntryPointName>
+    </FXCompile>
+    <FXCompile Include="Shaders\MeshPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <EntryPointName>PixelMain</EntryPointName>
+    </FXCompile>
     <None Include="Shaders\Triangle.hlsli" />
+    <None Include="Shaders\Mesh.hlsli" />
   </ItemGroup>
   <ItemDefinitionGroup>
     <FXCompile>
