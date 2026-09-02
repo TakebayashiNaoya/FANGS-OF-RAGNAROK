@@ -281,7 +281,7 @@ namespace fang
 		// 積む前に増やす。積んでから増やすと、その間に前のジョブが終わって 0 になり、Wait が先に抜ける。
 		if (finishCounter != nullptr)
 		{
-			finishCounter->m_value.fetch_add(1, std::memory_order_relaxed);
+			IncrementCounter(*finishCounter);
 		}
 
 		const uint32_t workerIndex = FindWorkerIndex();
@@ -289,7 +289,8 @@ namespace fang
 		if (jobIndex == INVALID_JOB_INDEX)
 		{
 			// 依存付きは今走らせると順序が壊れるし、空くのを待つとライブロックになる。回復手段がない。
-			if (desc.waitCounter != nullptr && !desc.waitCounter->IsComplete())
+			// 見るのは公開済みの完了でなく残り数。まだ 0 でないなら、このジョブは今は走れない。
+			if (desc.waitCounter != nullptr && desc.waitCounter->GetValue() != 0)
 			{
 				FANG_FATAL("ジョブプールが満杯で、依存付きのジョブを積めない (上限 {} 件)", JOB_POOL_CAPACITY);
 			}
@@ -313,7 +314,8 @@ namespace fang
 		if (desc.waitCounter != nullptr && TryPushPending(*desc.waitCounter, jobIndex))
 		{
 			// 積んだ直後に 0 になっていた場合、流す役が誰もいない。自分で拾い直して塞ぐ。
-			if (desc.waitCounter->IsComplete())
+			// ここも残り数で見る。完了フラグで見ると、引き取り済みのリストに積んだ分が取り残される。
+			if (desc.waitCounter->GetValue() == 0)
 			{
 				DispatchPendingList(ClaimPendingList(*desc.waitCounter), workerIndex);
 			}
@@ -352,14 +354,16 @@ namespace fang
 				continue;
 			}
 
-			// 仕事も無く、まだ終わっていない。カウンタの値そのもので寝て、0 にした側に起こしてもらう。
-			const uint32_t observedValue = counter.m_value.load(std::memory_order_acquire);
-			if (observedValue == 0)
+			// 仕事も無く、まだ終わっていない。寝る先はカウンタでなく JobSystem のチケット。カウンタは
+			// 完了と同時に壊されてよいので、そこで寝ると死んだ番地で寝続けることになる。
+			// 通し番号を控えてから最終確認する。控えた後に公開されたら番号が変わり、wait は素通りする。
+			const uint32_t observedTicket = m_completionTicket.load(std::memory_order_acquire);
+			if (counter.IsComplete())
 			{
 				break;
 			}
 
-			counter.m_value.wait(observedValue, std::memory_order_acquire);
+			m_completionTicket.wait(observedTicket, std::memory_order_acquire);
 			spinCount = 0;
 		}
 	}
@@ -543,8 +547,9 @@ namespace fang
 
 	void JobSystem::DispatchJob(uint32_t jobIndex, uint32_t workerIndex)
 	{
+		// 完了フラグでなく残り数で見る。引き取り役が公開を終える前に流された分も、依存は解けている。
 		FANG_ASSERT(
-			m_jobPool[jobIndex].waitCounter == nullptr || m_jobPool[jobIndex].waitCounter->IsComplete(),
+			m_jobPool[jobIndex].waitCounter == nullptr || m_jobPool[jobIndex].waitCounter->GetValue() == 0,
 			"依存が解けていないジョブを実行待ちに入れた"
 		);
 
@@ -578,6 +583,22 @@ namespace fang
 		{
 			// 積んだ先で即実行されると nextIndex が空きリストのものに書き換わるので、先に控える。
 			const uint32_t nextIndex = m_jobPool[jobIndex].nextIndex.load(std::memory_order_relaxed);
+
+			// 0 に達したカウンタへ続けて積む使い方があるため、引き取りと入れ違いに残り数が増え、
+			// 依存の解けていないジョブを引き取ってしまうことがある。その分は保留リストへ戻す
+			// （Submit と同じく、戻した直後の 0 到達は自分で拾い直す）。
+			JobCounter* const waitCounter = m_jobPool[jobIndex].waitCounter;
+			if (waitCounter != nullptr && TryPushPending(*waitCounter, jobIndex))
+			{
+				if (waitCounter->GetValue() == 0)
+				{
+					DispatchPendingList(ClaimPendingList(*waitCounter), workerIndex);
+				}
+
+				jobIndex = nextIndex;
+				continue;
+			}
+
 			DispatchJob(jobIndex, workerIndex);
 			jobIndex = nextIndex;
 		}
@@ -585,7 +606,8 @@ namespace fang
 
 	bool JobSystem::TryPushPending(JobCounter& counter, uint32_t jobIndex)
 	{
-		if (counter.m_value.load(std::memory_order_acquire) == 0)
+		// 残り数で見る。完了フラグで見ると、引き取りの済んだリストに積んでしまい取り残される。
+		if (counter.GetValue() == 0)
 		{
 			return false;
 		}
@@ -621,21 +643,98 @@ namespace fang
 		return INVALID_JOB_INDEX;
 	}
 
+	void JobSystem::IncrementCounter(JobCounter& counter)
+	{
+		// 増やすのと完了フラグを下ろすのを 1 回の CAS で済ませる。別々にすると、下ろした後に前の代の
+		// 引き取り役が完了を立て直し、走っているジョブを置いて Wait が抜ける。
+		// 通し番号も一緒に進める。これがないと「0 ➡ 積む ➡ また 0」で状態語が元の値に戻り、公開しよう
+		// としている引き取り役の CAS が通ってしまい、その間に積まれた保留ジョブが置き去りになる。
+		uint64_t state     = counter.m_state.load(std::memory_order_relaxed);
+		uint64_t nextState = 0;
+		do
+		{
+			const uint64_t remainingCount = state & JobCounter::REMAINING_COUNT_MASK;
+			FANG_ASSERT(remainingCount < JobCounter::REMAINING_COUNT_MASK, "1 つのカウンタで数えられる上限を超えた");
+
+			nextState = (remainingCount + 1) | (state & JobCounter::DISPATCH_OWNER_FLAG) |
+						((state & JobCounter::SUBMIT_SERIAL_MASK) + JobCounter::SUBMIT_SERIAL_UNIT);
+		} while (!counter.m_state
+					  .compare_exchange_weak(state, nextState, std::memory_order_acq_rel, std::memory_order_relaxed));
+	}
+
 	void JobSystem::DecrementCounter(JobCounter& counter, uint32_t workerIndex)
 	{
-		const uint32_t previousValue = counter.m_value.fetch_sub(1, std::memory_order_acq_rel);
-		FANG_ASSERT(previousValue > 0, "カウンタを 0 より下に減らした。Submit と完了の数が合っていない");
-		if (previousValue != 1)
+		// 減らすのと「引き取り役を名乗る」のも 1 回の CAS で済ませる。別々にすると、名乗るまでの間に
+		// 次の Submit と完了が走り抜けて、引き取り役が 2 人になる。
+		uint64_t state           = counter.m_state.load(std::memory_order_relaxed);
+		uint64_t nextState       = 0;
+		bool     isDispatchOwner = false;
+		do
 		{
+			const uint64_t remainingCount = state & JobCounter::REMAINING_COUNT_MASK;
+			FANG_ASSERT(remainingCount > 0, "カウンタを 0 より下に減らした。Submit と完了の数が合っていない");
+			FANG_ASSERT((state & JobCounter::COMPLETION_FLAG) == 0, "まだ残っているのに完了が公開されている");
+
+			const uint64_t nextRemainingCount = remainingCount - 1;
+			const uint64_t nextOwnerFlag =
+				(nextRemainingCount == 0) ? JobCounter::DISPATCH_OWNER_FLAG : (state & JobCounter::DISPATCH_OWNER_FLAG);
+
+			isDispatchOwner = (nextRemainingCount == 0) && ((state & JobCounter::DISPATCH_OWNER_FLAG) == 0);
+			nextState       = nextRemainingCount | nextOwnerFlag | (state & JobCounter::SUBMIT_SERIAL_MASK);
+		} while (!counter.m_state
+					  .compare_exchange_weak(state, nextState, std::memory_order_acq_rel, std::memory_order_relaxed));
+
+		if (!isDispatchOwner)
+		{
+			// 引き取り役が別にいる。ここでカウンタに触ると、公開された後の番地を触ることになる。
 			return;
 		}
 
-		// 0 になった。起こした相手が Wait を抜けてカウンタを壊すかもしれないので、
-		// カウンタに触る用事（保留リストの引き取り）を先に済ませてから起こす。
-		const uint32_t firstPendingIndex = ClaimPendingList(counter);
-		counter.m_value.notify_all();
+		// 引き取り役。保留分を全部流してから完了を公開する。公開より後はカウンタに一切触らない。
+		while (true)
+		{
+			DispatchPendingList(ClaimPendingList(counter), workerIndex);
 
-		DispatchPendingList(firstPendingIndex, workerIndex);
+			uint64_t       observedState  = counter.m_state.load(std::memory_order_acquire);
+			const uint64_t remainingCount = observedState & JobCounter::REMAINING_COUNT_MASK;
+			if (remainingCount != 0)
+			{
+				// 流している間に次の Submit が来た。役を降りて、次に 0 まで減らす人へ渡す。
+				if (counter.m_state.compare_exchange_strong(
+						observedState,
+						remainingCount | (observedState & JobCounter::SUBMIT_SERIAL_MASK),
+						std::memory_order_release,
+						std::memory_order_relaxed
+					))
+				{
+					return;
+				}
+
+				continue;
+			}
+
+			if (UnpackListIndex(counter.m_pendingHead.load(std::memory_order_acquire)) != JobCounter::INVALID_JOB_INDEX)
+			{
+				// 引き取った後に積まれた分がある。流しきるまで公開しない。
+				continue;
+			}
+
+
+			// 通し番号ごと見比べるので、確かめてから公開するまでの間に Submit が挟まれば必ず外れる。
+			if (counter.m_state.compare_exchange_strong(
+					observedState,
+					JobCounter::COMPLETION_FLAG | (observedState & JobCounter::SUBMIT_SERIAL_MASK),
+					std::memory_order_release,
+					std::memory_order_relaxed
+				))
+			{
+				break;
+			}
+		}
+
+		// 公開したのでカウンタはもう見ない。寝ている Wait は JobSystem 側のチケットで起こす。
+		m_completionTicket.fetch_add(1, std::memory_order_release);
+		m_completionTicket.notify_all();
 	}
 
 	void JobSystem::WorkerMain(uint32_t workerIndex)

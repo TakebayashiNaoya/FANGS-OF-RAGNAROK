@@ -132,6 +132,7 @@ namespace fang
 		void                   DispatchPendingList(uint32_t firstJobIndex, uint32_t workerIndex);
 		[[nodiscard]] bool     TryPushPending(JobCounter& counter, uint32_t jobIndex);
 		[[nodiscard]] uint32_t ClaimPendingList(JobCounter& counter);
+		void                   IncrementCounter(JobCounter& counter);
 		void                   DecrementCounter(JobCounter& counter, uint32_t workerIndex);
 		void                   WorkerMain(uint32_t workerIndex);
 		void                   WakeOneWorker();
@@ -162,6 +163,13 @@ namespace fang
 		 *          確かめてから寝るまで」の隙間で起こし損ねるが、値が変わっていれば wait は素通りする。
 		 */
 		std::atomic<uint32_t> m_submitTicket{ 0 };
+
+		/**
+		 * @brief どれかのカウンタが完了を公開するたびに増える通し番号。
+		 * @details Wait はカウンタでなくこれに atomic::wait する。カウンタは完了と同時に壊されてよい約束
+		 *          なので、そこで寝ると死んだ番地で寝続けることになる。
+		 */
+		std::atomic<uint32_t> m_completionTicket{ 0 };
 
 		std::atomic<uint32_t> m_runningThreadCount{ 0 };
 		std::atomic<bool>     m_isRunning{ false };
