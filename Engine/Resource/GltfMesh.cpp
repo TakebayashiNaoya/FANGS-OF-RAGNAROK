@@ -26,6 +26,15 @@ namespace fang
 		/** @brief 三角形 1 枚のインデックス数。 */
 		constexpr cgltf_size TRIANGLE_INDEX_COUNT = 3;
 
+		/** @brief 1 頂点が影響を受ける関節の数。glTF の JOINTS_0 / WEIGHTS_0 は 4 つ組で固定。 */
+		constexpr cgltf_size JOINT_INFLUENCE_COUNT = 4;
+
+		/** @brief 関節の番号を 8 bit で持つので、これを超える番号が来たらエラーにする。 */
+		constexpr cgltf_uint MAX_JOINT_INDEX = 255;
+
+		/** @brief 4x4 行列の要素数。 */
+		constexpr cgltf_size MATRIX_ELEMENT_COUNT = 16;
+
 		/**
 		 * @brief cgltf_data を持ち、どの経路で抜けても解放する入れ物。
 		 * @details 例外を使わないので、早期 return のたびに cgltf_free を書くとどこかで必ず忘れる。
@@ -185,6 +194,234 @@ namespace fang
 
 			return true;
 		}
+
+		/**
+		 * @brief 逆バインド行列を読み、左手系へ直して詰める。
+		 * @details glTF の行列は列優先で並んでいる ➡ 16 個をそのまま写すと、行優先ストレージ + 行ベクトル
+		 *          規約の Matrix4x4 として正しく収まる。ここで転置を書き足すと逆に壊れる。
+		 * @return 型が MAT4 でないか、読み出しに失敗したら false。
+		 */
+		[[nodiscard]] bool ReadInverseBindMatrices(const cgltf_accessor& accessor, std::vector<Matrix4x4>* outMatrices)
+		{
+			if (accessor.type != cgltf_type_mat4)
+			{
+				return false;
+			}
+
+			outMatrices->resize(accessor.count);
+			for (cgltf_size index = 0; index < accessor.count; ++index)
+			{
+				Matrix4x4 matrix;
+				if (cgltf_accessor_read_float(&accessor, index, &matrix.m[0][0], MATRIX_ELEMENT_COUNT) == 0)
+				{
+					return false;
+				}
+
+				(*outMatrices)[index] = ConvertToLeftHanded(matrix);
+			}
+
+			return true;
+		}
+
+		/**
+		 * @brief JOINTS_0 を読んで詰める。
+		 * @param jointCount 関節の本数。これ以上の番号が来たら壊れたデータなのでエラーにする。
+		 * @return 型が VEC4 でない / 読み出しに失敗した / 番号が範囲外、のどれかなら false。
+		 */
+		[[nodiscard]] bool ReadJointIndices(
+			const cgltf_accessor&      accessor,
+			cgltf_size                 jointCount,
+			std::vector<JointIndices>* outJointIndices
+		)
+		{
+			if (accessor.type != cgltf_type_vec4)
+			{
+				return false;
+			}
+
+			outJointIndices->resize(accessor.count);
+			for (cgltf_size index = 0; index < accessor.count; ++index)
+			{
+				cgltf_uint values[JOINT_INFLUENCE_COUNT] = {};
+				if (cgltf_accessor_read_uint(&accessor, index, values, FANG_COUNT_OF(values)) == 0)
+				{
+					return false;
+				}
+
+				for (cgltf_size influence = 0; influence < JOINT_INFLUENCE_COUNT; ++influence)
+				{
+					if (values[influence] > MAX_JOINT_INDEX || values[influence] >= jointCount)
+					{
+						FANG_LOG_ERROR(
+							Resource,
+							"glTF の関節番号が範囲外: {}（関節は {} 本）",
+							values[influence],
+							jointCount
+						);
+						return false;
+					}
+
+					(*outJointIndices)[index].joints[influence] = static_cast<uint8_t>(values[influence]);
+				}
+			}
+
+			return true;
+		}
+
+		/**
+		 * @brief WEIGHTS_0 を読み、合計が 1 になるよう正規化して詰める。
+		 * @details 正規化をここで済ませるとシェーダ側が割り算を持たずに済む。合計が 0 の頂点は
+		 *          先頭の関節に丸ごと預ける ➡ 原点に取り残されるより、根元に付いて動くほうが異常に気づける。
+		 * @return 型が VEC4 でないか、読み出しに失敗したら false。
+		 */
+		[[nodiscard]] bool ReadJointWeights(const cgltf_accessor& accessor, std::vector<Vector4>* outWeights)
+		{
+			if (accessor.type != cgltf_type_vec4)
+			{
+				return false;
+			}
+
+			outWeights->resize(accessor.count);
+			for (cgltf_size index = 0; index < accessor.count; ++index)
+			{
+				float values[JOINT_INFLUENCE_COUNT] = {};
+				if (cgltf_accessor_read_float(&accessor, index, values, FANG_COUNT_OF(values)) == 0)
+				{
+					return false;
+				}
+
+				const float total = values[0] + values[1] + values[2] + values[3];
+				if (total > 0.0f)
+				{
+					const float scale    = 1.0f / total;
+					(*outWeights)[index] = Vector4{
+						values[0] * scale,
+						values[1] * scale,
+						values[2] * scale,
+						values[3] * scale,
+					};
+				}
+				else
+				{
+					(*outWeights)[index] = Vector4{ 1.0f, 0.0f, 0.0f, 0.0f };
+				}
+			}
+
+			return true;
+		}
+
+		/**
+		 * @brief 読んだメッシュを使っているノードから skin を引く。
+		 * @details ノードを辿るのは、skin が複数ある glTF で「このメッシュの skin」を取り違えないため。
+		 * @return 見つからなければ nullptr。スキンの無い glTF はここに来る。
+		 */
+		[[nodiscard]] const cgltf_skin* FindSkinForMesh(const cgltf_data& data, const cgltf_mesh& mesh)
+		{
+			for (cgltf_size index = 0; index < data.nodes_count; ++index)
+			{
+				const cgltf_node& node = data.nodes[index];
+				if (node.mesh == &mesh && node.skin != nullptr)
+				{
+					return node.skin;
+				}
+			}
+
+			return nullptr;
+		}
+
+		/** @brief glTF から取り出した骨の情報。Load が受け取ってメンバへ移す。 */
+		struct SkinSource
+		{
+			std::vector<JointIndices> jointIndices;
+			std::vector<Vector4>      jointWeights;
+			std::vector<Matrix4x4>    inverseBindMatrices;
+			std::vector<std::string>  jointNames;
+		};
+
+		/**
+		 * @brief 骨の情報をまとめて読む。
+		 * @details 骨が無い glTF は「読めた（中身は空）」で返す。静的なメッシュも同じ経路で扱いたいため。
+		 * @return 骨があるのに一部が欠けている / 壊れている場合だけ false。
+		 */
+		[[nodiscard]] bool ReadSkin(
+			const cgltf_data&      data,
+			const cgltf_mesh&      mesh,
+			const cgltf_primitive& primitive,
+			SkinSource*            outSkin
+		)
+		{
+			const cgltf_accessor* jointAccessor  = FindAttributeAccessor(primitive, cgltf_attribute_type_joints, 0);
+			const cgltf_accessor* weightAccessor = FindAttributeAccessor(primitive, cgltf_attribute_type_weights, 0);
+			const cgltf_skin*     skin           = FindSkinForMesh(data, mesh);
+
+			if (jointAccessor == nullptr && weightAccessor == nullptr && skin == nullptr)
+			{
+				return true;
+			}
+
+			if (jointAccessor == nullptr || weightAccessor == nullptr || skin == nullptr)
+			{
+				FANG_LOG_ERROR(Resource, "glTF の JOINTS_0 / WEIGHTS_0 / skin のどれかが欠けている");
+				return false;
+			}
+
+			if (skin->inverse_bind_matrices == nullptr)
+			{
+				FANG_LOG_ERROR(Resource, "glTF の skin に逆バインド行列が無い");
+				return false;
+			}
+
+			// 5 本目以降の重みは JOINTS_1 に来る。狼は 4 本以内に収まっているので、来ても捨てて描き続ける。
+			if (FindAttributeAccessor(primitive, cgltf_attribute_type_joints, 1) != nullptr)
+			{
+				FANG_LOG_WARNING(Resource, "1 頂点あたりの重みが 4 本を超えている。5 本目以降は捨てる");
+			}
+
+			if (!ReadInverseBindMatrices(*skin->inverse_bind_matrices, &outSkin->inverseBindMatrices))
+			{
+				FANG_LOG_ERROR(Resource, "glTF の逆バインド行列を読めなかった");
+				return false;
+			}
+
+			if (outSkin->inverseBindMatrices.size() != skin->joints_count)
+			{
+				FANG_LOG_ERROR(
+					Resource,
+					"glTF の逆バインド行列の数が関節の数と合っていない: {} と {}",
+					outSkin->inverseBindMatrices.size(),
+					skin->joints_count
+				);
+				return false;
+			}
+
+			if (!ReadJointIndices(*jointAccessor, skin->joints_count, &outSkin->jointIndices))
+			{
+				FANG_LOG_ERROR(Resource, "glTF の JOINTS_0 を読めなかった");
+				return false;
+			}
+
+			if (!ReadJointWeights(*weightAccessor, &outSkin->jointWeights))
+			{
+				FANG_LOG_ERROR(Resource, "glTF の WEIGHTS_0 を読めなかった");
+				return false;
+			}
+
+			// 名前は ozz の並びと突き合わせる鍵になる。無名の関節があると対応表が作れないのでエラーにする。
+			outSkin->jointNames.reserve(skin->joints_count);
+			for (cgltf_size index = 0; index < skin->joints_count; ++index)
+			{
+				const cgltf_node* joint = skin->joints[index];
+				if (joint == nullptr || joint->name == nullptr || joint->name[0] == '\0')
+				{
+					FANG_LOG_ERROR(Resource, "glTF の {} 番目の関節に名前が無い", index);
+					return false;
+				}
+
+				outSkin->jointNames.emplace_back(joint->name);
+			}
+
+			return true;
+		}
 	} // namespace
 
 
@@ -303,11 +540,39 @@ namespace fang
 			return false;
 		}
 
+		SkinSource skin;
+		if (!ReadSkin(data, mesh, primitive, &skin))
+		{
+			Clear();
+			return false;
+		}
+
+		if (!skin.inverseBindMatrices.empty() &&
+			(skin.jointIndices.size() != m_positions.size() || skin.jointWeights.size() != m_positions.size()))
+		{
+			FANG_LOG_ERROR(Resource, "glTF の関節番号か重みの数が頂点数と違う: {}", filePath);
+			Clear();
+			return false;
+		}
+
+		m_jointIndices        = std::move(skin.jointIndices);
+		m_jointWeights        = std::move(skin.jointWeights);
+		m_inverseBindMatrices = std::move(skin.inverseBindMatrices);
+		m_jointNameStorage    = std::move(skin.jointNames);
+
+		// 文字列の実体が動かなくなってから指す。先に作ると reserve の再確保で全部ぶら下がりになる。
+		m_jointNames.reserve(m_jointNameStorage.size());
+		for (const std::string& jointName : m_jointNameStorage)
+		{
+			m_jointNames.push_back(jointName.c_str());
+		}
+
 		FANG_LOG_INFO(
 			Resource,
-			"glTF を読んだ: 頂点 {} / 三角形 {}: {}",
+			"glTF を読んだ: 頂点 {} / 三角形 {} / 関節 {}: {}",
 			m_positions.size(),
 			m_indices.size() / TRIANGLE_INDEX_COUNT,
+			m_jointNames.size(),
 			filePath
 		);
 
@@ -321,5 +586,12 @@ namespace fang
 		m_normals.clear();
 		m_texCoords.clear();
 		m_indices.clear();
+
+		// 名前を指すポインタから先に捨てる。実体が消えた後に残っているとぶら下がりになる。
+		m_jointNames.clear();
+		m_jointNameStorage.clear();
+		m_jointIndices.clear();
+		m_jointWeights.clear();
+		m_inverseBindMatrices.clear();
 	}
 } // namespace fang

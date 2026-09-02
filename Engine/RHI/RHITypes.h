@@ -19,6 +19,7 @@ namespace fang::rhi
 		Float3,
 		Float4,
 		UByte4Normalized, /**< 0〜255 を 0.0〜1.0 として読む。頂点カラーに使う。 */
+		UByte4,           /**< 0〜255 を整数のまま読む。関節の番号に使う。 */
 	};
 
 	/** @brief バッファの用途。 */
@@ -26,6 +27,23 @@ namespace fang::rhi
 	{
 		Vertex,
 		Index,
+		Constant, /**< シェーダの定数バッファ。大きさは 256 バイト境界へ切り上げる。 */
+	};
+
+	/**
+	 * @brief パイプラインが持つルートパラメータの番号。
+	 * @details 番号は作った順で決まるので、GraphicsPipelineDesc の組み合わせごとに変わる。
+	 *          コマンドを積む側に数字を直接書くと、パラメータを 1 つ増やした日に絵だけが黙って壊れる。
+	 *          ➡ パイプラインを差したときにこの束を持ち回り、番号は必ずここから引く。
+	 */
+	struct RootParameterLayout
+	{
+		/** @brief そのパラメータを持っていないことを表す番号。 */
+		static constexpr uint32_t UNUSED = 0xFFFFFFFFu;
+
+		uint32_t rootConstants  = UNUSED; /**< b0 のルート定数。 */
+		uint32_t constantBuffer = UNUSED; /**< b1 のルート CBV。 */
+		uint32_t texture        = UNUSED; /**< t0 のディスクリプタテーブル。 */
 	};
 
 	/** @brief 頂点属性 1 つ。 */
@@ -49,6 +67,13 @@ namespace fang::rhi
 
 		/** @brief t0 にテクスチャを 1 枚差すか。差すならサンプラ s0 も付く。 */
 		bool hasTexture = false;
+
+		/**
+		 * @brief b1 に定数バッファを 1 本差すか。
+		 * @details ルート定数に載らない大きさのものを渡す口。ディスクリプタを持たないルート CBV なので
+		 *          ヒープの管理が増えない。骨のスキニング行列がこれで渡る。
+		 */
+		bool hasConstantBuffer = false;
 
 		bool isAlphaBlendEnabled = false; /**< 半透明合成をするか。有効にすると裏面も描く。 */
 		bool isDepthTestEnabled  = false; /**< 深度テストと深度書き込みをするか。3D の物を描くときに立てる。 */

@@ -50,6 +50,9 @@
     <ClInclude Include="Log\PlatformLogSink.h">
       <Filter>Log</Filter>
     </ClInclude>
+    <ClInclude Include="Math\JointIndices.h">
+      <Filter>Math</Filter>
+    </ClInclude>
     <ClInclude Include="Math\Matrix4x4.h">
       <Filter>Math</Filter>
     </ClInclude>
@@ -57,6 +60,9 @@
       <Filter>Math</Filter>
     </ClInclude>
     <ClInclude Include="Math\Vector3.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Vector4.h">
       <Filter>Math</Filter>
     </ClInclude>
     <ClInclude Include="Memory\Allocator.h">

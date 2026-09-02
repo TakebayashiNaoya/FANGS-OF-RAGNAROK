@@ -10,6 +10,19 @@
 
 namespace fang::rhi
 {
+	namespace
+	{
+		/** @brief 定数バッファの大きさと GPU アドレスに要る境界。D3D12 の決まりで 256 バイト。 */
+		constexpr uint32_t CONSTANT_BUFFER_ALIGNMENT = 256;
+
+		/** @brief value を alignment の倍数へ切り上げる。alignment は 2 のべき乗であること。 */
+		[[nodiscard]] uint32_t AlignUp(uint32_t value, uint32_t alignment)
+		{
+			return (value + alignment - 1) & ~(alignment - 1);
+		}
+	} // namespace
+
+
 	BufferHandle BufferPool::Create(
 		ID3D12Device& device,
 		const void*   data,
@@ -35,9 +48,13 @@ namespace fang::rhi
 		EnBufferKind  kind
 	)
 	{
+		// 定数バッファは 256 バイト境界でないと CBV が作れない。切り上げた端は書かないまま残る。
+		const uint32_t allocationSize =
+			kind == EnBufferKind::Constant ? AlignUp(capacityInBytes, CONSTANT_BUFFER_ALIGNMENT) : capacityInBytes;
+
 		// 今はアップロードヒープに置いたままにする。既定ヒープへの転送は後回し。
 		Entry entry;
-		if (!CreateUploadBuffer(&device, capacityInBytes, entry.resource))
+		if (!CreateUploadBuffer(&device, allocationSize, entry.resource))
 		{
 			return BufferHandle{};
 		}
@@ -50,21 +67,27 @@ namespace fang::rhi
 		}
 
 		entry.mappedPointer   = static_cast<uint8_t*>(mapped);
-		entry.capacityInBytes = capacityInBytes;
+		entry.capacityInBytes = allocationSize;
 		entry.kind            = kind;
 		entry.isAlive         = true;
 
-		if (kind == EnBufferKind::Vertex)
+		switch (kind)
 		{
-			entry.vertexBufferView.BufferLocation = entry.resource->GetGPUVirtualAddress();
-			entry.vertexBufferView.SizeInBytes    = capacityInBytes;
-			entry.vertexBufferView.StrideInBytes  = strideInBytes;
-		}
-		else
-		{
-			entry.indexBufferView.BufferLocation = entry.resource->GetGPUVirtualAddress();
-			entry.indexBufferView.SizeInBytes    = capacityInBytes;
-			entry.indexBufferView.Format         = strideInBytes == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+			case EnBufferKind::Vertex:
+				entry.vertexBufferView.BufferLocation = entry.resource->GetGPUVirtualAddress();
+				entry.vertexBufferView.SizeInBytes    = allocationSize;
+				entry.vertexBufferView.StrideInBytes  = strideInBytes;
+				break;
+
+			case EnBufferKind::Index:
+				entry.indexBufferView.BufferLocation = entry.resource->GetGPUVirtualAddress();
+				entry.indexBufferView.SizeInBytes    = allocationSize;
+				entry.indexBufferView.Format         = strideInBytes == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+				break;
+
+			case EnBufferKind::Constant:
+				// ビューを作らない。ルート CBV は GPU アドレスを直接受け取る。
+				break;
 		}
 
 		for (uint32_t index = 0; index < static_cast<uint32_t>(m_entries.size()); ++index)

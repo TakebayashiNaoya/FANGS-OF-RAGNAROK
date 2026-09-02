@@ -5,6 +5,7 @@
 #pragma once
 
 #include "RHI/RHIHandles.h"
+#include "RHI/RHITypes.h"
 #include <cstdint>
 
 
@@ -53,8 +54,14 @@ namespace fang::rhi
 		void SetRootConstants(const void* values, uint32_t count32BitValues);
 
 		/**
+		 * @brief b1 に定数バッファを差す。hasConstantBuffer で作ったパイプラインを差してから呼ぶ。
+		 * @param buffer EnBufferKind::Constant で作ったバッファ。中身は UpdateBuffer で先に書いておく。
+		 */
+		void SetConstantBuffer(BufferHandle buffer);
+
+		/**
 		 * @brief t0 にテクスチャを差す。
-		 * @param texture 差すテクスチャ。hasTexture かつ rootConstantCount > 0 で作ったパイプラインが前提。
+		 * @param texture 差すテクスチャ。hasTexture で作ったパイプラインが前提。
 		 */
 		void SetTexture(TextureHandle texture);
 
@@ -78,5 +85,8 @@ namespace fang::rhi
 
 		GraphicsDevice* m_device  = nullptr; /**< 生成元。ハンドルを D3D12 の実体に引くために使う。 */
 		void* m_nativeCommandList = nullptr; /**< 実体は ID3D12GraphicsCommandList*。ヘッダに型を出さないため void*。 */
+
+		/** @brief 今差さっているパイプラインのルートパラメータ番号。SetPipeline が入れ替える。 */
+		RootParameterLayout m_boundRootParameters;
 	};
 } // namespace fang::rhi

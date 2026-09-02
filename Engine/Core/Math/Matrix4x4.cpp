@@ -78,4 +78,21 @@ namespace fang
 	{
 		return ToMatrix4x4(DirectX::XMMatrixMultiply(ToXMMatrix(left), ToXMMatrix(right)));
 	}
+
+
+	Matrix4x4 ConvertToLeftHanded(const Matrix4x4& rightHanded)
+	{
+		Matrix4x4 result = rightHanded;
+
+		// S M S は、行と列のうち片方だけが Z（添字 2）の成分の符号を返す。両方 Z の m[2][2] は変わらない。
+		result.m[0][2] = -result.m[0][2];
+		result.m[1][2] = -result.m[1][2];
+		result.m[3][2] = -result.m[3][2];
+
+		result.m[2][0] = -result.m[2][0];
+		result.m[2][1] = -result.m[2][1];
+		result.m[2][3] = -result.m[2][3];
+
+		return result;
+	}
 } // namespace fang

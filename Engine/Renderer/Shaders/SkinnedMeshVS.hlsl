@@ -1,0 +1,48 @@
+// SkinnedMeshVS.hlsl
+// スキンメッシュの頂点シェーダー。骨の姿勢で頂点を変形してから MVP でクリップ座標へ移す。
+// 出力とピクセルシェーダーは静的メッシュと共有する（Mesh.hlsli / MeshPS.hlsl）。
+#include "Mesh.hlsli"
+
+// 骨の上限。SkinnedMeshRenderer の MAX_JOINT_COUNT と対。片方だけ変えると読み書きの範囲がずれる。
+#define MAX_JOINT_COUNT 64
+
+// 並びは SkinnedMeshRenderer が private に持つ頂点構造体との契約。片方だけ変えない。
+struct SkinnedVertexInput
+{
+	float3 position : POSITION;
+	float3 normal   : NORMAL;
+	float2 texCoord : TEXCOORD0;
+	uint4  joints   : BLENDINDICES;
+	float4 weights  : BLENDWEIGHT;
+};
+
+// C++ 側（Matrix4x4）は行優先ストレージ + 行ベクトル規約で、行列を転置せずそのまま渡してくる。
+// HLSL の定数バッファは既定で列優先に読むので、ここで転置が掛かって辻褄が合う。
+// ➡ mul(行列, ベクトル) と「行列が左」で書くと、C++ の合成順と一致する。骨行列も同じ規則。
+cbuffer cbPerObject : register(b0)
+{
+	float4x4 mvp;
+};
+
+cbuffer cbSkinning : register(b1)
+{
+	float4x4 boneMatrices[MAX_JOINT_COUNT];
+};
+
+VertexOutput VertexMain(SkinnedVertexInput input)
+{
+	// 重みは読み込みのときに合計 1 へ正規化してあるので、ここでは割り算をしない。
+	float4x4 skinMatrix = boneMatrices[input.joints.x] * input.weights.x
+	                    + boneMatrices[input.joints.y] * input.weights.y
+	                    + boneMatrices[input.joints.z] * input.weights.z
+	                    + boneMatrices[input.joints.w] * input.weights.w;
+
+	VertexOutput output;
+	output.position = mul(mvp, mul(skinMatrix, float4(input.position, 1.0)));
+
+	// w = 0 で掛けると平行移動が効かない ➡ 法線は向きだけが回る。等倍前提なので逆転置は要らない。
+	output.normal = mul(skinMatrix, float4(input.normal, 0.0)).xyz;
+
+	output.texCoord = input.texCoord;
+	return output;
+}
