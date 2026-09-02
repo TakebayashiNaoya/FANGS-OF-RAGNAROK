@@ -25,7 +25,7 @@ namespace fang
 	/** @brief ジョブシステムの生成条件。 */
 	struct JobSystemDesc
 	{
-		uint32_t workerCount = 0; /**< 常駐ワーカーの本数。0 なら物理コア数 − 1（Xbox は 5）。 */
+		uint32_t workerCount = 0; /**< 常駐ワーカーの本数。0 なら物理コア数 − 1（Xbox は 8 コア申告のため 7）。 */
 	};
 
 	/** @brief 積むジョブ 1 件の内容。 */
