@@ -6,12 +6,15 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="EngineContext.h" />
+    <ClInclude Include="FrameContext.h" />
+    <ClInclude Include="FramePipeline.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Runtime.h" />
     <ClInclude Include="RuntimeLog.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
+    <ClCompile Include="FramePipeline.cpp" />
     <ClCompile Include="Pch.cpp" />
     <ClCompile Include="Runtime.cpp" />
   </ItemGroup>

@@ -10,6 +10,9 @@
     <ClCompile Include="Source\FrameAllocatorTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\FramePipelineTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\JobSystemStressTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>

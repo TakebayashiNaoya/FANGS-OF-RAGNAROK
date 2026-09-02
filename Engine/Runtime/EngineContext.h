@@ -7,6 +7,7 @@
 namespace fang
 {
 	class FrameMemory;
+	class FramePipeline;
 	class JobSystem;
 
 	/**
@@ -18,5 +19,8 @@ namespace fang
 	{
 		JobSystem&   jobSystem;
 		FrameMemory& frameMemory;
+
+		/** @brief 1 周の並びと所要時間。上の層は数字を読むだけなので const で渡す。 */
+		const FramePipeline& framePipeline;
 	};
 } // namespace fang

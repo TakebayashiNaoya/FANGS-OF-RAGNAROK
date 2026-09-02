@@ -13,6 +13,7 @@
 
 namespace fang
 {
+	class FramePipeline;
 	class Window;
 } // namespace fang
 
@@ -61,6 +62,13 @@ namespace fang::editor
 		/** @brief 組み立てた UI を積む。BuildFrame と同じフレームで呼ぶ。 */
 		void Render(rhi::GraphicsDevice& device, rhi::CommandList& commandList);
 
+		/**
+		 * @brief パネルが求めているテスト負荷を走らせる。求められていなければ何もしない。
+		 * @param frameIndex 更新しているフレームの番号。描画側と違う面を触るために使う。
+		 * @threading 更新ジョブの中（ワーカースレッド）から呼ぶ。ImGui には触らない。
+		 */
+		void RunRequestedTestLoad(uint64_t frameIndex);
+
 
 	private:
 		/** @brief ImGui を描くための GPU 資源（パイプライン・フォントテクスチャ・動的バッファ）を作る。 */
@@ -84,6 +92,9 @@ namespace fang::editor
 
 	private:
 		JobSystemPanel m_jobSystemPanel; /**< ジョブシステムの稼働状況。 */
+
+		/** @brief 更新・描画・1 周の所要時間の出どころ。RunApplication が持っているものを借りるだけ。 */
+		const FramePipeline* m_framePipeline = nullptr;
 
 		rhi::PipelineHandle m_pipeline;           /**< ImGui 描画用のパイプライン。 */
 		rhi::TextureHandle  m_fontTexture;        /**< フォントアトラス。ImGui が焼いたビットマップの転送先。 */

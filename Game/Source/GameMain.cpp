@@ -31,6 +31,7 @@ namespace fang::game
 			[[nodiscard]] bool Initialize(const EngineContext&, rhi::GraphicsDevice&, const Window&) { return true; }
 			void               BuildFrame(const Window&, float) {}
 			void               Render(rhi::GraphicsDevice&, rhi::CommandList&) {}
+			void               RunRequestedTestLoad(uint64_t) {}
 			void               Shutdown(rhi::GraphicsDevice&) {}
 		};
 
@@ -54,15 +55,20 @@ namespace fang::game
 				return m_editorUI.Initialize(context, device, window);
 			}
 
-			void OnUpdate(const Window& window, float deltaTimeSeconds) override
+			[[nodiscard]] FrameData* OnUpdate(const FrameUpdateContext& context) override
 			{
 				// TODO: 狼・オーディン・昼夜の更新を書く。
-				m_editorUI.BuildFrame(window, deltaTimeSeconds);
+				m_editorUI.RunRequestedTestLoad(context.frameIndex);
+
+				// 次のフレームの描画へ渡すものはまだ無い。中身ができたら NewFrame で今の面へ作って返す。
+				return nullptr;
 			}
 
-			void OnRender(rhi::GraphicsDevice& device, rhi::CommandList& commandList) override
+			void OnRender(const FrameRenderContext& context) override
 			{
-				m_editorUI.Render(device, commandList);
+				// ImGui は NewFrame と Render を同じフレームで対にしないといけないので、組み立てもここで行う。
+				m_editorUI.BuildFrame(context.window, context.deltaTimeSeconds);
+				m_editorUI.Render(context.device, context.commandList);
 			}
 
 			void OnShutdown(rhi::GraphicsDevice& device) override { m_editorUI.Shutdown(device); }

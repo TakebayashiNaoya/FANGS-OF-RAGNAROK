@@ -10,6 +10,7 @@
 #include "Core/Platform/Window.h"
 #include "RHI/GraphicsDevice.h"
 #include "Renderer/TriangleRenderer.h"
+#include "Runtime/FramePipeline.h"
 #include "Runtime/RuntimeLog.h"
 #include <chrono>
 
@@ -22,6 +23,58 @@ namespace fang
 	namespace
 	{
 		constexpr rhi::ClearColor BACKGROUND_COLOR{ 0.05f, 0.06f, 0.09f, 1.0f };
+
+		/** @brief FramePipeline へ渡す、フレームループの持ち物。 */
+		struct FrameLoopContext
+		{
+			IApplication*        application      = nullptr;
+			rhi::GraphicsDevice* device           = nullptr;
+			Window*              window           = nullptr;
+			TriangleRenderer*    triangleRenderer = nullptr;
+
+			/** @brief バックバッファを取れなかったフレームで立つ。ループを抜ける合図。 */
+			bool hasDeviceError = false;
+		};
+
+		/** @brief 更新の本体。ワーカースレッドで走るので、渡された束の外へは手を伸ばさない。 */
+		FrameData* UpdateFrame(void* userData, const FrameUpdateContext& context)
+		{
+			auto& loopContext = *static_cast<FrameLoopContext*>(userData);
+			return loopContext.application->OnUpdate(context);
+		}
+
+		/** @brief 描画の本体。RHI を触るのはここだけなので、メインスレッドの持ち物が全部そろっている。 */
+		void RenderFrame(void* userData, const FrameData* frameData, uint64_t frameIndex, float deltaTimeSeconds)
+		{
+			auto& loopContext = *static_cast<FrameLoopContext*>(userData);
+
+			rhi::GraphicsDevice& device = *loopContext.device;
+			Window&              window = *loopContext.window;
+
+			// リサイズは更新と関わらないので、ジョブを投げた後のここで済ませる。BeginFrame の中では作り直せない。
+			if (window.ConsumeSizeChange())
+			{
+				device.Resize(window.GetWidth(), window.GetHeight());
+			}
+
+			// このフレームの記録準備（記録メモリの巻き戻し、バックバッファの描き込み先への切り替え、クリア）を
+			// 頼み、描画コマンドの書き込み先を受け取る。EndFrame まで有効。
+			rhi::CommandList* commandList = device.BeginFrame(BACKGROUND_COLOR);
+			if (commandList == nullptr)
+			{
+				loopContext.hasDeviceError = true;
+				return;
+			}
+
+			// 三角形を描く。描画コマンドを積むだけで、まだ GPU は動かない。
+			loopContext.triangleRenderer->Draw(*commandList, window.GetWidth(), window.GetHeight());
+
+			// 上の層に描画コマンドを積ませる。読ませるのは 1 つ前のフレームの更新が作ったもの。
+			const FrameRenderContext context{ device, *commandList, window, frameData, frameIndex, deltaTimeSeconds };
+			loopContext.application->OnRender(context);
+
+			device.EndFrame();
+		}
 	} // namespace
 
 
@@ -72,8 +125,20 @@ namespace fang
 			FANG_FATAL("三角形の準備に失敗した");
 		}
 
+		FrameLoopContext loopContext{};
+		loopContext.application      = &application;
+		loopContext.device           = &device;
+		loopContext.window           = &window;
+		loopContext.triangleRenderer = &triangleRenderer;
+
+		FramePipeline framePipeline;
+		if (!framePipeline.Initialize(jobSystem, frameMemory, &loopContext, &UpdateFrame, &RenderFrame))
+		{
+			FANG_FATAL("フレームパイプラインを組めなかった");
+		}
+
 		// 全部の初期化が終わってから束ねる。上の層はここで受けた参照を持ち続ける。
-		const EngineContext context{ jobSystem, frameMemory };
+		const EngineContext context{ jobSystem, frameMemory, framePipeline };
 		if (!application.OnInitialize(context, device, window))
 		{
 			FANG_FATAL("上の層の初期化に失敗した");
@@ -81,47 +146,26 @@ namespace fang
 
 		FANG_LOG_INFO(Runtime, "フレームループを開始");
 
+		// 1 周目に描く相手を作っておく。
+		framePipeline.Prime();
+
 		// TODO: Core/Platform に時間を測る口を作る。
 		auto previousTime = std::chrono::steady_clock::now();
 
 		// ウィンドウを閉じるまでループする。WM_QUIT を受け取ると PumpMessages() が false を返す。
-		while (window.PumpMessages())
+		while (!loopContext.hasDeviceError && window.PumpMessages())
 		{
-			// このフレームの置き場へ切り替える。前のフレームに確保したものは、次の切り替えまで残る。
-			frameMemory.BeginFrame();
-
-			// 前フレームからの経過時間を秒で計算する。
+			// 前フレームからの経過時間を秒で計算する。更新と描画のどちらにも同じ値を渡す。
 			const auto  currentTime      = std::chrono::steady_clock::now();
 			const float deltaTimeSeconds = std::chrono::duration<float>(currentTime - previousTime).count();
 			previousTime                 = currentTime;
 
-			// ウィンドウのサイズが変わったら、GPU 側のバックバッファもリサイズする。
-			if (window.ConsumeSizeChange())
-			{
-				device.Resize(window.GetWidth(), window.GetHeight());
-			}
-
-			// TODO: 更新と描画を別スレッドに分け、1 フレームずらして並走させる。
-			application.OnUpdate(window, deltaTimeSeconds);
-
-			// このフレームの記録準備（記録メモリの巻き戻し、バックバッファの描き込み先への切り替え、クリア）を
-			// 頼み、描画コマンドの書き込み先を受け取る。EndFrame まで有効。
-			rhi::CommandList* commandList = device.BeginFrame(BACKGROUND_COLOR);
-			if (commandList == nullptr)
-			{
-				break;
-			}
-
-			// 三角形を描く。描画コマンドを積むだけで、まだ GPU は動かない。
-			triangleRenderer.Draw(*commandList, window.GetWidth(), window.GetHeight());
-			// 上の層に描画コマンドを積ませる。
-			application.OnRender(device, *commandList);
-
-			device.EndFrame();
+			framePipeline.RunFrame(deltaTimeSeconds);
 		}
 
 		FANG_LOG_INFO(Runtime, "フレームループを終了");
 
+		framePipeline.Shutdown();
 		application.OnShutdown(device);
 		triangleRenderer.Shutdown(device);
 		device.Shutdown();
