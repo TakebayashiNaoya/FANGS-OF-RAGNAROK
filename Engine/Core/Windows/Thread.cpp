@@ -24,7 +24,7 @@ namespace fang
 	} // namespace
 
 
-	uint32_t GetPhysicalCoreCount()
+	uint32_t GetUsableCoreCount()
 	{
 		// hardware_concurrency() は論理プロセッサ数なので、ハイパースレッディングがあると
 		// 物理コアの倍が返る。ワーカーを倍作っても取り合いになるだけなので使わない。

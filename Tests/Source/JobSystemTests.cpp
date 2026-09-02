@@ -87,7 +87,7 @@ TEST_CASE("ワーカー数を指定しなければ物理コア数から 1 本引
 		return;
 	}
 
-	const uint32_t coreCount = fang::GetPhysicalCoreCount();
+	const uint32_t coreCount = fang::GetUsableCoreCount();
 	CHECK(coreCount >= 1);
 	CHECK(jobSystem.GetWorkerCount() == (coreCount > 1 ? coreCount - 1 : 1));
 	CHECK(jobSystem.GetExecutorCount() == jobSystem.GetWorkerCount() + 1);
