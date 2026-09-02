@@ -201,12 +201,15 @@ namespace fang
 			return false;
 		}
 
+		// 数の一致は求めない。gltf2ozz は glTF のノード階層全体からスケルトンを作るので、
+		// skin に入っていないノード（アーマチュアの根とメッシュのノード）まで関節になる
+		// ➡ 狼は skin が 59、スケルトンが 61。余った関節は誰も参照しないだけで害はない。
 		const ozz::span<const char* const> ozzJointNames = state.skeleton.joint_names();
-		if (gltfJointNames.size() != ozzJointNames.size())
+		if (gltfJointNames.size() > ozzJointNames.size())
 		{
 			FANG_LOG_ERROR(
 				Animation,
-				"glTF とスケルトンで関節の数が違う: {} と {}",
+				"メッシュの関節がスケルトンより多い: {} と {}",
 				gltfJointNames.size(),
 				ozzJointNames.size()
 			);

@@ -47,9 +47,10 @@ namespace fang
 		/**
 		 * @brief glTF の関節の並びから ozz の並びへの対応表を作る。
 		 * @param gltfJointNames glTF の skin.joints の並びに並んだ関節名。
-		 * @return 数が合わない / 名前がスケルトンに無い場合は false。
+		 * @return 名前がスケルトンに無い / スケルトンより関節が多い場合は false。
 		 * @details `gltf2ozz` は関節を並べ替えるので、メッシュの JOINTS_0 が指す番号は ozz の番号と一致しない。
 		 *          黙って番号をそのまま使うと、骨の対応がずれた姿勢が「それらしく」描かれてしまう。
+		 *          スケルトン側が多いのは正常（ノード階層全体から作られるため）。
 		 */
 		[[nodiscard]] bool BuildJointRemap(std::span<const char* const> gltfJointNames);
 
