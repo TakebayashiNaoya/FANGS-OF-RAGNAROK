@@ -58,6 +58,13 @@
     <None Include="Assets\Fonts\OFL.txt">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <!-- 狼のモデル。DeploymentContent を立てた項目だけがパッケージに入る -->
+    <None Include="Assets\Models\Wolf.gltf">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="Assets\Models\Wolf.bin">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
     <Image Include="$(MSBuildProjectDirectory)\Assets\StoreLogo.png" />
     <Image Include="$(MSBuildProjectDirectory)\Assets\Square150x150Logo.png" />
     <Image Include="$(MSBuildProjectDirectory)\Assets\Square44x44Logo.png" />

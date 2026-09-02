@@ -6,13 +6,20 @@
 #include "Runtime/Application.h"
 #include "Core/Job/JobSystem.h"
 #include "Core/Log/Assert.h"
+#include "Core/Math/Matrix4x4.h"
 #include "Core/Memory/FrameAllocator.h"
+#include "Core/Platform/AssetPath.h"
 #include "Core/Platform/Window.h"
+#include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
+#include "Renderer/MeshRenderer.h"
 #include "Renderer/TriangleRenderer.h"
+#include "Resource/GltfMesh.h"
 #include "Runtime/FramePipeline.h"
 #include "Runtime/RuntimeLog.h"
 #include <chrono>
+#include <cmath>
+#include <string>
 
 
 FANG_DEFINE_LOG_CATEGORY(Runtime);
@@ -24,6 +31,35 @@ namespace fang
 	{
 		constexpr rhi::ClearColor BACKGROUND_COLOR{ 0.05f, 0.06f, 0.09f, 1.0f };
 
+		/** @brief 円周率。Core/Math がまだ定数を持っていないのでここに置く。 */
+		constexpr float PI = 3.14159265f;
+
+		/** @brief 狼の glTF。アセットの根っこからの相対パス。 */
+		constexpr const char* WOLF_MODEL_RELATIVE_PATH = "Models\\Wolf.gltf";
+
+		// 狼の頂点の実測範囲は X[-92.6, 111.4]（体長 204）、Y[-0.39, 106.6]（高さ 107）、Z[±18.2]（幅 36）。
+		// 単位は 1 = 1cm。狼は X 軸に沿って立っているので、真横に当たる Z 方向から見るのが素直。
+		constexpr Vector3 CAMERA_TARGET{ 9.4f, 53.0f, 0.0f };
+		constexpr Vector3 CAMERA_UP{ 0.0f, 1.0f, 0.0f };
+
+		/** @brief 垂直画角。ラジアン。 */
+		constexpr float CAMERA_FIELD_OF_VIEW_Y_RADIANS = 60.0f * PI / 180.0f;
+
+		// 注視点からカメラまでの距離。カメラは水平に一周するので、どの角度でも全身が収まる距離が要る。
+		// 横: 16:9 なので tan(横半角) = (16/9) * tan(30 度) = 1.026 ➡ 横半角 45.7 度。水平面での外接円の
+		// 半径は sqrt(102^2 + 18.2^2) = 103.6 なので 103.6 / sin(45.7 度) = 144.5 あればよい。
+		// 縦: 手前を向いた縁でも高さは 107 あるため、外接円の外側に 53.5 / tan(30 度) = 92.7 が要る ➡ 196.2。
+		// 縦のほうが厳しいので、そちらに 15% ほど余白を足した値にする。
+		constexpr float CAMERA_DISTANCE = 225.0f;
+
+		// 近平面・遠平面。狼が 100〜200 単位なので、0.1 のような近さに置くと深度の精度を捨てることになる。
+		// 手前の面が奥を隠しているかを見るのが目的なので、狼の手前（225 - 117 = 108）より少し内側に置けば足りる。
+		constexpr float CAMERA_NEAR_Z = 10.0f;
+		constexpr float CAMERA_FAR_Z  = 2000.0f;
+
+		/** @brief カメラが狼の周りを 1 周する秒数。 */
+		constexpr float CAMERA_ORBIT_SECONDS = 20.0f;
+
 		/** @brief FramePipeline へ渡す、フレームループの持ち物。 */
 		struct FrameLoopContext
 		{
@@ -31,10 +67,47 @@ namespace fang
 			rhi::GraphicsDevice* device           = nullptr;
 			Window*              window           = nullptr;
 			TriangleRenderer*    triangleRenderer = nullptr;
+			MeshRenderer*        meshRenderer     = nullptr;
+
+			/** @brief 狼のメッシュ。読み込みに失敗すると無効なままで、そのときは描画だけを飛ばす。 */
+			MeshId wolfMesh;
+
+			/** @brief カメラの水平回転角（ラジアン）。入力の仕組みがまだ無いので時間で回す。 */
+			float cameraOrbitRadians = 0.0f;
 
 			/** @brief バックバッファを取れなかったフレームで立つ。ループを抜ける合図。 */
 			bool hasDeviceError = false;
 		};
+
+
+		/**
+		 * @brief 狼のモデルを読んで GPU へ載せる。
+		 * @details 失敗しても落とさない。モデルが出なくても三角形とエディタは動き、ゲームの本質でもないため。
+		 * @return 失敗したら無効な番号。呼び出し側はメッシュの描画だけを飛ばす。
+		 */
+		[[nodiscard]] MeshId LoadWolfMesh(rhi::GraphicsDevice& device, MeshRenderer& meshRenderer)
+		{
+			// GltfMesh は CreateMesh が済めば用済み。15MB の .bin 由来の配列を抱え続けないよう、
+			// この関数を抜けるところで手放す。
+			GltfMesh model;
+
+			const std::string filePath = MakeAssetPath(WOLF_MODEL_RELATIVE_PATH);
+			if (!model.Load(filePath.c_str()))
+			{
+				FANG_LOG_ERROR(Runtime, "狼のモデルを読めなかった: {}", filePath);
+				return MeshId{};
+			}
+
+			const MeshSource source{
+				.positions = model.GetPositions(),
+				.normals   = model.GetNormals(),
+				.texCoords = model.GetTexCoords(),
+				.indices   = model.GetIndices(),
+			};
+
+			// 失敗したときの理由は CreateMesh 側がログに出す。
+			return meshRenderer.CreateMesh(device, source);
+		}
 
 		/** @brief 更新の本体。ワーカースレッドで走るので、渡された束の外へは手を伸ばさない。 */
 		FrameData* UpdateFrame(void* userData, const FrameUpdateContext& context)
@@ -68,6 +141,49 @@ namespace fang
 
 			// 三角形を描く。描画コマンドを積むだけで、まだ GPU は動かない。
 			loopContext.triangleRenderer->Draw(*commandList, window.GetWidth(), window.GetHeight());
+
+			// 狼を描く。読めていなければメッシュの描画だけを飛ばし、ほかは今までどおり続ける。
+			if (loopContext.wolfMesh.IsValid())
+			{
+				// MeshRenderer はビューポートを設定しない。TriangleRenderer::Draw が内部で設定しているのに
+				// 頼ると、描く順を入れ替えた途端に壊れる。
+				commandList->SetViewport(window.GetWidth(), window.GetHeight());
+
+				// 入力の仕組みがまだ無いので、時間でカメラを回して全方向から形と前後関係を確かめられるようにする。
+				loopContext.cameraOrbitRadians += deltaTimeSeconds * (2.0f * PI / CAMERA_ORBIT_SECONDS);
+				if (loopContext.cameraOrbitRadians >= 2.0f * PI)
+				{
+					// 積みっぱなしにすると値が大きくなるほど角度の刻みが粗くなるので、1 周ごとに戻す。
+					loopContext.cameraOrbitRadians -= 2.0f * PI;
+				}
+
+				const Vector3 eye{
+					CAMERA_TARGET.x + std::sinf(loopContext.cameraOrbitRadians) * CAMERA_DISTANCE,
+					CAMERA_TARGET.y,
+					CAMERA_TARGET.z + std::cosf(loopContext.cameraOrbitRadians) * CAMERA_DISTANCE,
+				};
+
+				// 最小化すると幅も高さも 0 で来る。ゼロ除算と MakePerspectiveMatrix のアサートを避けて 1 で止める。
+				const float viewportWidth  = static_cast<float>(window.GetWidth() > 0 ? window.GetWidth() : 1);
+				const float viewportHeight = static_cast<float>(window.GetHeight() > 0 ? window.GetHeight() : 1);
+
+				const View view{
+					.viewProjection = Multiply(
+						MakeLookAtMatrix(eye, CAMERA_TARGET, CAMERA_UP),
+						MakePerspectiveMatrix(
+							CAMERA_FIELD_OF_VIEW_Y_RADIANS,
+							viewportWidth / viewportHeight,
+							CAMERA_NEAR_Z,
+							CAMERA_FAR_Z
+						)
+					),
+				};
+
+				// 実行中のヒープ確保は 0 が要件なので、std::vector を作らずスタックの配列を span で渡す。
+				// world は既定の単位行列のまま。狼はモデル座標のまま原点に置く。
+				const RenderItem items[] = { RenderItem{ .mesh = loopContext.wolfMesh } };
+				loopContext.meshRenderer->Draw(*commandList, view, items);
+			}
 
 			// 上の層に描画コマンドを積ませる。読ませるのは 1 つ前のフレームの更新が作ったもの。
 			const FrameRenderContext context{ device, *commandList, window, frameData, frameIndex, deltaTimeSeconds };
@@ -125,11 +241,26 @@ namespace fang
 			FANG_FATAL("三角形の準備に失敗した");
 		}
 
+		// メッシュ側は失敗しても FANG_FATAL にしない。モデルが出ないだけならゲームは続けられるし、
+		// 起動できないほうが困るため。三角形とエディタは今までどおり動く。
+		MeshRenderer meshRenderer;
+		MeshId       wolfMesh;
+		if (meshRenderer.Initialize(device))
+		{
+			wolfMesh = LoadWolfMesh(device, meshRenderer);
+		}
+		else
+		{
+			FANG_LOG_ERROR(Runtime, "メッシュ描画の準備に失敗した。モデルの表示だけを飛ばす");
+		}
+
 		FrameLoopContext loopContext{};
 		loopContext.application      = &application;
 		loopContext.device           = &device;
 		loopContext.window           = &window;
 		loopContext.triangleRenderer = &triangleRenderer;
+		loopContext.meshRenderer     = &meshRenderer;
+		loopContext.wolfMesh         = wolfMesh;
 
 		FramePipeline framePipeline;
 		if (!framePipeline.Initialize(jobSystem, frameMemory, &loopContext, &UpdateFrame, &RenderFrame))
@@ -168,6 +299,7 @@ namespace fang
 		framePipeline.Shutdown();
 		application.OnShutdown(device);
 		triangleRenderer.Shutdown(device);
+		meshRenderer.Shutdown(device);
 		device.Shutdown();
 		window.Shutdown();
 

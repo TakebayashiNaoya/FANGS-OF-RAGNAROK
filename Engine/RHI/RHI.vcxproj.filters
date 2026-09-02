@@ -7,6 +7,7 @@
     <ClInclude Include="BufferPool.h" />
     <ClInclude Include="CommandList.h" />
     <ClInclude Include="D3D12Common.h" />
+    <ClInclude Include="DepthBuffer.h" />
     <ClInclude Include="DescriptorHeap.h" />
     <ClInclude Include="GPUFence.h" />
     <ClInclude Include="GraphicsDevice.h" />
@@ -23,6 +24,7 @@
   <ItemGroup>
     <ClCompile Include="BufferPool.cpp" />
     <ClCompile Include="CommandList.cpp" />
+    <ClCompile Include="DepthBuffer.cpp" />
     <ClCompile Include="DescriptorHeap.cpp" />
     <ClCompile Include="GPUFence.cpp" />
     <ClCompile Include="GraphicsDevice.cpp" />

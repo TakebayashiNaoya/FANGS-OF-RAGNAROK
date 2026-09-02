@@ -149,6 +149,12 @@ namespace fang::rhi
 			return false;
 		}
 
+		// 深度は画面と同じ大きさで持つ。以降は Resize でスワップチェーンと一緒に作り直す。
+		if (!m_depthBuffer.Initialize(*m_device.Get(), desc.width, desc.height))
+		{
+			return false;
+		}
+
 		if (!m_shaderVisibleHeap.Initialize(*m_device.Get()))
 		{
 			return false;
@@ -222,6 +228,7 @@ namespace fang::rhi
 
 		m_fence.Shutdown();
 		m_shaderVisibleHeap.Shutdown();
+		m_depthBuffer.Shutdown();
 		m_swapChain.Shutdown();
 
 		m_commandQueue.Reset();
@@ -317,6 +324,7 @@ namespace fang::rhi
 		m_fence.WaitForGPU(*m_commandQueue.Get());
 
 		m_swapChain.Resize(*m_device.Get(), width, height);
+		m_depthBuffer.Resize(*m_device.Get(), width, height);
 	}
 
 
@@ -353,13 +361,17 @@ namespace fang::rhi
 		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES; // 全てのミップマップを対象にする
 		m_commandList->ResourceBarrier(1, &barrier);                              // 1 個のバリアを積む
 
-		// 今回のバックバッファを描画先に据えて、背景色で塗りつぶす。
+		// 今回のバックバッファと深度バッファを描画先に据える。
 		const D3D12_CPU_DESCRIPTOR_HANDLE renderTargetView = m_swapChain.GetCurrentRenderTargetView();
-		m_commandList->OMSetRenderTargets(1, &renderTargetView, FALSE, nullptr);
+		const D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView = m_depthBuffer.GetDepthStencilView();
+		m_commandList->OMSetRenderTargets(1, &renderTargetView, FALSE, &depthStencilView);
 
 		// クリア色を RGBA の float 配列に変換して渡す。D3D12 は 0.0〜1.0 の範囲で読む。
 		const float clearValues[4] = { clearColor.red, clearColor.green, clearColor.blue, clearColor.alpha };
 		m_commandList->ClearRenderTargetView(renderTargetView, clearValues, 0, nullptr);
+
+		// 深度は一番奥の 1.0 で埋める。PSO の DepthFunc が LESS なので、手前の面だけが残る。
+		m_commandList->ClearDepthStencilView(depthStencilView, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
 		// 公開型の記録口に生のコマンドリストを差して貸し出す。EndFrame で回収する。
 		m_commandListWrapper.m_nativeCommandList = m_commandList.Get();

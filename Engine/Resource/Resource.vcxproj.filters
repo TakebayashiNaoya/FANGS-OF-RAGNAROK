@@ -4,10 +4,14 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="GltfMesh.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="ResourceLog.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CgltfImplementation.cpp" />
+    <ClCompile Include="GltfMesh.cpp" />
     <ClCompile Include="Pch.cpp" />
     <ClCompile Include="Resource.cpp" />
   </ItemGroup>

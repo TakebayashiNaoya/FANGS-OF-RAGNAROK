@@ -51,6 +51,7 @@ namespace fang::rhi
 		bool hasTexture = false;
 
 		bool isAlphaBlendEnabled = false; /**< 半透明合成をするか。有効にすると裏面も描く。 */
+		bool isDepthTestEnabled  = false; /**< 深度テストと深度書き込みをするか。3D の物を描くときに立てる。 */
 	};
 
 	/** @brief デバイスの生成条件。 */
