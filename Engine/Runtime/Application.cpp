@@ -325,6 +325,8 @@ namespace fang
 			rhi::CommandList* commandList = device.BeginFrame(BACKGROUND_COLOR);
 			if (commandList == nullptr)
 			{
+				// ここに来るのは主にデバイスロスト。黙って畳むと「起動してすぐ閉じた」ようにしか見えないので残す。
+				FANG_LOG_ERROR(Runtime, "フレーム {} でバックバッファを開けなかった。フレームループを畳む", frameIndex);
 				loopContext.hasDeviceError = true;
 				return;
 			}
