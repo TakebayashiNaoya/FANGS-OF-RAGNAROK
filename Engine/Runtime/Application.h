@@ -12,11 +12,13 @@ namespace fang
 	class Window;
 } // namespace fang
 
+
 namespace fang::rhi
 {
 	class CommandList;
 	class GraphicsDevice;
 } // namespace fang::rhi
+
 
 namespace fang
 {
