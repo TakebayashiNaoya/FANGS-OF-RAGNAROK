@@ -5,7 +5,7 @@
 #include "Pch.h"
 #include "Editor/Xbox/GamepadReader.h"
 
-// C++/WinRT（例外前提）を使ってよいのはこの Xbox ディレクトリの TU だけ（規約 9）。例外は外に出さない。
+// C++/WinRT（例外前提）を使ってよいのはこの Xbox ディレクトリの TU だけ。例外は外に出さない。
 // この TU は imgui のヘッダを 1 本も include しない。プリプロセッサ定義を丸ごと上書きしている都合で
 // IMGUI_DISABLE_OBSOLETE_FUNCTIONS が落ちるため、読むと ImGuiIO の大きさが他の TU とずれる。
 #include <winrt/Windows.Foundation.Collections.h>

@@ -6,7 +6,7 @@
 #include "Core/Platform/UWPApplication.h"
 #include "Core/CoreLog.h"
 
-// C++/WinRT(例外前提)を使ってよいのはこの Xbox ディレクトリの TU だけ(規約 9)。例外は外に出さない。
+// C++/WinRT(例外前提)を使ってよいのはこの Xbox ディレクトリの TU だけ。例外は外に出さない。
 #include <winrt/Windows.ApplicationModel.Core.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.UI.Core.h>
