@@ -11,7 +11,7 @@ namespace fang::rhi
 {
 	/**
 	 * @brief シェーダ可視の SRV 置き場。
-	 * @details 先頭から順に配り、返却は受け付けない（Phase 3 でリングバッファにする）。
+	 * @details 先頭から順に配り、返却は受け付けない（リングバッファ化するまでの暫定）。
 	 * @threading メインスレッドのみ。
 	 */
 	class DescriptorHeap

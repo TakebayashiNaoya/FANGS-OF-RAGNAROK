@@ -74,10 +74,12 @@ namespace fang::editor
 		}
 	} // namespace
 
+
 	EditorUI::~EditorUI()
 	{
 		FANG_ASSERT(!m_isInitialized, "EditorUI::Shutdown が呼ばれていない");
 	}
+
 
 	bool EditorUI::Initialize(const EngineContext& context, rhi::GraphicsDevice& device, const Window& window)
 	{
@@ -124,6 +126,7 @@ namespace fang::editor
 		return true;
 	}
 
+
 	void EditorUI::Shutdown(rhi::GraphicsDevice& device)
 	{
 		if (!m_isInitialized)
@@ -137,6 +140,7 @@ namespace fang::editor
 
 		ImGui::DestroyContext();
 	}
+
 
 	void EditorUI::BuildFrame(const Window& window, float deltaTimeSeconds)
 	{
@@ -160,9 +164,10 @@ namespace fang::editor
 		}
 	}
 
+
 	void EditorUI::BuildEngineInfoWindow(const Window& window, float deltaTimeSeconds)
 	{
-		// TODO: Phase 2 以降、ヒエラルキー・インスペクタ・コンソールに置き換える。
+		// TODO: ヒエラルキー・インスペクタ・コンソールに置き換える。
 		// 自動サイズだけだと日本語ラベルの末尾が切れるので下限を決めておく。
 		ImGui::SetNextWindowSizeConstraints(ImVec2(ENGINE_INFO_WINDOW_MIN_WIDTH, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
 
@@ -187,6 +192,7 @@ namespace fang::editor
 		ImGui::End();
 	}
 
+
 	void EditorUI::Render(rhi::GraphicsDevice& device, rhi::CommandList& commandList)
 	{
 		FANG_ASSERT(m_isInitialized, "EditorUI が初期化されていない");
@@ -195,7 +201,6 @@ namespace fang::editor
 		RenderDrawData(device, commandList, *ImGui::GetDrawData());
 	}
 
-	/***************************************************************************************************/
 
 	bool EditorUI::InitializeBackend(rhi::GraphicsDevice& device)
 	{
@@ -231,6 +236,7 @@ namespace fang::editor
 		return m_fontTexture.IsValid();
 	}
 
+
 	void EditorUI::ShutdownBackend(rhi::GraphicsDevice& device)
 	{
 		device.DestroyBuffer(m_indexBuffer);
@@ -245,6 +251,7 @@ namespace fang::editor
 		m_vertexCapacity = 0;
 		m_indexCapacity  = 0;
 	}
+
 
 	void EditorUI::RenderDrawData(
 		rhi::GraphicsDevice& device,
@@ -326,6 +333,7 @@ namespace fang::editor
 		}
 	}
 
+
 	bool EditorUI::EnsureBufferCapacity(rhi::GraphicsDevice& device, const ImDrawData& drawData)
 	{
 		const uint32_t requiredVertexCount = static_cast<uint32_t>(drawData.TotalVtxCount);
@@ -356,6 +364,7 @@ namespace fang::editor
 
 		return m_vertexBuffer.IsValid() && m_indexBuffer.IsValid();
 	}
+
 
 	void EditorUI::CopyDrawData(rhi::GraphicsDevice& device, const ImDrawData& drawData)
 	{

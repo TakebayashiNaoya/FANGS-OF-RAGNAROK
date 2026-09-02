@@ -10,9 +10,10 @@ namespace fang::rhi
 {
 	namespace
 	{
-		/** @brief シェーダから見えるディスクリプタヒープの大きさ。Phase 3 でリングバッファにする。 */
+		/** @brief シェーダから見えるディスクリプタヒープの大きさ。リングバッファ化するまでの暫定。 */
 		constexpr uint32_t SHADER_VISIBLE_DESCRIPTOR_COUNT = 64;
 	} // namespace
+
 
 	bool DescriptorHeap::Initialize(ID3D12Device& device)
 	{
@@ -33,10 +34,12 @@ namespace fang::rhi
 		return true;
 	}
 
+
 	void DescriptorHeap::Shutdown()
 	{
 		m_heap.Reset();
 	}
+
 
 	bool DescriptorHeap::Allocate(uint32_t& outIndex)
 	{
@@ -52,12 +55,14 @@ namespace fang::rhi
 		return true;
 	}
 
+
 	D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::GetCPUHandle(uint32_t index) const
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE handle = m_heap->GetCPUDescriptorHandleForHeapStart();
 		handle.ptr += static_cast<SIZE_T>(index) * m_descriptorSize;
 		return handle;
 	}
+
 
 	D3D12_GPU_DESCRIPTOR_HANDLE DescriptorHeap::GetGPUHandle(uint32_t index) const
 	{

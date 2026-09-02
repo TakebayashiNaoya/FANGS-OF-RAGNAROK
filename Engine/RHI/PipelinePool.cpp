@@ -25,6 +25,7 @@ namespace fang::rhi
 		}
 	} // namespace
 
+
 	PipelineHandle PipelinePool::Create(ID3D12Device& device, const GraphicsPipelineDesc& desc)
 	{
 		D3D12_DESCRIPTOR_RANGE textureRange{};
@@ -169,6 +170,7 @@ namespace fang::rhi
 		return PipelineHandle{ static_cast<uint32_t>(m_entries.size() - 1), entry.generation };
 	}
 
+
 	void PipelinePool::Destroy(PipelineHandle handle)
 	{
 		if (!handle.IsValid() || handle.index >= m_entries.size())
@@ -187,10 +189,12 @@ namespace fang::rhi
 		entry.isAlive = false;
 	}
 
+
 	void PipelinePool::Shutdown()
 	{
 		m_entries.clear();
 	}
+
 
 	const PipelinePool::Entry& PipelinePool::Get(PipelineHandle handle) const
 	{

@@ -27,6 +27,7 @@ namespace fang::rhi
 		return handle;
 	}
 
+
 	BufferHandle BufferPool::CreateDynamic(
 		ID3D12Device& device,
 		uint32_t      capacityInBytes,
@@ -34,7 +35,7 @@ namespace fang::rhi
 		EnBufferKind  kind
 	)
 	{
-		// Phase 1 はアップロードヒープに置いたままにする。既定ヒープへの転送は Phase 3。
+		// 今はアップロードヒープに置いたままにする。既定ヒープへの転送は後回し。
 		Entry entry;
 		if (!CreateUploadBuffer(&device, capacityInBytes, entry.resource))
 		{
@@ -80,6 +81,7 @@ namespace fang::rhi
 		return BufferHandle{ static_cast<uint32_t>(m_entries.size() - 1), entry.generation };
 	}
 
+
 	void BufferPool::Update(BufferHandle handle, const void* data, uint32_t sizeInBytes)
 	{
 		FANG_ASSERT(handle.IsValid() && handle.index < m_entries.size(), "無効なバッファハンドル");
@@ -90,6 +92,7 @@ namespace fang::rhi
 
 		std::memcpy(entry.mappedPointer, data, sizeInBytes);
 	}
+
 
 	void BufferPool::Destroy(BufferHandle handle)
 	{
@@ -114,11 +117,13 @@ namespace fang::rhi
 		entry.isAlive = false;
 	}
 
+
 	void BufferPool::Shutdown()
 	{
 		// Map したままの資源も混ざるが、Unmap しないまま解放してよい（D3D12 が面倒を見る）。
 		m_entries.clear();
 	}
+
 
 	const BufferPool::Entry& BufferPool::Get(BufferHandle handle) const
 	{

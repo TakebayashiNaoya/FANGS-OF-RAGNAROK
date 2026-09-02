@@ -39,6 +39,7 @@ namespace fang::editor
 		constexpr ImVec4 WARNING_COLOR{ 1.0f, 0.45f, 0.4f, 1.0f };
 	} // namespace
 
+
 	bool JobSystemPanel::Initialize(const EngineContext& context)
 	{
 		m_jobSystem = &context.jobSystem;
@@ -52,6 +53,7 @@ namespace fang::editor
 		return true;
 	}
 
+
 	void JobSystemPanel::Shutdown()
 	{
 		m_testLoadValues.clear();
@@ -59,6 +61,7 @@ namespace fang::editor
 
 		m_jobSystem = nullptr;
 	}
+
 
 	void JobSystemPanel::BuildFrame(float deltaTimeSeconds)
 	{
@@ -95,7 +98,6 @@ namespace fang::editor
 		ImGui::End();
 	}
 
-	/***************************************************************************************************/
 
 #if FANG_ENABLE_PROFILER
 
@@ -120,6 +122,7 @@ namespace fang::editor
 
 		m_elapsedSecondsInInterval = 0.0f;
 	}
+
 
 	void JobSystemPanel::BuildExecutorTable()
 	{
@@ -193,6 +196,7 @@ namespace fang::editor
 		}
 	}
 
+
 	void JobSystemPanel::BuildJobPoolSection()
 	{
 		const uint32_t jobsInUseCount     = m_jobSystem->GetJobsInUseCount();
@@ -217,6 +221,7 @@ namespace fang::editor
 	}
 
 #endif
+
 
 	void JobSystemPanel::BuildTestLoadSection()
 	{
@@ -254,6 +259,7 @@ namespace fang::editor
 			);
 		}
 	}
+
 
 	void JobSystemPanel::RunTestLoad()
 	{

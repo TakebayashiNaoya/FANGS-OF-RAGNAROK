@@ -27,15 +27,18 @@ namespace fang
 			return static_cast<uint64_t>(index) | (static_cast<uint64_t>(serialNumber) << 32);
 		}
 
+
 		constexpr uint32_t UnpackListIndex(uint64_t head)
 		{
 			return static_cast<uint32_t>(head & 0xFFFFFFFFu);
 		}
 
+
 		constexpr uint32_t UnpackListSerialNumber(uint64_t head)
 		{
 			return static_cast<uint32_t>(head >> 32);
 		}
+
 
 		/**
 		 * @brief 配列を一括で確保して構築する。
@@ -59,6 +62,7 @@ namespace fang
 			return array;
 		}
 
+
 		template <typename T> void DeleteArray(IAllocator& allocator, T* array, size_t count)
 		{
 			if (array == nullptr)
@@ -74,6 +78,7 @@ namespace fang
 			allocator.Deallocate(array);
 		}
 	} // namespace
+
 
 	/**
 	 * @brief ジョブ 1 件。キャッシュライン 2 本ちょうどに収める。
@@ -93,6 +98,7 @@ namespace fang
 
 		unsigned char arguments[JobSystem::MAX_ARGUMENT_SIZE]{};
 	};
+
 
 	/**
 	 * @brief 実行に参加する 1 人分。0 番はメインスレッドの分で、スレッドを持たない。
@@ -134,6 +140,7 @@ namespace fang
 	{
 		Shutdown();
 	}
+
 
 	bool JobSystem::Initialize(const JobSystemDesc& desc)
 	{
@@ -225,6 +232,7 @@ namespace fang
 		return true;
 	}
 
+
 	void JobSystem::Shutdown()
 	{
 		if (m_workers == nullptr)
@@ -266,6 +274,7 @@ namespace fang
 
 		FANG_LOG_INFO(Core, "ジョブシステムを止めた");
 	}
+
 
 	void JobSystem::Submit(const JobDesc& desc, JobCounter* finishCounter)
 	{
@@ -326,6 +335,7 @@ namespace fang
 		DispatchJob(jobIndex, workerIndex);
 	}
 
+
 	void JobSystem::Wait(JobCounter& counter)
 	{
 		if (counter.IsComplete())
@@ -368,10 +378,12 @@ namespace fang
 		}
 	}
 
+
 	uint32_t JobSystem::GetRunningThreadCount() const
 	{
 		return m_runningThreadCount.load(std::memory_order_acquire);
 	}
+
 
 #if FANG_ENABLE_PROFILER
 	uint64_t JobSystem::GetExecutedJobCount(uint32_t workerIndex) const
@@ -380,26 +392,31 @@ namespace fang
 		return m_workers[workerIndex].executedJobCount.load(std::memory_order_relaxed);
 	}
 
+
 	uint32_t JobSystem::GetJobsInUseCount() const
 	{
 		return m_jobsInUse.load(std::memory_order_relaxed);
 	}
+
 
 	uint32_t JobSystem::GetPeakJobsInUseCount() const
 	{
 		return m_peakJobsInUse.load(std::memory_order_relaxed);
 	}
 
+
 	void JobSystem::ResetPeakJobsInUseCount()
 	{
 		m_peakJobsInUse.store(m_jobsInUse.load(std::memory_order_relaxed), std::memory_order_relaxed);
 	}
+
 
 	uint64_t JobSystem::GetInlineExecutedJobCount() const
 	{
 		return m_inlineExecutedJobCount.load(std::memory_order_relaxed);
 	}
 #endif
+
 
 	uint32_t JobSystem::FindWorkerIndex() const
 	{
@@ -414,6 +431,7 @@ namespace fang
 
 		return INVALID_WORKER_INDEX;
 	}
+
 
 	uint32_t JobSystem::AllocateJob()
 	{
@@ -448,6 +466,7 @@ namespace fang
 		}
 	}
 
+
 	void JobSystem::FreeJob(uint32_t jobIndex)
 	{
 		uint64_t head = m_freeListHead.load(std::memory_order_relaxed);
@@ -467,6 +486,7 @@ namespace fang
 			}
 		}
 	}
+
 
 	bool JobSystem::TryTakeJob(uint32_t workerIndex, uint32_t& outJobIndex)
 	{
@@ -500,6 +520,7 @@ namespace fang
 		return false;
 	}
 
+
 	void JobSystem::ExecuteJob(uint32_t jobIndex, uint32_t workerIndex)
 	{
 		Job& job = m_jobPool[jobIndex];
@@ -521,6 +542,7 @@ namespace fang
 			DecrementCounter(*finishCounter, workerIndex);
 		}
 	}
+
 
 	void JobSystem::ExecuteInline(const JobDesc& desc, JobCounter* finishCounter, uint32_t workerIndex)
 	{
@@ -544,6 +566,7 @@ namespace fang
 			DecrementCounter(*finishCounter, workerIndex);
 		}
 	}
+
 
 	void JobSystem::DispatchJob(uint32_t jobIndex, uint32_t workerIndex)
 	{
@@ -576,6 +599,7 @@ namespace fang
 		ExecuteJob(jobIndex, workerIndex);
 	}
 
+
 	void JobSystem::DispatchPendingList(uint32_t firstJobIndex, uint32_t workerIndex)
 	{
 		uint32_t jobIndex = firstJobIndex;
@@ -604,6 +628,7 @@ namespace fang
 		}
 	}
 
+
 	bool JobSystem::TryPushPending(JobCounter& counter, uint32_t jobIndex)
 	{
 		// 残り数で見る。完了フラグで見ると、引き取りの済んだリストに積んでしまい取り残される。
@@ -626,6 +651,7 @@ namespace fang
 		}
 	}
 
+
 	uint32_t JobSystem::ClaimPendingList(JobCounter& counter)
 	{
 		// 空なら 1 度も書かずに帰る。カウンタが 0 になった後で書きに行く時間を短くしたい。
@@ -642,6 +668,7 @@ namespace fang
 
 		return INVALID_JOB_INDEX;
 	}
+
 
 	void JobSystem::IncrementCounter(JobCounter& counter)
 	{
@@ -661,6 +688,7 @@ namespace fang
 		} while (!counter.m_state
 					  .compare_exchange_weak(state, nextState, std::memory_order_acq_rel, std::memory_order_relaxed));
 	}
+
 
 	void JobSystem::DecrementCounter(JobCounter& counter, uint32_t workerIndex)
 	{
@@ -737,6 +765,7 @@ namespace fang
 		m_completionTicket.notify_all();
 	}
 
+
 	void JobSystem::WorkerMain(uint32_t workerIndex)
 	{
 		char threadName[] = "FangJobWorker00";
@@ -792,11 +821,13 @@ namespace fang
 		m_runningThreadCount.fetch_sub(1, std::memory_order_release);
 	}
 
+
 	void JobSystem::WakeOneWorker()
 	{
 		m_submitTicket.fetch_add(1, std::memory_order_release);
 		m_submitTicket.notify_one();
 	}
+
 
 	void JobSystem::WakeAllWorkers()
 	{

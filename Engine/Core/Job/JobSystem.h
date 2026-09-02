@@ -122,21 +122,50 @@ namespace fang
 		struct Job;
 		struct Worker;
 
+		/** @brief 今のスレッドのワーカー番号。メインでもワーカーでもなければ INVALID_WORKER_INDEX。 */
 		[[nodiscard]] uint32_t FindWorkerIndex() const;
+
+		/** @brief 空きリストからジョブの枠を 1 つ取る。満杯なら INVALID_JOB_INDEX。 */
 		[[nodiscard]] uint32_t AllocateJob();
-		void                   FreeJob(uint32_t jobIndex);
-		[[nodiscard]] bool     TryTakeJob(uint32_t workerIndex, uint32_t& outJobIndex);
-		void                   ExecuteJob(uint32_t jobIndex, uint32_t workerIndex);
-		void                   ExecuteInline(const JobDesc& desc, JobCounter* finishCounter, uint32_t workerIndex);
-		void                   DispatchJob(uint32_t jobIndex, uint32_t workerIndex);
-		void                   DispatchPendingList(uint32_t firstJobIndex, uint32_t workerIndex);
-		[[nodiscard]] bool     TryPushPending(JobCounter& counter, uint32_t jobIndex);
+
+		/** @brief 枠を空きリストへ返す。 */
+		void FreeJob(uint32_t jobIndex);
+
+		/** @brief 自分の deque から取り、無ければ他人から奪う。どこにも無ければ false。 */
+		[[nodiscard]] bool TryTakeJob(uint32_t workerIndex, uint32_t& outJobIndex);
+
+		/** @brief ジョブを走らせ、枠を返し、完了カウンタを減らす。 */
+		void ExecuteJob(uint32_t jobIndex, uint32_t workerIndex);
+
+		/** @brief 枠が取れなかったときの縮退。積まずにその場で走らせる。 */
+		void ExecuteInline(const JobDesc& desc, JobCounter* finishCounter, uint32_t workerIndex);
+
+		/** @brief 実行待ちに入れる。deque が満杯ならその場で走らせる縮退。 */
+		void DispatchJob(uint32_t jobIndex, uint32_t workerIndex);
+
+		/** @brief 依存の解けた保留ジョブの列を実行待ちへ流す。まだ解けていない分は保留リストへ戻す。 */
+		void DispatchPendingList(uint32_t firstJobIndex, uint32_t workerIndex);
+
+		/** @brief カウンタの保留リストへ積む。残り数が既に 0 なら積まずに false。 */
+		[[nodiscard]] bool TryPushPending(JobCounter& counter, uint32_t jobIndex);
+
+		/** @brief 保留リストを丸ごと引き取る。空なら INVALID_JOB_INDEX。 */
 		[[nodiscard]] uint32_t ClaimPendingList(JobCounter& counter);
-		void                   IncrementCounter(JobCounter& counter);
-		void                   DecrementCounter(JobCounter& counter, uint32_t workerIndex);
-		void                   WorkerMain(uint32_t workerIndex);
-		void                   WakeOneWorker();
-		void                   WakeAllWorkers();
+
+		/** @brief 残り数を 1 増やし、完了の公開を取り消す。 */
+		void IncrementCounter(JobCounter& counter);
+
+		/** @brief 残り数を 1 減らす。0 にした側は保留分を流しきってから完了を公開する。 */
+		void DecrementCounter(JobCounter& counter, uint32_t workerIndex);
+
+		/** @brief ワーカースレッドの本体。仕事を探し、無ければ寝る。 */
+		void WorkerMain(uint32_t workerIndex);
+
+		/** @brief 眠っているワーカーを 1 人起こす。 */
+		void WakeOneWorker();
+
+		/** @brief 眠っているワーカーを全員起こす。 */
+		void WakeAllWorkers();
 
 		Worker* m_workers = nullptr; /**< 0 番はメインスレッドの分。スレッドを持たない。 */
 		Job*    m_jobPool = nullptr; /**< 固定長。実行中はここから増えも減りもしない。 */

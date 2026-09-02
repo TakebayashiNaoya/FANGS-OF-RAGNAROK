@@ -16,11 +16,13 @@ namespace fang
 	class Window;
 } // namespace fang
 
+
 namespace fang::rhi
 {
 	class CommandList;
 	class GraphicsDevice;
 } // namespace fang::rhi
+
 
 namespace fang::editor
 {
@@ -61,13 +63,22 @@ namespace fang::editor
 
 
 	private:
+		/** @brief ImGui を描くための GPU 資源（パイプライン・フォントテクスチャ・動的バッファ）を作る。 */
 		[[nodiscard]] bool InitializeBackend(rhi::GraphicsDevice& device);
-		void               ShutdownBackend(rhi::GraphicsDevice& device);
+
+		/** @brief InitializeBackend で作った資源を返す。 */
+		void ShutdownBackend(rhi::GraphicsDevice& device);
+
+		/** @brief ImGui が組んだ描画リストをコマンドリストへ積む。 */
 		void RenderDrawData(rhi::GraphicsDevice& device, rhi::CommandList& commandList, const ImDrawData& drawData);
 
+		/** @brief 頂点・インデックスバッファが今の描画量に足りなければ作り直す。 */
 		[[nodiscard]] bool EnsureBufferCapacity(rhi::GraphicsDevice& device, const ImDrawData& drawData);
-		void               CopyDrawData(rhi::GraphicsDevice& device, const ImDrawData& drawData);
 
+		/** @brief 全描画リストの頂点とインデックスをまとめて動的バッファへ写す。 */
+		void CopyDrawData(rhi::GraphicsDevice& device, const ImDrawData& drawData);
+
+		/** @brief フレーム時間などを出すエンジン情報ウィンドウを組み立てる。 */
 		void BuildEngineInfoWindow(const Window& window, float deltaTimeSeconds);
 
 
@@ -81,7 +92,7 @@ namespace fang::editor
 		uint32_t            m_vertexCapacity = 0; /**< 今のバッファに入る頂点数。足りなくなったら作り直す。 */
 		uint32_t            m_indexCapacity  = 0; /**< 今のバッファに入るインデックス数。足りなくなったら作り直す。 */
 
-		// TODO: フレームアロケータができたら差し替える（Phase 2）。
+		// TODO: フレームアロケータができたら差し替える。
 		std::vector<ImDrawVert> m_vertexStaging; /**< 全描画リストの頂点をまとめて 1 回で転送するための作業領域。 */
 		std::vector<ImDrawIdx>  m_indexStaging;  /**< 同上のインデックス版。 */
 

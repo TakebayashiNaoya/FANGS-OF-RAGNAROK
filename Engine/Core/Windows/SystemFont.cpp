@@ -20,6 +20,7 @@ namespace fang
 		};
 	} // namespace
 
+
 	std::string GetSystemUIFontPath()
 	{
 		wchar_t    fontsDirectory[MAX_PATH]{};

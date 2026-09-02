@@ -36,6 +36,7 @@ namespace fang::game
 
 #endif
 
+
 		/**
 		 * @brief ゲーム本体。Runtime のフレームループから呼ばれる。
 		 * @details Game 側でエディタに触れるのはこのクラスの中だけ。
@@ -55,7 +56,7 @@ namespace fang::game
 
 			void OnUpdate(const Window& window, float deltaTimeSeconds) override
 			{
-				// TODO: 狼・オーディン・昼夜の更新を書く（Phase 6）。
+				// TODO: 狼・オーディン・昼夜の更新を書く。
 				m_editorUI.BuildFrame(window, deltaTimeSeconds);
 			}
 
@@ -71,6 +72,7 @@ namespace fang::game
 			EditorUI m_editorUI; /**< エディタ UI。Release 構成では空の代役に差し替わる。 */
 		};
 	} // namespace
+
 
 	int Run()
 	{

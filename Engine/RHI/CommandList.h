@@ -15,7 +15,7 @@ namespace fang::rhi
 	/**
 	 * @brief 1 フレーム分のコマンドを積む口。
 	 * @details 実体は GraphicsDevice が持つ。BeginFrame が返したポインタは EndFrame まで有効。
-	 * @threading 受け取ったスレッドのみ。並列記録は Phase 3 で複数本に分ける。
+	 * @threading 受け取ったスレッドのみ。並列記録にするときは複数本に分ける。
 	 */
 	class CommandList
 	{

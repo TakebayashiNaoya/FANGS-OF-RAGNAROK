@@ -15,11 +15,12 @@ namespace fang::rhi
 	class GraphicsDevice;
 } // namespace fang::rhi
 
+
 namespace fang
 {
 	/**
 	 * @brief 三角形を 1 枚描く。
-	 * @details Phase 1 で RHI の疎通を見るためだけのもの。Phase 3 で RenderGraph に置き換える。
+	 * @details RHI の疎通を見るためだけのもの。RenderGraph ができたら置き換える。
 	 * @threading メインスレッドのみ。
 	 */
 	class TriangleRenderer

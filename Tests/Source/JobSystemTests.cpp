@@ -21,6 +21,7 @@ namespace
 		uint32_t               busyLoopCount;
 	};
 
+
 	void RunRecordJob(void* arguments, uint32_t workerIndex)
 	{
 		const auto& jobArguments = *static_cast<const RecordJobArguments*>(arguments);
@@ -39,12 +40,14 @@ namespace
 		}
 	}
 
+
 	/** @brief 前段の完了を確かめる後段のジョブの引数。 */
 	struct ObserveJobArguments
 	{
 		std::atomic<uint32_t>* firstStageDoneCount;
 		std::atomic<uint32_t>* observedFirstStageDoneCount;
 	};
+
 
 	void RunObserveJob(void* arguments, uint32_t workerIndex)
 	{
@@ -57,11 +60,13 @@ namespace
 		);
 	}
 
+
 	/** @brief 呼ばれた回数だけを数えるジョブの引数。 */
 	struct IncrementJobArguments
 	{
 		std::atomic<uint32_t>* counter;
 	};
+
 
 	void RunIncrementJob(void* arguments, uint32_t workerIndex)
 	{
@@ -89,6 +94,7 @@ TEST_CASE("ワーカー数を指定しなければ物理コア数から 1 本引
 
 	jobSystem.Shutdown();
 }
+
 
 TEST_CASE("ジョブが 1 件も無い状態で待ってもデッドロックしない")
 {
@@ -119,6 +125,7 @@ TEST_CASE("ジョブが 1 件も無い状態で待ってもデッドロックし
 
 	jobSystem.Shutdown();
 }
+
 
 TEST_CASE("Shutdown するとワーカースレッドが 1 本も残らない")
 {
@@ -162,6 +169,7 @@ TEST_CASE("Shutdown するとワーカースレッドが 1 本も残らない")
 	CHECK(jobSystem.GetRunningThreadCount() == 0);
 }
 
+
 TEST_CASE("待っているスレッドも他のジョブを実行する")
 {
 	// ワーカー 1 本だけにすると、積んだ側が働かない限り待ち時間が伸びる。
@@ -201,6 +209,7 @@ TEST_CASE("待っているスレッドも他のジョブを実行する")
 
 	jobSystem.Shutdown();
 }
+
 
 TEST_CASE("1 万件を積むと全ワーカーが実行に参加する")
 {
@@ -260,6 +269,7 @@ TEST_CASE("1 万件を積むと全ワーカーが実行に参加する")
 	jobSystem.Shutdown();
 }
 
+
 TEST_CASE("カウンタを挟むと後段は前段の完了後に走る")
 {
 	fang::JobSystem jobSystem;
@@ -313,6 +323,7 @@ TEST_CASE("カウンタを挟むと後段は前段の完了後に走る")
 	jobSystem.Shutdown();
 }
 
+
 TEST_CASE("依存の解けているカウンタに積んだジョブもちゃんと走る")
 {
 	fang::JobSystem jobSystem;
@@ -345,6 +356,7 @@ TEST_CASE("依存の解けているカウンタに積んだジョブもちゃん
 
 	jobSystem.Shutdown();
 }
+
 
 #if FANG_ENABLE_PROFILER
 
@@ -396,6 +408,7 @@ TEST_CASE("待ち終わると使用中のジョブは 0 に戻り、高水位だ
 	CHECK(jobSystem.GetPeakJobsInUseCount() == 0);
 	CHECK(jobSystem.GetInlineExecutedJobCount() == 0);
 }
+
 
 TEST_CASE("ParallelFor を回してもプールは溢れず、その場実行に縮退しない")
 {

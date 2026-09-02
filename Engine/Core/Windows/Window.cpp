@@ -65,10 +65,12 @@ namespace fang
 		}
 	} // namespace
 
+
 	Window::~Window()
 	{
 		Shutdown();
 	}
+
 
 	bool Window::Initialize(const WindowDesc& desc)
 	{
@@ -126,6 +128,7 @@ namespace fang
 		return true;
 	}
 
+
 	void Window::Shutdown()
 	{
 		if (m_nativeHandle == nullptr)
@@ -136,6 +139,7 @@ namespace fang
 		::DestroyWindow(static_cast<HWND>(m_nativeHandle));
 		m_nativeHandle = nullptr;
 	}
+
 
 	bool Window::PumpMessages()
 	{
@@ -171,6 +175,7 @@ namespace fang
 		return !m_isCloseRequested;
 	}
 
+
 	void Window::OnResized(uint32_t width, uint32_t height)
 	{
 		if (m_width == width && m_height == height)
@@ -182,6 +187,7 @@ namespace fang
 		m_height        = height;
 		m_isSizeChanged = true;
 	}
+
 
 	bool Window::ConsumeSizeChange()
 	{
