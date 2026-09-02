@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Core/CoreMacros.h"
+#include "Core/Job/WorkStealingDeque.h"
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -102,6 +103,18 @@ namespace fang
 #if FANG_ENABLE_PROFILER
 		/** @brief そのワーカーがこれまでに実行したジョブ数。 */
 		[[nodiscard]] uint64_t GetExecutedJobCount(uint32_t workerIndex) const;
+
+		/** @brief 今プールから出ているジョブの数。 */
+		[[nodiscard]] uint32_t GetJobsInUseCount() const;
+
+		/** @brief 起動（またはリセット）以降の同時使用数の最大。 */
+		[[nodiscard]] uint32_t GetPeakJobsInUseCount() const;
+
+		/** @brief 高水位を今の使用数まで戻す。メインスレッドのみ。 */
+		void ResetPeakJobsInUseCount();
+
+		/** @brief プールが満杯でその場実行に縮退した回数。0 でないなら詰まっている。 */
+		[[nodiscard]] uint64_t GetInlineExecutedJobCount() const;
 #endif
 
 
@@ -132,6 +145,16 @@ namespace fang
 
 		/** @brief 空きジョブの片方向リスト。下位 32 bit が先頭の添字、上位 32 bit が ABA よけの通し番号。 */
 		std::atomic<uint64_t> m_freeListHead{ INVALID_JOB_INDEX };
+
+#if FANG_ENABLE_PROFILER
+		/** @brief 統計を空きリストと同じキャッシュラインに載せないための詰め物。 */
+		unsigned char m_statisticsPadding[CACHE_LINE_SIZE]{};
+
+		std::atomic<uint32_t> m_jobsInUse{ 0 };
+		std::atomic<uint32_t> m_peakJobsInUse{ 0 };
+
+		std::atomic<uint64_t> m_inlineExecutedJobCount{ 0 }; /**< プールが満杯でその場実行に縮退した回数。 */
+#endif
 
 		/**
 		 * @brief Submit のたびに増える通し番号。

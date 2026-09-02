@@ -4,6 +4,7 @@
  */
 #include "Core/Job/JobCounter.h"
 #include "Core/Job/JobSystem.h"
+#include "Core/Job/ParallelFor.h"
 #include "Core/Platform/Thread.h"
 #include <doctest.h>
 #include <atomic>
@@ -344,3 +345,104 @@ TEST_CASE("依存の解けているカウンタに積んだジョブもちゃん
 
 	jobSystem.Shutdown();
 }
+
+#if FANG_ENABLE_PROFILER
+
+TEST_CASE("待ち終わると使用中のジョブは 0 に戻り、高水位だけが残る")
+{
+	fang::JobSystem jobSystem;
+	if (!jobSystem.Initialize(fang::JobSystemDesc{ .workerCount = 4 }))
+	{
+		CHECK_MESSAGE(false, "ジョブシステムを開始できなかった");
+		return;
+	}
+
+	CHECK(jobSystem.GetJobsInUseCount() == 0);
+	CHECK(jobSystem.GetPeakJobsInUseCount() == 0);
+	CHECK(jobSystem.GetInlineExecutedJobCount() == 0);
+
+	constexpr uint32_t JOB_COUNT = 1024;
+
+	std::atomic<uint32_t> executionCount{ 0 };
+	IncrementJobArguments jobArguments{ &executionCount };
+
+	fang::JobDesc desc{};
+	desc.function     = &RunIncrementJob;
+	desc.arguments    = &jobArguments;
+	desc.argumentSize = sizeof(jobArguments);
+
+	fang::JobCounter counter;
+	for (uint32_t i = 0; i < JOB_COUNT; ++i)
+	{
+		jobSystem.Submit(desc, &counter);
+	}
+
+	jobSystem.Wait(counter);
+
+	CHECK(executionCount.load() == JOB_COUNT);
+	CHECK(jobSystem.GetJobsInUseCount() == 0);
+	CHECK(jobSystem.GetPeakJobsInUseCount() >= 1);
+	CHECK(jobSystem.GetPeakJobsInUseCount() <= fang::JobSystem::JOB_POOL_CAPACITY);
+	CHECK(jobSystem.GetInlineExecutedJobCount() == 0);
+
+	// リセットは今の使用数まで戻すので、待ち終わった後なら 0 になる。
+	jobSystem.ResetPeakJobsInUseCount();
+	CHECK(jobSystem.GetPeakJobsInUseCount() == 0);
+
+	jobSystem.Shutdown();
+
+	// 畳んだ後でも統計は読める。
+	CHECK(jobSystem.GetJobsInUseCount() == 0);
+	CHECK(jobSystem.GetPeakJobsInUseCount() == 0);
+	CHECK(jobSystem.GetInlineExecutedJobCount() == 0);
+}
+
+TEST_CASE("ParallelFor を回してもプールは溢れず、その場実行に縮退しない")
+{
+	fang::JobSystem jobSystem;
+	if (!jobSystem.Initialize(fang::JobSystemDesc{ .workerCount = 4 }))
+	{
+		CHECK_MESSAGE(false, "ジョブシステムを開始できなかった");
+		return;
+	}
+
+	constexpr uint32_t ELEMENT_COUNT = 65536;
+	constexpr uint32_t BATCH_SIZE    = 256;
+
+	std::vector<uint32_t> values(ELEMENT_COUNT);
+	for (uint32_t i = 0; i < ELEMENT_COUNT; ++i)
+	{
+		values[i] = i;
+	}
+
+	// ワーカー番号を名乗るスレッドは 1 本だけなので、部分和の加算に同期は要らない。
+	std::vector<uint64_t> partialSums(fang::JobSystem::MAX_WORKER_COUNT + 1, 0);
+
+	uint32_t* const valueArray      = values.data();
+	uint64_t* const partialSumArray = partialSums.data();
+
+	fang::ParallelFor(
+		jobSystem,
+		0,
+		ELEMENT_COUNT,
+		BATCH_SIZE,
+		[valueArray, partialSumArray](uint32_t index, uint32_t workerIndex) {
+			partialSumArray[workerIndex] += valueArray[index];
+		}
+	);
+
+	uint64_t totalSum = 0;
+	for (const uint64_t partialSum : partialSums)
+	{
+		totalSum += partialSum;
+	}
+
+	CHECK(totalSum == static_cast<uint64_t>(ELEMENT_COUNT) * (ELEMENT_COUNT - 1) / 2);
+	CHECK(jobSystem.GetJobsInUseCount() == 0);
+	CHECK(jobSystem.GetPeakJobsInUseCount() <= fang::JobSystem::JOB_POOL_CAPACITY);
+	CHECK(jobSystem.GetInlineExecutedJobCount() == 0);
+
+	jobSystem.Shutdown();
+}
+
+#endif

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Core/CoreMacros.h"
+#include "Editor/Panels/JobSystemPanel.h"
 #include "RHI/RHIHandles.h"
 #include <imgui.h>
 #include <vector>
@@ -39,11 +40,12 @@ namespace fang::editor
 
 		/**
 		 * @brief ImGui のコンテキストと描画バックエンドを作る。
-		 * @param device フォントテクスチャとパイプラインの生成に使う。初期化済みであること。
-		 * @param window 入力の取り込み先。
+		 * @param context パネルが見るエンジンの持ち物。中身は呼び出し側が生かし続けること。
+		 * @param device  フォントテクスチャとパイプラインの生成に使う。初期化済みであること。
+		 * @param window  入力の取り込み先。
 		 * @return 失敗したら false。
 		 */
-		[[nodiscard]] bool Initialize(rhi::GraphicsDevice& device, const Window& window);
+		[[nodiscard]] bool Initialize(const EngineContext& context, rhi::GraphicsDevice& device, const Window& window);
 
 		/** @brief バックエンドとコンテキストを壊す。二重に呼んでも安全。 */
 		void Shutdown(rhi::GraphicsDevice& device);
@@ -70,6 +72,8 @@ namespace fang::editor
 
 
 	private:
+		JobSystemPanel m_jobSystemPanel; /**< ジョブシステムの稼働状況。 */
+
 		rhi::PipelineHandle m_pipeline;           /**< ImGui 描画用のパイプライン。 */
 		rhi::TextureHandle  m_fontTexture;        /**< フォントアトラス。ImGui が焼いたビットマップの転送先。 */
 		rhi::BufferHandle   m_vertexBuffer;       /**< 毎フレーム書き換える動的頂点バッファ。 */

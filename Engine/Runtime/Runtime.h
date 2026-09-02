@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Runtime/Application.h"
+#include "Runtime/EngineContext.h"
 #include "Runtime/RuntimeLog.h"
 
 

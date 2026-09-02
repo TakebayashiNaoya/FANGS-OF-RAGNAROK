@@ -32,6 +32,7 @@
     <ClInclude Include="EditorUI.h" />
     <ClInclude Include="ImGuiPlatformInput.h" />
     <ClInclude Include="Pch.h" />
+    <ClInclude Include="Panels\JobSystemPanel.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Editor.cpp" />
@@ -39,6 +40,7 @@
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Panels\JobSystemPanel.cpp" />
     <ClCompile Include="Windows\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Xbox\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' == 'true'" />
   </ItemGroup>

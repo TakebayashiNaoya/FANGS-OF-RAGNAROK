@@ -5,6 +5,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
+    <ClInclude Include="EngineContext.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Runtime.h" />
     <ClInclude Include="RuntimeLog.h" />

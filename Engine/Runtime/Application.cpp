@@ -26,7 +26,6 @@ namespace fang
 	int RunApplication(IApplication& application)
 	{
 		// ジョブシステムはここが持ち、使う側へ参照で渡す。Engine ができたらそこへぶら下げ直す。
-		// TODO: 更新と描画をジョブに分けるときに IApplication へ渡す（Phase 2）。
 		JobSystem jobSystem;
 		if (!jobSystem.Initialize(JobSystemDesc{}))
 		{
@@ -57,7 +56,9 @@ namespace fang
 			FANG_FATAL("三角形の準備に失敗した");
 		}
 
-		if (!application.OnInitialize(device, window))
+		// 全部の初期化が終わってから束ねる。上の層はここで受けた参照を持ち続ける。
+		const EngineContext context{ jobSystem };
+		if (!application.OnInitialize(context, device, window))
 		{
 			FANG_FATAL("上の層の初期化に失敗した");
 		}
