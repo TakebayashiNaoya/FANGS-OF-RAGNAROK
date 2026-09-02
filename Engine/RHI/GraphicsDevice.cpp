@@ -293,14 +293,33 @@ namespace fang::rhi
 	}
 
 
-	TextureHandle GraphicsDevice::CreateTexture2D(const void* pixels, uint32_t width, uint32_t height)
+	TextureHandle GraphicsDevice::CreateTexture2D(const TextureSource& source)
 	{
 		FANG_ASSERT(m_isInitialized, "GraphicsDevice が初期化されていない");
 
 		ID3D12Device&       device       = *m_device.Get();
 		ID3D12CommandQueue& commandQueue = *m_commandQueue.Get();
 
-		return m_textures.Create(device, commandQueue, m_fence, m_shaderVisibleHeap, pixels, width, height);
+		return m_textures.Create(device, commandQueue, m_fence, m_shaderVisibleHeap, source);
+	}
+
+
+	TextureHandle GraphicsDevice::CreateTexture2D(const void* pixels, uint32_t width, uint32_t height)
+	{
+		const TextureMipLevel mipLevel{
+			.pixels      = pixels,
+			.width       = width,
+			.height      = height,
+			.rowPitch    = width * 4,
+			.sizeInBytes = width * 4 * height,
+		};
+
+		const TextureSource source{
+			.mipLevels = std::span<const TextureMipLevel>(&mipLevel, 1),
+			.format    = EnTextureFormat::RGBA8,
+		};
+
+		return CreateTexture2D(source);
 	}
 
 

@@ -8,6 +8,7 @@
 #include "RHI/DescriptorHeap.h"
 #include "RHI/GPUFence.h"
 #include "RHI/RHIHandles.h"
+#include "RHI/RHITypes.h"
 #include <vector>
 
 
@@ -35,18 +36,16 @@ namespace fang::rhi
 
 	public:
 		/**
-		 * @brief テクスチャを作って中身を転送し、SRV を張る。
-		 * @param pixels RGBA 各 8 bit のピクセル列。左上から右へ、行間の詰め物なし（1 行 = width * 4 バイト）。
+		 * @brief テクスチャを作って全ミップを転送し、SRV を張る。
+		 * @param source 形式と段ごとの中身。この呼び出しの間だけ読む。
 		 * @return 失敗したら無効なハンドル。
 		 */
 		[[nodiscard]] TextureHandle Create(
-			ID3D12Device&       device,
-			ID3D12CommandQueue& commandQueue,
-			GPUFence&           fence,
-			DescriptorHeap&     descriptorHeap,
-			const void*         pixels,
-			uint32_t            width,
-			uint32_t            height
+			ID3D12Device&        device,
+			ID3D12CommandQueue&  commandQueue,
+			GPUFence&            fence,
+			DescriptorHeap&      descriptorHeap,
+			const TextureSource& source
 		);
 
 		/** @brief スロットを空きに戻す。無効・解放済みのハンドルなら何もしない。 */

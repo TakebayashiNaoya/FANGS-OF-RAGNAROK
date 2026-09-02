@@ -54,6 +54,9 @@ namespace fang
 		 *          ➡ 読み込みに失敗したときも呼び出し側に分岐が要らない。
 		 */
 		std::span<const Matrix4x4> skinningMatrices;
+
+		/** @brief ベースカラー。無効なら今までと同じ単色（1×1 のダミー）が差さる。 */
+		rhi::TextureHandle baseColor;
 	};
 
 	/**
@@ -131,5 +134,8 @@ namespace fang
 
 		/** @brief 骨行列の置き場。b1 に差す。描くもの 1 個につき 1 本使う。 */
 		rhi::BufferHandle m_jointMatrixBuffers[MAX_ITEM_COUNT];
+
+		/** @brief ベースカラーが無いときに差す 1×1。従来の単色と同じ色。 */
+		rhi::TextureHandle m_dummyBaseColor;
 	};
 } // namespace fang

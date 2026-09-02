@@ -15,7 +15,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
 
   <PropertyGroup Label="FangModule">
-    <FangModuleDependencies>Core;Collision;Animation;Scene;Runtime</FangModuleDependencies>
+    <FangModuleDependencies>Core;Collision;Animation;Scene;Resource;Runtime</FangModuleDependencies>
   </PropertyGroup>
 
   <Import Project="$(FangRoot)Build\Program.props" />
@@ -32,6 +32,7 @@
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
     <ClCompile Include="Source\AnimationPlaybackTests.cpp" />
+    <ClCompile Include="Source\DdsImageTests.cpp" />
     <ClCompile Include="Source\FrameAllocatorTests.cpp" />
     <ClCompile Include="Source\FramePipelineTests.cpp" />
     <ClCompile Include="Source\JobSystemStressTests.cpp" />

@@ -4,6 +4,7 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DdsImage.h" />
     <ClInclude Include="GltfMesh.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Resource.h" />
@@ -11,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CgltfImplementation.cpp" />
+    <ClCompile Include="DdsImage.cpp" />
     <ClCompile Include="GltfMesh.cpp" />
     <ClCompile Include="Pch.cpp" />
     <ClCompile Include="Resource.cpp" />

@@ -31,6 +31,44 @@ namespace fang::rhi
 	};
 
 	/**
+	 * @brief テクスチャのピクセル形式。DXGI へは RHI の内側で変換する。
+	 * @details Srgb 付きは「読むときに GPU がリニアへ直す」形式。色として見せるもの（ベースカラー）は
+	 *          Srgb 付き、数値として読むもの（フォントのマスクや、いずれ足す法線マップ）は無印を使う。
+	 */
+	enum class EnTextureFormat : uint8_t
+	{
+		RGBA8,     /**< 8 bit × 4。行のバイト数は 幅 × 4。 */
+		RGBA8Srgb, /**< 同じ並びで、サンプル時にリニアへ直される。 */
+		BC7,       /**< ブロック圧縮。4×4 テクセルが 16 バイト ➡ 1 テクセルあたり 1 バイト。 */
+		BC7Srgb,   /**< 同上。ベースカラーはこれで焼く。 */
+	};
+
+	/**
+	 * @brief ミップ 1 段ぶんの中身。
+	 * @details BC 系の「1 行」は 4 テクセル行ぶんのブロック列を指す。rowPitch と sizeInBytes は
+	 *          その数え方でのバイト数。
+	 */
+	struct TextureMipLevel
+	{
+		const void* pixels      = nullptr; /**< 左上から右へ、行間の詰め物なし。 */
+		uint32_t    width       = 0;       /**< この段のテクセル数。 */
+		uint32_t    height      = 0;
+		uint32_t    rowPitch    = 0; /**< 1 行のバイト数。 */
+		uint32_t    sizeInBytes = 0; /**< この段の総バイト数。rowPitch × 行数と一致すること。 */
+	};
+
+	/**
+	 * @brief テクスチャの生成条件。
+	 * @details mipLevels の 0 番が最大で、以降は半分ずつ小さくなっている並びであること。
+	 *          1 段だけ渡せばミップ無しのテクスチャになる。
+	 */
+	struct TextureSource
+	{
+		std::span<const TextureMipLevel> mipLevels;
+		EnTextureFormat                  format = EnTextureFormat::RGBA8;
+	};
+
+	/**
 	 * @brief パイプラインが持つルートパラメータの番号。
 	 * @details 番号は作った順で決まるので、GraphicsPipelineDesc の組み合わせごとに変わる。
 	 *          コマンドを積む側に数字を直接書くと、パラメータを 1 つ増やした日に絵だけが黙って壊れる。

@@ -65,6 +65,9 @@ namespace fang
 	{
 		MeshId    mesh;  /**< CreateMesh が返した番号。 */
 		Matrix4x4 world; /**< モデル座標をワールド座標へ移す行列。 */
+
+		/** @brief ベースカラー。無効なら今までと同じ単色（1×1 のダミー）が差さる。 */
+		rhi::TextureHandle baseColor;
 	};
 
 	/**
@@ -117,5 +120,8 @@ namespace fang
 
 		rhi::PipelineHandle m_pipeline; /**< メッシュ用のシェーダとステートの組。 */
 		std::vector<Mesh>   m_meshes;   /**< MeshId.index で引く。捨てないので詰め直しも世代も要らない。 */
+
+		/** @brief ベースカラーが無いときに差す 1×1。従来の単色と同じ色。 */
+		rhi::TextureHandle m_dummyBaseColor;
 	};
 } // namespace fang

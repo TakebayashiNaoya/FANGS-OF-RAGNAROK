@@ -40,6 +40,32 @@ namespace fang
 
 		constexpr Vector3 DEFAULT_NORMAL    = { 0.0f, 1.0f, 0.0f };
 		constexpr Vector2 DEFAULT_TEX_COORD = { 0.0f, 0.0f };
+
+		/**
+		 * @brief ベースカラーが無いときの色。テクスチャを貼る前の単色と同じ値の sRGB 表現。
+		 * @details 読み込みに失敗したときの見た目を従来と変えないための値。シェーダは常にサンプルするので、
+		 *          「テクスチャがあるか」の分岐がどこにも要らなくなる。
+		 */
+		constexpr uint8_t DUMMY_BASE_COLOR[4] = { 199, 194, 184, 255 };
+
+		/** @brief 1×1 のダミーテクスチャを作る。失敗したら無効なハンドル。 */
+		[[nodiscard]] rhi::TextureHandle CreateDummyBaseColor(rhi::GraphicsDevice& device)
+		{
+			const rhi::TextureMipLevel mipLevel{
+				.pixels      = DUMMY_BASE_COLOR,
+				.width       = 1,
+				.height      = 1,
+				.rowPitch    = 4,
+				.sizeInBytes = 4,
+			};
+
+			const rhi::TextureSource source{
+				.mipLevels = std::span<const rhi::TextureMipLevel>(&mipLevel, 1),
+				.format    = rhi::EnTextureFormat::RGBA8Srgb,
+			};
+
+			return device.CreateTexture2D(source);
+		}
 	} // namespace
 
 
@@ -60,11 +86,20 @@ namespace fang
 		// MVP は b0 のルート定数で渡す。1 メッシュ 1 マテリアルのうちは定数バッファを回すより少ない手数で済む。
 		pipelineDesc.rootConstantCount = MATRIX_ELEMENT_COUNT;
 
+		// ベースカラーを t0 に差す。無いときはダミーを差すので、パイプラインは常にこの 1 本。
+		pipelineDesc.hasTexture = true;
+
 		// 立体は前後関係が要るので深度テストを有効にする。
 		pipelineDesc.isDepthTestEnabled = true;
 
 		m_pipeline = device.CreateGraphicsPipeline(pipelineDesc);
 		if (!m_pipeline.IsValid())
+		{
+			return false;
+		}
+
+		m_dummyBaseColor = CreateDummyBaseColor(device);
+		if (!m_dummyBaseColor.IsValid())
 		{
 			return false;
 		}
@@ -83,6 +118,9 @@ namespace fang
 			device.DestroyBuffer(mesh.vertexBuffer);
 		}
 		m_meshes.clear();
+
+		device.DestroyTexture(m_dummyBaseColor);
+		m_dummyBaseColor = {};
 
 		device.DestroyPipeline(m_pipeline);
 		m_pipeline = {};
@@ -233,6 +271,7 @@ namespace fang
 			commandList.SetVertexBuffer(mesh.vertexBuffer);
 			commandList.SetIndexBuffer(mesh.indexBuffer);
 			commandList.SetRootConstants(&modelViewProjection, MATRIX_ELEMENT_COUNT);
+			commandList.SetTexture(item.baseColor.IsValid() ? item.baseColor : m_dummyBaseColor);
 			commandList.DrawIndexed(mesh.indexCount, 0, 0);
 		}
 	}
