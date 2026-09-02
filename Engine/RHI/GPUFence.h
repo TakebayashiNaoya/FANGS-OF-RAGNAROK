@@ -33,7 +33,7 @@ namespace fang::rhi
 		 * @details キューに積んだコマンドは積んだ瞬間には実行されておらず、GPU が自分のペースで消化する（CPU と GPU は非同期）。
 		 *          この関数を抜けた時点で「ここまでに積んだ仕事は GPU 上で完全に終わっている」ことが保証される。
 		 *          ただし CPU と GPU の並走を完全に止めるので高価。
-		 *          使いどころは Resize / Shutdown / EndFrame（Phase 1 の割り切り）に限る。
+		 *          使いどころは Resize / Shutdown / EndFrame（今の割り切り）に限る。
 		 */
 		void WaitForGPU(ID3D12CommandQueue& commandQueue);
 

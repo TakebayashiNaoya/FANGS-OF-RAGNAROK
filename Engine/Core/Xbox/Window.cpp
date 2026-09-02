@@ -30,6 +30,7 @@ namespace fang
 			return static_cast<uint32_t>(deviceIndependentPixels * scale + 0.5);
 		}
 
+
 		/** @brief 今の表示スケール。Xbox はテレビ向けに 2 倍などになっている。 */
 		double GetDisplayScale()
 		{
@@ -37,10 +38,12 @@ namespace fang
 		}
 	} // namespace
 
+
 	Window::~Window()
 	{
 		Shutdown();
 	}
+
 
 	bool Window::Initialize(const WindowDesc& desc)
 	{
@@ -91,6 +94,7 @@ namespace fang
 		}
 	}
 
+
 	void Window::Shutdown()
 	{
 		if (s_coreWindow != nullptr)
@@ -102,6 +106,7 @@ namespace fang
 
 		m_nativeHandle = nullptr;
 	}
+
 
 	bool Window::PumpMessages()
 	{
@@ -123,12 +128,14 @@ namespace fang
 		return !m_isCloseRequested;
 	}
 
+
 	void Window::OnResized(uint32_t width, uint32_t height)
 	{
 		m_width         = width;
 		m_height        = height;
 		m_isSizeChanged = true;
 	}
+
 
 	bool Window::ConsumeSizeChange()
 	{

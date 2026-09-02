@@ -81,7 +81,7 @@ namespace fang::editor
 		uint32_t            m_vertexCapacity = 0; /**< 今のバッファに入る頂点数。足りなくなったら作り直す。 */
 		uint32_t            m_indexCapacity  = 0; /**< 今のバッファに入るインデックス数。足りなくなったら作り直す。 */
 
-		// TODO: フレームアロケータができたら差し替える（Phase 2）。
+		// TODO: フレームアロケータができたら差し替える。
 		std::vector<ImDrawVert> m_vertexStaging; /**< 全描画リストの頂点をまとめて 1 回で転送するための作業領域。 */
 		std::vector<ImDrawIdx>  m_indexStaging;  /**< 同上のインデックス版。 */
 

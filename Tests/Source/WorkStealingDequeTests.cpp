@@ -39,6 +39,7 @@ TEST_CASE("持ち主は後入れ先出しで取り出す")
 	CHECK(deque.GetCount() == 0);
 }
 
+
 TEST_CASE("空のキューから取ろうとしても壊れない")
 {
 	TestDeque deque;
@@ -52,6 +53,7 @@ TEST_CASE("空のキューから取ろうとしても壊れない")
 	CHECK(deque.Pop(value));
 	CHECK(value == 42);
 }
+
 
 TEST_CASE("満杯になったら Push が false を返す")
 {
@@ -68,6 +70,7 @@ TEST_CASE("満杯になったら Push が false を返す")
 	CHECK(deque.Pop(value));
 	CHECK(deque.Push(TEST_DEQUE_CAPACITY));
 }
+
 
 TEST_CASE("奪う側は先入れ先出しで取る")
 {
@@ -87,6 +90,7 @@ TEST_CASE("奪う側は先入れ先出しで取る")
 
 	CHECK(isOrderCorrect);
 }
+
 
 TEST_CASE("持ち主と奪う側が同時に触っても重複も欠落もしない")
 {

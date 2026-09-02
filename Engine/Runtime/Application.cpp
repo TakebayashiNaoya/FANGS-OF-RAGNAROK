@@ -23,6 +23,7 @@ namespace fang
 		constexpr rhi::ClearColor BACKGROUND_COLOR{ 0.05f, 0.06f, 0.09f, 1.0f };
 	} // namespace
 
+
 	int RunApplication(IApplication& application)
 	{
 		// ジョブシステムはここが持ち、使う側へ参照で渡す。Engine ができたらそこへぶら下げ直す。
@@ -65,7 +66,7 @@ namespace fang
 
 		FANG_LOG_INFO(Runtime, "フレームループを開始");
 
-		// TODO: Core/Platform に時間を測る口を作る（Phase 2）。
+		// TODO: Core/Platform に時間を測る口を作る。
 		auto previousTime = std::chrono::steady_clock::now();
 
 		// ウィンドウを閉じるまでループする。WM_QUIT を受け取ると PumpMessages() が false を返す。
@@ -82,7 +83,7 @@ namespace fang
 				device.Resize(window.GetWidth(), window.GetHeight());
 			}
 
-			// TODO: 更新と描画を別スレッドに分け、1 フレームずらして並走させる（Phase 2）。
+			// TODO: 更新と描画を別スレッドに分け、1 フレームずらして並走させる。
 			application.OnUpdate(window, deltaTimeSeconds);
 
 			// このフレームの記録準備（記録メモリの巻き戻し、バックバッファの描き込み先への切り替え、クリア）を

@@ -25,6 +25,7 @@ namespace fang::rhi
 		return true;
 	}
 
+
 	void GPUFence::Shutdown()
 	{
 		if (m_fenceEvent != nullptr)
@@ -35,6 +36,7 @@ namespace fang::rhi
 
 		m_fence.Reset();
 	}
+
 
 	void GPUFence::WaitForGPU(ID3D12CommandQueue& commandQueue)
 	{

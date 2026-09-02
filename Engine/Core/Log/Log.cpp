@@ -31,9 +31,10 @@ namespace fang
 		}
 	} // namespace
 
+
 	void WriteLog(const LogCategory& category, EnLogLevel level, std::string_view message)
 	{
-		// TODO: ジョブから呼べるようロックフリーのリングバッファに積む（Phase 2）。
+		// TODO: ジョブから呼べるようロックフリーのリングバッファに積む。
 		const std::string line = std::format("[{}][{}] {}\n", category.name, ToDisplayName(level), message);
 
 		std::fputs(line.c_str(), level >= EnLogLevel::Error ? stderr : stdout);

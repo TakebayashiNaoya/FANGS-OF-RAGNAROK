@@ -37,6 +37,7 @@ namespace fang
 
 	} // namespace
 
+
 	bool TriangleRenderer::Initialize(rhi::GraphicsDevice& device)
 	{
 		constexpr rhi::VertexAttribute VERTEX_LAYOUT[] = {
@@ -72,6 +73,7 @@ namespace fang
 		return true;
 	}
 
+
 	void TriangleRenderer::Shutdown(rhi::GraphicsDevice& device)
 	{
 		device.DestroyBuffer(m_vertexBuffer);
@@ -79,6 +81,7 @@ namespace fang
 		m_vertexBuffer = {};
 		m_pipeline     = {};
 	}
+
 
 	void TriangleRenderer::Draw(rhi::CommandList& commandList, uint32_t width, uint32_t height) const
 	{

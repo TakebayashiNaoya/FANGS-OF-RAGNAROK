@@ -17,6 +17,7 @@ namespace fang
 		constexpr uint32_t XBOX_AVAILABLE_CORE_COUNT = 6;
 	} // namespace
 
+
 	uint32_t GetPhysicalCoreCount()
 	{
 		// Jaguar 系のコアは SMT を持たないので、見えている論理プロセッサ数がそのまま物理コア数になる。
@@ -29,6 +30,7 @@ namespace fang
 
 		return processorCount > XBOX_AVAILABLE_CORE_COUNT ? processorCount : XBOX_AVAILABLE_CORE_COUNT;
 	}
+
 
 	void SetCurrentThreadName(const char* name)
 	{

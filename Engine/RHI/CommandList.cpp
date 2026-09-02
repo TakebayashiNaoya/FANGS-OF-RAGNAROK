@@ -24,6 +24,7 @@ namespace fang::rhi
 		SetScissor(0, 0, static_cast<int32_t>(width), static_cast<int32_t>(height));
 	}
 
+
 	void CommandList::SetScissor(int32_t left, int32_t top, int32_t right, int32_t bottom)
 	{
 		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
@@ -32,6 +33,7 @@ namespace fang::rhi
 		const D3D12_RECT scissorRect{ left, top, right, bottom };
 		commandList->RSSetScissorRects(1, &scissorRect);
 	}
+
 
 	void CommandList::SetPipeline(PipelineHandle pipeline)
 	{
@@ -45,6 +47,7 @@ namespace fang::rhi
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	}
 
+
 	void CommandList::SetVertexBuffer(BufferHandle buffer)
 	{
 		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
@@ -54,6 +57,7 @@ namespace fang::rhi
 
 		commandList->IASetVertexBuffers(0, 1, &entry.vertexBufferView);
 	}
+
 
 	void CommandList::SetIndexBuffer(BufferHandle buffer)
 	{
@@ -65,6 +69,7 @@ namespace fang::rhi
 		commandList->IASetIndexBuffer(&entry.indexBufferView);
 	}
 
+
 	void CommandList::SetRootConstants(const void* values, uint32_t count32BitValues)
 	{
 		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
@@ -72,6 +77,7 @@ namespace fang::rhi
 
 		commandList->SetGraphicsRoot32BitConstants(0, count32BitValues, values, 0);
 	}
+
 
 	void CommandList::SetTexture(TextureHandle texture)
 	{
@@ -86,6 +92,7 @@ namespace fang::rhi
 		commandList->SetGraphicsRootDescriptorTable(1, descriptor);
 	}
 
+
 	void CommandList::Draw(uint32_t vertexCount)
 	{
 		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
@@ -93,6 +100,7 @@ namespace fang::rhi
 
 		commandList->DrawInstanced(vertexCount, 1, 0, 0);
 	}
+
 
 	void CommandList::DrawIndexed(uint32_t indexCount, uint32_t startIndex, int32_t baseVertex)
 	{

@@ -23,6 +23,7 @@ namespace fang
 		}
 	} // namespace
 
+
 	uint32_t GetPhysicalCoreCount()
 	{
 		// hardware_concurrency() は論理プロセッサ数なので、ハイパースレッディングがあると
@@ -68,6 +69,7 @@ namespace fang
 
 		return coreCount > 0 ? coreCount : GetFallbackCoreCount();
 	}
+
 
 	void SetCurrentThreadName(const char* name)
 	{

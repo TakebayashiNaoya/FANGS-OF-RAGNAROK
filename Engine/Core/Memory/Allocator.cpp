@@ -15,10 +15,12 @@ namespace fang
 		return ::_aligned_malloc(size, alignment);
 	}
 
+
 	void HeapAllocator::Deallocate(void* memory)
 	{
 		::_aligned_free(memory);
 	}
+
 
 	HeapAllocator& HeapAllocator::GetInstance()
 	{

@@ -77,6 +77,7 @@ namespace fang::rhi
 		return CreateRenderTargetViews(device);
 	}
 
+
 	void SwapChain::Resize(ID3D12Device& device, uint32_t width, uint32_t height)
 	{
 		for (uint32_t bufferIndex = 0; bufferIndex < BACK_BUFFER_COUNT; ++bufferIndex)
@@ -104,6 +105,7 @@ namespace fang::rhi
 		FANG_LOG_INFO(RHI, "バックバッファを作り直した ({}x{})", width, height);
 	}
 
+
 	void SwapChain::Shutdown()
 	{
 		for (uint32_t bufferIndex = 0; bufferIndex < BACK_BUFFER_COUNT; ++bufferIndex)
@@ -115,15 +117,18 @@ namespace fang::rhi
 		m_swapChain.Reset();
 	}
 
+
 	void SwapChain::Present()
 	{
 		FANG_VERIFY(SUCCEEDED(m_swapChain->Present(1, 0)));
 	}
 
+
 	void SwapChain::UpdateFrameIndex()
 	{
 		m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 	}
+
 
 	D3D12_CPU_DESCRIPTOR_HANDLE SwapChain::GetCurrentRenderTargetView() const
 	{
@@ -131,6 +136,7 @@ namespace fang::rhi
 		handle.ptr += static_cast<SIZE_T>(m_frameIndex) * m_renderTargetViewSize;
 		return handle;
 	}
+
 
 	bool SwapChain::CreateRenderTargetViews(ID3D12Device& device)
 	{

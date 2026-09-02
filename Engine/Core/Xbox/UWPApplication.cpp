@@ -40,6 +40,7 @@ namespace fang
 			void Run() { exitCode = runGame(); }
 		};
 
+
 		struct FrameworkViewSource : winrt::implements<FrameworkViewSource, winrt_core::IFrameworkViewSource>
 		{
 			int (*runGame)() = nullptr;
@@ -53,6 +54,7 @@ namespace fang
 			}
 		};
 	} // namespace
+
 
 	int RunUWPApplication(int (*runGame)())
 	{

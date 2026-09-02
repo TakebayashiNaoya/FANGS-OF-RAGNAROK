@@ -79,6 +79,7 @@ namespace fang::editor
 			return true;
 		}
 
+
 		/** @brief 掴んでいるパッドが無ければ探す。掴めたか掴んでいるなら true。 */
 		bool AcquireGamepad()
 		{
@@ -104,6 +105,7 @@ namespace fang::editor
 			return true;
 		}
 
+
 		/** @brief WinRT のボタンのビットを境界の POD 側のビットに置き換える。 */
 		uint32_t ToButtonBits(winrt_input::GamepadButtons buttons)
 		{
@@ -120,6 +122,7 @@ namespace fang::editor
 			return bits;
 		}
 	} // namespace
+
 
 	GamepadState ReadGamepadState()
 	{
@@ -156,6 +159,7 @@ namespace fang::editor
 			return GamepadState{};
 		}
 	}
+
 
 	bool IsButtonDown(const GamepadState& state, EnGamepadButton button)
 	{

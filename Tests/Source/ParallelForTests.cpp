@@ -35,6 +35,7 @@ namespace
 		return totalSum;
 	}
 
+
 	/** @brief 0 から count − 1 までの総和。 */
 	constexpr uint64_t GetExpectedSum(uint64_t count)
 	{
@@ -66,6 +67,7 @@ TEST_CASE("ParallelFor は要素数 0 / 1 / 100 万のどれでも正しい")
 
 	jobSystem.Shutdown();
 }
+
 
 TEST_CASE("ワーカー数を変えても ParallelFor の結果は変わらない")
 {
@@ -99,6 +101,7 @@ TEST_CASE("ワーカー数を変えても ParallelFor の結果は変わらな�
 	CHECK(sumWithOneWorker == GetExpectedSum(ELEMENT_COUNT));
 	CHECK(sumWithEightWorkers == sumWithOneWorker);
 }
+
 
 TEST_CASE("ParallelFor はジョブの中からも呼べる")
 {

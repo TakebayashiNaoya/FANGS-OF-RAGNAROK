@@ -174,6 +174,7 @@ namespace fang::rhi
 		return TextureHandle{ static_cast<uint32_t>(m_entries.size() - 1), entry.generation };
 	}
 
+
 	void TexturePool::Destroy(TextureHandle handle)
 	{
 		if (!handle.IsValid() || handle.index >= m_entries.size())
@@ -187,15 +188,17 @@ namespace fang::rhi
 			return;
 		}
 
-		// TODO: ディスクリプタのスロットも返す（Phase 3 でリングバッファにするときに）。
+		// TODO: ディスクリプタのスロットも返す（リングバッファ化するときに）。
 		entry.resource.Reset();
 		entry.isAlive = false;
 	}
+
 
 	void TexturePool::Shutdown()
 	{
 		m_entries.clear();
 	}
+
 
 	const TexturePool::Entry& TexturePool::Get(TextureHandle handle) const
 	{

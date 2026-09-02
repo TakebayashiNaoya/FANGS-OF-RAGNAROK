@@ -7,7 +7,7 @@
 #include <cstdio>
 
 
-// TODO: FBX からバイナリへの変換とテクスチャ圧縮（Phase 3 以降）。
+// TODO: FBX からバイナリへの変換とテクスチャ圧縮。
 int main()
 {
 	std::printf("AssetBuilder (%s / %s)\n", fang::GetCoreModuleName(), fang::GetResourceModuleName());

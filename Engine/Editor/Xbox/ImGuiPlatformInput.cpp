@@ -40,10 +40,12 @@ namespace fang::editor
 			return normalized;
 		}
 
+
 		void AddButtonEvent(ImGuiIO& io, const GamepadState& state, ImGuiKey key, EnGamepadButton button)
 		{
 			io.AddKeyEvent(key, IsButtonDown(state, button));
 		}
+
 
 		/** @brief トリガーは 1 本が 1 キー。押し込み量をそのまま流す。 */
 		void AddTriggerEvent(ImGuiIO& io, ImGuiKey key, float value)
@@ -51,6 +53,7 @@ namespace fang::editor
 			const float amount = ApplyDeadZone(value);
 			io.AddKeyAnalogEvent(key, amount > 0.0f, amount);
 		}
+
 
 		/**
 		 * @brief 1 軸を 2 キーに割る。倒していない側には 0 を流して、押しっぱなし扱いを残さない。
@@ -65,6 +68,7 @@ namespace fang::editor
 			io.AddKeyAnalogEvent(positiveKey, positiveAmount > 0.0f, positiveAmount);
 		}
 	} // namespace
+
 
 	void UpdateImGuiPlatformInput(void* windowHandle)
 	{

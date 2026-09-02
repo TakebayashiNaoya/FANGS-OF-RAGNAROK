@@ -33,12 +33,15 @@ namespace fang::rhi
 		}
 	} // namespace
 
+
 	GraphicsDevice::GraphicsDevice() = default;
+
 
 	GraphicsDevice::~GraphicsDevice()
 	{
 		Shutdown();
 	}
+
 
 	bool GraphicsDevice::Initialize(const GraphicsDeviceDesc& desc)
 	{
@@ -191,6 +194,7 @@ namespace fang::rhi
 		return true;
 	}
 
+
 	void GraphicsDevice::Shutdown()
 	{
 		if (!m_isInitialized)
@@ -228,6 +232,7 @@ namespace fang::rhi
 		m_isInitialized = false;
 	}
 
+
 	PipelineHandle GraphicsDevice::CreateGraphicsPipeline(const GraphicsPipelineDesc& desc)
 	{
 		FANG_ASSERT(m_isInitialized, "GraphicsDevice が初期化されていない");
@@ -235,10 +240,12 @@ namespace fang::rhi
 		return m_pipelines.Create(*m_device.Get(), desc);
 	}
 
+
 	void GraphicsDevice::DestroyPipeline(PipelineHandle handle)
 	{
 		m_pipelines.Destroy(handle);
 	}
+
 
 	BufferHandle GraphicsDevice::CreateBuffer(
 		const void*  data,
@@ -252,6 +259,7 @@ namespace fang::rhi
 		return m_buffers.Create(*m_device.Get(), data, sizeInBytes, strideInBytes, kind);
 	}
 
+
 	BufferHandle GraphicsDevice::CreateDynamicBuffer(
 		uint32_t     capacityInBytes,
 		uint32_t     strideInBytes,
@@ -263,6 +271,7 @@ namespace fang::rhi
 		return m_buffers.CreateDynamic(*m_device.Get(), capacityInBytes, strideInBytes, kind);
 	}
 
+
 	void GraphicsDevice::UpdateBuffer(BufferHandle handle, const void* data, uint32_t sizeInBytes)
 	{
 		FANG_ASSERT(m_isInitialized, "GraphicsDevice が初期化されていない");
@@ -270,10 +279,12 @@ namespace fang::rhi
 		m_buffers.Update(handle, data, sizeInBytes);
 	}
 
+
 	void GraphicsDevice::DestroyBuffer(BufferHandle handle)
 	{
 		m_buffers.Destroy(handle);
 	}
+
 
 	TextureHandle GraphicsDevice::CreateTexture2D(const void* pixels, uint32_t width, uint32_t height)
 	{
@@ -285,10 +296,12 @@ namespace fang::rhi
 		return m_textures.Create(device, commandQueue, m_fence, m_shaderVisibleHeap, pixels, width, height);
 	}
 
+
 	void GraphicsDevice::DestroyTexture(TextureHandle handle)
 	{
 		m_textures.Destroy(handle);
 	}
+
 
 	void GraphicsDevice::Resize(uint32_t width, uint32_t height)
 	{
@@ -305,6 +318,7 @@ namespace fang::rhi
 
 		m_swapChain.Resize(*m_device.Get(), width, height);
 	}
+
 
 	CommandList* GraphicsDevice::BeginFrame(const ClearColor& clearColor)
 	{
@@ -332,10 +346,10 @@ namespace fang::rhi
 
 		// リソースバリア: このバックバッファを「表示用」から「描き込み先」へ切り替える宣言。
 		D3D12_RESOURCE_BARRIER barrier{};
-		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;					  // 「用途の遷移」の宣言。
+		barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;  // 「用途の遷移」の宣言。
 		barrier.Transition.pResource   = m_swapChain.GetCurrentBackBuffer();      // 今回のバックバッファを指す
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;			  // これまでの用途は「表示用」
-		barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_RENDER_TARGET;	  // 今回の用途は「描き込み先」
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;            // これまでの用途は「表示用」
+		barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_RENDER_TARGET;      // 今回の用途は「描き込み先」
 		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES; // 全てのミップマップを対象にする
 		m_commandList->ResourceBarrier(1, &barrier);                              // 1 個のバリアを積む
 
@@ -354,6 +368,7 @@ namespace fang::rhi
 
 		return &m_commandListWrapper;
 	}
+
 
 	void GraphicsDevice::EndFrame()
 	{
@@ -381,7 +396,7 @@ namespace fang::rhi
 
 		m_swapChain.Present();
 
-		// TODO: GPU を 2〜3 フレーム in-flight にする（Phase 3）。今は毎フレーム待つ。
+		// TODO: GPU を 2〜3 フレーム in-flight にする。今は毎フレーム待つ。
 		m_fence.WaitForGPU(*m_commandQueue.Get());
 		m_commandListWrapper.m_nativeCommandList = nullptr;
 

@@ -39,12 +39,14 @@ namespace
 		uint32_t m_state = 1;
 	};
 
+
 	struct StressJobArguments
 	{
 		std::atomic<uint64_t>* sum;
 		uint32_t               value;
 		uint32_t               busyLoopCount;
 	};
+
 
 	void RunStressJob(void* arguments, uint32_t workerIndex)
 	{
@@ -64,11 +66,13 @@ namespace
 		}
 	}
 
+
 	struct StageObserverArguments
 	{
 		std::atomic<uint64_t>* firstStageSum;
 		std::atomic<uint64_t>* observedSum;
 	};
+
 
 	void RunStageObserverJob(void* arguments, uint32_t workerIndex)
 	{
@@ -184,6 +188,7 @@ TEST_CASE("形を変えながら繰り返しても、総和と依存の順序が
 
 	jobSystem.Shutdown();
 }
+
 
 TEST_CASE("作っては畳むのを繰り返してもスレッドが残らない")
 {

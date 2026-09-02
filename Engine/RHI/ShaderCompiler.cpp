@@ -70,6 +70,7 @@ namespace fang::rhi
 		return true;
 	}
 
+
 #else
 
 	bool CompileShaderFromSource(std::string_view, std::string_view, EnShaderStage, std::vector<uint8_t>*)
