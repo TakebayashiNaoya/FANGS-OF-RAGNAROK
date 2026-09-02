@@ -88,6 +88,11 @@ namespace fang::rhi
 		staticSampler.ComparisonFunc   = D3D12_COMPARISON_FUNC_ALWAYS;
 		staticSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
+		// ゼロ初期化のままだと MaxLOD が 0 になり、LOD が 0 に切り詰められて先頭のミップしか読まれない
+		// ➡ ミップを持っていても縮小時のちらつきが消えない。上限を外して全段を使わせる。
+		staticSampler.MinLOD = 0.0f;
+		staticSampler.MaxLOD = D3D12_FLOAT32_MAX;
+
 		D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
 		rootSignatureDesc.NumParameters     = rootParameterCount;
 		rootSignatureDesc.pParameters       = rootParameterCount > 0 ? rootParameters : nullptr;

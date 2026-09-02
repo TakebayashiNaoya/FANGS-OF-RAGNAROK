@@ -96,7 +96,14 @@ namespace fang::rhi
 		void DestroyBuffer(BufferHandle handle);
 
 		/**
-		 * @brief テクスチャを作って中身を転送する。転送が終わるまでこの中で待つので、起動時やロード時に呼ぶ。
+		 * @brief テクスチャを作って全ミップを転送する。転送が終わるまでこの中で待つので、起動時やロード時に呼ぶ。
+		 * @param source 形式と段ごとの中身。この呼び出しの間だけ読む。
+		 * @return 失敗したら無効なハンドル。
+		 */
+		[[nodiscard]] TextureHandle CreateTexture2D(const TextureSource& source);
+
+		/**
+		 * @brief ミップ無し RGBA8 のテクスチャを作る。上の TextureSource 版の薄い包み。
 		 * @param pixels RGBA 各 8 bit のピクセル列。左上から右へ、行間の詰め物なし（1 行 = width * 4 バイト）。
 		 * @param width  横のピクセル数。
 		 * @param height 縦のピクセル数。

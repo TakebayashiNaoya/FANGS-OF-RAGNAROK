@@ -10,16 +10,42 @@
 
 namespace fang::rhi
 {
+	namespace
+	{
+		/** @brief 2048 テクセルの全ミップは 12 段。余白を持たせた上限で、転送用の配列をスタックに置くため。 */
+		constexpr uint32_t MAX_MIP_COUNT = 16;
+
+
+		DXGI_FORMAT ToDxgiFormat(EnTextureFormat format)
+		{
+			switch (format)
+			{
+				case EnTextureFormat::RGBA8: return DXGI_FORMAT_R8G8B8A8_UNORM;
+				case EnTextureFormat::RGBA8Srgb: return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+				case EnTextureFormat::BC7: return DXGI_FORMAT_BC7_UNORM;
+				case EnTextureFormat::BC7Srgb: return DXGI_FORMAT_BC7_UNORM_SRGB;
+			}
+
+			return DXGI_FORMAT_UNKNOWN;
+		}
+	} // namespace
+
+
 	TextureHandle TexturePool::Create(
-		ID3D12Device&       device,
-		ID3D12CommandQueue& commandQueue,
-		GPUFence&           fence,
-		DescriptorHeap&     descriptorHeap,
-		const void*         pixels,
-		uint32_t            width,
-		uint32_t            height
+		ID3D12Device&        device,
+		ID3D12CommandQueue&  commandQueue,
+		GPUFence&            fence,
+		DescriptorHeap&      descriptorHeap,
+		const TextureSource& source
 	)
 	{
+		const uint32_t mipCount = static_cast<uint32_t>(source.mipLevels.size());
+		if (mipCount == 0 || mipCount > MAX_MIP_COUNT)
+		{
+			FANG_ASSERT(false, "テクスチャのミップ段数がおかしい");
+			return TextureHandle{};
+		}
+
 		uint32_t descriptorIndex = 0;
 		if (!descriptorHeap.Allocate(descriptorIndex))
 		{
@@ -31,11 +57,11 @@ namespace fang::rhi
 
 		D3D12_RESOURCE_DESC textureDesc{};
 		textureDesc.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-		textureDesc.Width            = width;
-		textureDesc.Height           = height;
+		textureDesc.Width            = source.mipLevels[0].width;
+		textureDesc.Height           = source.mipLevels[0].height;
 		textureDesc.DepthOrArraySize = 1;
-		textureDesc.MipLevels        = 1;
-		textureDesc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+		textureDesc.MipLevels        = static_cast<UINT16>(mipCount);
+		textureDesc.Format           = ToDxgiFormat(source.format);
 		textureDesc.SampleDesc.Count = 1;
 		textureDesc.Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 
@@ -55,9 +81,12 @@ namespace fang::rhi
 			return TextureHandle{};
 		}
 
-		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprint{};
+		// アップロードバッファ内での各段の置き場は D3D が決める（256 バイト境界などの都合があるため）。
+		D3D12_PLACED_SUBRESOURCE_FOOTPRINT footprints[MAX_MIP_COUNT]{};
+		UINT                               rowCounts[MAX_MIP_COUNT]{};
+		UINT64                             rowSizes[MAX_MIP_COUNT]{};
 		UINT64                             uploadSize = 0;
-		device.GetCopyableFootprints(&textureDesc, 0, 1, 0, &footprint, nullptr, nullptr, &uploadSize);
+		device.GetCopyableFootprints(&textureDesc, 0, mipCount, 0, footprints, rowCounts, rowSizes, &uploadSize);
 
 		ComPtr<ID3D12Resource> uploadBuffer;
 		if (!CreateUploadBuffer(&device, static_cast<uint32_t>(uploadSize), uploadBuffer))
@@ -75,15 +104,30 @@ namespace fang::rhi
 			return TextureHandle{};
 		}
 
-		// 行ごとのピッチが 256 バイト境界に合わされるので 1 行ずつ詰める。
-		const uint8_t* source = static_cast<const uint8_t*>(pixels);
-		for (uint32_t row = 0; row < height; ++row)
+		for (uint32_t mip = 0; mip < mipCount; ++mip)
 		{
-			std::memcpy(
-				mapped + footprint.Offset + static_cast<size_t>(row) * footprint.Footprint.RowPitch,
-				source + static_cast<size_t>(row) * width * 4,
-				static_cast<size_t>(width) * 4
-			);
+			const TextureMipLevel& mipLevel = source.mipLevels[mip];
+
+			// 渡された行のバイト数が D3D の見立てと食い違うのは、形式か寸法が合っていないということ。
+			// そのまま詰めるとずれた絵が出るので、作らずに引き返す。
+			if (mipLevel.pixels == nullptr || mipLevel.rowPitch != rowSizes[mip] ||
+				mipLevel.sizeInBytes != mipLevel.rowPitch * rowCounts[mip])
+			{
+				FANG_ASSERT(false, "ミップの中身が形式・寸法と合っていない");
+				uploadBuffer->Unmap(0, nullptr);
+				return TextureHandle{};
+			}
+
+			// 行ごとのピッチが 256 バイト境界に合わされるので 1 行ずつ詰める。
+			const uint8_t* sourceBytes = static_cast<const uint8_t*>(mipLevel.pixels);
+			for (UINT row = 0; row < rowCounts[mip]; ++row)
+			{
+				std::memcpy(
+					mapped + footprints[mip].Offset + static_cast<size_t>(row) * footprints[mip].Footprint.RowPitch,
+					sourceBytes + static_cast<size_t>(row) * mipLevel.rowPitch,
+					mipLevel.rowPitch
+				);
+			}
 		}
 
 		uploadBuffer->Unmap(0, nullptr);
@@ -113,17 +157,20 @@ namespace fang::rhi
 			return TextureHandle{};
 		}
 
-		D3D12_TEXTURE_COPY_LOCATION copySource{};
-		copySource.pResource       = uploadBuffer.Get();
-		copySource.Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-		copySource.PlacedFootprint = footprint;
+		for (uint32_t mip = 0; mip < mipCount; ++mip)
+		{
+			D3D12_TEXTURE_COPY_LOCATION copySource{};
+			copySource.pResource       = uploadBuffer.Get();
+			copySource.Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+			copySource.PlacedFootprint = footprints[mip];
 
-		D3D12_TEXTURE_COPY_LOCATION destination{};
-		destination.pResource        = entry.resource.Get();
-		destination.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-		destination.SubresourceIndex = 0;
+			D3D12_TEXTURE_COPY_LOCATION destination{};
+			destination.pResource        = entry.resource.Get();
+			destination.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+			destination.SubresourceIndex = mip;
 
-		uploadCommandList->CopyTextureRegion(&destination, 0, 0, 0, &copySource, nullptr);
+			uploadCommandList->CopyTextureRegion(&destination, 0, 0, 0, &copySource, nullptr);
+		}
 
 		// リソースバリア: 「コピーの受け口」から「シェーダが読むもの」へ用途を切り替える宣言。
 		// 生成時に COPY_DEST で作ってあるので、転送コマンドの後ろに積んでおけば
@@ -146,11 +193,11 @@ namespace fang::rhi
 		entry.descriptorIndex = descriptorIndex;
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc{};
-		viewDesc.Format        = DXGI_FORMAT_R8G8B8A8_UNORM;
+		viewDesc.Format        = textureDesc.Format;
 		viewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 
 		viewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		viewDesc.Texture2D.MipLevels     = 1;
+		viewDesc.Texture2D.MipLevels     = mipCount;
 
 		device.CreateShaderResourceView(
 			entry.resource.Get(),

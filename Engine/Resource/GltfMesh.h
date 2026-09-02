@@ -13,6 +13,7 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 
@@ -84,6 +85,13 @@ namespace fang
 		 */
 		[[nodiscard]] FANG_FORCEINLINE std::span<const char* const> GetJointNames() const { return m_jointNames; }
 
+		/**
+		 * @brief マテリアルが指すベースカラー画像のパス。glTF ファイルからの相対。
+		 * @details 画像を指していないモデルでは空。パーセント符号は戻してある。
+		 *          区切りは glTF に書かれたまま（ふつうは /）なので、繋ぐ側で \ に直すこと。
+		 */
+		[[nodiscard]] FANG_FORCEINLINE std::string_view GetBaseColorImagePath() const { return m_baseColorImagePath; }
+
 
 	private:
 		/** @brief 配列を全部空にする。読み込みに失敗したとき中途半端な中身を残さないため。 */
@@ -103,5 +111,8 @@ namespace fang
 
 		/** @brief m_jointNameStorage を指すポインタ列。span で返すために別に持つ。 */
 		std::vector<const char*> m_jointNames;
+
+		/** @brief ベースカラー画像の相対パス。指していなければ空。 */
+		std::string m_baseColorImagePath;
 	};
 } // namespace fang

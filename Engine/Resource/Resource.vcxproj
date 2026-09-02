@@ -28,6 +28,7 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
+    <ClInclude Include="DdsImage.h" />
     <ClInclude Include="GltfMesh.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Resource.h" />
@@ -35,6 +36,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CgltfImplementation.cpp" />
+    <ClCompile Include="DdsImage.cpp" />
     <ClCompile Include="GltfMesh.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>

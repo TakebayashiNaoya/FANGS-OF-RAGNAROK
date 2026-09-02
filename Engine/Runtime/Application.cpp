@@ -17,6 +17,7 @@
 #include "Renderer/MeshRenderer.h"
 #include "Renderer/SkinnedMeshRenderer.h"
 #include "Renderer/TriangleRenderer.h"
+#include "Resource/DdsImage.h"
 #include "Resource/GltfMesh.h"
 #include "Runtime/FramePipeline.h"
 #include "Runtime/RuntimeLog.h"
@@ -84,6 +85,9 @@ namespace fang
 			SkeletalAnimation animation;
 			AnimationPlayback playback;
 
+			/** @brief ベースカラー。読めなかったら無効なままで、レンダラがダミー（単色）を差す。 */
+			rhi::TextureHandle baseColor;
+
 			/** @brief バインドポーズを打ち消す行列。glTF の関節の並び。読み込みのときだけ確保する。 */
 			std::vector<Matrix4x4> inverseBindMatrices;
 
@@ -113,6 +117,64 @@ namespace fang
 			bool hasDeviceError = false;
 		};
 
+
+		/**
+		 * @brief glTF が指す画像パスから、実際に読む .dds の絶対パスを作る。
+		 * @details 画像は texconv でオフライン変換してある ➡ glTF は .png を指したままなので、
+		 *          拡張子をここで差し替える。区切りの / も \ へ直す。
+		 */
+		[[nodiscard]] std::string MakeWolfTexturePath(std::string_view imagePath)
+		{
+			std::string relativePath = "Models\\";
+			relativePath += imagePath;
+
+			for (char& character : relativePath)
+			{
+				if (character == '/')
+				{
+					character = '\\';
+				}
+			}
+
+			const size_t dotIndex = relativePath.rfind('.');
+			if (dotIndex != std::string::npos)
+			{
+				relativePath.resize(dotIndex);
+			}
+			relativePath += ".dds";
+
+			return MakeAssetPath(relativePath.c_str());
+		}
+
+		/**
+		 * @brief 狼のベースカラーを読んで GPU へ載せる。
+		 * @details 失敗しても落とさない。無効なハンドルのままなら、レンダラがダミー（単色）を差す。
+		 */
+		[[nodiscard]] rhi::TextureHandle LoadWolfBaseColor(rhi::GraphicsDevice& device, const GltfMesh& model)
+		{
+			if (model.GetBaseColorImagePath().empty())
+			{
+				return rhi::TextureHandle{};
+			}
+
+			// DdsImage は転送が済めば用済み。5MB の中身をこの関数を抜けるところで手放す。
+			const std::string filePath = MakeWolfTexturePath(model.GetBaseColorImagePath());
+
+			DdsImage image;
+			if (!image.Load(filePath.c_str()))
+			{
+				FANG_LOG_ERROR(Runtime, "狼のベースカラーを読めなかった。単色で描く: {}", filePath);
+				return rhi::TextureHandle{};
+			}
+
+			const rhi::TextureSource source{
+				.mipLevels = image.GetMipLevels(),
+				.format    = image.GetFormat(),
+			};
+
+			// 失敗したときの理由は RHI 側がログに出す。
+			return device.CreateTexture2D(source);
+		}
 
 		/**
 		 * @brief 骨とクリップを読み、姿勢を作れる状態にする。
@@ -167,6 +229,8 @@ namespace fang
 				FANG_LOG_ERROR(Runtime, "狼のモデルを読めなかった: {}", filePath);
 				return;
 			}
+
+			outWolf->baseColor = LoadWolfBaseColor(device, model);
 
 			if (!model.HasSkin())
 			{
@@ -308,13 +372,19 @@ namespace fang
 					UpdateWolfPose(&wolf, deltaTimeSeconds);
 
 					const SkinnedRenderItem items[] = {
-						SkinnedRenderItem{ .mesh = wolf.mesh, .skinningMatrices = wolf.skinningMatrices },
+						SkinnedRenderItem{
+							.mesh             = wolf.mesh,
+							.skinningMatrices = wolf.skinningMatrices,
+							.baseColor        = wolf.baseColor,
+						},
 					};
 					loopContext.skinnedMeshRenderer->Draw(device, *commandList, view, items);
 				}
 				else
 				{
-					const RenderItem items[] = { RenderItem{ .mesh = wolf.mesh } };
+					const RenderItem items[] = {
+						RenderItem{ .mesh = wolf.mesh, .baseColor = wolf.baseColor },
+					};
 					loopContext.meshRenderer->Draw(*commandList, view, items);
 				}
 			}
@@ -437,6 +507,7 @@ namespace fang
 		triangleRenderer.Shutdown(device);
 		meshRenderer.Shutdown(device);
 		skinnedMeshRenderer.Shutdown(device);
+		device.DestroyTexture(wolf.baseColor);
 		device.Shutdown();
 		window.Shutdown();
 

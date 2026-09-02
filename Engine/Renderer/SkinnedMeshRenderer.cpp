@@ -45,6 +45,32 @@ namespace fang
 		/** @brief 骨行列の置き場 1 本ぶんの大きさ。 */
 		constexpr uint32_t JOINT_MATRIX_BUFFER_SIZE =
 			SkinnedMeshRenderer::MAX_JOINT_COUNT * static_cast<uint32_t>(sizeof(Matrix4x4));
+
+		/**
+		 * @brief ベースカラーが無いときの色。テクスチャを貼る前の単色と同じ値の sRGB 表現。
+		 * @details MeshRenderer 側と同じ作り。レンダラごとに 1×1 を 1 枚持つ重複は、RenderGraph で
+		 *          レンダラを畳むときに一緒に片付ける。
+		 */
+		constexpr uint8_t DUMMY_BASE_COLOR[4] = { 199, 194, 184, 255 };
+
+		/** @brief 1×1 のダミーテクスチャを作る。失敗したら無効なハンドル。 */
+		[[nodiscard]] rhi::TextureHandle CreateDummyBaseColor(rhi::GraphicsDevice& device)
+		{
+			const rhi::TextureMipLevel mipLevel{
+				.pixels      = DUMMY_BASE_COLOR,
+				.width       = 1,
+				.height      = 1,
+				.rowPitch    = 4,
+				.sizeInBytes = 4,
+			};
+
+			const rhi::TextureSource source{
+				.mipLevels = std::span<const rhi::TextureMipLevel>(&mipLevel, 1),
+				.format    = rhi::EnTextureFormat::RGBA8Srgb,
+			};
+
+			return device.CreateTexture2D(source);
+		}
 	} // namespace
 
 
@@ -66,12 +92,20 @@ namespace fang
 		pipelineDesc.vertexLayout         = VERTEX_LAYOUT;
 
 		// MVP は b0 のルート定数、骨行列は b1 の定数バッファ。59 本 × 64 バイトはルート定数に載らない。
+		// ベースカラーは t0。無いときはダミーを差すので、パイプラインは常にこの 1 本。
 		pipelineDesc.rootConstantCount  = MATRIX_ELEMENT_COUNT;
 		pipelineDesc.hasConstantBuffer  = true;
+		pipelineDesc.hasTexture         = true;
 		pipelineDesc.isDepthTestEnabled = true;
 
 		m_pipeline = device.CreateGraphicsPipeline(pipelineDesc);
 		if (!m_pipeline.IsValid())
+		{
+			return false;
+		}
+
+		m_dummyBaseColor = CreateDummyBaseColor(device);
+		if (!m_dummyBaseColor.IsValid())
 		{
 			return false;
 		}
@@ -105,6 +139,9 @@ namespace fang
 			device.DestroyBuffer(mesh.vertexBuffer);
 		}
 		m_meshes.clear();
+
+		device.DestroyTexture(m_dummyBaseColor);
+		m_dummyBaseColor = {};
 
 		device.DestroyPipeline(m_pipeline);
 		m_pipeline = {};
@@ -298,6 +335,7 @@ namespace fang
 			commandList.SetIndexBuffer(mesh.indexBuffer);
 			commandList.SetRootConstants(&modelViewProjection, MATRIX_ELEMENT_COUNT);
 			commandList.SetConstantBuffer(m_jointMatrixBuffers[usedBufferCount]);
+			commandList.SetTexture(item.baseColor.IsValid() ? item.baseColor : m_dummyBaseColor);
 			commandList.DrawIndexed(mesh.indexCount, 0, 0);
 
 			++usedBufferCount;

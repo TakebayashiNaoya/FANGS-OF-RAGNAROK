@@ -567,6 +567,20 @@ namespace fang
 			m_jointNames.push_back(jointName.c_str());
 		}
 
+		// マテリアルが指すベースカラー画像。無くてもエラーにしない ➡ 単色で描けばよい。
+		if (primitive.material != nullptr && primitive.material->has_pbr_metallic_roughness != 0)
+		{
+			const cgltf_texture* baseColorTexture =
+				primitive.material->pbr_metallic_roughness.base_color_texture.texture;
+			if (baseColorTexture != nullptr && baseColorTexture->image != nullptr &&
+				baseColorTexture->image->uri != nullptr)
+			{
+				// URI は空白などがパーセント符号化されていることがある。写しの上で戻す。
+				m_baseColorImagePath = baseColorTexture->image->uri;
+				m_baseColorImagePath.resize(cgltf_decode_uri(m_baseColorImagePath.data()));
+			}
+		}
+
 		FANG_LOG_INFO(
 			Resource,
 			"glTF を読んだ: 頂点 {} / 三角形 {} / 関節 {}: {}",
@@ -593,5 +607,6 @@ namespace fang
 		m_jointIndices.clear();
 		m_jointWeights.clear();
 		m_inverseBindMatrices.clear();
+		m_baseColorImagePath.clear();
 	}
 } // namespace fang
