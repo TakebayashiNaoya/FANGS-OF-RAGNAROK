@@ -38,6 +38,7 @@
     <ClInclude Include="Log\Log.h" />
     <ClInclude Include="Log\PlatformLogSink.h" />
     <ClInclude Include="Memory\Allocator.h" />
+    <ClInclude Include="Memory\FrameAllocator.h" />
     <ClInclude Include="Memory\UniquePtr.h" />
     <ClInclude Include="Platform\SystemFont.h" />
     <ClInclude Include="Platform\Thread.h" />
@@ -53,6 +54,7 @@
     <ClCompile Include="Log\Assert.cpp" />
     <ClCompile Include="Log\Log.cpp" />
     <ClCompile Include="Memory\Allocator.cpp" />
+    <ClCompile Include="Memory\FrameAllocator.cpp" />
     <ClCompile Include="Windows\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Windows\SystemFont.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Windows\Thread.cpp" Condition="'$(FangIsXbox)' != 'true'" />

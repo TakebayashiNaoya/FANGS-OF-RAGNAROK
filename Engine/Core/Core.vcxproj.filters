@@ -50,6 +50,9 @@
     <ClInclude Include="Memory\Allocator.h">
       <Filter>Memory</Filter>
     </ClInclude>
+    <ClInclude Include="Memory\FrameAllocator.h">
+      <Filter>Memory</Filter>
+    </ClInclude>
     <ClInclude Include="Memory\UniquePtr.h">
       <Filter>Memory</Filter>
     </ClInclude>
@@ -79,6 +82,9 @@
       <Filter>Log</Filter>
     </ClCompile>
     <ClCompile Include="Memory\Allocator.cpp">
+      <Filter>Memory</Filter>
+    </ClCompile>
+    <ClCompile Include="Memory\FrameAllocator.cpp">
       <Filter>Memory</Filter>
     </ClCompile>
     <ClCompile Include="Windows\PlatformLogSink.cpp">
