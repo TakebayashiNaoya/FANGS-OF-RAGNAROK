@@ -51,12 +51,20 @@ namespace fang::editor
 
 	private:
 #if FANG_ENABLE_PROFILER
+		/** @brief 0.5 秒の区切りごとに毎秒の実行数を出し直す。毎フレーム更新だと数字が跳ねて読めない。 */
 		void UpdateExecutedJobCountsPerSecond(float deltaTimeSeconds);
+
+		/** @brief 実行者ごとの表（累計と毎秒の実行数）を組み立てる。 */
 		void BuildExecutorTable();
+
+		/** @brief ジョブプールの使用量と高水位の区画を組み立てる。 */
 		void BuildJobPoolSection();
 #endif
 
+		/** @brief テスト負荷のボタンと検算結果の区画を組み立てる。 */
 		void BuildTestLoadSection();
+
+		/** @brief ParallelFor で 1 フレーム分の負荷を積み、総和を検算する。 */
 		void RunTestLoad();
 
 
