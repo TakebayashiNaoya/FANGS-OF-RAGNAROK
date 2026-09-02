@@ -57,6 +57,9 @@ namespace fang
 
 		/** @brief ベースカラー。無効なら今までと同じ単色（1×1 のダミー）が差さる。 */
 		rhi::TextureHandle baseColor;
+
+		float metallicFactor  = 0.0f; /**< 0 = 非金属。既定はダミーテクスチャのときの見た目を従来に合わせた値。 */
+		float roughnessFactor = 1.0f; /**< 知覚 roughness。1 = 粗い面（ハイライトが弱く広い）。 */
 	};
 
 	/**

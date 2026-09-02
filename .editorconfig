@@ -90,6 +90,11 @@ indent_style = tab
 indent_size = 4
 tab_width = 4
 
+# C++ と HLSL の共有ヘッダ（定数バッファの構造体）も FXC が読むので BOM なし。
+# MSVC 側は /utf-8（Common.props）が付いているので BOM が無くても日本語コメントを正しく読む。
+[Engine/**/Shaders/*.h]
+charset = utf-8
+
 # ---- MSBuild / ソリューション（VS が生成する形式に合わせる）----
 [*.{sln,vcxproj,vcxproj.filters,props,targets}]
 charset = utf-8-bom

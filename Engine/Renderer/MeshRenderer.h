@@ -38,10 +38,20 @@ namespace fang
 		[[nodiscard]] FANG_FORCEINLINE bool IsValid() const { return index != INVALID_INDEX; }
 	};
 
-	/** @brief 1 フレーム分のカメラ。 */
+	/**
+	 * @brief 1 フレーム分のカメラと平行光。
+	 * @details ライトを型でなくばらの値で持つのは、光を書くのは Runtime 側（FrameData）で、
+	 *          Renderer はそちらの型を知らないため。呼び出し側が毎フレーム全部を埋めること。
+	 */
 	struct View
 	{
 		Matrix4x4 viewProjection; /**< Multiply(ビュー行列, 透視投影行列)。行ベクトル規約なのでビューが左に来る。 */
+		Vector3   cameraPosition; /**< ワールドの視点。鏡面反射の視線ベクトル用。 */
+
+		Vector3 directionToLight;      /**< 面から光源へ向かう向き。正規化して渡す。 */
+		Vector3 lightColor;            /**< リニア空間の色。 */
+		float   lightIntensity = 0.0f; /**< 明るさの倍率。調整は BRDF の式でなくこちらで行う。 */
+		Vector3 ambientColor;          /**< 環境項。光の裏側の形を読ませる役。 */
 	};
 
 	/**
@@ -68,6 +78,9 @@ namespace fang
 
 		/** @brief ベースカラー。無効なら今までと同じ単色（1×1 のダミー）が差さる。 */
 		rhi::TextureHandle baseColor;
+
+		float metallicFactor  = 0.0f; /**< 0 = 非金属。既定はダミーテクスチャのときの見た目を従来に合わせた値。 */
+		float roughnessFactor = 1.0f; /**< 知覚 roughness。1 = 粗い面（ハイライトが弱く広い）。 */
 	};
 
 	/**

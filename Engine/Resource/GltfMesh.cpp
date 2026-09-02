@@ -570,6 +570,10 @@ namespace fang
 		// マテリアルが指すベースカラー画像。無くてもエラーにしない ➡ 単色で描けばよい。
 		if (primitive.material != nullptr && primitive.material->has_pbr_metallic_roughness != 0)
 		{
+			// cgltf は書かれていない係数を glTF の既定値（どちらも 1.0）で埋めて返すので、そのまま写せばよい。
+			m_metallicFactor  = primitive.material->pbr_metallic_roughness.metallic_factor;
+			m_roughnessFactor = primitive.material->pbr_metallic_roughness.roughness_factor;
+
 			const cgltf_texture* baseColorTexture =
 				primitive.material->pbr_metallic_roughness.base_color_texture.texture;
 			if (baseColorTexture != nullptr && baseColorTexture->image != nullptr &&
@@ -608,5 +612,8 @@ namespace fang
 		m_jointWeights.clear();
 		m_inverseBindMatrices.clear();
 		m_baseColorImagePath.clear();
+
+		m_metallicFactor  = 1.0f;
+		m_roughnessFactor = 1.0f;
 	}
 } // namespace fang

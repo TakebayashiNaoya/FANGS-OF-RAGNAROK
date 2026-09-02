@@ -8,6 +8,7 @@
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
 #include "Renderer/RendererLog.h"
+#include "Renderer/Shaders/MeshConstants.h"
 #include <cstddef>
 
 
@@ -32,11 +33,41 @@ namespace fang
 			float texCoord[2];
 		};
 
-		/** @brief ルート定数で渡す MVP 行列の要素数。 */
-		constexpr uint32_t MATRIX_ELEMENT_COUNT = 16;
-
 		/** @brief 16 bit のインデックスで指せる頂点の数。 */
 		constexpr size_t MAX_VERTEX_COUNT = 65536;
+
+		/**
+		 * @brief 描くもの 1 個ぶんのルート定数を組む。
+		 * @details 行ベクトル規約なので MVP は World が左に来る。行列は行優先のまま転置せずに渡す。
+		 *          HLSL の定数バッファは既定で列優先に読むので、読む側で転置が掛かって辻褄が合う
+		 *          （シェーダは mul(行列, ベクトル) と書く）。片側だけ流儀を変えると、
+		 *          絵が崩れているのに数字は正しく見える厄介な歪みになる。
+		 *          SkinnedMeshRenderer 側と同じ作り。RenderGraph でレンダラを畳むときに一緒に片付ける。
+		 */
+		[[nodiscard]] MeshObjectConstants MakeObjectConstants(
+			const View&      view,
+			const Matrix4x4& world,
+			float            metallicFactor,
+			float            roughnessFactor
+		)
+		{
+			const Vector3 lightDirection = view.directionToLight;
+			const Vector3 lightColor     = view.lightColor;
+			const Vector3 ambientColor   = view.ambientColor;
+			const Vector3 cameraPosition = view.cameraPosition;
+
+			MeshObjectConstants constants{};
+			constants.modelViewProjection = Multiply(world, view.viewProjection);
+			constants.world               = world;
+
+			constants.directionToLight = { lightDirection.x, lightDirection.y, lightDirection.z, 0.0f };
+			constants.lightColor       = { lightColor.x, lightColor.y, lightColor.z, view.lightIntensity };
+			constants.ambientColor     = { ambientColor.x, ambientColor.y, ambientColor.z, 0.0f };
+			constants.cameraPosition   = { cameraPosition.x, cameraPosition.y, cameraPosition.z, 0.0f };
+			constants.material         = { metallicFactor, roughnessFactor, 0.0f, 0.0f };
+
+			return constants;
+		}
 
 		constexpr Vector3 DEFAULT_NORMAL    = { 0.0f, 1.0f, 0.0f };
 		constexpr Vector2 DEFAULT_TEX_COORD = { 0.0f, 0.0f };
@@ -83,8 +114,9 @@ namespace fang
 		pipelineDesc.pixelShaderBytecode  = std::span<const uint8_t>(g_MeshPS, sizeof(g_MeshPS));
 		pipelineDesc.vertexLayout         = VERTEX_LAYOUT;
 
-		// MVP は b0 のルート定数で渡す。1 メッシュ 1 マテリアルのうちは定数バッファを回すより少ない手数で済む。
-		pipelineDesc.rootConstantCount = MATRIX_ELEMENT_COUNT;
+		// MVP・ライト・マテリアルは b0 のルート定数で渡す（MeshConstants.h）。
+		// 1 メッシュ 1 マテリアルのうちは定数バッファを回すより少ない手数で済む。
+		pipelineDesc.rootConstantCount = MESH_OBJECT_CONSTANT_COUNT;
 
 		// ベースカラーを t0 に差す。無いときはダミーを差すので、パイプラインは常にこの 1 本。
 		pipelineDesc.hasTexture = true;
@@ -262,15 +294,12 @@ namespace fang
 
 			const Mesh& mesh = m_meshes[item.mesh.index];
 
-			// 行ベクトル規約なので World が左に来る。
-			const Matrix4x4 modelViewProjection = Multiply(item.world, view.viewProjection);
+			const MeshObjectConstants constants =
+				MakeObjectConstants(view, item.world, item.metallicFactor, item.roughnessFactor);
 
-			// 行優先のまま、転置せずにルート定数へ渡す。HLSL の定数バッファは既定で列優先に読むので、
-			// 読む側で転置が掛かって辻褄が合う（MeshVS.hlsl は mul(mvp, position) と書く）。
-			// 片側だけ流儀を変えると、絵が崩れているのに数字は正しく見える厄介な歪みになる。
 			commandList.SetVertexBuffer(mesh.vertexBuffer);
 			commandList.SetIndexBuffer(mesh.indexBuffer);
-			commandList.SetRootConstants(&modelViewProjection, MATRIX_ELEMENT_COUNT);
+			commandList.SetRootConstants(&constants, MESH_OBJECT_CONSTANT_COUNT);
 			commandList.SetTexture(item.baseColor.IsValid() ? item.baseColor : m_dummyBaseColor);
 			commandList.DrawIndexed(mesh.indexCount, 0, 0);
 		}

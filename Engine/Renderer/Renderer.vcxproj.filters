@@ -2,6 +2,9 @@
 <!-- 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{B4D8CE91-87F2-BC1B-8F61-BC02FD32A737}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MeshRenderer.h" />
@@ -10,6 +13,9 @@
     <ClInclude Include="RendererLog.h" />
     <ClInclude Include="SkinnedMeshRenderer.h" />
     <ClInclude Include="TriangleRenderer.h" />
+    <ClInclude Include="Shaders\MeshConstants.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MeshRenderer.cpp" />

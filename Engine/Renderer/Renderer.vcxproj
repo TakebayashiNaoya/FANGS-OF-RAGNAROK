@@ -32,6 +32,7 @@
     <ClInclude Include="RendererLog.h" />
     <ClInclude Include="SkinnedMeshRenderer.h" />
     <ClInclude Include="TriangleRenderer.h" />
+    <ClInclude Include="Shaders\MeshConstants.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MeshRenderer.cpp" />

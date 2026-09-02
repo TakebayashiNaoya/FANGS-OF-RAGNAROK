@@ -88,6 +88,10 @@ namespace fang
 			/** @brief ベースカラー。読めなかったら無効なままで、レンダラがダミー（単色）を差す。 */
 			rhi::TextureHandle baseColor;
 
+			// マテリアルの係数。読み込みのときに glTF から写す。狼は metallic 0（非金属）・roughness 1（粗い面）。
+			float metallicFactor  = 0.0f;
+			float roughnessFactor = 1.0f;
+
 			/** @brief バインドポーズを打ち消す行列。glTF の関節の並び。読み込みのときだけ確保する。 */
 			std::vector<Matrix4x4> inverseBindMatrices;
 
@@ -232,6 +236,9 @@ namespace fang
 
 			outWolf->baseColor = LoadWolfBaseColor(device, model);
 
+			outWolf->metallicFactor  = model.GetMetallicFactor();
+			outWolf->roughnessFactor = model.GetRoughnessFactor();
+
 			if (!model.HasSkin())
 			{
 				// 骨を持たない glTF なら静的メッシュとして描く。失敗の理由は CreateMesh 側がログに出す。
@@ -351,6 +358,11 @@ namespace fang
 				const float viewportWidth  = static_cast<float>(window.GetWidth() > 0 ? window.GetWidth() : 1);
 				const float viewportHeight = static_cast<float>(window.GetHeight() > 0 ? window.GetHeight() : 1);
 
+				// 光は 1 つ前のフレームの更新が書いたもの。まだ何も書かれていなければ既定の光で描く
+				// ➡ Game が光を書かなくても真っ黒にはならない。
+				const DirectionalLight  defaultLight{};
+				const DirectionalLight& light = frameData != nullptr ? frameData->light : defaultLight;
+
 				const View view{
 					.viewProjection = Multiply(
 						MakeLookAtMatrix(eye, CAMERA_TARGET, CAMERA_UP),
@@ -361,6 +373,11 @@ namespace fang
 							CAMERA_FAR_Z
 						)
 					),
+					.cameraPosition   = eye,
+					.directionToLight = light.directionToLight,
+					.lightColor       = light.color,
+					.lightIntensity   = light.intensity,
+					.ambientColor     = light.ambientColor,
 				};
 
 				// 実行中のヒープ確保は 0 が要件なので、std::vector を作らずスタックの配列を span で渡す。
@@ -376,6 +393,8 @@ namespace fang
 							.mesh             = wolf.mesh,
 							.skinningMatrices = wolf.skinningMatrices,
 							.baseColor        = wolf.baseColor,
+							.metallicFactor   = wolf.metallicFactor,
+							.roughnessFactor  = wolf.roughnessFactor,
 						},
 					};
 					loopContext.skinnedMeshRenderer->Draw(device, *commandList, view, items);
@@ -383,7 +402,12 @@ namespace fang
 				else
 				{
 					const RenderItem items[] = {
-						RenderItem{ .mesh = wolf.mesh, .baseColor = wolf.baseColor },
+						RenderItem{
+							.mesh            = wolf.mesh,
+							.baseColor       = wolf.baseColor,
+							.metallicFactor  = wolf.metallicFactor,
+							.roughnessFactor = wolf.roughnessFactor,
+						},
 					};
 					loopContext.meshRenderer->Draw(*commandList, view, items);
 				}

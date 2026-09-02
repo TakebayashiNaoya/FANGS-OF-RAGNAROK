@@ -44,9 +44,10 @@ namespace fang::rhi
 		{
 			entry.rootParameters.rootConstants = rootParameterCount;
 
+			// VS だけでなく PS もライトやマテリアルを b0 から読むので、両方から見えるようにする。
 			D3D12_ROOT_PARAMETER& parameter = rootParameters[rootParameterCount];
 			parameter.ParameterType         = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-			parameter.ShaderVisibility      = D3D12_SHADER_VISIBILITY_VERTEX;
+			parameter.ShaderVisibility      = D3D12_SHADER_VISIBILITY_ALL;
 
 			parameter.Constants.Num32BitValues = desc.rootConstantCount;
 			parameter.Constants.ShaderRegister = 0;
