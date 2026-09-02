@@ -6,15 +6,17 @@
 
 namespace fang
 {
+	class FrameMemory;
 	class JobSystem;
 
 	/**
 	 * @brief RunApplication が持っているものを、上の層から使えるようにまとめた束。
 	 * @details 参照で持つのは、渡す側が起動から終了まで生かし続けると決まっていて、null を確かめる分岐が
-	 *          要らないため。フレームアロケータのように後から増えるものは、ここへメンバを 1 行足す。
+	 *          要らないため。後から増えるものは、ここへメンバを 1 行足す。
 	 */
 	struct EngineContext
 	{
-		JobSystem& jobSystem;
+		JobSystem&   jobSystem;
+		FrameMemory& frameMemory;
 	};
 } // namespace fang

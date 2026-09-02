@@ -14,6 +14,7 @@
 #include "Core/Log/Assert.h"
 #include "Core/Log/Log.h"
 #include "Core/Memory/Allocator.h"
+#include "Core/Memory/FrameAllocator.h"
 #include "Core/Memory/UniquePtr.h"
 #include "Core/Platform/SystemFont.h"
 #include "Core/Platform/Thread.h"

@@ -6,6 +6,7 @@
 #include "Runtime/Application.h"
 #include "Core/Job/JobSystem.h"
 #include "Core/Log/Assert.h"
+#include "Core/Memory/FrameAllocator.h"
 #include "Core/Platform/Window.h"
 #include "RHI/GraphicsDevice.h"
 #include "Renderer/TriangleRenderer.h"
@@ -33,6 +34,20 @@ namespace fang
 			FANG_FATAL("ジョブシステムを開始できなかった");
 		}
 
+		// フレームメモリもここが持つ。JobSystem と同じく、使う側へは参照で渡す。
+		FrameMemory frameMemory;
+		if (!frameMemory.Initialize(FrameMemoryDesc{}))
+		{
+			FANG_FATAL("フレームメモリを確保できなかった");
+		}
+
+		FANG_LOG_INFO(
+			Runtime,
+			"フレームメモリを確保した (1 枚 {} KiB × {} 枚)",
+			frameMemory.GetCapacityPerBuffer() / 1024,
+			FrameMemory::BUFFER_COUNT
+		);
+
 		Window window;
 		if (!window.Initialize(WindowDesc{}))
 		{
@@ -58,7 +73,7 @@ namespace fang
 		}
 
 		// 全部の初期化が終わってから束ねる。上の層はここで受けた参照を持ち続ける。
-		const EngineContext context{ jobSystem };
+		const EngineContext context{ jobSystem, frameMemory };
 		if (!application.OnInitialize(context, device, window))
 		{
 			FANG_FATAL("上の層の初期化に失敗した");
@@ -72,6 +87,9 @@ namespace fang
 		// ウィンドウを閉じるまでループする。WM_QUIT を受け取ると PumpMessages() が false を返す。
 		while (window.PumpMessages())
 		{
+			// このフレームの置き場へ切り替える。前のフレームに確保したものは、次の切り替えまで残る。
+			frameMemory.BeginFrame();
+
 			// 前フレームからの経過時間を秒で計算する。
 			const auto  currentTime      = std::chrono::steady_clock::now();
 			const float deltaTimeSeconds = std::chrono::duration<float>(currentTime - previousTime).count();
@@ -108,7 +126,10 @@ namespace fang
 		triangleRenderer.Shutdown(device);
 		device.Shutdown();
 		window.Shutdown();
+
+		// フレームメモリはジョブから触られるので、ワーカーを畳んでから返す。
 		jobSystem.Shutdown();
+		frameMemory.Shutdown();
 
 		return 0;
 	}
