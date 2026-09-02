@@ -45,5 +45,17 @@
   </ItemGroup>
   <!-- FANG_FILES_END -->
 
+  <!-- アセットは exe の隣へ置く。Core\Windows\AssetPath.cpp が exe のディレクトリから引くため。
+       15MB の .bin を毎回コピーしないよう SkipUnchangedFiles を立てる -->
+  <ItemGroup>
+    <FangAssetFile Include="$(MSBuildProjectDirectory)\Assets\Models\**\*" />
+  </ItemGroup>
+  <Target Name="FangCopyAssets" AfterTargets="Build" Inputs="@(FangAssetFile)"
+          Outputs="@(FangAssetFile -> '$(OutDir)Assets\Models\%(RecursiveDir)%(Filename)%(Extension)')">
+    <Copy SourceFiles="@(FangAssetFile)"
+          DestinationFiles="@(FangAssetFile -> '$(OutDir)Assets\Models\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

@@ -8,6 +8,7 @@
 #include "RHI/BufferPool.h"
 #include "RHI/CommandList.h"
 #include "RHI/D3D12Common.h"
+#include "RHI/DepthBuffer.h"
 #include "RHI/DescriptorHeap.h"
 #include "RHI/GPUFence.h"
 #include "RHI/PipelinePool.h"
@@ -22,7 +23,8 @@ namespace fang::rhi
 {
 	/**
 	 * @brief DirectX 12 のデバイス。
-	 * @details 部品（SwapChain / DescriptorHeap / GPUFence / 各台帳）を持ち、フレームの開始と終了を仕切る。
+	 * @details 部品（SwapChain / DepthBuffer / DescriptorHeap / GPUFence / 各台帳）を持ち、
+	 *          フレームの開始と終了を仕切る。
 	 *          公開する操作は public、D3D12 の実体は private に置く。
 	 * @threading Initialize / Shutdown / BeginFrame / EndFrame はメインスレッドのみ。
 	 */
@@ -132,6 +134,7 @@ namespace fang::rhi
 		ComPtr<ID3D12CommandQueue> m_commandQueue; /**< コマンドを GPU に流す唯一の列。 */
 
 		SwapChain      m_swapChain;         /**< バックバッファの束と RTV。画面の大きさもここが持つ。 */
+		DepthBuffer    m_depthBuffer;       /**< 深度バッファと DSV。SwapChain と同じ大きさで作り直す。 */
 		DescriptorHeap m_shaderVisibleHeap; /**< シェーダから見える SRV の置き場。 */
 		GPUFence       m_fence;             /**< GPU の進み具合を知るカウンタ。WaitForGPU で使う。 */
 

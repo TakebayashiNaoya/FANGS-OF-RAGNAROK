@@ -8,6 +8,9 @@
     <Filter Include="Log">
       <UniqueIdentifier>{2799DCE6-3CA6-2EA9-7019-4FDF53099B59}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Math">
+      <UniqueIdentifier>{3C0F9018-8674-937F-FB96-CC068E5A6FDA}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Memory">
       <UniqueIdentifier>{58048B6A-1DFE-FE0C-EC79-0A2C552BA159}</UniqueIdentifier>
     </Filter>
@@ -47,6 +50,15 @@
     <ClInclude Include="Log\PlatformLogSink.h">
       <Filter>Log</Filter>
     </ClInclude>
+    <ClInclude Include="Math\Matrix4x4.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Vector2.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Vector3.h">
+      <Filter>Math</Filter>
+    </ClInclude>
     <ClInclude Include="Memory\Allocator.h">
       <Filter>Memory</Filter>
     </ClInclude>
@@ -55,6 +67,9 @@
     </ClInclude>
     <ClInclude Include="Memory\UniquePtr.h">
       <Filter>Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="Platform\AssetPath.h">
+      <Filter>Platform</Filter>
     </ClInclude>
     <ClInclude Include="Platform\SystemFont.h">
       <Filter>Platform</Filter>
@@ -81,11 +96,17 @@
     <ClCompile Include="Log\Log.cpp">
       <Filter>Log</Filter>
     </ClCompile>
+    <ClCompile Include="Math\Matrix4x4.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
     <ClCompile Include="Memory\Allocator.cpp">
       <Filter>Memory</Filter>
     </ClCompile>
     <ClCompile Include="Memory\FrameAllocator.cpp">
       <Filter>Memory</Filter>
+    </ClCompile>
+    <ClCompile Include="Windows\AssetPath.cpp">
+      <Filter>Windows</Filter>
     </ClCompile>
     <ClCompile Include="Windows\PlatformLogSink.cpp">
       <Filter>Windows</Filter>
@@ -98,6 +119,9 @@
     </ClCompile>
     <ClCompile Include="Windows\Window.cpp">
       <Filter>Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Xbox\AssetPath.cpp">
+      <Filter>Xbox</Filter>
     </ClCompile>
     <ClCompile Include="Xbox\PlatformLogSink.cpp">
       <Filter>Xbox</Filter>

@@ -5,6 +5,7 @@
 #include "Pch.h"
 #include "RHI/PipelinePool.h"
 #include "Core/Log/Assert.h"
+#include "RHI/DepthBuffer.h"
 
 
 namespace fang::rhi
@@ -145,6 +146,28 @@ namespace fang::rhi
 			blend.DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
 			blend.BlendOpAlpha   = D3D12_BLEND_OP_ADD;
 		}
+
+		// 深度を使わないパイプラインにも BeginFrame が DSV を差すので、形式は常に合わせておく。
+		// UNKNOWN のままだと差した DSV と食い違い、デバッグレイヤーに叱られる。
+		pipelineDesc.DSVFormat = DepthBuffer::DEPTH_FORMAT;
+
+		D3D12_DEPTH_STENCIL_DESC& depthStencil = pipelineDesc.DepthStencilState;
+		if (desc.isDepthTestEnabled)
+		{
+			depthStencil.DepthEnable    = TRUE;
+			depthStencil.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+
+			// 深度は手前ほど小さいので、既に書かれている値より小さいものだけ通す。
+			depthStencil.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
+		}
+		else
+		{
+			depthStencil.DepthEnable    = FALSE;
+			depthStencil.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+		}
+
+		// ステンシルは使わない。
+		depthStencil.StencilEnable = FALSE;
 
 		if (!CheckHresult(
 				device.CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(&entry.pipelineState)),
