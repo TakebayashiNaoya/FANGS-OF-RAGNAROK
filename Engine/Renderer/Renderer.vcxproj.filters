@@ -8,12 +8,14 @@
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RendererLog.h" />
+    <ClInclude Include="SkinnedMeshRenderer.h" />
     <ClInclude Include="TriangleRenderer.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MeshRenderer.cpp" />
     <ClCompile Include="Pch.cpp" />
     <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="SkinnedMeshRenderer.cpp" />
     <ClCompile Include="TriangleRenderer.cpp" />
   </ItemGroup>
 </Project>

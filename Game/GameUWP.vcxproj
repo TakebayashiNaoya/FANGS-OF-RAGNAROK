@@ -58,11 +58,9 @@
     <None Include="Assets\Fonts\OFL.txt">
       <DeploymentContent>true</DeploymentContent>
     </None>
-    <!-- 狼のモデル。DeploymentContent を立てた項目だけがパッケージに入る -->
-    <None Include="Assets\Models\Wolf.gltf">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="Assets\Models\Wolf.bin">
+    <!-- 狼のモデルと、gltf2ozz が出した骨・クリップ。DeploymentContent を立てた項目だけがパッケージに入る。
+         Game.vcxproj のコピーと同じくワイルドカードで拾う ➡ アセットを足すたびにここを直さなくてよい -->
+    <None Include="Assets\Models\**\*">
       <DeploymentContent>true</DeploymentContent>
     </None>
     <Image Include="$(MSBuildProjectDirectory)\Assets\StoreLogo.png" />

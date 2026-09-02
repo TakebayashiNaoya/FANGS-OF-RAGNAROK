@@ -42,6 +42,9 @@ namespace fang::rhi
 
 		const PipelinePool::Entry& entry = m_device->m_pipelines.Get(pipeline);
 
+		// 番号は差した相手ごとに違う。Set* が引く先をここで入れ替える。
+		m_boundRootParameters = entry.rootParameters;
+
 		commandList->SetGraphicsRootSignature(entry.rootSignature.Get());
 		commandList->SetPipelineState(entry.pipelineState.Get());
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -75,7 +78,25 @@ namespace fang::rhi
 		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
-		commandList->SetGraphicsRoot32BitConstants(0, count32BitValues, values, 0);
+		const uint32_t parameterIndex = m_boundRootParameters.rootConstants;
+		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "ルート定数を持たないパイプラインだ");
+
+		commandList->SetGraphicsRoot32BitConstants(parameterIndex, count32BitValues, values, 0);
+	}
+
+
+	void CommandList::SetConstantBuffer(BufferHandle buffer)
+	{
+		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
+		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
+
+		const uint32_t parameterIndex = m_boundRootParameters.constantBuffer;
+		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "定数バッファを持たないパイプラインだ");
+
+		const BufferPool::Entry& entry = m_device->m_buffers.Get(buffer);
+		FANG_ASSERT(entry.kind == EnBufferKind::Constant, "定数バッファとして作られていないバッファだ");
+
+		commandList->SetGraphicsRootConstantBufferView(parameterIndex, entry.resource->GetGPUVirtualAddress());
 	}
 
 
@@ -84,12 +105,14 @@ namespace fang::rhi
 		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
+		const uint32_t parameterIndex = m_boundRootParameters.texture;
+		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "テクスチャを持たないパイプラインだ");
+
 		const TexturePool::Entry&         entry = m_device->m_textures.Get(texture);
 		const D3D12_GPU_DESCRIPTOR_HANDLE descriptor =
 			m_device->m_shaderVisibleHeap.GetGPUHandle(entry.descriptorIndex);
 
-		// ルート定数がある構成ではテーブルは 2 番目に来る。
-		commandList->SetGraphicsRootDescriptorTable(1, descriptor);
+		commandList->SetGraphicsRootDescriptorTable(parameterIndex, descriptor);
 	}
 
 

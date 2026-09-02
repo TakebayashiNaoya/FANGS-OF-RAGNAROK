@@ -20,6 +20,7 @@ namespace fang::rhi
 				case EnVertexFormat::Float3: return DXGI_FORMAT_R32G32B32_FLOAT;
 				case EnVertexFormat::Float4: return DXGI_FORMAT_R32G32B32A32_FLOAT;
 				case EnVertexFormat::UByte4Normalized: return DXGI_FORMAT_R8G8B8A8_UNORM;
+				case EnVertexFormat::UByte4: return DXGI_FORMAT_R8G8B8A8_UINT;
 			}
 
 			return DXGI_FORMAT_UNKNOWN;
@@ -34,11 +35,15 @@ namespace fang::rhi
 		textureRange.NumDescriptors     = 1;
 		textureRange.BaseShaderRegister = 0;
 
-		D3D12_ROOT_PARAMETER rootParameters[2]{};
+		D3D12_ROOT_PARAMETER rootParameters[3]{};
 		uint32_t             rootParameterCount = 0;
+
+		Entry entry;
 
 		if (desc.rootConstantCount > 0)
 		{
+			entry.rootParameters.rootConstants = rootParameterCount;
+
 			D3D12_ROOT_PARAMETER& parameter = rootParameters[rootParameterCount];
 			parameter.ParameterType         = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
 			parameter.ShaderVisibility      = D3D12_SHADER_VISIBILITY_VERTEX;
@@ -48,8 +53,23 @@ namespace fang::rhi
 			++rootParameterCount;
 		}
 
+		if (desc.hasConstantBuffer)
+		{
+			entry.rootParameters.constantBuffer = rootParameterCount;
+
+			// ディスクリプタを作らず GPU アドレスを直接渡すルート CBV。ヒープのスロットを消費しない。
+			D3D12_ROOT_PARAMETER& parameter = rootParameters[rootParameterCount];
+			parameter.ParameterType         = D3D12_ROOT_PARAMETER_TYPE_CBV;
+			parameter.ShaderVisibility      = D3D12_SHADER_VISIBILITY_VERTEX;
+
+			parameter.Descriptor.ShaderRegister = 1;
+			++rootParameterCount;
+		}
+
 		if (desc.hasTexture)
 		{
+			entry.rootParameters.texture = rootParameterCount;
+
 			D3D12_ROOT_PARAMETER& parameter = rootParameters[rootParameterCount];
 			parameter.ParameterType         = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 			parameter.ShaderVisibility      = D3D12_SHADER_VISIBILITY_PIXEL;
@@ -90,7 +110,6 @@ namespace fang::rhi
 			return PipelineHandle{};
 		}
 
-		Entry entry;
 		if (!CheckHresult(
 				device.CreateRootSignature(
 					0,

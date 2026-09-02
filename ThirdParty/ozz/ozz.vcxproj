@@ -1,0 +1,75 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ozz-animation 0.17.0 のランタイムだけを static lib としてビルドする。
+  上流のファイルは触らないので、警告レベルはここで緩める（02_ソリューション構成 §7）。
+  入れているのは src\animation\runtime と src\base の 25 本だけで、オフライン側（gltf2ozz が使う分）は
+  リポジトリに入れていない。公開ヘッダは include\ozz にそのまま置き、一覧には並べない（60 本あるため）。
+  .cc の拡張子は上流のまま。MSBuild は既定で C++ として扱う。
+-->
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Preview|x64"><Configuration>Preview</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="DebugXbox|x64"><Configuration>DebugXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="PreviewXbox|x64"><Configuration>PreviewXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="ReleaseXbox|x64"><Configuration>ReleaseXbox</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{9A28CDAD-0F6F-B8A0-3912-682D1073D44E}</ProjectGuid>
+    <RootNamespace>ozz</RootNamespace>
+    <ProjectName>ozz</ProjectName>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <!-- src は上流の .cc が "animation/runtime/animation_keyframe.h" のように src 相対で書いているため -->
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\include;$(MSBuildProjectDirectory)\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <!-- io/stream.cc の fopen（C4996）。上流を書き換えない方針なので、抑えるのは取り込む側の責任 -->
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemGroup>
+    <ClInclude Include="src\animation\runtime\animation_keyframe.h" />
+    <ClCompile Include="src\animation\runtime\animation.cc" />
+    <ClCompile Include="src\animation\runtime\animation_utils.cc" />
+    <ClCompile Include="src\animation\runtime\blending_job.cc" />
+    <ClCompile Include="src\animation\runtime\ik_aim_job.cc" />
+    <ClCompile Include="src\animation\runtime\ik_two_bone_job.cc" />
+    <ClCompile Include="src\animation\runtime\local_to_model_job.cc" />
+    <ClCompile Include="src\animation\runtime\motion_blending_job.cc" />
+    <ClCompile Include="src\animation\runtime\sampling_job.cc" />
+    <ClCompile Include="src\animation\runtime\skeleton.cc" />
+    <ClCompile Include="src\animation\runtime\skeleton_utils.cc" />
+    <ClCompile Include="src\animation\runtime\track.cc" />
+    <ClCompile Include="src\animation\runtime\track_sampling_job.cc" />
+    <ClCompile Include="src\animation\runtime\track_triggering_job.cc" />
+    <ClCompile Include="src\base\containers\string_archive.cc" />
+    <ClCompile Include="src\base\encode\group_varint.cc" />
+    <ClCompile Include="src\base\io\archive.cc" />
+    <ClCompile Include="src\base\io\stream.cc" />
+    <ClCompile Include="src\base\log.cc" />
+    <ClCompile Include="src\base\maths\box.cc" />
+    <ClCompile Include="src\base\maths\math_archive.cc" />
+    <ClCompile Include="src\base\maths\simd_math.cc" />
+    <ClCompile Include="src\base\maths\simd_math_archive.cc" />
+    <ClCompile Include="src\base\maths\soa_math_archive.cc" />
+    <ClCompile Include="src\base\memory\allocator.cc" />
+    <ClCompile Include="src\base\platform.cc" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

@@ -5,10 +5,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Animation.h" />
+    <ClInclude Include="AnimationLog.h" />
+    <ClInclude Include="AnimationPlayback.h" />
     <ClInclude Include="Pch.h" />
+    <ClInclude Include="SkeletalAnimation.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Animation.cpp" />
+    <ClCompile Include="AnimationPlayback.cpp" />
     <ClCompile Include="Pch.cpp" />
+    <ClCompile Include="SkeletalAnimation.cpp" />
   </ItemGroup>
 </Project>

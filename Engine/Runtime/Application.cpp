@@ -4,6 +4,8 @@
  */
 #include "Pch.h"
 #include "Runtime/Application.h"
+#include "Animation/AnimationPlayback.h"
+#include "Animation/SkeletalAnimation.h"
 #include "Core/Job/JobSystem.h"
 #include "Core/Log/Assert.h"
 #include "Core/Math/Matrix4x4.h"
@@ -13,6 +15,7 @@
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
 #include "Renderer/MeshRenderer.h"
+#include "Renderer/SkinnedMeshRenderer.h"
 #include "Renderer/TriangleRenderer.h"
 #include "Resource/GltfMesh.h"
 #include "Runtime/FramePipeline.h"
@@ -20,6 +23,7 @@
 #include <chrono>
 #include <cmath>
 #include <string>
+#include <vector>
 
 
 FANG_DEFINE_LOG_CATEGORY(Runtime);
@@ -36,6 +40,11 @@ namespace fang
 
 		/** @brief 狼の glTF。アセットの根っこからの相対パス。 */
 		constexpr const char* WOLF_MODEL_RELATIVE_PATH = "Models\\Wolf.gltf";
+
+		// 骨とクリップは gltf2ozz が Wolf.gltf から出したもの。歩き（直進）はルートモーションを持たないので、
+		// その場で脚だけが動く ➡ 移動処理がまだ無くても再生の正しさが確かめられる。
+		constexpr const char* WOLF_SKELETON_RELATIVE_PATH = "Models\\WolfSkeleton.ozz";
+		constexpr const char* WOLF_CLIP_RELATIVE_PATH     = "Models\\A_WalkSlow_F.ozz";
 
 		// 狼の頂点の実測範囲は X[-92.6, 111.4]（体長 204）、Y[-0.39, 106.6]（高さ 107）、Z[±18.2]（幅 36）。
 		// 単位は 1 = 1cm。狼は X 軸に沿って立っているので、真横に当たる Z 方向から見るのが素直。
@@ -60,17 +69,42 @@ namespace fang
 		/** @brief カメラが狼の周りを 1 周する秒数。 */
 		constexpr float CAMERA_ORBIT_SECONDS = 20.0f;
 
+		/**
+		 * @brief 狼 1 体ぶんの持ち物。
+		 * @details Scene ができたらゲーム側のオブジェクトへ移る。今はフレームループが直接抱えている。
+		 */
+		struct WolfModel
+		{
+			/** @brief GPU に載ったメッシュ。読み込みに失敗すると無効なままで、そのときは描画を飛ばす。 */
+			MeshId mesh;
+
+			/** @brief 骨を持つメッシュとして読めたか。false なら静的メッシュとして描く。 */
+			bool isSkinned = false;
+
+			SkeletalAnimation animation;
+			AnimationPlayback playback;
+
+			/** @brief バインドポーズを打ち消す行列。glTF の関節の並び。読み込みのときだけ確保する。 */
+			std::vector<Matrix4x4> inverseBindMatrices;
+
+			/**
+			 * @brief 毎フレーム作り直すスキニング行列。
+			 * @details 単位行列で初期化してあるので、クリップを読めていなくてもバインドポーズで描ける。
+			 *          置き場は読み込みのときに取り切る ➡ 毎フレームのヒープ確保は 0。
+			 */
+			std::vector<Matrix4x4> skinningMatrices;
+		};
+
 		/** @brief FramePipeline へ渡す、フレームループの持ち物。 */
 		struct FrameLoopContext
 		{
-			IApplication*        application      = nullptr;
-			rhi::GraphicsDevice* device           = nullptr;
-			Window*              window           = nullptr;
-			TriangleRenderer*    triangleRenderer = nullptr;
-			MeshRenderer*        meshRenderer     = nullptr;
-
-			/** @brief 狼のメッシュ。読み込みに失敗すると無効なままで、そのときは描画だけを飛ばす。 */
-			MeshId wolfMesh;
+			IApplication*        application         = nullptr;
+			rhi::GraphicsDevice* device              = nullptr;
+			Window*              window              = nullptr;
+			TriangleRenderer*    triangleRenderer    = nullptr;
+			MeshRenderer*        meshRenderer        = nullptr;
+			SkinnedMeshRenderer* skinnedMeshRenderer = nullptr;
+			WolfModel*           wolf                = nullptr;
 
 			/** @brief カメラの水平回転角（ラジアン）。入力の仕組みがまだ無いので時間で回す。 */
 			float cameraOrbitRadians = 0.0f;
@@ -81,32 +115,117 @@ namespace fang
 
 
 		/**
-		 * @brief 狼のモデルを読んで GPU へ載せる。
-		 * @details 失敗しても落とさない。モデルが出なくても三角形とエディタは動き、ゲームの本質でもないため。
-		 * @return 失敗したら無効な番号。呼び出し側はメッシュの描画だけを飛ばす。
+		 * @brief 骨とクリップを読み、姿勢を作れる状態にする。
+		 * @details 失敗しても落とさない。IsReady() が false のままになり、狼はバインドポーズで立つ。
 		 */
-		[[nodiscard]] MeshId LoadWolfMesh(rhi::GraphicsDevice& device, MeshRenderer& meshRenderer)
+		void LoadWolfAnimation(const GltfMesh& model, WolfModel* outWolf)
+		{
+			const std::string skeletonPath = MakeAssetPath(WOLF_SKELETON_RELATIVE_PATH);
+			if (!outWolf->animation.LoadSkeleton(skeletonPath.c_str()))
+			{
+				FANG_LOG_ERROR(Runtime, "狼のスケルトンを読めなかった。バインドポーズで描く: {}", skeletonPath);
+				return;
+			}
+
+			const std::string clipPath = MakeAssetPath(WOLF_CLIP_RELATIVE_PATH);
+			if (!outWolf->animation.LoadClip(clipPath.c_str()))
+			{
+				FANG_LOG_ERROR(Runtime, "狼のクリップを読めなかった。バインドポーズで描く: {}", clipPath);
+				return;
+			}
+
+			// gltf2ozz は関節を並べ替える。名前で対応表を作らないと、骨の対応がずれた姿勢が描かれる。
+			if (!outWolf->animation.BuildJointRemap(model.GetJointNames()))
+			{
+				FANG_LOG_ERROR(Runtime, "狼の関節の対応表を作れなかった。バインドポーズで描く");
+				return;
+			}
+
+			outWolf->playback.SetDurationSeconds(outWolf->animation.GetClipDurationSeconds());
+
+			FANG_LOG_INFO(Runtime, "狼のアニメーションを読んだ: {:.3f} 秒", outWolf->playback.GetDurationSeconds());
+		}
+
+		/**
+		 * @brief 狼のモデルを読んで GPU へ載せる。骨を持っていればアニメーションも読む。
+		 * @details 失敗しても落とさない。モデルが出なくても三角形とエディタは動き、ゲームの本質でもないため。
+		 */
+		void LoadWolf(
+			rhi::GraphicsDevice& device,
+			MeshRenderer&        meshRenderer,
+			SkinnedMeshRenderer& skinnedMeshRenderer,
+			WolfModel*           outWolf
+		)
 		{
 			// GltfMesh は CreateMesh が済めば用済み。15MB の .bin 由来の配列を抱え続けないよう、
-			// この関数を抜けるところで手放す。
+			// この関数を抜けるところで手放す。逆バインド行列と関節名だけは写しを残す。
 			GltfMesh model;
 
 			const std::string filePath = MakeAssetPath(WOLF_MODEL_RELATIVE_PATH);
 			if (!model.Load(filePath.c_str()))
 			{
 				FANG_LOG_ERROR(Runtime, "狼のモデルを読めなかった: {}", filePath);
-				return MeshId{};
+				return;
 			}
 
-			const MeshSource source{
-				.positions = model.GetPositions(),
-				.normals   = model.GetNormals(),
-				.texCoords = model.GetTexCoords(),
-				.indices   = model.GetIndices(),
+			if (!model.HasSkin())
+			{
+				// 骨を持たない glTF なら静的メッシュとして描く。失敗の理由は CreateMesh 側がログに出す。
+				const MeshSource source{
+					.positions = model.GetPositions(),
+					.normals   = model.GetNormals(),
+					.texCoords = model.GetTexCoords(),
+					.indices   = model.GetIndices(),
+				};
+
+				outWolf->mesh = meshRenderer.CreateMesh(device, source);
+				return;
+			}
+
+			const SkinnedMeshSource source{
+				.positions    = model.GetPositions(),
+				.normals      = model.GetNormals(),
+				.texCoords    = model.GetTexCoords(),
+				.indices      = model.GetIndices(),
+				.jointIndices = model.GetJointIndices(),
+				.jointWeights = model.GetJointWeights(),
 			};
 
-			// 失敗したときの理由は CreateMesh 側がログに出す。
-			return meshRenderer.CreateMesh(device, source);
+			outWolf->mesh = skinnedMeshRenderer.CreateMesh(device, source);
+			if (!outWolf->mesh.IsValid())
+			{
+				return;
+			}
+
+			outWolf->isSkinned = true;
+
+			const std::span<const Matrix4x4> inverseBindMatrices = model.GetInverseBindMatrices();
+			outWolf->inverseBindMatrices.assign(inverseBindMatrices.begin(), inverseBindMatrices.end());
+
+			// 単位行列のまま置いておく ➡ クリップを読めなくてもバインドポーズが出る。
+			outWolf->skinningMatrices.resize(inverseBindMatrices.size());
+
+			LoadWolfAnimation(model, outWolf);
+		}
+
+		/**
+		 * @brief 再生位置を進め、そのフレームのスキニング行列を作る。
+		 * @details 姿勢を作れないときは行列を触らない ➡ 単位行列のままバインドポーズで描かれる。
+		 */
+		void UpdateWolfPose(WolfModel* wolf, float deltaTimeSeconds)
+		{
+			if (!wolf->animation.IsReady())
+			{
+				return;
+			}
+
+			wolf->playback.Advance(deltaTimeSeconds);
+
+			FANG_VERIFY(wolf->animation.ComputeSkinningMatrices(
+				wolf->playback.GetTimeRatio(),
+				wolf->inverseBindMatrices,
+				wolf->skinningMatrices
+			));
 		}
 
 		/** @brief 更新の本体。ワーカースレッドで走るので、渡された束の外へは手を伸ばさない。 */
@@ -143,9 +262,10 @@ namespace fang
 			loopContext.triangleRenderer->Draw(*commandList, window.GetWidth(), window.GetHeight());
 
 			// 狼を描く。読めていなければメッシュの描画だけを飛ばし、ほかは今までどおり続ける。
-			if (loopContext.wolfMesh.IsValid())
+			WolfModel& wolf = *loopContext.wolf;
+			if (wolf.mesh.IsValid())
 			{
-				// MeshRenderer はビューポートを設定しない。TriangleRenderer::Draw が内部で設定しているのに
+				// メッシュのレンダラはビューポートを設定しない。TriangleRenderer::Draw が内部で設定しているのに
 				// 頼ると、描く順を入れ替えた途端に壊れる。
 				commandList->SetViewport(window.GetWidth(), window.GetHeight());
 
@@ -181,8 +301,22 @@ namespace fang
 
 				// 実行中のヒープ確保は 0 が要件なので、std::vector を作らずスタックの配列を span で渡す。
 				// world は既定の単位行列のまま。狼はモデル座標のまま原点に置く。
-				const RenderItem items[] = { RenderItem{ .mesh = loopContext.wolfMesh } };
-				loopContext.meshRenderer->Draw(*commandList, view, items);
+				if (wolf.isSkinned)
+				{
+					// 再生位置を進めるのはここ。カメラの回転と同じ場所に置いてある
+					// ➡ Scene ができたらカメラごとゲーム側の更新へ移る。
+					UpdateWolfPose(&wolf, deltaTimeSeconds);
+
+					const SkinnedRenderItem items[] = {
+						SkinnedRenderItem{ .mesh = wolf.mesh, .skinningMatrices = wolf.skinningMatrices },
+					};
+					loopContext.skinnedMeshRenderer->Draw(device, *commandList, view, items);
+				}
+				else
+				{
+					const RenderItem items[] = { RenderItem{ .mesh = wolf.mesh } };
+					loopContext.meshRenderer->Draw(*commandList, view, items);
+				}
 			}
 
 			// 上の層に描画コマンドを積ませる。読ませるのは 1 つ前のフレームの更新が作ったもの。
@@ -243,11 +377,12 @@ namespace fang
 
 		// メッシュ側は失敗しても FANG_FATAL にしない。モデルが出ないだけならゲームは続けられるし、
 		// 起動できないほうが困るため。三角形とエディタは今までどおり動く。
-		MeshRenderer meshRenderer;
-		MeshId       wolfMesh;
-		if (meshRenderer.Initialize(device))
+		MeshRenderer        meshRenderer;
+		SkinnedMeshRenderer skinnedMeshRenderer;
+		WolfModel           wolf;
+		if (meshRenderer.Initialize(device) && skinnedMeshRenderer.Initialize(device))
 		{
-			wolfMesh = LoadWolfMesh(device, meshRenderer);
+			LoadWolf(device, meshRenderer, skinnedMeshRenderer, &wolf);
 		}
 		else
 		{
@@ -255,12 +390,13 @@ namespace fang
 		}
 
 		FrameLoopContext loopContext{};
-		loopContext.application      = &application;
-		loopContext.device           = &device;
-		loopContext.window           = &window;
-		loopContext.triangleRenderer = &triangleRenderer;
-		loopContext.meshRenderer     = &meshRenderer;
-		loopContext.wolfMesh         = wolfMesh;
+		loopContext.application         = &application;
+		loopContext.device              = &device;
+		loopContext.window              = &window;
+		loopContext.triangleRenderer    = &triangleRenderer;
+		loopContext.meshRenderer        = &meshRenderer;
+		loopContext.skinnedMeshRenderer = &skinnedMeshRenderer;
+		loopContext.wolf                = &wolf;
 
 		FramePipeline framePipeline;
 		if (!framePipeline.Initialize(jobSystem, frameMemory, &loopContext, &UpdateFrame, &RenderFrame))
@@ -300,6 +436,7 @@ namespace fang
 		application.OnShutdown(device);
 		triangleRenderer.Shutdown(device);
 		meshRenderer.Shutdown(device);
+		skinnedMeshRenderer.Shutdown(device);
 		device.Shutdown();
 		window.Shutdown();
 

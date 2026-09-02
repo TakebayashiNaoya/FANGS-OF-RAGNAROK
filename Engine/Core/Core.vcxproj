@@ -37,9 +37,11 @@
     <ClInclude Include="Log\Assert.h" />
     <ClInclude Include="Log\Log.h" />
     <ClInclude Include="Log\PlatformLogSink.h" />
+    <ClInclude Include="Math\JointIndices.h" />
     <ClInclude Include="Math\Matrix4x4.h" />
     <ClInclude Include="Math\Vector2.h" />
     <ClInclude Include="Math\Vector3.h" />
+    <ClInclude Include="Math\Vector4.h" />
     <ClInclude Include="Memory\Allocator.h" />
     <ClInclude Include="Memory\FrameAllocator.h" />
     <ClInclude Include="Memory\UniquePtr.h" />

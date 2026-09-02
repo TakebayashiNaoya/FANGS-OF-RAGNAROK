@@ -52,4 +52,14 @@ namespace fang
 	 * @return left * right。行ベクトル規約なので、点は left の変換を受けてから right の変換を受ける。
 	 */
 	[[nodiscard]] Matrix4x4 Multiply(const Matrix4x4& left, const Matrix4x4& right);
+
+	/**
+	 * @brief 右手系の行列を左手系へ移す。
+	 * @param rightHanded 右手系のまま作られた行列。glTF と ozz-animation が返すものがこれ。
+	 * @return 同じ動きを左手系で表す行列。
+	 * @details 頂点は読み込みのときに Z を反転して左手系にしている（p_左 = p_右 S、S = diag(1, 1, -1, 1)）。
+	 *          同じ座標に掛ける行列は S M S になり、行と列のどちらか片方だけが Z の成分だけ符号が返る。
+	 *          頂点だけ直して行列を直さないと、骨に沿った動きが Z 方向に裏返る。
+	 */
+	[[nodiscard]] Matrix4x4 ConvertToLeftHanded(const Matrix4x4& rightHanded);
 } // namespace fang

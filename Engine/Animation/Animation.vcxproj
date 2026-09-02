@@ -22,18 +22,25 @@
   </PropertyGroup>
 
   <Import Project="$(FangRoot)Build\Module.props" />
+  <!-- 骨のサンプリングと圧縮は ozz に任せる。ozz の型は Animation の外へ出さない -->
+  <Import Project="$(FangRoot)Build\ThirdParty.ozz.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
     <ClInclude Include="Animation.h" />
+    <ClInclude Include="AnimationLog.h" />
+    <ClInclude Include="AnimationPlayback.h" />
     <ClInclude Include="Pch.h" />
+    <ClInclude Include="SkeletalAnimation.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Animation.cpp" />
+    <ClCompile Include="AnimationPlayback.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="SkeletalAnimation.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 
