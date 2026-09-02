@@ -46,7 +46,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
 
-      <!-- 例外 / RTTI はオフ（D-6）。有効にしてよいのは Core/Platform/UWP の TU だけ -->
+      <!-- 例外 / RTTI はオフ。有効にしてよいのは C++/WinRT に触る TU だけ（各 vcxproj が個別に上書きする） -->
       <ExceptionHandling>false</ExceptionHandling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
 

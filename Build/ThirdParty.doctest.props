@@ -2,7 +2,7 @@
 <!--
   ThirdParty.doctest.props
   doctest（単一ヘッダ、MIT）。上流のファイルをそのまま置く。
-  例外を切っている（D-6）ので REQUIRE 系は使えない。CHECK 系で書く。
+  例外を切っているので REQUIRE 系は使えない。CHECK 系で書く。
 -->
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
 

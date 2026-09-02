@@ -33,6 +33,7 @@
     <ClInclude Include="ImGuiPlatformInput.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Panels\JobSystemPanel.h" />
+    <ClInclude Include="Xbox\GamepadReader.h" Condition="'$(FangIsXbox)' == 'true'" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Editor.cpp" />
@@ -42,9 +43,23 @@
     </ClCompile>
     <ClCompile Include="Panels\JobSystemPanel.cpp" />
     <ClCompile Include="Windows\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' != 'true'" />
+    <ClCompile Include="Xbox\GamepadReader.cpp" Condition="'$(FangIsXbox)' == 'true'" />
     <ClCompile Include="Xbox\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' == 'true'" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
+
+  <!-- C++/WinRT を使う TU だけ例外を有効にする（例外は全構成オフの方針で、WinRT の境界だけ許す）。生成ツールの対象外なので手で書く。
+       PCH は例外オフでコンパイルされているので使わない（Pch.h は普通の include として読まれる）。
+       PreprocessorDefinitions は %() を継がずに全部書く。継ぐと Common.props の _HAS_EXCEPTIONS=0 と
+       二重定義になって C4005 で止まる。継がない代わりに ThirdParty.imgui.props の定義が落ちるので、
+       この TU では imgui のヘッダを一切 include しない -->
+  <ItemGroup Condition="'$(FangIsXbox)' == 'true'">
+    <ClCompile Update="Xbox\GamepadReader.cpp">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PreprocessorDefinitions>$(FangFeatureDefines);$(FangPlatformDefines);_HAS_EXCEPTIONS=1</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemGroup>
 
   <!-- シェーダーはビルド時に FXC でヘッダ化して埋め込む（UWP に実行時コンパイルが無いため）。生成ツールの対象外なので手で書く -->
   <ItemGroup>

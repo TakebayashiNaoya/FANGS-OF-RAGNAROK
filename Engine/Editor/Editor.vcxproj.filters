@@ -21,6 +21,9 @@
     <ClInclude Include="Panels\JobSystemPanel.h">
       <Filter>Panels</Filter>
     </ClInclude>
+    <ClInclude Include="Xbox\GamepadReader.h">
+      <Filter>Xbox</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Editor.cpp" />
@@ -31,6 +34,9 @@
     </ClCompile>
     <ClCompile Include="Windows\ImGuiPlatformInput.cpp">
       <Filter>Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="Xbox\GamepadReader.cpp">
+      <Filter>Xbox</Filter>
     </ClCompile>
     <ClCompile Include="Xbox\ImGuiPlatformInput.cpp">
       <Filter>Xbox</Filter>
