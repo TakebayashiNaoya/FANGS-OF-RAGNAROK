@@ -63,7 +63,7 @@ namespace fang::editor
 	}
 
 
-	void JobSystemPanel::BuildFrame(float deltaTimeSeconds)
+	void JobSystemPanel::BuildFrame(float deltaTimeSeconds, uint64_t updatingFrameIndex)
 	{
 		FANG_ASSERT(m_jobSystem != nullptr, "JobSystemPanel が初期化されていない");
 
@@ -93,9 +93,25 @@ namespace fang::editor
 #endif
 
 		ImGui::Separator();
-		BuildTestLoadSection();
+
+		// 走っている更新（フレーム N）が触るのは N の面なので、描画側はその反対だけを触る。
+		BuildTestLoadSection(GetSlotIndex(updatingFrameIndex + 1));
 
 		ImGui::End();
+	}
+
+
+	void JobSystemPanel::RunRequestedTestLoad(uint64_t frameIndex)
+	{
+		FANG_ASSERT(m_jobSystem != nullptr, "JobSystemPanel が初期化されていない");
+
+		TestLoadSlot& slot = m_testLoadSlots[GetSlotIndex(frameIndex)];
+		if (!slot.isRequested)
+		{
+			return;
+		}
+
+		RunTestLoad(slot);
 	}
 
 
@@ -223,14 +239,13 @@ namespace fang::editor
 #endif
 
 
-	void JobSystemPanel::BuildTestLoadSection()
+	void JobSystemPanel::BuildTestLoadSection(size_t slotIndex)
 	{
+		TestLoadSlot& slot = m_testLoadSlots[slotIndex];
+
 		// 押している間だけ真になる。押した瞬間だけでは表の数字が動かない。
 		ImGui::Button("テスト負荷（押している間）");
-		if (ImGui::IsItemActive())
-		{
-			RunTestLoad();
-		}
+		slot.isRequested = ImGui::IsItemActive();
 
 		ImGui::Text(
 			"要素数 %u / 分割幅 %u / ジョブ %u 件",
@@ -239,29 +254,24 @@ namespace fang::editor
 			TEST_LOAD_ELEMENT_COUNT / TEST_LOAD_BATCH_SIZE
 		);
 
-		if (!m_hasRunTestLoad)
+		if (!slot.hasRun)
 		{
 			ImGui::TextUnformatted("総和: まだ回していない");
 			return;
 		}
 
-		if (m_isTestLoadCorrect)
+		if (slot.isCorrect)
 		{
-			ImGui::Text("総和: %llu（一致）", m_testLoadSum);
+			ImGui::Text("総和: %llu（一致）", slot.sum);
 		}
 		else
 		{
-			ImGui::TextColored(
-				WARNING_COLOR,
-				"総和: %llu（不一致。期待値 %llu）",
-				m_testLoadSum,
-				EXPECTED_TEST_LOAD_SUM
-			);
+			ImGui::TextColored(WARNING_COLOR, "総和: %llu（不一致。期待値 %llu）", slot.sum, EXPECTED_TEST_LOAD_SUM);
 		}
 	}
 
 
-	void JobSystemPanel::RunTestLoad()
+	void JobSystemPanel::RunTestLoad(TestLoadSlot& slot)
 	{
 		for (uint64_t& partialSum : m_testLoadPartialSums)
 		{
@@ -286,8 +296,8 @@ namespace fang::editor
 			totalSum += partialSum;
 		}
 
-		m_testLoadSum       = totalSum;
-		m_isTestLoadCorrect = (totalSum == EXPECTED_TEST_LOAD_SUM);
-		m_hasRunTestLoad    = true;
+		slot.sum       = totalSum;
+		slot.isCorrect = (totalSum == EXPECTED_TEST_LOAD_SUM);
+		slot.hasRun    = true;
 	}
 } // namespace fang::editor

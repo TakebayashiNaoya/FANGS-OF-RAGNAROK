@@ -11,6 +11,8 @@
 #include "Editor/ImGuiPlatformInput.h"
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
+#include "Runtime/EngineContext.h"
+#include "Runtime/FramePipeline.h"
 
 
 FANG_DEFINE_LOG_CATEGORY(Editor);
@@ -95,6 +97,8 @@ namespace fang::editor
 		// 以降で失敗しても、作ったコンテキストは Shutdown が壊す。
 		m_isInitialized = true;
 
+		m_framePipeline = &context.framePipeline;
+
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
@@ -136,6 +140,8 @@ namespace fang::editor
 
 		m_jobSystemPanel.Shutdown();
 		ShutdownBackend(device);
+
+		m_framePipeline = nullptr;
 		m_isInitialized = false;
 
 		ImGui::DestroyContext();
@@ -155,7 +161,7 @@ namespace fang::editor
 		ImGui::NewFrame();
 
 		BuildEngineInfoWindow(window, deltaTimeSeconds);
-		m_jobSystemPanel.BuildFrame(deltaTimeSeconds);
+		m_jobSystemPanel.BuildFrame(deltaTimeSeconds, m_framePipeline->GetFrameIndex());
 
 		// ImGui 付属のデモ。中身は英語なので既定では出さない。
 		if (m_isDemoWindowVisible)
@@ -184,6 +190,14 @@ namespace fang::editor
 		const float frameTimeInMilliseconds = deltaTimeSeconds * 1000.0f;
 		ImGui::Text("フレーム時間: %.2f ms", frameTimeInMilliseconds);
 		ImGui::Text("フレームレート: %.0f fps", deltaTimeSeconds > 0.0f ? 1.0f / deltaTimeSeconds : 0.0f);
+
+#if FANG_ENABLE_PROFILER
+		// 1 周が更新と描画の合計より短ければ、その差だけ 2 つが重なって回っている。
+		ImGui::Text("更新: %.2f ms（ジョブ）", m_framePipeline->GetUpdateMilliseconds());
+		ImGui::Text("描画: %.2f ms（メイン）", m_framePipeline->GetRenderMilliseconds());
+		ImGui::Text("1 周: %.2f ms", m_framePipeline->GetFrameMilliseconds());
+#endif
+
 		ImGui::Separator();
 
 		// FIXME: Checkbox のラベル末尾が全角の「）」だとその 1 文字だけ描かれない。ImGui::Text では出る。
@@ -199,6 +213,12 @@ namespace fang::editor
 
 		ImGui::Render();
 		RenderDrawData(device, commandList, *ImGui::GetDrawData());
+	}
+
+
+	void EditorUI::RunRequestedTestLoad(uint64_t frameIndex)
+	{
+		m_jobSystemPanel.RunRequestedTestLoad(frameIndex);
 	}
 
 

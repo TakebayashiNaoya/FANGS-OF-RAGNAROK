@@ -6,6 +6,7 @@
 
 #include "Core/CoreMacros.h"
 #include "Core/Job/JobSystem.h"
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -20,9 +21,9 @@ namespace fang::editor
 {
 	/**
 	 * @brief 「ジョブシステム」ウィンドウ 1 枚。
-	 * @details 実行者ごとの実行数とジョブプールの使用量を出し、押している間だけジョブを積むボタンを持つ。
-	 *          フレームループがまだジョブを積まないので、動いている証拠を見る窓はここしかない。
-	 * @threading メインスレッドのみ。
+	 * @details 実行者ごとの実行数とジョブプールの使用量を出し、押している間だけ負荷をかけるボタンを持つ。
+	 *          負荷を積むのは更新ジョブの中なので、更新と描画が重なって回っていることが所要時間に出る。
+	 * @threading 組み立てはメインスレッドのみ。RunRequestedTestLoad だけが更新ジョブの中で走る。
 	 */
 	class JobSystemPanel
 	{
@@ -44,12 +45,41 @@ namespace fang::editor
 
 		/**
 		 * @brief このフレームの内容を組み立てる。ImGui::NewFrame の後に呼ぶ。
-		 * @param deltaTimeSeconds 前フレームからの経過時間（秒）。毎秒の実行数を区切るのに使う。
+		 * @param deltaTimeSeconds   前フレームからの経過時間（秒）。毎秒の実行数を区切るのに使う。
+		 * @param updatingFrameIndex 今そこで走っている更新のフレーム番号。触る面を選ぶのに使う。
 		 */
-		void BuildFrame(float deltaTimeSeconds);
+		void BuildFrame(float deltaTimeSeconds, uint64_t updatingFrameIndex);
+
+		/**
+		 * @brief ボタンが押されていれば、そのフレームの負荷を積んで総和を検算する。
+		 * @param frameIndex 更新しているフレームの番号。
+		 * @threading 更新ジョブの中（ワーカースレッド）から呼ぶ。ImGui には触らない。
+		 */
+		void RunRequestedTestLoad(uint64_t frameIndex);
 
 
 	private:
+		/**
+		 * @brief テスト負荷 1 フレーム分。
+		 * @details 描画側がボタンの状態を書き、更新側が結果を書く。同じ周の更新と描画がぶつからないよう、
+		 *          フレームの偶奇で 2 面持ち、走っている更新が触らないほうだけを描画側が触る。
+		 */
+		struct TestLoadSlot
+		{
+			uint64_t sum         = 0;     /**< 更新側が出した総和。 */
+			bool     isRequested = false; /**< 次の更新に負荷を積ませるか。 */
+			bool     hasRun      = false; /**< 一度でも回したか。回すまで検算結果は出さない。 */
+			bool     isCorrect   = false; /**< 総和が期待値と一致したか。 */
+		};
+
+		static constexpr size_t SLOT_COUNT = 2; /**< 更新しているフレームと、描いている 1 つ前で 2 面。 */
+
+		/** @brief フレーム番号から触ってよい面を決める。 */
+		[[nodiscard]] static FANG_FORCEINLINE size_t GetSlotIndex(uint64_t frameIndex)
+		{
+			return static_cast<size_t>(frameIndex % SLOT_COUNT);
+		}
+
 #if FANG_ENABLE_PROFILER
 		/** @brief 0.5 秒の区切りごとに毎秒の実行数を出し直す。毎フレーム更新だと数字が跳ねて読めない。 */
 		void UpdateExecutedJobCountsPerSecond(float deltaTimeSeconds);
@@ -62,10 +92,10 @@ namespace fang::editor
 #endif
 
 		/** @brief テスト負荷のボタンと検算結果の区画を組み立てる。 */
-		void BuildTestLoadSection();
+		void BuildTestLoadSection(size_t slotIndex);
 
-		/** @brief ParallelFor で 1 フレーム分の負荷を積み、総和を検算する。 */
-		void RunTestLoad();
+		/** @brief ParallelFor で 1 フレーム分の負荷を積み、総和を検算して面へ書く。 */
+		void RunTestLoad(TestLoadSlot& slot);
 
 
 	private:
@@ -87,8 +117,6 @@ namespace fang::editor
 		/** @brief ワーカー番号で引く部分和。ジョブは自分の番号の枠だけ触る。 */
 		uint64_t m_testLoadPartialSums[JobSystem::MAX_WORKER_COUNT + 1]{};
 
-		uint64_t m_testLoadSum       = 0;     /**< 直近の負荷が出した総和。 */
-		bool     m_hasRunTestLoad    = false; /**< 一度でも負荷を回したか。回すまで検算結果は出さない。 */
-		bool     m_isTestLoadCorrect = false; /**< 総和が期待値と一致したか。 */
+		TestLoadSlot m_testLoadSlots[SLOT_COUNT]; /**< フレームの偶奇で選ぶ 2 面。 */
 	};
 } // namespace fang::editor
