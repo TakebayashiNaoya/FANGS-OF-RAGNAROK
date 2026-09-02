@@ -65,7 +65,7 @@
   </ItemGroup>
   <!-- FANG_FILES_END -->
 
-  <!-- C++/WinRT を使う TU だけ例外を有効にする（D-6 の例外規定）。生成ツールの対象外なので手で書く。
+  <!-- C++/WinRT を使う TU だけ例外を有効にする（例外は全構成オフの方針で、WinRT の境界だけ許す）。生成ツールの対象外なので手で書く。
        PCH は例外オフでコンパイルされているので、この 2 つだけ使わない（Pch.h は普通の include として読まれる）-->
   <ItemGroup Condition="'$(FangIsXbox)' == 'true'">
     <ClCompile Update="Xbox\SystemFont.cpp;Xbox\UWPApplication.cpp;Xbox\Window.cpp">

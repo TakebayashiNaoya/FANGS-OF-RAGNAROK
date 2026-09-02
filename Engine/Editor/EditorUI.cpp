@@ -95,6 +95,11 @@ namespace fang::editor
 
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+		// 実機はマウスが無いのでパッドのナビゲーションが唯一の操作手段になる。
+		// 立てるだけでは何も起きず、実際に効くのは HasGamepad を立てるプラットフォームだけ。
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
 		io.BackendRendererName = "FangEngine RHI";
 		io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 		io.DisplaySize = ImVec2(static_cast<float>(window.GetWidth()), static_cast<float>(window.GetHeight()));
