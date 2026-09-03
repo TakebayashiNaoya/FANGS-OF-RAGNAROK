@@ -393,8 +393,9 @@ namespace fang
 			//------------------------------------------------------------------------
 			// 2. BeginFrame とグラフの Reset・バックバッファと深度の Import
 			// 　device.BeginFrame() でこのフレームの記録メモリを巻き戻す。
-			// 　RenderGraph 側も Reset で前フレームの宣言を捨て、ImportBackBuffer / ImportDepthBuffer で
-			// 　バックバッファと深度バッファをこのフレームのリソースとして登録し直す(パスの宣言はこの後)。
+			// 　RenderGraph 側も Reset で前フレームの宣言を捨て、ImportBackBuffer / ImportDepthBuffer /
+			// 　ImportDepthTexture でバックバッファ・深度バッファ・シャドウマップをこのフレームのリソースとして
+			// 　登録し直す(パスの宣言はこの後)。
 			//------------------------------------------------------------------------
 			// このフレームの記録メモリを巻き戻すだけ。バリアもクリアも描画先の設定もしない
 			// （どのパスが何に書くかはこの後の宣言で決まる。積むのはグラフの仕事）。
@@ -403,6 +404,11 @@ namespace fang
 			graph.Reset();
 			const RenderGraphResourceId backBufferResource  = graph.ImportBackBuffer();
 			const RenderGraphResourceId depthBufferResource = graph.ImportDepthBuffer();
+			const RenderGraphResourceId shadowMapResource   = graph.ImportDepthTexture(
+				sceneRenderer.GetShadowMapTexture(),
+				SceneRenderer::SHADOW_MAP_SIZE,
+				SceneRenderer::SHADOW_MAP_SIZE
+			);
 
 			//------------------------------------------------------------------------
 			// 3. View の組み立て(時間で回るカメラ)と AddView
@@ -535,8 +541,14 @@ namespace fang
 			//------------------------------------------------------------------------
 			// 狼（1 体〜2 体）を描く ScenePass を View ごとに宣言する。三角形パスが画面をクリア済みなので、
 			// 最初の View も Load（前のパスが描いた画の上に重ねる）。
-			sceneRenderer
-				.AddPasses(graph, backBufferResource, depthBufferResource, BACKGROUND_COLOR, EnLoadOperation::Load);
+			sceneRenderer.AddPasses(
+				graph,
+				backBufferResource,
+				depthBufferResource,
+				shadowMapResource,
+				BACKGROUND_COLOR,
+				EnLoadOperation::Load
+			);
 
 #if FANG_ENABLE_EDITOR
 			//------------------------------------------------------------------------

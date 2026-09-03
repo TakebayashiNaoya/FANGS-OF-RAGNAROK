@@ -60,6 +60,14 @@ namespace fang
 	}
 
 
+	RenderGraphResourceId RenderGraph::ImportDepthTexture(rhi::TextureHandle texture, uint32_t width, uint32_t height)
+	{
+		FANG_ASSERT(texture.IsValid(), "無効なテクスチャを深度リソースとして登録しようとしている");
+
+		return AddResource(rhi::EnResourceState::DepthWrite, rhi::EnResourceState::DepthWrite, texture, width, height);
+	}
+
+
 	void RenderGraph::AddPass(const RenderGraphPassDesc& desc)
 	{
 		FANG_ASSERT(m_passCount < MAX_PASS_COUNT, "1 フレームに宣言できるパスを使い切った");
@@ -239,7 +247,13 @@ namespace fang
 	}
 
 
-	RenderGraphResourceId RenderGraph::AddResource(rhi::EnResourceState initialState, rhi::EnResourceState finalState)
+	RenderGraphResourceId RenderGraph::AddResource(
+		rhi::EnResourceState initialState,
+		rhi::EnResourceState finalState,
+		rhi::TextureHandle   texture,
+		uint32_t             width,
+		uint32_t             height
+	)
 	{
 		FANG_ASSERT(m_resourceCount < MAX_RESOURCE_COUNT, "1 フレームに登録できるリソースを使い切った");
 
@@ -254,6 +268,10 @@ namespace fang
 		resource.finalState       = finalState;
 		resource.currentState     = initialState;
 		resource.lastUsePassIndex = INVALID_PASS_INDEX;
+
+		resource.texture = texture;
+		resource.width   = width;
+		resource.height  = height;
 
 		const RenderGraphResourceId id{ .index = m_resourceCount };
 		++m_resourceCount;
@@ -356,10 +374,22 @@ namespace fang
 		}
 
 		// D3D12 のコマンドリストは本をまたいで状態を引き継がないので、描画先もビューポートもパスごとに差し直す。
-		if (pass.colorTarget.IsValid() || pass.depthTarget.IsValid())
+		if (pass.colorTarget.IsValid())
 		{
 			commandList.SetRenderTargetToBackBuffer(pass.depthTarget.IsValid());
 			commandList.SetViewport(m_backBufferWidth, m_backBufferHeight);
+		}
+		else if (pass.depthTarget.IsValid())
+		{
+			// 色が無く深度だけのパスはシャドウマップのようなテクスチャ裏付きリソースのみ対応する。
+			// デバイス既定の深度バッファは SetRenderTargetToBackBuffer 経由でしか差せない。
+			FANG_ASSERT(pass.depthTarget.index < m_resourceCount, "登録していない深度リソースを描画先にしている");
+
+			const Resource& depthResource = m_resources[pass.depthTarget.index];
+			FANG_ASSERT(depthResource.texture.IsValid(), "テクスチャの裏付きが無い深度リソースを色無しで描画先にしている");
+
+			commandList.SetRenderTargetToDepthTexture(depthResource.texture);
+			commandList.SetViewport(depthResource.width, depthResource.height);
 		}
 
 		if (compiled.isColorCleared)
@@ -386,12 +416,24 @@ namespace fang
 
 	void RenderGraph::ApplyBarrier(rhi::CommandList& commandList, const RenderGraphBarrier& barrier) const
 	{
-		// 遷移の口があるのはバックバッファだけ。深度とオフスクリーンの口はそれを描く段で足す。
-		if (barrier.resource.index != m_backBufferResourceId.index)
+		// バックバッファは専用の遷移口(TransitionBackBuffer)を使う。
+		if (barrier.resource.index == m_backBufferResourceId.index)
+		{
+			commandList.TransitionBackBuffer(barrier.before, barrier.after);
+			return;
+		}
+
+		// それ以外はテクスチャの裏付きがあるリソースだけ遷移の口(TransitionTexture)を持つ。
+		// デバイス既定の深度バッファ(ImportDepthBuffer)は RHI に遷移の口が無いので何もしない。
+		if (barrier.resource.index >= m_resourceCount)
 		{
 			return;
 		}
 
-		commandList.TransitionBackBuffer(barrier.before, barrier.after);
+		const Resource& resource = m_resources[barrier.resource.index];
+		if (resource.texture.IsValid())
+		{
+			commandList.TransitionTexture(resource.texture, barrier.before, barrier.after);
+		}
 	}
 } // namespace fang

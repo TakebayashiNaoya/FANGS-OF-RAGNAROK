@@ -30,6 +30,52 @@ cbuffer cbFrame : register(b1)
 Texture2D<float4> baseColorTexture : register(t0);
 SamplerState baseColorSampler : register(s0);
 
+/** @brief シャドウマップ。深度専用パスが光の視点で書いたもの。 */
+Texture2D<float> shadowMap : register(t1);
+
+/** @brief シャドウマップの比較サンプラ。LESS_EQUAL・境界色 白（マップの外は影なしとして読む）。 */
+SamplerComparisonState shadowComparisonSampler : register(s1);
+
+/**
+ * @brief ワールド位置が光にどれだけ見えているかを 0（影）〜1（影なし）で返す。
+ * @details 3x3 の PCF（9 回サンプル）で境目を滑らかにする。影が無効なフレームと、
+ *          光のフラスタムの外（z が 0〜1 の範囲外）は範囲外を不正に暗くしないため 1 を返す。
+ */
+float CalculateShadowFactor(float3 worldPosition)
+{
+	// 早期 return を使うと FXC が「戻り値が初期化されていないかもしれない」という誤検知の警告を出すので、
+	// 1 つの戻り値を条件分岐の中で埋めていく形にする。既定値は影なし（範囲外を不正に暗くしないため）。
+	float shadowFactor = 1.0;
+
+	if (frameConstants.shadowParameters.y >= 0.5)
+	{
+		float4 lightClipPosition = mul(frameConstants.lightViewProjection, float4(worldPosition, 1.0));
+
+		// 正射影なので w 除算は実質 1 だが、既存の書き方に合わせて安全に割っておく。
+		float3 lightNdcPosition = lightClipPosition.xyz / lightClipPosition.w;
+
+		if (lightNdcPosition.z >= 0.0 && lightNdcPosition.z <= 1.0)
+		{
+			float2 shadowMapUV = lightNdcPosition.xy * float2(0.5, -0.5) + 0.5;
+			float texelSize = frameConstants.shadowParameters.x;
+
+			float shadowSum = 0.0;
+			for (int y = -1; y <= 1; ++y)
+			{
+				for (int x = -1; x <= 1; ++x)
+				{
+					float2 sampleUV = shadowMapUV + float2(x, y) * texelSize;
+					shadowSum += shadowMap.SampleCmpLevelZero(shadowComparisonSampler, sampleUV, lightNdcPosition.z);
+				}
+			}
+
+			shadowFactor = shadowSum / 9.0;
+		}
+	}
+
+	return shadowFactor;
+}
+
 float4 PixelMain(VertexOutput input) : SV_TARGET
 {
 	float3 albedo = baseColorTexture.Sample(baseColorSampler, input.texCoord).rgb;
@@ -67,9 +113,12 @@ float4 PixelMain(VertexOutput input) : SV_TARGET
 
 	float3 specular = distribution * visibility * fresnel;
 
+	// 影は直接光にだけ掛ける。環境項にまで掛けると影の中が真っ黒になり形が読めなくなる。
+	float shadowFactor = CalculateShadowFactor(input.worldPosition);
+
 	// 環境項が「光の裏側でも形が読める」役を担う（半ランバートの後継）。metallic で消さないのは、
 	// IBL の無い今、金属を真っ黒にしないための近似。
-	float3 lighting = (diffuse + specular) * frameConstants.lightColor.rgb * frameConstants.lightColor.w * dotNL
+	float3 lighting = shadowFactor * (diffuse + specular) * frameConstants.lightColor.rgb * frameConstants.lightColor.w * dotNL
 	                + frameConstants.ambientColor.rgb * albedo;
 
 	// ここまではリニア空間。バックバッファは UNORM（sRGB でない）なので、最後にガンマへ戻す。

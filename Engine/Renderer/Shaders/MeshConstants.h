@@ -43,11 +43,14 @@ namespace fang
 		float4   directionToLight; /**< xyz = 面から光源へ向かう向き（正規化済み）。w は未使用。 */
 		float4   lightColor;       /**< rgb = リニア空間の色。w = 強さ。 */
 		float4   ambientColor;     /**< rgb = 環境項。w は未使用。 */
+
+		float4x4 lightViewProjection; /**< 光の View ➡ 正射影。影の判定でワールド位置を光のクリップ空間へ移す。 */
+		float4   shadowParameters;    /**< x = シャドウマップ 1 テクセルの UV 幅。y = 影の有効(0 か 1)。z と w は未使用。 */
 	};
 
 #ifdef __cplusplus
 	static_assert(sizeof(MeshObjectConstants) == 20 * 4, "HLSL 側が読む 20 DWORD と同じ大きさであること");
-	static_assert(sizeof(MeshFrameConstants) == 32 * 4, "HLSL 側が読む 32 DWORD と同じ大きさであること");
+	static_assert(sizeof(MeshFrameConstants) == 52 * 4, "HLSL 側が読む 52 DWORD と同じ大きさであること");
 } // namespace fang
 #endif
 
