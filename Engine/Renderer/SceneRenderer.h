@@ -67,7 +67,8 @@ namespace fang
 	 *            RenderGraph のジョブで走り、View ごとに書き込み先（自分の b1 バッファと描画数のスロット）が
 	 *            分かれるので競合しない。ShadowPass と ScenePass の記録が並列に走っても、MeshRenderer 側の
 	 *            b0 / b2 が Draw と DrawDepth で分かれているので書き込み先は重ならない。
-	 *            GetLastDrawnItemCount は Execute の Wait が済んでから読むこと。
+	 *            GetSubmittedItemCount / GetLastDrawnItemCount は Execute の Wait が済んでから読むこと
+	 *            （値そのものは Submit 時点で確定しているが、描いた数と対で比べる数字なので同じタイミングで読む）。
 	 */
 	class SceneRenderer
 	{
@@ -156,6 +157,13 @@ namespace fang
 			const rhi::ClearColor& clearColor,
 			EnLoadOperation        loadOperation
 		);
+
+		/**
+		 * @brief 直近の Execute で Submit した個数の合計（全 View、カリング前）。
+		 * @details RenderGraph::Execute の Wait が済んでから読むこと（値そのものは Submit 時点で確定しているが、
+		 *          描いた数と対で比べる数字なので同じタイミングで読む）。
+		 */
+		[[nodiscard]] uint32_t GetSubmittedItemCount() const;
 
 		/**
 		 * @brief 直近の Execute で実際に描いた個数の合計（全 View）。

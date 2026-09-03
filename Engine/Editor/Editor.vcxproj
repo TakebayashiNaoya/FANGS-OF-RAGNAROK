@@ -33,6 +33,7 @@
     <ClInclude Include="ImGuiPlatformInput.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Panels\JobSystemPanel.h" />
+    <ClInclude Include="Panels\RenderStatisticsPanel.h" />
     <ClInclude Include="Xbox\GamepadReader.h" Condition="'$(FangIsXbox)' == 'true'" />
   </ItemGroup>
   <ItemGroup>
@@ -42,6 +43,7 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Panels\JobSystemPanel.cpp" />
+    <ClCompile Include="Panels\RenderStatisticsPanel.cpp" />
     <ClCompile Include="Windows\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Xbox\GamepadReader.cpp" Condition="'$(FangIsXbox)' == 'true'" />
     <ClCompile Include="Xbox\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' == 'true'" />

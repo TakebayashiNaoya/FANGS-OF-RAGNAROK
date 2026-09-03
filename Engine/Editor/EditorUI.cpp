@@ -12,6 +12,7 @@
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
 #include "Runtime/EngineContext.h"
+#include "Runtime/FrameContext.h"
 #include "Runtime/FramePipeline.h"
 
 
@@ -125,6 +126,12 @@ namespace fang::editor
 			return false;
 		}
 
+		if (!m_renderStatisticsPanel.Initialize())
+		{
+			FANG_LOG_ERROR(Editor, "レンダリング統計のパネルを作れなかった");
+			return false;
+		}
+
 		FANG_LOG_INFO(Editor, "エディタ UI を初期化した");
 
 		return true;
@@ -138,6 +145,7 @@ namespace fang::editor
 			return;
 		}
 
+		m_renderStatisticsPanel.Shutdown();
 		m_jobSystemPanel.Shutdown();
 		ShutdownBackend(device);
 
@@ -148,7 +156,7 @@ namespace fang::editor
 	}
 
 
-	void EditorUI::BuildFrame(const Window& window, float deltaTimeSeconds)
+	void EditorUI::BuildFrame(const Window& window, float deltaTimeSeconds, const RenderStatistics& renderStatistics)
 	{
 		FANG_ASSERT(m_isInitialized, "EditorUI が初期化されていない");
 
@@ -162,6 +170,7 @@ namespace fang::editor
 
 		BuildEngineInfoWindow(window, deltaTimeSeconds);
 		m_jobSystemPanel.BuildFrame(deltaTimeSeconds, m_framePipeline->GetFrameIndex());
+		m_renderStatisticsPanel.BuildFrame(deltaTimeSeconds, renderStatistics);
 
 		// ImGui 付属のデモ。中身は英語なので既定では出さない。
 		if (m_isDemoWindowVisible)

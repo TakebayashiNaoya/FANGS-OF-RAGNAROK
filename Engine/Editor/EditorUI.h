@@ -6,6 +6,7 @@
 
 #include "Core/CoreMacros.h"
 #include "Editor/Panels/JobSystemPanel.h"
+#include "Editor/Panels/RenderStatisticsPanel.h"
 #include "RHI/RHIHandles.h"
 #include <imgui.h>
 #include <vector>
@@ -14,6 +15,7 @@
 namespace fang
 {
 	class FramePipeline;
+	struct RenderStatistics;
 	class Window;
 } // namespace fang
 
@@ -56,8 +58,9 @@ namespace fang::editor
 		/**
 		 * @brief 入力を取り込んで、このフレームの UI を組み立てる。
 		 * @param deltaTimeSeconds 前フレームからの経過時間（秒）。ImGui のアニメーションと入力判定に使う。
+		 * @param renderStatistics 1 つ前のフレームの Execute が書いた描画統計。RenderStatisticsPanel が読む。
 		 */
-		void BuildFrame(const Window& window, float deltaTimeSeconds);
+		void BuildFrame(const Window& window, float deltaTimeSeconds, const RenderStatistics& renderStatistics);
 
 		/** @brief 組み立てた UI を積む。BuildFrame と同じフレームで呼ぶ。 */
 		void Render(rhi::GraphicsDevice& device, rhi::CommandList& commandList);
@@ -91,7 +94,8 @@ namespace fang::editor
 
 
 	private:
-		JobSystemPanel m_jobSystemPanel; /**< ジョブシステムの稼働状況。 */
+		JobSystemPanel        m_jobSystemPanel;        /**< ジョブシステムの稼働状況。 */
+		RenderStatisticsPanel m_renderStatisticsPanel; /**< 描画の中身（Submit数・描いた数・パス数など）。 */
 
 		/** @brief 更新・描画・1 周の所要時間の出どころ。RunApplication が持っているものを借りるだけ。 */
 		const FramePipeline* m_framePipeline = nullptr;
