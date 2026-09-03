@@ -134,12 +134,21 @@ namespace fang
 		static constexpr uint32_t MAX_JOINT_COUNT = 64;
 
 		/**
-		 * @brief 1 フレームに描けるメッシュの数。
+		 * @brief 1 フレームに描けるメッシュの数（静的・スキン合わせて b0 が持つ本数）。
 		 * @details 定数バッファの置き場をこの数だけ持つ。1 本を使い回すと、同じフレームの 2 個目が
 		 *          1 個目の定数を上書きしてしまう（コマンドはあとでまとめて実行されるため）。
-		 *          これを超えたぶんは描かずに警告を出す。増やすのは複数体を出す段の仕事。
+		 *          これを超えたぶんは描かずに警告を出す。256 バイト × 512 × 2 プール（Draw / DrawDepth）= 256KB。
 		 */
-		static constexpr uint32_t MAX_ITEM_COUNT = 4;
+		static constexpr uint32_t MAX_ITEM_COUNT = 512;
+
+		/**
+		 * @brief 1 フレームに描けるスキンメッシュの数（b2 が持つ本数）。
+		 * @details b2 を使うのはスキンメッシュだけなので MAX_ITEM_COUNT と別に持つ。512 に巻き込むと
+		 *          4096 バイト × 512 × 2 プールで 4MB に膨らむため、4 のまま据え置く
+		 *          （4096 バイト × 4 × 2 プール = 32KB）。超えたスキンメッシュはそのアイテムだけ飛ばし、
+		 *          静的メッシュの描画は続ける。
+		 */
+		static constexpr uint32_t MAX_SKINNED_ITEM_COUNT = 4;
 
 		MeshRenderer() = default;
 
@@ -261,7 +270,7 @@ namespace fang
 		rhi::BufferHandle m_objectConstantBuffers[MAX_ITEM_COUNT];
 
 		/** @brief 骨行列の置き場。b2 に差す。スキンメッシュを 1 個描くごとに 1 本使う。 */
-		rhi::BufferHandle m_skinningConstantBuffers[MAX_ITEM_COUNT];
+		rhi::BufferHandle m_skinningConstantBuffers[MAX_SKINNED_ITEM_COUNT];
 
 		/**
 		 * @brief DrawDepth 専用の b0 の置き場。
@@ -271,7 +280,7 @@ namespace fang
 		rhi::BufferHandle m_depthObjectConstantBuffers[MAX_ITEM_COUNT];
 
 		/** @brief DrawDepth 専用の b2 の置き場。分ける理由は m_depthObjectConstantBuffers と同じ。 */
-		rhi::BufferHandle m_depthSkinningConstantBuffers[MAX_ITEM_COUNT];
+		rhi::BufferHandle m_depthSkinningConstantBuffers[MAX_SKINNED_ITEM_COUNT];
 
 		/** @brief ベースカラーが無いときに差す 1×1。従来の単色と同じ色。 */
 		rhi::TextureHandle m_dummyBaseColor;

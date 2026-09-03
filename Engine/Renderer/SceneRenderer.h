@@ -15,6 +15,7 @@
 #include "Renderer/RenderGraph.h"
 #include <cstdint>
 #include <span>
+#include <vector>
 
 
 namespace fang::rhi
@@ -249,6 +250,14 @@ namespace fang
 
 		/** @brief Submit が控えた span。実体は呼び出し側が持つ。 */
 		std::span<const RenderItem> m_submittedItems[MAX_VIEW_COUNT];
+
+		/**
+		 * @brief RecordView がカリングの生き残りを積む作業領域。View ごとに 1 本、Initialize で確保し切る。
+		 * @details ジョブの中で毎フレーム書き換えるが、要素数（MAX_CULLED_ITEM_COUNT）は変えないので
+		 *          resize は Initialize の 1 回だけ。View ごとに分けるのは、複数 View の記録ジョブが
+		 *          並行して走っても書き込み先が重ならないようにするため（b1 バッファと同じ理由）。
+		 */
+		std::vector<RenderItem> m_visibleItems[MAX_VIEW_COUNT];
 
 		uint32_t m_drawnItemCounts[MAX_VIEW_COUNT] = {}; /**< RecordView が書く、View ごとの描画数。 */
 

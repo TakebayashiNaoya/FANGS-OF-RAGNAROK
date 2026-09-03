@@ -15,8 +15,8 @@ namespace fang
 {
 	namespace
 	{
-		/** @brief 視錐台カリングを生き延びた分を積む作業領域の上限。 */
-		constexpr uint32_t MAX_CULLED_ITEM_COUNT = 16;
+		/** @brief 視錐台カリングを生き延びた分を積む作業領域の上限。MeshRenderer::MAX_ITEM_COUNT と揃える。 */
+		constexpr uint32_t MAX_CULLED_ITEM_COUNT = 512;
 
 		/** @brief シャドウマップ 1 テクセルの UV 幅。PCF がずらす量の基準になる。 */
 		constexpr float SHADOW_MAP_TEXEL_SIZE = 1.0f / static_cast<float>(SceneRenderer::SHADOW_MAP_SIZE);
@@ -152,6 +152,14 @@ namespace fang
 		m_device       = &device;
 		m_meshRenderer = &meshRenderer;
 
+		// RecordView はジョブの中で毎フレーム書き換えるが、ヒープ確保はここで済ませ切る
+		// （resize は要素数を変えない再実行なら追加確保が起きない）。View ごとに分けるのは、
+		// 複数 View の記録ジョブが並行して走っても書き込み先が重ならないようにするため。
+		for (std::vector<RenderItem>& visibleItems : m_visibleItems)
+		{
+			visibleItems.resize(MAX_CULLED_ITEM_COUNT);
+		}
+
 		for (rhi::BufferHandle& buffer : m_frameConstantBuffers)
 		{
 			buffer = device.CreateDynamicBuffer(sizeof(MeshFrameConstants), 0, rhi::EnBufferKind::Constant);
@@ -184,6 +192,11 @@ namespace fang
 
 		device.DestroyTexture(m_shadowMap);
 		m_shadowMap = {};
+
+		for (std::vector<RenderItem>& visibleItems : m_visibleItems)
+		{
+			visibleItems.clear();
+		}
 
 		m_meshRenderer = nullptr;
 		m_device       = nullptr;
@@ -415,9 +428,10 @@ namespace fang
 
 		const bool isShadowView = m_viewKinds[viewIndex] == EnViewKind::Shadow;
 
-		// ヒープ確保が禁じられたジョブの中なので、生き残った分はスタック上の固定長配列へ積む。
-		RenderItem visibleItems[MAX_CULLED_ITEM_COUNT];
-		uint32_t   visibleItemCount = 0;
+		// ジョブの中では新たなヒープ確保をしない。生き残った分は Initialize で確保し切った
+		// View ごとの作業領域（m_visibleItems[viewIndex]）へ積む。
+		std::vector<RenderItem>& visibleItems     = m_visibleItems[viewIndex];
+		uint32_t                 visibleItemCount = 0;
 
 		for (const RenderItem& item : items)
 		{
@@ -455,7 +469,7 @@ namespace fang
 				device,
 				commandList,
 				m_frameConstantBuffers[viewIndex],
-				std::span<const RenderItem>(visibleItems, visibleItemCount)
+				std::span<const RenderItem>(visibleItems.data(), visibleItemCount)
 			);
 			return;
 		}
@@ -465,7 +479,7 @@ namespace fang
 			commandList,
 			m_frameConstantBuffers[viewIndex],
 			m_shadowMap,
-			std::span<const RenderItem>(visibleItems, visibleItemCount)
+			std::span<const RenderItem>(visibleItems.data(), visibleItemCount)
 		);
 	}
 } // namespace fang
