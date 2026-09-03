@@ -538,6 +538,9 @@ namespace fang
 				MakeObjectConstants(item.world, item.metallicFactor, item.roughnessFactor);
 			device.UpdateBuffer(m_objectConstantBuffers[usedBufferCount], &objectConstants, sizeof(objectConstants));
 
+			// ① パイプラインを切り替えるときだけ、SetPipeline と一緒に b1(フレーム定数)も差し直す。
+			// 　 最初の 1 個、または静的⇔スキンの境目でだけ通る。差し替えていないパイプラインへ毎回
+			// 　 差し直す無駄をしない。
 			if (!hasBoundPipeline || isBoundPipelineSkinned != mesh.isSkinned)
 			{
 				commandList.SetPipeline(pipeline);
@@ -547,6 +550,7 @@ namespace fang
 				isBoundPipelineSkinned = mesh.isSkinned;
 			}
 
+			// ② 頂点・インデックス・b0(オブジェクト定数)・(スキンなら b2)を差し、Draw する。
 			commandList.SetVertexBuffer(mesh.vertexBuffer);
 			commandList.SetIndexBuffer(mesh.indexBuffer);
 			commandList.SetObjectConstantBuffer(m_objectConstantBuffers[usedBufferCount]);

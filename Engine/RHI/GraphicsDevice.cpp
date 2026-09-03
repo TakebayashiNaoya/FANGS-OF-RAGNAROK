@@ -51,6 +51,12 @@ namespace fang::rhi
 		// 以降で失敗しても、ここまで作った分は Shutdown が片付ける。
 		m_isInitialized = true;
 
+		//------------------------------------------------------------------------
+		// 1. デバッグレイヤー
+		// 　D3D12 の検証機能。有効にすると以降の全 API 呼び出しが検査され、
+		// 　誤用(状態不一致・バリア漏れ・無効な引数)がメッセージで出る。
+		// 　検査の分だけ遅くなるので開発ビルドのみ。
+		//------------------------------------------------------------------------
 		UINT factoryFlags = 0;
 		if (desc.isDebugLayerEnabled)
 		{
@@ -67,11 +73,23 @@ namespace fang::rhi
 			}
 		}
 
+		//------------------------------------------------------------------------
+		// 2. DXGI ファクトリと D3D12 デバイス
+		// 　DXGI は「GPU の列挙」と「描いた絵を画面に出す仕組み」を担当する層(D3D10〜12 共通)。
+		// 　ファクトリはアダプタ列挙とスワップチェーン生成の入口。
+		//------------------------------------------------------------------------
 		if (!CheckHresult(::CreateDXGIFactory2(factoryFlags, IID_PPV_ARGS(&m_factory)), "DXGI ファクトリの生成"))
 		{
 			return false;
 		}
 
+		//------------------------------------------------------------------------
+		// 3. アダプタのループ
+		// 　アダプタ = GPU 1 基に対応するオブジェクト。
+		// 　性能の高い順に列挙し、ソフトウェアラスタライザ(GPU なし環境用の CPU 描画。遅い)を除外し、
+		// 　D3D12 デバイスを作れた最初の 1 基を採用する。
+		// 　デバイスはこのプロセスと GPU をつなぐ API オブジェクトで、以降の全リソースの生成関数を持つ。
+		//------------------------------------------------------------------------
 		ComPtr<IDXGIAdapter1> adapter;
 		for (UINT adapterIndex = 0; m_factory->EnumAdapterByGpuPreference(
 										adapterIndex,
@@ -102,6 +120,11 @@ namespace fang::rhi
 			return false;
 		}
 
+		//------------------------------------------------------------------------
+		// 4.Feature Level のログ
+		// 　その GPU で何世代の機能が使えるかを起動ログに残すだけ。
+		// 　実機で「起動してすぐ落ちた」ときの切り分け用。
+		//------------------------------------------------------------------------
 		// 起動直後に生成の成否と Feature Level を残す。App 分類で配置した事故に早く気付くため。
 		// clang-format off
 		constexpr D3D_FEATURE_LEVEL CANDIDATE_FEATURE_LEVELS[] = {
@@ -126,6 +149,10 @@ namespace fang::rhi
 			);
 		}
 
+		//------------------------------------------------------------------------
+		// 5. コマンドキュー
+		// 　GPU に仕事を積むための列。CPU が「これやって」と積んで、GPU が自分のペースで消化する。
+		//------------------------------------------------------------------------
 		D3D12_COMMAND_QUEUE_DESC queueDesc{};
 		queueDesc.Type  = D3D12_COMMAND_LIST_TYPE_DIRECT;
 		queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
@@ -137,6 +164,11 @@ namespace fang::rhi
 			return false;
 		}
 
+		//-----------------------------------------------------------------------
+		// 6. スワップチェーン
+		// 　画面に出す絵の 2 枚組。表の 1 枚を見せている間に裏の 1 枚へ描き、Present で入れ替える。
+		// 　裏の 1 枚が「バックバッファ」。
+		//-----------------------------------------------------------------------
 		if (!m_swapChain.Initialize(
 				*m_factory.Get(),
 				*m_device.Get(),
@@ -149,17 +181,36 @@ namespace fang::rhi
 			return false;
 		}
 
+		//-----------------------------------------------------------------------
+		// 7. 深度バッファ
+		// 　ピクセルごとに最前面の奥行きを保持するテクスチャ。
+		// 　描画時に比較して奥なら棄却する(深度テスト)。
+		// 　これで描画順によらず前後関係が正しくなる。
+		//-----------------------------------------------------------------------
 		// 深度は画面と同じ大きさで持つ。以降は Resize でスワップチェーンと一緒に作り直す。
 		if (!m_depthBuffer.Initialize(*m_device.Get(), desc.width, desc.height))
 		{
 			return false;
 		}
 
+		//-----------------------------------------------------------------------
+		// 8. ディスクリプタヒープ
+		// 　ディスクリプタ(リソースのアドレス・形式・大きさを書いた固定長の記述)の配列。
+		// 　シェーダはリソースを生ポインタでなくこの配列の要素経由で参照する。
+		// 　ここに置くのはシェーダから読むテクスチャの記述(SRV)。
+		//-----------------------------------------------------------------------
 		if (!m_shaderVisibleHeap.Initialize(*m_device.Get()))
 		{
 			return false;
 		}
 
+		//------------------------------------------------------------------------
+		// 9. コマンドアロケータ 8×2 とコマンドリスト
+		// 　リストはコマンドを記録する口で、記録されたコマンドの実体メモリはアロケータが持つ。
+		// 　リストの Reset は書き込み先アロケータの付け替えだけで軽い。
+		// 　アロケータの Reset はメモリの一括巻き戻しで、GPU がそこを実行し終えてからでないと呼べない
+		// 　➡ バックバッファの面ごとに束を分けておく。
+		//------------------------------------------------------------------------
 		// 記録の口は起動時に全部そろえておく。フレームの途中で生成すると、そこだけ数ミリ秒の山ができる。
 		for (uint32_t listIndex = 0; listIndex < MAX_COMMAND_LIST_COUNT; ++listIndex)
 		{
@@ -176,7 +227,7 @@ namespace fang::rhi
 					return false;
 				}
 			}
-
+			// アロケータを設定する必要があるので、リストの生成はアロケータを作った後にする。
 			if (!CheckHresult(
 					m_device->CreateCommandList(
 						0,
@@ -197,6 +248,12 @@ namespace fang::rhi
 			m_commandListWrappers[listIndex].m_device = this;
 		}
 
+		//------------------------------------------------------------------------
+		// 10. フェンス
+		// 　CPU と GPU の両方から見える 64 bit カウンタ。
+		// 　キューに「ここまでの仕事が終わったらカウンタを N にせよ」と積み、CPU 側は N になるまで待つ。
+		// 　CPU-GPU 間の同期手段はこれだけ。
+		//------------------------------------------------------------------------
 		if (!m_fence.Initialize(*m_device.Get()))
 		{
 			return false;
@@ -377,13 +434,15 @@ namespace fang::rhi
 		FANG_ASSERT(m_isInitialized, "GraphicsDevice が初期化されていない");
 		FANG_ASSERT(!m_isFrameOpen, "BeginFrame が二重に呼ばれている");
 
+		// ① フレームを開けたという帳簿付け。
+		// 　 バリアもクリアも RT 設定もしない(どのパスが何に書くかは RenderGraph が決める)。
 		m_isFrameOpen              = true;
 		m_isFrameRecordable        = true;
 		m_acquiredCommandListCount = 0;
 
-		// 前にこのバックバッファ用へ記録したコマンドのメモリを巻き戻して再利用する。
-		// EndFrame で毎フレーム GPU の完了を待っているので、GPU が使用中のメモリを巻き戻す事故は起きない。
-		// Reset が失敗するのは主にデバイスロストで、そのときは AcquireCommandList が貸さなくなる。
+		// ② 今の面のアロケータ 8 本を巻き戻し、記録済みコマンドのメモリを再利用する。
+		// 　 EndFrame で毎フレーム GPU の完了を待っているので、GPU が使用中のメモリを巻き戻す事故は起きない。
+		// 　 Reset が失敗するのは主にデバイスロストで、そのときは AcquireCommandList が貸さなくなる。
 		const uint32_t frameIndex = m_swapChain.GetFrameIndex();
 		for (uint32_t listIndex = 0; listIndex < MAX_COMMAND_LIST_COUNT; ++listIndex)
 		{
@@ -415,7 +474,7 @@ namespace fang::rhi
 		ID3D12CommandAllocator*    allocator   = m_commandAllocators[listIndex][m_swapChain.GetFrameIndex()].Get();
 		ID3D12GraphicsCommandList* commandList = m_commandLists[listIndex].Get();
 
-		// 記録口を「記録開始」状態に戻す。
+		// ① Reset で今の面のアロケータに付け替え、記録開始状態にする。
 		if (!CheckHresult(commandList->Reset(allocator, nullptr), "コマンドリストの Reset"))
 		{
 			LogDeviceRemovedReason();
@@ -423,11 +482,12 @@ namespace fang::rhi
 			return nullptr;
 		}
 
-		// シェーダから見えるディスクリプタの置き場は本ごとに宣言する。リストをまたいで引き継がれないため。
+		// ② ディスクリプタヒープをこのリストに宣言する。リストをまたいで引き継がれないため。
 		ID3D12DescriptorHeap* heaps[] = { m_shaderVisibleHeap.GetNative() };
 		commandList->SetDescriptorHeaps(FANG_COUNT_OF(heaps), heaps);
 
-		// 公開型の記録口に生のコマンドリストを差して貸し出す。EndFrame で回収する。
+		// ③ 生のコマンドリストを公開型 CommandList に包んで貸し出す(上位に d3d12.h を見せない)。
+		// 　 EndFrame で回収する。
 		CommandList& wrapper        = m_commandListWrappers[listIndex];
 		wrapper.m_nativeCommandList = commandList;
 
@@ -446,12 +506,14 @@ namespace fang::rhi
 			return;
 		}
 
-		// 貸した本は全部閉じる。渡されなかった本も記録中のまま残すと、次のフレームの Reset で叱られる。
+		// ① 貸したリストを未使用の分も全部 Close する。
+		// 　 記録中のまま次のフレームに持ち越すと、Reset がエラーになるため。
 		for (uint32_t listIndex = 0; listIndex < m_acquiredCommandListCount; ++listIndex)
 		{
 			FANG_VERIFY(SUCCEEDED(m_commandLists[listIndex]->Close()));
 		}
 
+		// ② 渡された順(= 実行順)に生のリストを集める。
 		ID3D12CommandList* nativeCommandLists[MAX_COMMAND_LIST_COUNT]{};
 		uint32_t           nativeCommandListCount = 0;
 		for (CommandList* commandList : commandLists)
@@ -478,17 +540,21 @@ namespace fang::rhi
 			++nativeCommandListCount;
 		}
 
-		// 1 本も無ければ Present だけ行う。積むものが無いフレームでも画面の更新は止めない。
+		// ③ ExecuteCommandLists で一括投入する。
+		// 　 1 本も無ければ Present だけ行う。積むものが無いフレームでも画面の更新は止めない。
 		if (nativeCommandListCount > 0)
 		{
 			m_commandQueue->ExecuteCommandLists(nativeCommandListCount, nativeCommandLists);
 		}
 
+		// ④ Present で表裏を入れ替える。
 		m_swapChain.Present();
 
+		// ⑤ フェンスで GPU の完了を待つ。
 		// TODO: GPU を 2〜3 フレーム in-flight にする。今は毎フレーム待つ。
 		m_fence.WaitForGPU(*m_commandQueue.Get());
 
+		// ⑥ 貸し出しの帳簿を締め、次のフレームの面へ進める。
 		for (uint32_t listIndex = 0; listIndex < m_acquiredCommandListCount; ++listIndex)
 		{
 			m_commandListWrappers[listIndex].m_nativeCommandList = nullptr;
