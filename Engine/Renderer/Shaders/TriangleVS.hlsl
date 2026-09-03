@@ -1,5 +1,7 @@
-// TriangleVS.hlsl
-// 三角形の頂点シェーダー。頂点は NDC 直書きなので、そのまま通す。
+/**
+ * @file TriangleVS.hlsl
+ * @brief 三角形の頂点シェーダー。頂点は NDC 直書きなので、そのまま通す。
+ */
 #include "Triangle.hlsli"
 
 VertexOutput VertexMain(VertexInput input)

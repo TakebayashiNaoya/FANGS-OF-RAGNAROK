@@ -1,14 +1,19 @@
-// SkinnedMeshVS.hlsl
-// スキンメッシュの頂点シェーダー。骨の姿勢で頂点を変形してから MVP でクリップ座標へ移し、
-// ライティング用にワールド法線とワールド位置を作る。
-// 出力とピクセルシェーダーは静的メッシュと共有する（Mesh.hlsli / MeshPS.hlsl）。
+/**
+ * @file SkinnedMeshVS.hlsl
+ * @brief スキンメッシュの頂点シェーダー。骨の姿勢で頂点を変形してから MVP でクリップ座標へ移し、
+ *        ライティング用にワールド法線とワールド位置を作る。
+ * @details 出力とピクセルシェーダーは静的メッシュと共有する（Mesh.hlsli / MeshPS.hlsl）。
+ */
 #include "Mesh.hlsli"
 #include "MeshConstants.h"
 
-// 骨の上限。SkinnedMeshRenderer の MAX_JOINT_COUNT と対。片方だけ変えると読み書きの範囲がずれる。
+/** @brief 骨の上限。SkinnedMeshRenderer の MAX_JOINT_COUNT と対。片方だけ変えると読み書きの範囲がずれる。 */
 #define MAX_JOINT_COUNT 64
 
-// 並びは SkinnedMeshRenderer が private に持つ頂点構造体との契約。片方だけ変えない。
+/**
+ * @brief 頂点シェーダーへの入力。
+ * @details 並びは SkinnedMeshRenderer が private に持つ頂点構造体との契約。片方だけ変えない。
+ */
 struct SkinnedVertexInput
 {
 	float3 position : POSITION;
@@ -18,14 +23,18 @@ struct SkinnedVertexInput
 	float4 weights  : BLENDWEIGHT;
 };
 
-// C++ 側（Matrix4x4）は行優先ストレージ + 行ベクトル規約で、行列を転置せずそのまま渡してくる。
-// HLSL の定数バッファは既定で列優先に読むので、ここで転置が掛かって辻褄が合う。
-// ➡ mul(行列, ベクトル) と「行列が左」で書くと、C++ の合成順と一致する。骨行列も同じ規則。
+/**
+ * @brief 描くもの 1 個ぶんの定数。
+ * @details C++ 側（Matrix4x4）は行優先ストレージ + 行ベクトル規約で、行列を転置せずそのまま渡してくる。
+ *          HLSL の定数バッファは既定で列優先に読むので、ここで転置が掛かって辻褄が合う。
+ *          ➡ mul(行列, ベクトル) と「行列が左」で書くと、C++ の合成順と一致する。骨行列も同じ規則。
+ */
 cbuffer cbPerObject : register(b0)
 {
 	MeshObjectConstants constants;
 };
 
+/** @brief スキニング行列。並びは glTF の関節番号のまま。 */
 cbuffer cbSkinning : register(b1)
 {
 	float4x4 boneMatrices[MAX_JOINT_COUNT];
