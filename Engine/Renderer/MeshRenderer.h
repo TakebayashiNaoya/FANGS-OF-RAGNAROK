@@ -94,6 +94,14 @@ namespace fang
 	public:
 		FANG_NON_COPYABLE(MeshRenderer);
 
+		/**
+		 * @brief 1 フレームに描けるメッシュの数。
+		 * @details 定数バッファの置き場をこの数だけ持つ。1 本を使い回すと、同じフレームの 2 個目が
+		 *          1 個目の定数を上書きしてしまう（コマンドはあとでまとめて実行されるため）。
+		 *          これを超えたぶんは描かずに警告を出す。増やすのは複数体を出す段の仕事。
+		 */
+		static constexpr uint32_t MAX_ITEM_COUNT = 4;
+
 		MeshRenderer() = default;
 
 		/**
@@ -114,12 +122,19 @@ namespace fang
 
 		/**
 		 * @brief 開いているフレームに描画コマンドを積む。
+		 * @param device      定数バッファを書き込むために使う。
 		 * @param commandList BeginFrame が返したコマンドリスト。
 		 * @param items       描くもの。無効な番号の要素は飛ばす。この呼び出しの間だけ読む。
 		 * @details Initialize に失敗した状態で呼んでも何もせずに戻る。モデルが出ないだけで、
 		 *          ほかの描画は続けられるほうが呼び出し側の分岐が減るため。
+		 *          const にしていないのは、定数バッファの置き場を書き換えながら進むため。
 		 */
-		void Draw(rhi::CommandList& commandList, const View& view, std::span<const RenderItem> items) const;
+		void Draw(
+			rhi::GraphicsDevice&        device,
+			rhi::CommandList&           commandList,
+			const View&                 view,
+			std::span<const RenderItem> items
+		);
 
 
 	private:
@@ -133,6 +148,13 @@ namespace fang
 
 		rhi::PipelineHandle m_pipeline; /**< メッシュ用のシェーダとステートの組。 */
 		std::vector<Mesh>   m_meshes;   /**< MeshId.index で引く。捨てないので詰め直しも世代も要らない。 */
+
+		/**
+		 * @brief 描くもの 1 個ぶんの定数（MVP・ライト・マテリアル）の置き場。b0 に差す。
+		 * @details ルート定数にしないのは、実機のドライバが 16 DWORD 超のルート定数の
+		 *          パイプライン生成でデバイスロストするため。
+		 */
+		rhi::BufferHandle m_objectConstantBuffers[MAX_ITEM_COUNT];
 
 		/** @brief ベースカラーが無いときに差す 1×1。従来の単色と同じ色。 */
 		rhi::TextureHandle m_dummyBaseColor;

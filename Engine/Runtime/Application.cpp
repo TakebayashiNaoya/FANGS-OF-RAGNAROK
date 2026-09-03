@@ -411,7 +411,7 @@ namespace fang
 							.roughnessFactor = wolf.roughnessFactor,
 						},
 					};
-					loopContext.meshRenderer->Draw(*commandList, view, items);
+					loopContext.meshRenderer->Draw(device, *commandList, view, items);
 				}
 			}
 

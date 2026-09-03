@@ -121,13 +121,14 @@ namespace fang
 		pipelineDesc.pixelShaderBytecode  = std::span<const uint8_t>(g_MeshPS, sizeof(g_MeshPS));
 		pipelineDesc.vertexLayout         = VERTEX_LAYOUT;
 
-		// MVP・ライト・マテリアルは b0 のルート定数（MeshConstants.h）、骨行列は b1 の定数バッファ。
-		// 59 本 × 64 バイトはルート定数に載らない。
+		// MVP・ライト・マテリアルは b0 のルート CBV（MeshConstants.h）、骨行列は b1 の定数バッファ。
+		// b0 をルート定数にしないのは、実機のドライバが 16 DWORD 超のルート定数のパイプライン生成で
+		// デバイスロストするため。
 		// ベースカラーは t0。無いときはダミーを差すので、パイプラインは常にこの 1 本。
-		pipelineDesc.rootConstantCount  = MESH_OBJECT_CONSTANT_COUNT;
-		pipelineDesc.hasConstantBuffer  = true;
-		pipelineDesc.hasTexture         = true;
-		pipelineDesc.isDepthTestEnabled = true;
+		pipelineDesc.hasObjectConstantBuffer = true;
+		pipelineDesc.hasConstantBuffer       = true;
+		pipelineDesc.hasTexture              = true;
+		pipelineDesc.isDepthTestEnabled      = true;
 
 		m_pipeline = device.CreateGraphicsPipeline(pipelineDesc);
 		if (!m_pipeline.IsValid())
@@ -150,6 +151,15 @@ namespace fang
 			}
 		}
 
+		for (rhi::BufferHandle& buffer : m_objectConstantBuffers)
+		{
+			buffer = device.CreateDynamicBuffer(sizeof(MeshObjectConstants), 0, rhi::EnBufferKind::Constant);
+			if (!buffer.IsValid())
+			{
+				return false;
+			}
+		}
+
 		FANG_LOG_INFO(Renderer, "スキンメッシュ描画の準備ができた");
 
 		return true;
@@ -158,6 +168,12 @@ namespace fang
 
 	void SkinnedMeshRenderer::Shutdown(rhi::GraphicsDevice& device)
 	{
+		for (rhi::BufferHandle& buffer : m_objectConstantBuffers)
+		{
+			device.DestroyBuffer(buffer);
+			buffer = {};
+		}
+
 		for (rhi::BufferHandle& buffer : m_jointMatrixBuffers)
 		{
 			device.DestroyBuffer(buffer);
@@ -360,10 +376,11 @@ namespace fang
 
 			const MeshObjectConstants constants =
 				MakeObjectConstants(view, item.world, item.metallicFactor, item.roughnessFactor);
+			device.UpdateBuffer(m_objectConstantBuffers[usedBufferCount], &constants, sizeof(constants));
 
 			commandList.SetVertexBuffer(mesh.vertexBuffer);
 			commandList.SetIndexBuffer(mesh.indexBuffer);
-			commandList.SetRootConstants(&constants, MESH_OBJECT_CONSTANT_COUNT);
+			commandList.SetObjectConstantBuffer(m_objectConstantBuffers[usedBufferCount]);
 			commandList.SetConstantBuffer(m_jointMatrixBuffers[usedBufferCount]);
 			commandList.SetTexture(item.baseColor.IsValid() ? item.baseColor : m_dummyBaseColor);
 			commandList.DrawIndexed(mesh.indexCount, 0, 0);

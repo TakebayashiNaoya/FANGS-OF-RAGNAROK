@@ -114,9 +114,9 @@ namespace fang
 		pipelineDesc.pixelShaderBytecode  = std::span<const uint8_t>(g_MeshPS, sizeof(g_MeshPS));
 		pipelineDesc.vertexLayout         = VERTEX_LAYOUT;
 
-		// MVP・ライト・マテリアルは b0 のルート定数で渡す（MeshConstants.h）。
-		// 1 メッシュ 1 マテリアルのうちは定数バッファを回すより少ない手数で済む。
-		pipelineDesc.rootConstantCount = MESH_OBJECT_CONSTANT_COUNT;
+		// MVP・ライト・マテリアルは b0 のルート CBV で渡す（MeshConstants.h）。ルート定数にしないのは、
+		// 実機のドライバが 16 DWORD 超のルート定数のパイプライン生成でデバイスロストするため。
+		pipelineDesc.hasObjectConstantBuffer = true;
 
 		// ベースカラーを t0 に差す。無いときはダミーを差すので、パイプラインは常にこの 1 本。
 		pipelineDesc.hasTexture = true;
@@ -136,6 +136,15 @@ namespace fang
 			return false;
 		}
 
+		for (rhi::BufferHandle& buffer : m_objectConstantBuffers)
+		{
+			buffer = device.CreateDynamicBuffer(sizeof(MeshObjectConstants), 0, rhi::EnBufferKind::Constant);
+			if (!buffer.IsValid())
+			{
+				return false;
+			}
+		}
+
 		FANG_LOG_INFO(Renderer, "メッシュ描画の準備ができた");
 
 		return true;
@@ -144,6 +153,12 @@ namespace fang
 
 	void MeshRenderer::Shutdown(rhi::GraphicsDevice& device)
 	{
+		for (rhi::BufferHandle& buffer : m_objectConstantBuffers)
+		{
+			device.DestroyBuffer(buffer);
+			buffer = {};
+		}
+
 		for (const Mesh& mesh : m_meshes)
 		{
 			device.DestroyBuffer(mesh.indexBuffer);
@@ -267,7 +282,12 @@ namespace fang
 	}
 
 
-	void MeshRenderer::Draw(rhi::CommandList& commandList, const View& view, std::span<const RenderItem> items) const
+	void MeshRenderer::Draw(
+		rhi::GraphicsDevice&        device,
+		rhi::CommandList&           commandList,
+		const View&                 view,
+		std::span<const RenderItem> items
+	)
 	{
 		// 初期化に失敗していても落とさない。モデルが出ないだけで、ほかの描画は続けられる。
 		if (!m_pipeline.IsValid() || items.empty())
@@ -277,6 +297,7 @@ namespace fang
 
 		commandList.SetPipeline(m_pipeline);
 
+		uint32_t usedBufferCount = 0;
 		for (const RenderItem& item : items)
 		{
 			// 無効な番号は CreateMesh が失敗した合図で、想定内の入力。黙って飛ばす。
@@ -292,16 +313,29 @@ namespace fang
 				continue;
 			}
 
+			if (usedBufferCount >= MAX_ITEM_COUNT)
+			{
+				FANG_LOG_WARNING(
+					Renderer,
+					"1 フレームに描けるメッシュは {} 個まで。残りを飛ばした",
+					static_cast<uint32_t>(MAX_ITEM_COUNT)
+				);
+				break;
+			}
+
 			const Mesh& mesh = m_meshes[item.mesh.index];
 
 			const MeshObjectConstants constants =
 				MakeObjectConstants(view, item.world, item.metallicFactor, item.roughnessFactor);
+			device.UpdateBuffer(m_objectConstantBuffers[usedBufferCount], &constants, sizeof(constants));
 
 			commandList.SetVertexBuffer(mesh.vertexBuffer);
 			commandList.SetIndexBuffer(mesh.indexBuffer);
-			commandList.SetRootConstants(&constants, MESH_OBJECT_CONSTANT_COUNT);
+			commandList.SetObjectConstantBuffer(m_objectConstantBuffers[usedBufferCount]);
 			commandList.SetTexture(item.baseColor.IsValid() ? item.baseColor : m_dummyBaseColor);
 			commandList.DrawIndexed(mesh.indexCount, 0, 0);
+
+			++usedBufferCount;
 		}
 	}
 } // namespace fang

@@ -138,6 +138,13 @@ namespace fang
 		/** @brief 骨行列の置き場。b1 に差す。描くもの 1 個につき 1 本使う。 */
 		rhi::BufferHandle m_jointMatrixBuffers[MAX_ITEM_COUNT];
 
+		/**
+		 * @brief 描くもの 1 個ぶんの定数（MVP・ライト・マテリアル）の置き場。b0 に差す。
+		 * @details ルート定数にしないのは、実機のドライバが 16 DWORD 超のルート定数の
+		 *          パイプライン生成でデバイスロストするため。
+		 */
+		rhi::BufferHandle m_objectConstantBuffers[MAX_ITEM_COUNT];
+
 		/** @brief ベースカラーが無いときに差す 1×1。従来の単色と同じ色。 */
 		rhi::TextureHandle m_dummyBaseColor;
 	};

@@ -10,7 +10,6 @@
 #ifdef __cplusplus
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Math/Vector4.h"
-#include <cstdint>
 
 namespace fang
 {
@@ -20,11 +19,12 @@ namespace fang
 #endif
 
 	/**
-	 * @brief メッシュ 1 個を描くときに b0 のルート定数で渡すもの。全部で 52 DWORD。
+	 * @brief メッシュ 1 個を描くときに b0 のルート CBV で渡すもの。
 	 * @details メンバを float4 / float4x4 だけにして、HLSL の 16 バイトパッキングと C++ の並びが
 	 *          ずれる余地を消してある。行列は行優先のまま転置せずに渡す（HLSL 側が列優先に読んで辻褄が合う）。
-	 *          ライト（per-frame 相当）を per-draw に同居させているのは、描く物が狼 1 体の今は
-	 *          分ける利得が無いため。cbPerFrame への分離は RenderGraph と一緒にやる。
+	 *          ルート定数にしないのは、実機のドライバが 16 DWORD 超のルート定数のパイプライン生成で
+	 *          デバイスロストするため。ライト（per-frame 相当）を per-draw に同居させているのは、
+	 *          描く物が狼 1 体の今は分ける利得が無いため。cbPerFrame への分離は RenderGraph と一緒にやる。
 	 */
 	struct MeshObjectConstants
 	{
@@ -38,9 +38,6 @@ namespace fang
 	};
 
 #ifdef __cplusplus
-	/** @brief SetRootConstants に渡す 32 bit 値の数。 */
-	constexpr uint32_t MESH_OBJECT_CONSTANT_COUNT = sizeof(MeshObjectConstants) / 4;
-
 	static_assert(sizeof(MeshObjectConstants) == 52 * 4, "HLSL 側が読む 52 DWORD と同じ大きさであること");
 } // namespace fang
 #endif
