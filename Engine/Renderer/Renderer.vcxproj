@@ -28,6 +28,7 @@
   <ItemGroup>
     <ClInclude Include="MeshRenderer.h" />
     <ClInclude Include="Pch.h" />
+    <ClInclude Include="RenderGraph.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RendererLog.h" />
     <ClInclude Include="SkinnedMeshRenderer.h" />
@@ -39,6 +40,7 @@
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="RenderGraph.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="SkinnedMeshRenderer.cpp" />
     <ClCompile Include="TriangleRenderer.cpp" />

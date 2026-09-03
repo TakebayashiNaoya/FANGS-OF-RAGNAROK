@@ -9,6 +9,7 @@
   <ItemGroup>
     <ClInclude Include="MeshRenderer.h" />
     <ClInclude Include="Pch.h" />
+    <ClInclude Include="RenderGraph.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RendererLog.h" />
     <ClInclude Include="SkinnedMeshRenderer.h" />
@@ -20,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="MeshRenderer.cpp" />
     <ClCompile Include="Pch.cpp" />
+    <ClCompile Include="RenderGraph.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="SkinnedMeshRenderer.cpp" />
     <ClCompile Include="TriangleRenderer.cpp" />

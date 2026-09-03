@@ -128,6 +128,12 @@ namespace fang::rhi
 		 */
 		void Resize(uint32_t width, uint32_t height);
 
+		/** @brief バックバッファの幅（ピクセル）。ビューポートを画面全体に合わせるときに使う。 */
+		[[nodiscard]] FANG_FORCEINLINE uint32_t GetBackBufferWidth() const { return m_swapChain.GetWidth(); }
+
+		/** @brief バックバッファの高さ（ピクセル）。 */
+		[[nodiscard]] FANG_FORCEINLINE uint32_t GetBackBufferHeight() const { return m_swapChain.GetHeight(); }
+
 		/**
 		 * @brief フレームを開始する。
 		 * @details このフレームぶんの記録メモリを巻き戻して、貸出の帳簿を空にするだけ。バリアもクリアも

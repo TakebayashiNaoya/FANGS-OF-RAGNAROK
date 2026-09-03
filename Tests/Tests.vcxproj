@@ -15,7 +15,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
 
   <PropertyGroup Label="FangModule">
-    <FangModuleDependencies>Core;Collision;Animation;Scene;Resource;Runtime</FangModuleDependencies>
+    <FangModuleDependencies>Core;RHI;Renderer;Collision;Animation;Scene;Resource;Runtime</FangModuleDependencies>
   </PropertyGroup>
 
   <Import Project="$(FangRoot)Build\Program.props" />
@@ -43,6 +43,7 @@
     <ClCompile Include="Source\Matrix4x4Tests.cpp" />
     <ClCompile Include="Source\PackTests.cpp" />
     <ClCompile Include="Source\ParallelForTests.cpp" />
+    <ClCompile Include="Source\RenderGraphTests.cpp" />
     <ClCompile Include="Source\WorkStealingDequeTests.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->

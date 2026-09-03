@@ -43,6 +43,9 @@
     <ClCompile Include="Source\ParallelForTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\RenderGraphTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\WorkStealingDequeTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
