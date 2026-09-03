@@ -20,6 +20,7 @@ namespace
 	constexpr uint32_t DDPF_FOURCC = 0x00000004;
 
 	constexpr uint32_t DXGI_R8G8B8A8_UNORM     = 28;
+	constexpr uint32_t DXGI_R16_UNORM          = 56;
 	constexpr uint32_t DXGI_BC7_UNORM_SRGB     = 99;
 	constexpr uint32_t DDS_DIMENSION_TEXTURE2D = 3;
 
@@ -150,6 +151,30 @@ TEST_CASE("BC7 はブロック単位で数える")
 	CHECK(mipLevels[2].rowPitch == 16);
 	CHECK(mipLevels[3].width == 1);
 	CHECK(mipLevels[3].sizeInBytes == 16);
+}
+
+
+TEST_CASE("R16 は 1 テクセル 2 バイトで数える")
+{
+	// 4x4 の 1 段。ハイトマップはミップを持たない前提の形。
+	DdsBuilder builder(4, 4, 1, DXGI_R16_UNORM);
+	builder.AppendPixels(4 * 4 * 2);
+
+	fang::DdsImage image;
+	CHECK(image.LoadFromMemory(builder.GetBytes()));
+	CHECK(image.GetFormat() == fang::rhi::EnTextureFormat::R16);
+
+	const auto mipLevels = image.GetMipLevels();
+	CHECK_EQ(mipLevels.size(), 1);
+	if (mipLevels.size() != 1)
+	{
+		return;
+	}
+
+	CHECK(mipLevels[0].width == 4);
+	CHECK(mipLevels[0].height == 4);
+	CHECK(mipLevels[0].rowPitch == 8);
+	CHECK(mipLevels[0].sizeInBytes == 32);
 }
 
 

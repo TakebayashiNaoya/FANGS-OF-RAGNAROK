@@ -30,6 +30,7 @@
   <ItemGroup>
     <ClInclude Include="DdsImage.h" />
     <ClInclude Include="GltfMesh.h" />
+    <ClInclude Include="HeightmapTerrain.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="ResourceLog.h" />
@@ -38,6 +39,7 @@
     <ClCompile Include="CgltfImplementation.cpp" />
     <ClCompile Include="DdsImage.cpp" />
     <ClCompile Include="GltfMesh.cpp" />
+    <ClCompile Include="HeightmapTerrain.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
