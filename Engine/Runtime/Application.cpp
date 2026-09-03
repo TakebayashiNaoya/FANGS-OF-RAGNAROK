@@ -188,6 +188,9 @@ namespace fang
 			MeshRenderer* meshRenderer = nullptr;
 			WolfModel*    wolf         = nullptr;
 
+			/** @brief RunApplication が持つ入れ物。graph.Execute の戻り値の後に 4 値を書く。 */
+			RenderStatistics* renderStatistics = nullptr;
+
 			/** @brief 床の静的メッシュ。読み込みが無いので、生成に失敗しなければ常に有効。 */
 			MeshId floorMesh;
 
@@ -411,12 +414,13 @@ namespace fang
 		/** @brief エディタパスの記録関数に渡す入力。従来 FrameRenderContext に積んでいたものと同じ中身。 */
 		struct EditorPassRecordArguments
 		{
-			IApplication*        application      = nullptr;
-			rhi::GraphicsDevice* device           = nullptr;
-			const Window*        window           = nullptr;
-			const FrameData*     frameData        = nullptr;
-			uint64_t             frameIndex       = 0;
-			float                deltaTimeSeconds = 0.0f;
+			IApplication*           application      = nullptr;
+			rhi::GraphicsDevice*    device           = nullptr;
+			const Window*           window           = nullptr;
+			const FrameData*        frameData        = nullptr;
+			const RenderStatistics* renderStatistics = nullptr;
+			uint64_t                frameIndex       = 0;
+			float                   deltaTimeSeconds = 0.0f;
 		};
 
 		/**
@@ -429,8 +433,8 @@ namespace fang
 			const auto& arguments = *static_cast<const EditorPassRecordArguments*>(userData);
 
 			const FrameRenderContext context{
-				*arguments.device,   commandList,          *arguments.window,
-				arguments.frameData, arguments.frameIndex, arguments.deltaTimeSeconds,
+				*arguments.device,           commandList,          *arguments.window,          arguments.frameData,
+				*arguments.renderStatistics, arguments.frameIndex, arguments.deltaTimeSeconds,
 			};
 
 			arguments.application->OnRender(context);
@@ -711,6 +715,7 @@ namespace fang
 				.device           = &device,
 				.window           = &window,
 				.frameData        = frameData,
+				.renderStatistics = loopContext.renderStatistics,
 				.frameIndex       = frameIndex,
 				.deltaTimeSeconds = deltaTimeSeconds,
 			};
@@ -736,7 +741,18 @@ namespace fang
 			graph.Execute(device, jobSystem);
 
 			//------------------------------------------------------------------------
-			// 11. コマンドリストを借りられなかったときの畳み
+			// 11. レンダリング統計のスナップショット更新
+			// 　Execute の Wait が済んだこの地点でだけ、Submit 数・描いた数・パス数・コマンドリスト本数を
+			// 　安全に読める（ScenePass の記録がまだ書き込み中の可能性がある間は読めない）。ここで書いた値は
+			// 　次のフレームの EditorPass が読む、1 フレーム遅れのスナップショットになる。
+			//------------------------------------------------------------------------
+			loopContext.renderStatistics->submittedItemCount = sceneRenderer.GetSubmittedItemCount();
+			loopContext.renderStatistics->drawnItemCount     = sceneRenderer.GetLastDrawnItemCount();
+			loopContext.renderStatistics->passCount          = graph.GetPassCount();
+			loopContext.renderStatistics->commandListCount   = static_cast<uint32_t>(graph.GetCommandLists().size());
+
+			//------------------------------------------------------------------------
+			// 12. コマンドリストを借りられなかったときの畳み
 			// 　パスを宣言したのにコマンドリストが 1 本も返らなかった(主にデバイスロスト)ら、このフレームは
 			// 　EndFrame を呼ばずに畳む。
 			//------------------------------------------------------------------------
@@ -753,7 +769,7 @@ namespace fang
 			}
 
 			//------------------------------------------------------------------------
-			// 12. EndFrame
+			// 13. EndFrame
 			// 　積んだコマンドリストを渡して実行・Present・GPU の完了待ちをまとめて行う。
 			//------------------------------------------------------------------------
 			device.EndFrame(graph.GetCommandLists());
@@ -871,6 +887,10 @@ namespace fang
 			FANG_LOG_ERROR(Runtime, "シーン描画の準備に失敗した。モデルの表示だけを飛ばす");
 		}
 
+		// 起動 1 フレーム目は既定値（全部 0）のまま EditorPass へ渡る。1 フレーム遅れのスナップショットなので
+		// 特別扱いは要らない。
+		RenderStatistics renderStatistics;
+
 		//------------------------------------------------------------------------
 		// 6. フレームパイプライン
 		// 　更新(ジョブ)と描画(メインスレッド)を並走させる仕組み。
@@ -878,13 +898,14 @@ namespace fang
 		// 　UpdateFrame / RenderFrame の関数ポインタと、そこへ渡す持ち物一式を組む。
 		//------------------------------------------------------------------------
 		FrameLoopContext loopContext{};
-		loopContext.application   = &application;
-		loopContext.device        = &device;
-		loopContext.window        = &window;
-		loopContext.jobSystem     = &jobSystem;
-		loopContext.renderGraph   = &renderGraph;
-		loopContext.sceneRenderer = &sceneRenderer;
-		loopContext.unlitRenderer = &unlitRenderer;
+		loopContext.application      = &application;
+		loopContext.device           = &device;
+		loopContext.window           = &window;
+		loopContext.jobSystem        = &jobSystem;
+		loopContext.renderGraph      = &renderGraph;
+		loopContext.sceneRenderer    = &sceneRenderer;
+		loopContext.unlitRenderer    = &unlitRenderer;
+		loopContext.renderStatistics = &renderStatistics;
 #if FANG_ENABLE_DEBUG_DRAW
 		loopContext.debugDraw = &debugDraw;
 #endif

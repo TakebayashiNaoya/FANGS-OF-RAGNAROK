@@ -43,6 +43,15 @@ namespace fang
 		DirectionalLight light; /**< このフレームの平行光。将来は昼夜サイクルがここへ書く。 */
 	};
 
+	/** @brief 直近に完了した Execute の統計。RenderStatisticsPanel が読む。1 フレーム遅れの値。 */
+	struct RenderStatistics
+	{
+		uint32_t submittedItemCount = 0; /**< Submit の合計（全 View、カリング前）。 */
+		uint32_t drawnItemCount     = 0; /**< 実際に描いた合計（全 View）。 */
+		uint32_t passCount          = 0; /**< RenderGraph に宣言されたパスの数。 */
+		uint32_t commandListCount   = 0; /**< Execute が記録したコマンドリストの本数。 */
+	};
+
 	/**
 	 * @brief 更新の側へ渡す、このフレームだけのもの。ジョブの中で読む。
 	 * @details ウィンドウも RHI も入れていないので、ワーカースレッドから触れる先はここにあるものだけになる。
@@ -61,8 +70,9 @@ namespace fang
 		rhi::CommandList&    commandList;
 		const Window&        window;
 
-		const FrameData* frameData        = nullptr; /**< 1 つ前のフレームの更新が作ったもの。無ければ nullptr。 */
-		uint64_t         frameIndex       = 0;       /**< 描いているフレーム。更新側より 1 小さい。 */
-		float            deltaTimeSeconds = 0.0f;
+		const FrameData*        frameData = nullptr;  /**< 1 つ前のフレームの更新が作ったもの。無ければ nullptr。 */
+		const RenderStatistics& renderStatistics;     /**< 1 つ前のフレームの Execute が書いた統計。 */
+		uint64_t                frameIndex       = 0; /**< 描いているフレーム。更新側より 1 小さい。 */
+		float                   deltaTimeSeconds = 0.0f;
 	};
 } // namespace fang

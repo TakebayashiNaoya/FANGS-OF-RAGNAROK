@@ -366,6 +366,18 @@ namespace fang
 	}
 
 
+	uint32_t SceneRenderer::GetSubmittedItemCount() const
+	{
+		uint32_t total = 0;
+		for (uint32_t viewIndex = 0; viewIndex < m_viewCount; ++viewIndex)
+		{
+			total += static_cast<uint32_t>(m_submittedItems[viewIndex].size());
+		}
+
+		return total;
+	}
+
+
 	uint32_t SceneRenderer::GetLastDrawnItemCount() const
 	{
 		uint32_t total = 0;

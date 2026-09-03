@@ -41,7 +41,7 @@ namespace fang::game
 		{
 		public:
 			[[nodiscard]] bool Initialize(const EngineContext&, rhi::GraphicsDevice&, const Window&) { return true; }
-			void               BuildFrame(const Window&, float) {}
+			void               BuildFrame(const Window&, float, const RenderStatistics&) {}
 			void               Render(rhi::GraphicsDevice&, rhi::CommandList&) {}
 			void               RunRequestedTestLoad(uint64_t) {}
 			void               Shutdown(rhi::GraphicsDevice&) {}
@@ -100,7 +100,7 @@ namespace fang::game
 			void OnRender(const FrameRenderContext& context) override
 			{
 				// ImGui は NewFrame と Render を同じフレームで対にしないといけないので、組み立てもここで行う。
-				m_editorUI.BuildFrame(context.window, context.deltaTimeSeconds);
+				m_editorUI.BuildFrame(context.window, context.deltaTimeSeconds, context.renderStatistics);
 				m_editorUI.Render(context.device, context.commandList);
 			}
 
