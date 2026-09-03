@@ -1,22 +1,26 @@
-// MeshPS.hlsl
-// メッシュのピクセルシェーダー。平行光 1 本 + 環境項の物理ベースライティング。
-// 式は glTF 仕様 Appendix B（Lambert + GGX + Schlick Fresnel）のとおりで、独自の変形はしない
-// ➡ metallic / roughness の係数の意味がアセットと一致する。
-// 静的メッシュとスキンメッシュの両方がこれを使う。
+/**
+ * @file MeshPS.hlsl
+ * @brief メッシュのピクセルシェーダー。平行光 1 本 + 環境項の物理ベースライティング。
+ * @details 式は glTF 仕様 Appendix B（Lambert + GGX + Schlick Fresnel）のとおりで、独自の変形はしない
+ *          ➡ metallic / roughness の係数の意味がアセットと一致する。
+ *          静的メッシュとスキンメッシュの両方がこれを使う。
+ */
 #include "Mesh.hlsli"
 #include "MeshConstants.h"
 
+/** @brief 円周率。 */
 static const float PI = 3.14159265;
 
-// 非金属の垂直入射の反射率。glTF 仕様が定める共通の近似値。
+/** @brief 非金属の垂直入射の反射率。glTF 仕様が定める共通の近似値。 */
 static const float DIELECTRIC_REFLECTANCE = 0.04;
 
+/** @brief 描くもの 1 個ぶんの定数。並びは MeshConstants.h の MeshObjectConstants。 */
 cbuffer cbPerObject : register(b0)
 {
 	MeshObjectConstants constants;
 };
 
-// ベースカラー。sRGB の SRV なので、読んだ時点で GPU がリニアへ直している。
+/** @brief ベースカラー。sRGB の SRV なので、読んだ時点で GPU がリニアへ直している。 */
 Texture2D<float4> baseColorTexture : register(t0);
 SamplerState baseColorSampler : register(s0);
 

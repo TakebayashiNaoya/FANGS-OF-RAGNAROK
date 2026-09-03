@@ -5,6 +5,7 @@
 #include "Pch.h"
 #include "Renderer/MeshRenderer.h"
 #include "Core/Log/Assert.h"
+#include "Core/Math/Pack.h"
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
 #include "Renderer/RendererLog.h"
@@ -25,13 +26,17 @@ namespace fang
 		/**
 		 * @brief シェーダに渡す頂点。
 		 * @details 並びは MeshVS.hlsl との契約なのでヘッダに出さない。MeshSource のばらばらの配列をここへ詰め直す。
+		 *          法線は 8 bit SNORM、UV は half に圧縮して持つ ➡ 入力アセンブラが float へ展開するので、
+		 *          シェーダは float3 / float2 のまま変わらない。
 		 */
 		struct MeshVertex
 		{
-			float position[3];
-			float normal[3];
-			float texCoord[2];
+			float    position[3]; /**< モデルの寸法精度は落とさない。 */
+			int8_t   normal[4];   /**< SNORM。w は未使用で 0。接線を足す日は別属性で足す。 */
+			uint16_t texCoord[2]; /**< half のビット列。 */
 		};
+
+		static_assert(sizeof(MeshVertex) == 20, "頂点の大きさが契約の 20 バイトからずれている");
 
 		/** @brief 16 bit のインデックスで指せる頂点の数。 */
 		constexpr size_t MAX_VERTEX_COUNT = 65536;
@@ -104,8 +109,8 @@ namespace fang
 	{
 		constexpr rhi::VertexAttribute VERTEX_LAYOUT[] = {
 			{ "POSITION", 0, rhi::EnVertexFormat::Float3, offsetof(MeshVertex, position) },
-			{ "NORMAL", 0, rhi::EnVertexFormat::Float3, offsetof(MeshVertex, normal) },
-			{ "TEXCOORD", 0, rhi::EnVertexFormat::Float2, offsetof(MeshVertex, texCoord) },
+			{ "NORMAL", 0, rhi::EnVertexFormat::SByte4Normalized, offsetof(MeshVertex, normal) },
+			{ "TEXCOORD", 0, rhi::EnVertexFormat::Half2, offsetof(MeshVertex, texCoord) },
 		};
 
 		// シェーダーは Shaders/*.hlsl をビルド時に FXC でヘッダ化したもの。UWP に実行時コンパイルが無いため。
@@ -231,12 +236,13 @@ namespace fang
 			vertex.position[1] = position.y;
 			vertex.position[2] = position.z;
 
-			vertex.normal[0] = normal.x;
-			vertex.normal[1] = normal.y;
-			vertex.normal[2] = normal.z;
+			vertex.normal[0] = PackSignedNormalized8(normal.x);
+			vertex.normal[1] = PackSignedNormalized8(normal.y);
+			vertex.normal[2] = PackSignedNormalized8(normal.z);
+			vertex.normal[3] = 0;
 
-			vertex.texCoord[0] = texCoord.x;
-			vertex.texCoord[1] = texCoord.y;
+			vertex.texCoord[0] = PackFloat16(texCoord.x);
+			vertex.texCoord[1] = PackFloat16(texCoord.y);
 		}
 
 		const rhi::BufferHandle vertexBuffer = device.CreateBuffer(

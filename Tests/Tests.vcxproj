@@ -39,6 +39,7 @@
     <ClCompile Include="Source\JobSystemTests.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Matrix4x4Tests.cpp" />
+    <ClCompile Include="Source\PackTests.cpp" />
     <ClCompile Include="Source\ParallelForTests.cpp" />
     <ClCompile Include="Source\WorkStealingDequeTests.cpp" />
   </ItemGroup>

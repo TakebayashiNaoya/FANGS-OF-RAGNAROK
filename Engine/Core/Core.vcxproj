@@ -39,6 +39,7 @@
     <ClInclude Include="Log\PlatformLogSink.h" />
     <ClInclude Include="Math\JointIndices.h" />
     <ClInclude Include="Math\Matrix4x4.h" />
+    <ClInclude Include="Math\Pack.h" />
     <ClInclude Include="Math\Vector2.h" />
     <ClInclude Include="Math\Vector3.h" />
     <ClInclude Include="Math\Vector4.h" />

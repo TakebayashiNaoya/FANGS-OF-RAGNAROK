@@ -31,6 +31,9 @@
     <ClCompile Include="Source\Matrix4x4Tests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\PackTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\ParallelForTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
