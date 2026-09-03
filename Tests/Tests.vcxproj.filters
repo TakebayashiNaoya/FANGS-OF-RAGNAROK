@@ -7,6 +7,11 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\NonAsciiTestDirectory.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="Source\AabbTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
@@ -23,6 +28,9 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\FrustumTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\GltfMeshTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\JobSystemStressTests.cpp">

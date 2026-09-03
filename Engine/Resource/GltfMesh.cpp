@@ -4,7 +4,10 @@
  */
 #include "Pch.h"
 #include "Resource/GltfMesh.h"
+#include "Core/Platform/FileSystem.h"
 #include "Resource/ResourceLog.h"
+#include <cstdio>
+#include <cstdlib>
 
 // 上流のコードは /W4 /WX を想定していないので、この TU の中だけ警告を落とす。
 // ThirdParty は改変しない方針なので、抑えるのは取り込む側の責任になる。
@@ -71,6 +74,94 @@ namespace fang
 		void LogCgltfFailure(const char* stepName, cgltf_result result, const char* filePath)
 		{
 			FANG_LOG_ERROR(Resource, "glTF の{}に失敗した（{}）: {}", stepName, static_cast<int>(result), filePath);
+		}
+
+		/** @brief cgltf にアロケータが渡されなかったときの確保。cgltf の既定実装と同じ malloc ベース。 */
+		void* AllocateForCgltf(void* userData, cgltf_size size)
+		{
+			FANG_UNUSED(userData);
+			return std::malloc(size);
+		}
+
+		/** @brief AllocateForCgltf で確保した領域を解放する。 */
+		void FreeForCgltf(void* userData, void* pointer)
+		{
+			FANG_UNUSED(userData);
+			std::free(pointer);
+		}
+
+		/**
+		 * @brief cgltf にファイルを読ませるコールバック。.gltf 本体と、隣の .bin の両方がここを通る。
+		 * @details 既定の実装は fopen を narrow 文字列で呼ぶため、Windows では現在の ANSI コードページ
+		 *          として解釈され、日本語などの非 ASCII を含むパスが化けて開けない。fang::OpenFile で
+		 *          UTF-16 に直してから開く以外は、サイズを測って丸ごと読む既定の手順をそのまま踏む。
+		 */
+		cgltf_result ReadFileForCgltf(
+			const cgltf_memory_options* memoryOptions,
+			const cgltf_file_options*   fileOptions,
+			const char*                 path,
+			cgltf_size*                 size,
+			void**                      data
+		)
+		{
+			FANG_UNUSED(fileOptions);
+
+			std::FILE* file = OpenFile(path, "rb");
+			if (file == nullptr)
+			{
+				return cgltf_result_file_not_found;
+			}
+
+			std::fseek(file, 0, SEEK_END);
+			const long fileSize = std::ftell(file);
+			std::fseek(file, 0, SEEK_SET);
+			if (fileSize < 0)
+			{
+				std::fclose(file);
+				return cgltf_result_io_error;
+			}
+
+			void* (*allocate)(void*, cgltf_size) =
+				memoryOptions->alloc_func != nullptr ? memoryOptions->alloc_func : &AllocateForCgltf;
+
+			const cgltf_size byteCount = static_cast<cgltf_size>(fileSize);
+			void*            fileData  = allocate(memoryOptions->user_data, byteCount);
+			if (fileData == nullptr)
+			{
+				std::fclose(file);
+				return cgltf_result_out_of_memory;
+			}
+
+			const size_t readByteCount = std::fread(fileData, 1, byteCount, file);
+			std::fclose(file);
+
+			if (readByteCount != byteCount)
+			{
+				void (*deallocate)(void*, void*) =
+					memoryOptions->free_func != nullptr ? memoryOptions->free_func : &FreeForCgltf;
+				deallocate(memoryOptions->user_data, fileData);
+				return cgltf_result_io_error;
+			}
+
+			*size = byteCount;
+			*data = fileData;
+			return cgltf_result_success;
+		}
+
+		/** @brief ReadFileForCgltf が確保した領域を解放するコールバック。 */
+		void ReleaseFileForCgltf(
+			const cgltf_memory_options* memoryOptions,
+			const cgltf_file_options*   fileOptions,
+			void*                       data,
+			cgltf_size                  size
+		)
+		{
+			FANG_UNUSED(fileOptions);
+			FANG_UNUSED(size);
+
+			void (*deallocate)(void*, void*) =
+				memoryOptions->free_func != nullptr ? memoryOptions->free_func : &FreeForCgltf;
+			deallocate(memoryOptions->user_data, data);
 		}
 
 		/**
@@ -435,7 +526,13 @@ namespace fang
 			return false;
 		}
 
-		cgltf_options   options{};
+		cgltf_options options{};
+
+		// 既定の file.read / file.release は narrow の fopen を使うので、非 ASCII パスに対応した
+		// ものへ差し替える。.gltf 本体と cgltf_load_buffers が読む隣の .bin の両方がここを通る。
+		options.file.read    = &ReadFileForCgltf;
+		options.file.release = &ReleaseFileForCgltf;
+
 		CgltfDataHolder holder;
 
 		const cgltf_result parseResult = cgltf_parse_file(&options, filePath, holder.GetAddressOfData());
