@@ -231,18 +231,109 @@ namespace fang::rhi
 
 		entry.isAlive = true;
 
-		for (uint32_t index = 0; index < static_cast<uint32_t>(m_entries.size()); ++index)
+		return Register(entry);
+	}
+
+
+	TextureHandle TexturePool::CreateDepth(
+		ID3D12Device&   device,
+		DescriptorHeap& descriptorHeap,
+		uint32_t        width,
+		uint32_t        height
+	)
+	{
+		if (width == 0 || height == 0)
 		{
-			if (!m_entries[index].isAlive)
-			{
-				entry.generation = m_entries[index].generation + 1;
-				m_entries[index] = entry;
-				return TextureHandle{ index, entry.generation };
-			}
+			FANG_ASSERT(false, "深度テクスチャの大きさが 0 になっている");
+			return TextureHandle{};
 		}
 
-		m_entries.push_back(entry);
-		return TextureHandle{ static_cast<uint32_t>(m_entries.size() - 1), entry.generation };
+		uint32_t descriptorIndex = 0;
+		if (!descriptorHeap.Allocate(descriptorIndex))
+		{
+			return TextureHandle{};
+		}
+
+		Entry entry;
+
+		// DSV は 1 個しか要らないので、このテクスチャ専用のヒープを 1 枠だけ作る。
+		D3D12_DESCRIPTOR_HEAP_DESC depthStencilViewHeapDesc{};
+		depthStencilViewHeapDesc.NumDescriptors = 1;
+		depthStencilViewHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+		if (!CheckHresult(
+				device.CreateDescriptorHeap(&depthStencilViewHeapDesc, IID_PPV_ARGS(&entry.depthStencilViewHeap)),
+				"深度テクスチャの深度ステンシルビューのヒープ生成"
+			))
+		{
+			return TextureHandle{};
+		}
+
+		D3D12_HEAP_PROPERTIES defaultHeapProperties{};
+		defaultHeapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+		// 実体は型無しで作る。書くときは深度（D32）、読むときは 1 成分の float（R32）と、
+		// 同じメモリを別の形式のビューで見るため。
+		D3D12_RESOURCE_DESC depthTextureDesc{};
+		depthTextureDesc.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		depthTextureDesc.Width            = width;
+		depthTextureDesc.Height           = height;
+		depthTextureDesc.DepthOrArraySize = 1;
+		depthTextureDesc.MipLevels        = 1;
+		depthTextureDesc.Format           = DXGI_FORMAT_R32_TYPELESS;
+		depthTextureDesc.SampleDesc.Count = 1;
+		depthTextureDesc.Layout           = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		depthTextureDesc.Flags            = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+		// 最適化クリア値。ClearDepth が渡す値と揃えておかないとデバッグレイヤーに警告される。
+		D3D12_CLEAR_VALUE clearValue{};
+		clearValue.Format               = DXGI_FORMAT_D32_FLOAT;
+		clearValue.DepthStencil.Depth   = 1.0f;
+		clearValue.DepthStencil.Stencil = 0;
+
+		// 毎フレーム最初に深度を書く側から始まるので、生成時から DEPTH_WRITE にしておく。
+		if (!CheckHresult(
+				device.CreateCommittedResource(
+					&defaultHeapProperties,
+					D3D12_HEAP_FLAG_NONE,
+					&depthTextureDesc,
+					D3D12_RESOURCE_STATE_DEPTH_WRITE,
+					&clearValue,
+					IID_PPV_ARGS(&entry.resource)
+				),
+				"深度テクスチャの生成"
+			))
+		{
+			return TextureHandle{};
+		}
+
+		D3D12_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc{};
+		depthStencilViewDesc.Format        = DXGI_FORMAT_D32_FLOAT;
+		depthStencilViewDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+
+		device.CreateDepthStencilView(
+			entry.resource.Get(),
+			&depthStencilViewDesc,
+			entry.depthStencilViewHeap->GetCPUDescriptorHandleForHeapStart()
+		);
+
+		entry.descriptorIndex = descriptorIndex;
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc{};
+		shaderResourceViewDesc.Format        = DXGI_FORMAT_R32_FLOAT;
+		shaderResourceViewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+
+		shaderResourceViewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		shaderResourceViewDesc.Texture2D.MipLevels     = 1;
+
+		device.CreateShaderResourceView(
+			entry.resource.Get(),
+			&shaderResourceViewDesc,
+			descriptorHeap.GetCPUHandle(entry.descriptorIndex)
+		);
+
+		entry.isAlive = true;
+
+		return Register(entry);
 	}
 
 
@@ -260,6 +351,7 @@ namespace fang::rhi
 		}
 
 		// TODO: ディスクリプタのスロットも返す（リングバッファ化するときに）。
+		entry.depthStencilViewHeap.Reset();
 		entry.resource.Reset();
 		entry.isAlive = false;
 	}
@@ -279,5 +371,24 @@ namespace fang::rhi
 		FANG_ASSERT(entry.isAlive && entry.generation == handle.generation, "解放済みのテクスチャハンドル");
 
 		return entry;
+	}
+
+
+	TextureHandle TexturePool::Register(const Entry& entry)
+	{
+		for (uint32_t index = 0; index < static_cast<uint32_t>(m_entries.size()); ++index)
+		{
+			if (!m_entries[index].isAlive)
+			{
+				const uint32_t generation = m_entries[index].generation + 1;
+
+				m_entries[index]            = entry;
+				m_entries[index].generation = generation;
+				return TextureHandle{ index, generation };
+			}
+		}
+
+		m_entries.push_back(entry);
+		return TextureHandle{ static_cast<uint32_t>(m_entries.size() - 1), entry.generation };
 	}
 } // namespace fang::rhi

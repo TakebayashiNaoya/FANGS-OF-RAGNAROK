@@ -11,6 +11,7 @@
 #include "Core/Math/Aabb.h"
 #include "Core/Math/MathConstants.h"
 #include "Core/Math/Matrix4x4.h"
+#include "Core/Math/Vector2.h"
 #include "Core/Memory/FrameAllocator.h"
 #include "Core/Platform/AssetPath.h"
 #include "Core/Platform/Window.h"
@@ -26,6 +27,7 @@
 #include "Runtime/RuntimeLog.h"
 #include <chrono>
 #include <cmath>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -76,6 +78,58 @@ namespace fang
 		/** @brief 2 体目の狼を 1 体目からずらす X 方向のオフセット（cm）。 */
 		constexpr float SECOND_WOLF_OFFSET_X = 220.0f;
 
+		// 狼はワールド原点付近（1 体目は world が単位行列）に立つので、床もそこを中心にする。
+		// 2000×2000 あれば 2 体目のオフセット（220）を足してもまだ大きく余る。
+		/** @brief 床の一辺の長さ（cm）。 */
+		constexpr float FLOOR_SIZE_CENTIMETERS      = 2000.0f;
+		constexpr float FLOOR_HALF_SIZE_CENTIMETERS = FLOOR_SIZE_CENTIMETERS * 0.5f;
+
+		// 非金属・粗い面。鏡のような映り込みは床らしくないので roughness を高めにする。
+		constexpr float FLOOR_METALLIC_FACTOR  = 0.0f;
+		constexpr float FLOOR_ROUGHNESS_FACTOR = 0.9f;
+
+		/**
+		 * @brief 床（受け専用の静的メッシュ）を作る。
+		 * @details 頂点 4 個・インデックス 6 個の水平な板。法線は全部 (0, 1, 0)、UV は (0, 0)〜(1, 1)。
+		 *          巻き順は GltfMesh の Z 反転 + 巻き順入れ替えと同じ結論（Cross(v1 - v0, v2 - v0) が
+		 *          求める法線に一致する順番）に合わせてあるので、表から見える。
+		 * @return 失敗したら無効な番号（IsValid() が false）。呼び出し側はそのとき床を描かずに飛ばす。
+		 */
+		[[nodiscard]] MeshId CreateFloorMesh(rhi::GraphicsDevice& device, MeshRenderer& meshRenderer)
+		{
+			const Vector3 positions[4] = {
+				{ -FLOOR_HALF_SIZE_CENTIMETERS, 0.0f, -FLOOR_HALF_SIZE_CENTIMETERS },
+				{ -FLOOR_HALF_SIZE_CENTIMETERS, 0.0f, FLOOR_HALF_SIZE_CENTIMETERS },
+				{ FLOOR_HALF_SIZE_CENTIMETERS, 0.0f, FLOOR_HALF_SIZE_CENTIMETERS },
+				{ FLOOR_HALF_SIZE_CENTIMETERS, 0.0f, -FLOOR_HALF_SIZE_CENTIMETERS },
+			};
+
+			const Vector3 normals[4] = {
+				{ 0.0f, 1.0f, 0.0f },
+				{ 0.0f, 1.0f, 0.0f },
+				{ 0.0f, 1.0f, 0.0f },
+				{ 0.0f, 1.0f, 0.0f },
+			};
+
+			const Vector2 texCoords[4] = {
+				{ 0.0f, 0.0f },
+				{ 0.0f, 1.0f },
+				{ 1.0f, 1.0f },
+				{ 1.0f, 0.0f },
+			};
+
+			const uint16_t indices[6] = { 0, 1, 2, 0, 2, 3 };
+
+			const MeshSource source{
+				.positions = positions,
+				.normals   = normals,
+				.texCoords = texCoords,
+				.indices   = indices,
+			};
+
+			return meshRenderer.CreateMesh(device, source);
+		}
+
 		/**
 		 * @brief 狼 1 体ぶんの持ち物。
 		 * @details Scene ができたらゲーム側のオブジェクトへ移る。今はフレームループが直接抱えている。
@@ -121,6 +175,9 @@ namespace fang
 			UnlitRenderer*       unlitRenderer = nullptr;
 			MeshRenderer*        meshRenderer  = nullptr;
 			WolfModel*           wolf          = nullptr;
+
+			/** @brief 床の静的メッシュ。読み込みが無いので、生成に失敗しなければ常に有効。 */
+			MeshId floorMesh;
 
 			/** @brief カメラの水平回転角（ラジアン）。入力の仕組みがまだ無いので時間で回す。 */
 			float cameraOrbitRadians = 0.0f;
@@ -393,8 +450,9 @@ namespace fang
 			//------------------------------------------------------------------------
 			// 2. BeginFrame とグラフの Reset・バックバッファと深度の Import
 			// 　device.BeginFrame() でこのフレームの記録メモリを巻き戻す。
-			// 　RenderGraph 側も Reset で前フレームの宣言を捨て、ImportBackBuffer / ImportDepthBuffer で
-			// 　バックバッファと深度バッファをこのフレームのリソースとして登録し直す(パスの宣言はこの後)。
+			// 　RenderGraph 側も Reset で前フレームの宣言を捨て、ImportBackBuffer / ImportDepthBuffer /
+			// 　ImportDepthTexture でバックバッファ・深度バッファ・シャドウマップをこのフレームのリソースとして
+			// 　登録し直す(パスの宣言はこの後)。
 			//------------------------------------------------------------------------
 			// このフレームの記録メモリを巻き戻すだけ。バリアもクリアも描画先の設定もしない
 			// （どのパスが何に書くかはこの後の宣言で決まる。積むのはグラフの仕事）。
@@ -403,11 +461,17 @@ namespace fang
 			graph.Reset();
 			const RenderGraphResourceId backBufferResource  = graph.ImportBackBuffer();
 			const RenderGraphResourceId depthBufferResource = graph.ImportDepthBuffer();
+			const RenderGraphResourceId shadowMapResource   = graph.ImportDepthTexture(
+				sceneRenderer.GetShadowMapTexture(),
+				SceneRenderer::SHADOW_MAP_SIZE,
+				SceneRenderer::SHADOW_MAP_SIZE
+			);
 
 			//------------------------------------------------------------------------
-			// 3. View の組み立て(時間で回るカメラ)と AddView
+			// 3. View の組み立て(時間で回るカメラ)
 			// 　SceneRenderer::Reset で前フレームの View を捨ててから、カメラ位置と視射影行列を計算して View を
-			// 　組み立て、AddView で登録する。入力の仕組みがまだ無いので、経過時間だけでカメラを狼の周りに回す。
+			// 　組み立てる。登録(AddShadowView / AddView)はキャスタの箱がそろう次の区画でまとめて行う。
+			// 　入力の仕組みがまだ無いので、経過時間だけでカメラを狼の周りに回す。
 			//------------------------------------------------------------------------
 			sceneRenderer.Reset();
 
@@ -454,16 +518,30 @@ namespace fang
 				.ambientColor     = light.ambientColor,
 			};
 
-			const ViewId sceneViewId = sceneRenderer.AddView(device, view);
-
 			//------------------------------------------------------------------------
-			// 4. 狼 2 体の RenderItem 組み立てと Submit
-			// 　狼のメッシュが読めていれば、1 体目と 2 体目ぶんの RenderItem を組み立てて Submit で View に積む。
-			// 　読めていなければこの区画ごと飛ばし、ほかの描画は今までどおり続ける。
+			// 4. RenderItem 列の組み立て(床 + 狼 2 体)
+			// 　床(受け専用)と、読めていれば狼 2 体ぶんの RenderItem を 1 本の配列にまとめる。この列を
+			// 　次の区画でシーン View とシャドウ View の両方へ同じ実体で Submit する。
 			//------------------------------------------------------------------------
 			// graph.Execute が戻るまで生きていること。RenderFrame のローカルなので、Execute より前で
 			// 宣言してあれば足りる（Submit はこの配列を指す span を控えるだけでコピーしない）。
-			RenderItem wolfItems[2];
+			RenderItem items[3]; // 床 1 個 + 狼 2 体。
+			uint32_t   itemCount = 0;
+
+			// 床は読み込みが要らないので、生成に成功していれば毎フレーム必ず描く。
+			if (loopContext.floorMesh.IsValid())
+			{
+				const Aabb floorLocalBounds = loopContext.meshRenderer->GetLocalBounds(loopContext.floorMesh);
+
+				items[itemCount] = RenderItem{
+					.mesh            = loopContext.floorMesh,
+					.bounds          = TransformAabb(floorLocalBounds, Matrix4x4{}),
+					.metallicFactor  = FLOOR_METALLIC_FACTOR,
+					.roughnessFactor = FLOOR_ROUGHNESS_FACTOR,
+					.castsShadow     = false, // 平面は自分に影を作らない ➡ 光の箱を無駄に広げない。
+				};
+				++itemCount;
+			}
 
 			// 狼を描く。読めていなければメッシュの描画だけを飛ばし、ほかは今までどおり続ける。
 			WolfModel& wolf = *loopContext.wolf;
@@ -484,7 +562,7 @@ namespace fang
 				secondWolfWorld.m[3][0] = SECOND_WOLF_OFFSET_X;
 
 				// world が単位行列でなくなったので、bounds は毎回 world で変換して埋める。
-				wolfItems[0] = RenderItem{
+				items[itemCount] = RenderItem{
 					.mesh             = wolf.mesh,
 					.bounds           = TransformAabb(localBounds, Matrix4x4{}),
 					.skinningMatrices = wolf.skinningMatrices,
@@ -492,7 +570,9 @@ namespace fang
 					.metallicFactor   = wolf.metallicFactor,
 					.roughnessFactor  = wolf.roughnessFactor,
 				};
-				wolfItems[1] = RenderItem{
+				++itemCount;
+
+				items[itemCount] = RenderItem{
 					.mesh             = wolf.mesh,
 					.world            = secondWolfWorld,
 					.bounds           = TransformAabb(localBounds, secondWolfWorld),
@@ -501,12 +581,43 @@ namespace fang
 					.metallicFactor   = wolf.metallicFactor,
 					.roughnessFactor  = wolf.roughnessFactor,
 				};
+				++itemCount;
+			}
 
-				sceneRenderer.Submit(sceneViewId, wolfItems);
+			const std::span<const RenderItem> submittedItems(items, itemCount);
+
+			//------------------------------------------------------------------------
+			// 5. シャドウ View とシーン View の登録・Submit
+			// 　castsShadow かつ bounds が有効な RenderItem を union してキャスタの箱を作り、AddShadowView を
+			// 　AddView より先に呼ぶ(シーン View の b1 に光の行列を焼き込む契約のため)。同じ RenderItem 列を
+			// 　両方の View へ Submit する(span の実体は上の items 配列で、Execute が戻るまで生きている)。
+			//------------------------------------------------------------------------
+			// ヒープ確保をしない Aabb::Expand の積み重ねで箱を作る。キャスタが 1 つも無ければ無効な箱の
+			// ままで、AddShadowView が無効な ViewId を返す。
+			Aabb castersBounds;
+			for (const RenderItem& item : submittedItems)
+			{
+				if (item.castsShadow && item.bounds.IsValid())
+				{
+					castersBounds.Expand(item.bounds.min);
+					castersBounds.Expand(item.bounds.max);
+				}
+			}
+
+			const ViewId shadowViewId = sceneRenderer.AddShadowView(device, light.directionToLight, castersBounds);
+			const ViewId sceneViewId  = sceneRenderer.AddView(device, view);
+
+			sceneRenderer.Submit(sceneViewId, submittedItems);
+
+			// キャスタが 1 つも無いフレームは無効な ViewId が返る。Submit は登録済みの番号しか受け付けない
+			// ので、ここで弾いて何もしない（そのフレームは影なしで描かれる）。
+			if (shadowViewId.IsValid())
+			{
+				sceneRenderer.Submit(shadowViewId, submittedItems);
 			}
 
 			//------------------------------------------------------------------------
-			// 5. Unlit パスの宣言(クリアを持つ・三角形が先の理由は既存コメントにある)
+			// 6. Unlit パスの宣言(クリアを持つ・三角形が先の理由は既存コメントにある)
 			// 　三角形を描く UnlitPass を宣言する。バックバッファと深度、両方のクリアをこのパスが引き受ける。
 			//------------------------------------------------------------------------
 			// 三角形を先に描き、深度を持つ狼が上に乗る従来の前後関係を保つ。三角形は深度テストを持たないので、
@@ -530,17 +641,23 @@ namespace fang
 			graph.AddPass(unlitPassDesc);
 
 			//------------------------------------------------------------------------
-			// 6. ScenePass の宣言(Load)
-			// 　狼を描く ScenePass を View ごとに宣言する。
+			// 7. ScenePass の宣言(Load)
+			// 　床と狼を描く ScenePass を View ごとに宣言する。
 			//------------------------------------------------------------------------
-			// 狼（1 体〜2 体）を描く ScenePass を View ごとに宣言する。三角形パスが画面をクリア済みなので、
+			// 床と狼（1 体〜2 体）を描く ScenePass を View ごとに宣言する。三角形パスが画面をクリア済みなので、
 			// 最初の View も Load（前のパスが描いた画の上に重ねる）。
-			sceneRenderer
-				.AddPasses(graph, backBufferResource, depthBufferResource, BACKGROUND_COLOR, EnLoadOperation::Load);
+			sceneRenderer.AddPasses(
+				graph,
+				backBufferResource,
+				depthBufferResource,
+				shadowMapResource,
+				BACKGROUND_COLOR,
+				EnLoadOperation::Load
+			);
 
 #if FANG_ENABLE_EDITOR
 			//------------------------------------------------------------------------
-			// 7. エディタパスの宣言(FANG_ENABLE_EDITOR 内・Main 記録)
+			// 8. エディタパスの宣言(FANG_ENABLE_EDITOR 内・Main 記録)
 			// 　エディタパスを宣言する。Release ビルドでは FANG_ENABLE_EDITOR が 0 になり、この区画ごと
 			// 　ビルドから外れる。
 			//------------------------------------------------------------------------
@@ -570,14 +687,14 @@ namespace fang
 #endif
 
 			//------------------------------------------------------------------------
-			// 8. Compile と Execute
+			// 9. Compile と Execute
 			// 　宣言したパスから Compile でバリアとクリアの手順を導き、Execute でコマンドリストへ記録する。
 			//------------------------------------------------------------------------
 			graph.Compile();
 			graph.Execute(device, jobSystem);
 
 			//------------------------------------------------------------------------
-			// 9. コマンドリストを借りられなかったときの畳み
+			// 10. コマンドリストを借りられなかったときの畳み
 			// 　パスを宣言したのにコマンドリストが 1 本も返らなかった(主にデバイスロスト)ら、このフレームは
 			// 　EndFrame を呼ばずに畳む。
 			//------------------------------------------------------------------------
@@ -594,7 +711,7 @@ namespace fang
 			}
 
 			//------------------------------------------------------------------------
-			// 10. EndFrame
+			// 11. EndFrame
 			// 　積んだコマンドリストを渡して実行・Present・GPU の完了待ちをまとめて行う。
 			//------------------------------------------------------------------------
 			device.EndFrame(graph.GetCommandLists());
@@ -676,9 +793,16 @@ namespace fang
 		// 起動できないほうが困るため。三角形とエディタは今までどおり動く。
 		MeshRenderer meshRenderer;
 		WolfModel    wolf;
+		MeshId       floorMesh;
 		if (meshRenderer.Initialize(device))
 		{
 			LoadWolf(device, meshRenderer, &wolf);
+
+			floorMesh = CreateFloorMesh(device, meshRenderer);
+			if (!floorMesh.IsValid())
+			{
+				FANG_LOG_ERROR(Runtime, "床メッシュを作れなかった。床の表示だけを飛ばす");
+			}
 		}
 		else
 		{
@@ -712,6 +836,7 @@ namespace fang
 		loopContext.unlitRenderer = &unlitRenderer;
 		loopContext.meshRenderer  = &meshRenderer;
 		loopContext.wolf          = &wolf;
+		loopContext.floorMesh     = floorMesh;
 
 		FramePipeline framePipeline;
 		if (!framePipeline.Initialize(jobSystem, frameMemory, &loopContext, &UpdateFrame, &RenderFrame))

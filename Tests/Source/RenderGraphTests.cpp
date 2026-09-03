@@ -3,6 +3,7 @@
  * @brief RenderGraph の Compile のテスト。バリアが出る位置と回数、クリア指示の有無を確かめる。
  * @details GPU を作らずに済むよう Compile だけを対象にする。Execute はデバイスが要るのでここでは呼ばない。
  */
+#include "RHI/RHIHandles.h"
 #include "RHI/RHITypes.h"
 #include "Renderer/RenderGraph.h"
 #include <doctest.h>
@@ -144,4 +145,52 @@ TEST_CASE("クリア指示は Clear を宣言したパスにだけ出る")
 	const fang::CompiledRenderPass& loadingPass = graph.GetCompiledPass(1);
 	CHECK_FALSE(loadingPass.isColorCleared);
 	CHECK_FALSE(loadingPass.isDepthCleared);
+}
+
+
+TEST_CASE("シャドウマップは読まれるシーンパスの前後で DepthWrite と PixelShaderResource を行き来する")
+{
+	fang::RenderGraph graph;
+	graph.Reset();
+
+	const fang::RenderGraphResourceId backBuffer  = graph.ImportBackBuffer();
+	const fang::RenderGraphResourceId depthBuffer = graph.ImportDepthBuffer();
+
+	// Compile はテクスチャの中身を見ないので、有効な形をしたハンドルを直に組み立てるだけでよい。
+	constexpr fang::rhi::TextureHandle shadowMapTexture{ .index = 0, .generation = 0 };
+	const fang::RenderGraphResourceId  shadowMap = graph.ImportDepthTexture(shadowMapTexture, 2048, 2048);
+
+	const fang::RenderGraphPassDesc shadowPass{
+		.name               = "Shadow",
+		.depthTarget        = shadowMap,
+		.depthLoadOperation = fang::EnLoadOperation::Clear,
+	};
+
+	fang::RenderGraphPassDesc scenePass = MakeColorPass(backBuffer, fang::EnLoadOperation::Clear);
+	scenePass.depthTarget               = depthBuffer;
+	scenePass.depthLoadOperation        = fang::EnLoadOperation::Clear;
+	scenePass.readResources[0]          = shadowMap;
+	scenePass.readResourceCount         = 1;
+
+	graph.AddPass(shadowPass);
+	graph.AddPass(scenePass);
+	graph.Compile();
+
+	const fang::CompiledRenderPass& compiledShadowPass = graph.GetCompiledPass(0);
+	CHECK(compiledShadowPass.isDepthCleared);
+	CHECK(compiledShadowPass.beginBarrierCount == 0); // 初期状態が既に DepthWrite なので遷移が要らない。
+
+	const fang::CompiledRenderPass& compiledScenePass = graph.GetCompiledPass(1);
+
+	// 前置バリアはバックバッファ(Present→RenderTarget)とシャドウマップ(DepthWrite→PixelShaderResource)の 2 本。
+	CHECK(compiledScenePass.beginBarrierCount == 2);
+	CHECK(compiledScenePass.beginBarriers[1].resource.index == shadowMap.index);
+	CHECK(compiledScenePass.beginBarriers[1].before == fang::rhi::EnResourceState::DepthWrite);
+	CHECK(compiledScenePass.beginBarriers[1].after == fang::rhi::EnResourceState::PixelShaderResource);
+
+	// 末尾バリアはバックバッファ(RenderTarget→Present)とシャドウマップ(PixelShaderResource→DepthWrite)の 2 本。
+	CHECK(compiledScenePass.endBarrierCount == 2);
+	CHECK(compiledScenePass.endBarriers[1].resource.index == shadowMap.index);
+	CHECK(compiledScenePass.endBarriers[1].before == fang::rhi::EnResourceState::PixelShaderResource);
+	CHECK(compiledScenePass.endBarriers[1].after == fang::rhi::EnResourceState::DepthWrite);
 }

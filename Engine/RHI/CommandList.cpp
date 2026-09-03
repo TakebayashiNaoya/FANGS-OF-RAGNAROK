@@ -43,6 +43,24 @@ namespace fang::rhi
 	}
 
 
+	void CommandList::TransitionTexture(TextureHandle handle, EnResourceState before, EnResourceState after)
+	{
+		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
+		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
+
+		const TexturePool::Entry& entry = m_device->m_textures.Get(handle);
+
+		D3D12_RESOURCE_BARRIER barrier{};
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+
+		barrier.Transition.pResource   = entry.resource.Get();
+		barrier.Transition.StateBefore = ToD3D12ResourceState(before);
+		barrier.Transition.StateAfter  = ToD3D12ResourceState(after);
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		commandList->ResourceBarrier(1, &barrier);
+	}
+
+
 	void CommandList::SetRenderTargetToBackBuffer(bool withDepth)
 	{
 		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
@@ -52,6 +70,26 @@ namespace fang::rhi
 		const D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView = m_device->m_depthBuffer.GetDepthStencilView();
 
 		commandList->OMSetRenderTargets(1, &renderTargetView, FALSE, withDepth ? &depthStencilView : nullptr);
+
+		m_boundDepthStencilView = withDepth ? static_cast<uint64_t>(depthStencilView.ptr) : 0;
+	}
+
+
+	void CommandList::SetRenderTargetToDepthTexture(TextureHandle handle)
+	{
+		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
+		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
+
+		const TexturePool::Entry& entry = m_device->m_textures.Get(handle);
+		FANG_ASSERT(entry.depthStencilViewHeap != nullptr, "深度テクスチャとして作られていないテクスチャを描画先にしている");
+
+		const D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView =
+			entry.depthStencilViewHeap->GetCPUDescriptorHandleForHeapStart();
+
+		// 色は書かないので描画先は 0 本。深度専用のパイプラインと組で使う。
+		commandList->OMSetRenderTargets(0, nullptr, FALSE, &depthStencilView);
+
+		m_boundDepthStencilView = static_cast<uint64_t>(depthStencilView.ptr);
 	}
 
 
@@ -71,15 +109,17 @@ namespace fang::rhi
 		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
+		if (m_boundDepthStencilView == 0)
+		{
+			FANG_ASSERT(false, "深度を差していない描画先で ClearDepth を呼んでいる");
+			return;
+		}
+
+		D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView{};
+		depthStencilView.ptr = static_cast<SIZE_T>(m_boundDepthStencilView);
+
 		// 一番奥の 1.0 で埋める。PSO の DepthFunc が LESS なので、手前の面だけが残る。
-		commandList->ClearDepthStencilView(
-			m_device->m_depthBuffer.GetDepthStencilView(),
-			D3D12_CLEAR_FLAG_DEPTH,
-			1.0f,
-			0,
-			0,
-			nullptr
-		);
+		commandList->ClearDepthStencilView(depthStencilView, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 	}
 
 
@@ -210,6 +250,22 @@ namespace fang::rhi
 
 		const uint32_t parameterIndex = m_boundRootParameters.texture;
 		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "テクスチャを持たないパイプラインにテクスチャを差している");
+
+		const TexturePool::Entry&         entry = m_device->m_textures.Get(texture);
+		const D3D12_GPU_DESCRIPTOR_HANDLE descriptor =
+			m_device->m_shaderVisibleHeap.GetGPUHandle(entry.descriptorIndex);
+
+		commandList->SetGraphicsRootDescriptorTable(parameterIndex, descriptor);
+	}
+
+
+	void CommandList::SetShadowMap(TextureHandle texture)
+	{
+		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
+		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
+
+		const uint32_t parameterIndex = m_boundRootParameters.shadowMap;
+		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "シャドウマップを持たないパイプラインにシャドウマップを差している");
 
 		const TexturePool::Entry&         entry = m_device->m_textures.Get(texture);
 		const D3D12_GPU_DESCRIPTOR_HANDLE descriptor =

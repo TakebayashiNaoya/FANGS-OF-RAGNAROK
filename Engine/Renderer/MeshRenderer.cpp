@@ -64,6 +64,12 @@ namespace fang
 		constexpr uint32_t SKINNING_CONSTANT_BUFFER_SIZE =
 			MeshRenderer::MAX_JOINT_COUNT * static_cast<uint32_t>(sizeof(Matrix4x4));
 
+		/** @brief 深度パスの一律バイアス。縞（自己遮蔽の誤判定）を消す。PSO に焼き込まれるため実行時調整の口は無い。 */
+		constexpr int32_t SHADOW_DEPTH_BIAS = 500;
+
+		/** @brief 深度パスの傾き比例バイアス。光に対して斜めな面ほど 1 テクセルの中の深度差が大きいのを補う。 */
+		constexpr float SHADOW_SLOPE_SCALED_DEPTH_BIAS = 1.5f;
+
 		constexpr Vector3 DEFAULT_NORMAL    = { 0.0f, 1.0f, 0.0f };
 		constexpr Vector2 DEFAULT_TEX_COORD = { 0.0f, 0.0f };
 
@@ -171,6 +177,7 @@ namespace fang
 		staticPipelineDesc.hasObjectConstantBuffer = true;
 		staticPipelineDesc.hasFrameConstantBuffer  = true;
 		staticPipelineDesc.hasTexture              = true;
+		staticPipelineDesc.hasShadowMap            = true;
 		staticPipelineDesc.isDepthTestEnabled      = true;
 
 		m_staticPipeline = device.CreateGraphicsPipeline(staticPipelineDesc);
@@ -187,6 +194,36 @@ namespace fang
 
 		m_skinnedPipeline = device.CreateGraphicsPipeline(skinnedPipelineDesc);
 		if (!m_skinnedPipeline.IsValid())
+		{
+			return false;
+		}
+
+		// シャドウマップに深度だけを焼くパス。頂点シェーダーは色パスと同じバイトコードを再利用する
+		// （b1 に光の viewProjection を差すだけで同じ変換が使える）➡ 新しい頂点シェーダーも頂点契約の
+		// 複製も要らない。PS を空にすると描画先 0 本の深度専用 PSO になる（GraphicsPipelineDesc の規約）。
+		rhi::GraphicsPipelineDesc staticDepthPipelineDesc{};
+		staticDepthPipelineDesc.vertexShaderBytecode    = std::span<const uint8_t>(g_MeshVS, sizeof(g_MeshVS));
+		staticDepthPipelineDesc.vertexLayout            = STATIC_VERTEX_LAYOUT;
+		staticDepthPipelineDesc.hasObjectConstantBuffer = true;
+		staticDepthPipelineDesc.hasFrameConstantBuffer  = true;
+		staticDepthPipelineDesc.isDepthTestEnabled      = true;
+		staticDepthPipelineDesc.depthBias               = SHADOW_DEPTH_BIAS;
+		staticDepthPipelineDesc.slopeScaledDepthBias    = SHADOW_SLOPE_SCALED_DEPTH_BIAS;
+
+		m_staticDepthPipeline = device.CreateGraphicsPipeline(staticDepthPipelineDesc);
+		if (!m_staticDepthPipeline.IsValid())
+		{
+			return false;
+		}
+
+		rhi::GraphicsPipelineDesc skinnedDepthPipelineDesc = staticDepthPipelineDesc;
+		skinnedDepthPipelineDesc.vertexShaderBytecode =
+			std::span<const uint8_t>(g_SkinnedMeshVS, sizeof(g_SkinnedMeshVS));
+		skinnedDepthPipelineDesc.vertexLayout             = SKINNED_VERTEX_LAYOUT;
+		skinnedDepthPipelineDesc.hasSkinningConstantBuffer = true;
+
+		m_skinnedDepthPipeline = device.CreateGraphicsPipeline(skinnedDepthPipelineDesc);
+		if (!m_skinnedDepthPipeline.IsValid())
 		{
 			return false;
 		}
@@ -215,6 +252,24 @@ namespace fang
 			}
 		}
 
+		for (rhi::BufferHandle& buffer : m_depthObjectConstantBuffers)
+		{
+			buffer = device.CreateDynamicBuffer(sizeof(MeshObjectConstants), 0, rhi::EnBufferKind::Constant);
+			if (!buffer.IsValid())
+			{
+				return false;
+			}
+		}
+
+		for (rhi::BufferHandle& buffer : m_depthSkinningConstantBuffers)
+		{
+			buffer = device.CreateDynamicBuffer(SKINNING_CONSTANT_BUFFER_SIZE, 0, rhi::EnBufferKind::Constant);
+			if (!buffer.IsValid())
+			{
+				return false;
+			}
+		}
+
 		FANG_LOG_INFO(Renderer, "メッシュ描画の準備ができた");
 
 		return true;
@@ -223,6 +278,18 @@ namespace fang
 
 	void MeshRenderer::Shutdown(rhi::GraphicsDevice& device)
 	{
+		for (rhi::BufferHandle& buffer : m_depthSkinningConstantBuffers)
+		{
+			device.DestroyBuffer(buffer);
+			buffer = {};
+		}
+
+		for (rhi::BufferHandle& buffer : m_depthObjectConstantBuffers)
+		{
+			device.DestroyBuffer(buffer);
+			buffer = {};
+		}
+
 		for (rhi::BufferHandle& buffer : m_skinningConstantBuffers)
 		{
 			device.DestroyBuffer(buffer);
@@ -244,6 +311,12 @@ namespace fang
 
 		device.DestroyTexture(m_dummyBaseColor);
 		m_dummyBaseColor = {};
+
+		device.DestroyPipeline(m_skinnedDepthPipeline);
+		m_skinnedDepthPipeline = {};
+
+		device.DestroyPipeline(m_staticDepthPipeline);
+		m_staticDepthPipeline = {};
 
 		device.DestroyPipeline(m_skinnedPipeline);
 		m_skinnedPipeline = {};
@@ -458,6 +531,7 @@ namespace fang
 		rhi::GraphicsDevice&        device,
 		rhi::CommandList&           commandList,
 		rhi::BufferHandle           frameConstantBuffer,
+		rhi::TextureHandle          shadowMap,
 		std::span<const RenderItem> items
 	)
 	{
@@ -466,6 +540,10 @@ namespace fang
 		{
 			return;
 		}
+
+		// シャドウマップは起動時に確保し切る前提の必須リソースで、無効なハンドルは呼び出し側の配線漏れ。
+		// castsShadow のように「無くても描ける」ものではないのでアサートで止める。
+		FANG_ASSERT(shadowMap.IsValid(), "シャドウマップが未生成のまま Draw が呼ばれた");
 
 		// D3D12 はルートシグネチャを差し替えると根に差したものが外れるので、静的とスキンを行き来したら
 		// b1 も差し直す。前に差したのがどちらだったかをこの 2 つで覚えておく。
@@ -545,6 +623,7 @@ namespace fang
 			{
 				commandList.SetPipeline(pipeline);
 				commandList.SetFrameConstantBuffer(frameConstantBuffer);
+				commandList.SetShadowMap(shadowMap);
 
 				hasBoundPipeline       = true;
 				isBoundPipelineSkinned = mesh.isSkinned;
@@ -559,6 +638,122 @@ namespace fang
 				commandList.SetSkinningConstantBuffer(m_skinningConstantBuffers[usedBufferCount]);
 			}
 			commandList.SetTexture(item.baseColor.IsValid() ? item.baseColor : m_dummyBaseColor);
+			commandList.DrawIndexed(mesh.indexCount, 0, 0);
+
+			++usedBufferCount;
+		}
+	}
+
+
+	void MeshRenderer::DrawDepth(
+		rhi::GraphicsDevice&        device,
+		rhi::CommandList&           commandList,
+		rhi::BufferHandle           frameConstantBuffer,
+		std::span<const RenderItem> items
+	)
+	{
+		// 初期化に失敗していても落とさない。モデルが出ないだけで、ほかの描画は続けられる。
+		if (items.empty() || !frameConstantBuffer.IsValid())
+		{
+			return;
+		}
+
+		// D3D12 はルートシグネチャを差し替えると根に差したものが外れるので、静的とスキンを行き来したら
+		// b1 も差し直す。前に差したのがどちらだったかをこの 2 つで覚えておく。
+		bool hasBoundPipeline       = false;
+		bool isBoundPipelineSkinned = false;
+
+		uint32_t usedBufferCount = 0;
+		for (const RenderItem& item : items)
+		{
+			// 無効な番号は CreateMesh が失敗した合図で、想定内の入力。黙って飛ばす。
+			if (!item.mesh.IsValid())
+			{
+				continue;
+			}
+
+			// こちらは作った覚えのない番号を渡された場合で、呼び出し側の間違い。
+			if (item.mesh.index >= m_meshes.size())
+			{
+				FANG_ASSERT(false, "描こうとしたメッシュの番号が MeshRenderer の持ち物でない");
+				continue;
+			}
+
+			const Mesh& mesh = m_meshes[item.mesh.index];
+
+			const rhi::PipelineHandle pipeline = mesh.isSkinned ? m_skinnedDepthPipeline : m_staticDepthPipeline;
+			if (!pipeline.IsValid())
+			{
+				continue;
+			}
+
+			if (usedBufferCount >= MAX_ITEM_COUNT)
+			{
+				FANG_LOG_WARNING(
+					Renderer,
+					"1 フレームに描けるメッシュは {} 個まで。残りを飛ばした",
+					static_cast<uint32_t>(MAX_ITEM_COUNT)
+				);
+				break;
+			}
+
+			if (mesh.isSkinned)
+			{
+				if (item.skinningMatrices.size() > MAX_JOINT_COUNT)
+				{
+					FANG_LOG_ERROR(
+						Renderer,
+						"スキニング行列が多すぎる: {} 本。シェーダが持つのは {} 本",
+						item.skinningMatrices.size(),
+						static_cast<uint32_t>(MAX_JOINT_COUNT)
+					);
+					continue;
+				}
+
+				// 単位行列で埋めてから受け取ったぶんを書く ➡ 行列が足りない・空のときはバインドポーズで出る
+				// （重みの合計が 1 なので、単位行列を掛けると元の頂点に戻る）。
+				Matrix4x4 jointMatrices[MAX_JOINT_COUNT];
+				for (size_t index = 0; index < item.skinningMatrices.size(); ++index)
+				{
+					jointMatrices[index] = item.skinningMatrices[index];
+				}
+
+				device.UpdateBuffer(
+					m_depthSkinningConstantBuffers[usedBufferCount],
+					jointMatrices,
+					SKINNING_CONSTANT_BUFFER_SIZE
+				);
+			}
+
+			const MeshObjectConstants objectConstants =
+				MakeObjectConstants(item.world, item.metallicFactor, item.roughnessFactor);
+			device.UpdateBuffer(
+				m_depthObjectConstantBuffers[usedBufferCount],
+				&objectConstants,
+				sizeof(objectConstants)
+			);
+
+			// ① パイプラインを切り替えるときだけ、SetPipeline と一緒に b1(フレーム定数)も差し直す。
+			// 　 最初の 1 個、または静的⇔スキンの境目でだけ通る。差し替えていないパイプラインへ毎回
+			// 　 差し直す無駄をしない。
+			if (!hasBoundPipeline || isBoundPipelineSkinned != mesh.isSkinned)
+			{
+				commandList.SetPipeline(pipeline);
+				commandList.SetFrameConstantBuffer(frameConstantBuffer);
+
+				hasBoundPipeline       = true;
+				isBoundPipelineSkinned = mesh.isSkinned;
+			}
+
+			// ② 頂点・インデックス・b0(オブジェクト定数)・(スキンなら b2)を差し、Draw する。
+			// 　 深度専用パイプラインはテクスチャもシャドウマップも持たないので、そのぶんの Set は無い。
+			commandList.SetVertexBuffer(mesh.vertexBuffer);
+			commandList.SetIndexBuffer(mesh.indexBuffer);
+			commandList.SetObjectConstantBuffer(m_depthObjectConstantBuffers[usedBufferCount]);
+			if (mesh.isSkinned)
+			{
+				commandList.SetSkinningConstantBuffer(m_depthSkinningConstantBuffers[usedBufferCount]);
+			}
 			commandList.DrawIndexed(mesh.indexCount, 0, 0);
 
 			++usedBufferCount;

@@ -99,6 +99,7 @@ namespace fang::rhi
 		uint32_t frameConstantBuffer    = UNUSED; /**< b1 のルート CBV。 */
 		uint32_t skinningConstantBuffer = UNUSED; /**< b2 のルート CBV。 */
 		uint32_t texture                = UNUSED; /**< t0 のディスクリプタテーブル。 */
+		uint32_t shadowMap              = UNUSED; /**< t1 のディスクリプタテーブル。 */
 	};
 
 	/** @brief 頂点属性 1 つ。 */
@@ -114,7 +115,14 @@ namespace fang::rhi
 	struct GraphicsPipelineDesc
 	{
 		std::span<const uint8_t> vertexShaderBytecode; /**< コンパイル済み頂点シェーダ。ShaderCompiler の出力を渡す。 */
-		std::span<const uint8_t> pixelShaderBytecode;  /**< コンパイル済みピクセルシェーダ。 */
+
+		/**
+		 * @brief コンパイル済みピクセルシェーダ。
+		 * @details 空なら描画先 0 本の深度専用パイプラインになる。色を出さずに深度だけ埋めるパスは
+		 *          ピクセルシェーダも描画先も要らないため。
+		 */
+		std::span<const uint8_t> pixelShaderBytecode;
+
 		std::span<const VertexAttribute> vertexLayout; /**< 頂点構造体の並び。 */
 
 		/** @brief b0 に置くルート定数の数（32 bit 単位）。0 なら作らない。hasObjectConstantBuffer と排他。 */
@@ -129,6 +137,9 @@ namespace fang::rhi
 
 		/** @brief t0 にテクスチャを 1 枚差すか。差すならサンプラ s0 も付く。 */
 		bool hasTexture = false;
+
+		/** @brief t1 に深度テクスチャを 1 枚差すか。差すなら比較サンプラ s1 も付く。 */
+		bool hasShadowMap = false;
 
 		/**
 		 * @brief b1 に定数バッファを 1 本差すか（VS と PS の両方から見える）。
@@ -146,6 +157,19 @@ namespace fang::rhi
 
 		bool isAlphaBlendEnabled = false; /**< 半透明合成をするか。有効にすると裏面も描く。 */
 		bool isDepthTestEnabled  = false; /**< 深度テストと深度書き込みをするか。3D の物を描くときに立てる。 */
+
+		/**
+		 * @brief 書き込む深度を一律で奥へずらす量（深度バッファの最小刻み単位）。
+		 * @details 深度専用パスで書いた値をそのまま比べると、同じ面が自分自身を遮っていると誤判定される。
+		 *          ➡ 書き込み側を少し奥へ逃がして誤判定を消す。
+		 */
+		int32_t depthBias = 0;
+
+		/**
+		 * @brief 面の傾きに比例して深度を奥へずらす量。
+		 * @details 光に対して斜めな面ほど 1 テクセルの中の深度差が大きく、一律のずらしでは足りないため。
+		 */
+		float slopeScaledDepthBias = 0.0f;
 	};
 
 	/** @brief デバイスの生成条件。 */

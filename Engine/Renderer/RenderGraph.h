@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Core/CoreMacros.h"
+#include "RHI/RHIHandles.h"
 #include "RHI/RHITypes.h"
 #include <cstdint>
 #include <span>
@@ -151,6 +152,17 @@ namespace fang
 		[[nodiscard]] RenderGraphResourceId ImportDepthBuffer();
 
 		/**
+		 * @brief オフスクリーンの深度テクスチャを外部リソースとして登録する。
+		 * @param texture シャドウマップなど、TexturePool::CreateDepth で作った深度テクスチャ。
+		 * @param width   このテクスチャのビューポートに使う横のテクセル数。
+		 * @param height  縦のテクセル数。
+		 * @return リソース番号。上限に達していたら無効な番号。
+		 * @details 初期状態も最終状態も DepthWrite。バックバッファ・深度バッファと同じく毎フレーム
+		 *          登録し直す前提で、途中の遷移は Compile が導く。
+		 */
+		[[nodiscard]] RenderGraphResourceId ImportDepthTexture(rhi::TextureHandle texture, uint32_t width, uint32_t height);
+
+		/**
 		 * @brief パスを 1 つ宣言する。
 		 * @param desc 宣言の中身。中身はこの場で控えるので、戻った後に desc を壊してよい。
 		 * @details 上限を超えたぶんは捨てる。
@@ -200,6 +212,16 @@ namespace fang
 			rhi::EnResourceState currentState = rhi::EnResourceState::Present; /**< Compile が追っている今の用途。 */
 
 			uint32_t lastUsePassIndex = INVALID_PASS_INDEX; /**< 最後にこれを使うパスの番号。 */
+
+			/**
+			 * @brief テクスチャの裏付き。
+			 * @details IsValid() ならバックバッファ・デバイス既定の深度バッファではなく、シャドウマップの
+			 *          ようなテクスチャ 1 枚を指すリソース。遷移とビューポートの決め方がこれで変わる。
+			 */
+			rhi::TextureHandle texture;
+
+			uint32_t width  = 0; /**< texture が有効なときのビューポート横幅。 */
+			uint32_t height = 0; /**< texture が有効なときのビューポート縦幅。 */
 		};
 
 		/** @brief 記録ジョブ 1 件に渡す入力。ジョブの中で組み立てずに済むよう POD で揃える。 */
@@ -212,10 +234,18 @@ namespace fang
 		/** @brief 記録ジョブの入口。JobSystem に渡せるよう関数ポインタの形にしてある。 */
 		static void RecordPassJob(void* arguments, uint32_t workerIndex);
 
-		/** @brief リソースを 1 つ登録する。上限に達していたら無効な番号を返す。 */
+		/**
+		 * @brief リソースを 1 つ登録する。上限に達していたら無効な番号を返す。
+		 * @param texture テクスチャの裏付きがあるなら渡す。バックバッファ・デバイス既定の深度バッファは既定値のまま。
+		 * @param width   texture を渡すときのビューポート横幅。
+		 * @param height  縦幅。
+		 */
 		[[nodiscard]] RenderGraphResourceId AddResource(
 			rhi::EnResourceState initialState,
-			rhi::EnResourceState finalState
+			rhi::EnResourceState finalState,
+			rhi::TextureHandle   texture = rhi::TextureHandle{},
+			uint32_t             width   = 0,
+			uint32_t             height  = 0
 		);
 
 		/** @brief そのリソースを最後に使うパスの番号を更新する。最終状態へ戻す遷移の置き場を決めるために使う。 */
@@ -240,7 +270,7 @@ namespace fang
 
 		rhi::CommandList* m_commandLists[MAX_PASS_COUNT] = {}; /**< Execute が借りた本。パスと同じ並び。 */
 
-		/** @brief バックバッファのリソース番号。遷移を積める唯一のリソースなので記録時に見分ける。 */
+		/** @brief バックバッファのリソース番号。専用の遷移口(TransitionBackBuffer)を使う相手を見分けるために持つ。 */
 		RenderGraphResourceId m_backBufferResourceId;
 
 		RenderGraphResourceId m_depthResourceId;

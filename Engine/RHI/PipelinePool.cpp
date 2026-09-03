@@ -33,17 +33,22 @@ namespace fang::rhi
 	PipelineHandle PipelinePool::Create(ID3D12Device& device, const GraphicsPipelineDesc& desc)
 	{
 		//------------------------------------------------------------------------
-		// 1. ルートパラメータの構築(b0 ➡ b1 ➡ b2 ➡ t0 の並びと、desc のフラグでどれが付くか)
+		// 1. ルートパラメータの構築(b0 ➡ b1 ➡ b2 ➡ t0 ➡ t1 の並びと、desc のフラグでどれが付くか)
 		// 　シェーダから見えるレジスタごとにルートパラメータを 1 個ずつ積む。どれを積むかは
 		// 　GraphicsPipelineDesc のフラグで決まり、並びは b0(rootConstants か objectConstantBuffer)➡
-		// 　b1(frameConstantBuffer) ➡ b2(skinningConstantBuffer) ➡ t0(texture) の順。
+		// 　b1(frameConstantBuffer) ➡ b2(skinningConstantBuffer) ➡ t0(texture) ➡ t1(shadowMap) の順。
 		//------------------------------------------------------------------------
 		D3D12_DESCRIPTOR_RANGE textureRange{};
 		textureRange.RangeType          = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		textureRange.NumDescriptors     = 1;
 		textureRange.BaseShaderRegister = 0;
 
-		D3D12_ROOT_PARAMETER rootParameters[4]{};
+		D3D12_DESCRIPTOR_RANGE shadowMapRange{};
+		shadowMapRange.RangeType          = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		shadowMapRange.NumDescriptors     = 1;
+		shadowMapRange.BaseShaderRegister = 1;
+
+		D3D12_ROOT_PARAMETER rootParameters[5]{};
 		uint32_t             rootParameterCount = 0;
 
 		Entry entry;
@@ -118,24 +123,67 @@ namespace fang::rhi
 			++rootParameterCount;
 		}
 
+		if (desc.hasShadowMap)
+		{
+			entry.rootParameters.shadowMap = rootParameterCount;
+
+			D3D12_ROOT_PARAMETER& parameter = rootParameters[rootParameterCount];
+			parameter.ParameterType         = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			parameter.ShaderVisibility      = D3D12_SHADER_VISIBILITY_PIXEL;
+
+			parameter.DescriptorTable.NumDescriptorRanges = 1;
+			parameter.DescriptorTable.pDescriptorRanges   = &shadowMapRange;
+			++rootParameterCount;
+		}
+
 		//------------------------------------------------------------------------
 		// 2. 静的サンプラ
-		// 　テクスチャを読むときのフィルタ・アドレスモードなどの設定。テクスチャを持つパイプラインだけ
-		// 　ルートシグネチャに 1 個だけ付ける。
+		// 　テクスチャを読むときのフィルタ・アドレスモードなどの設定。s0 は色を読むふつうのサンプラ、
+		// 　s1 は深度を「奥か手前か」で比べる比較サンプラ。要る側だけをルートシグネチャに付ける。
 		//------------------------------------------------------------------------
-		// サンプラは 1 種類しか要らないので静的サンプラで済ませる。
-		D3D12_STATIC_SAMPLER_DESC staticSampler{};
-		staticSampler.Filter           = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-		staticSampler.AddressU         = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-		staticSampler.AddressV         = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-		staticSampler.AddressW         = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-		staticSampler.ComparisonFunc   = D3D12_COMPARISON_FUNC_ALWAYS;
-		staticSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		// サンプラは種類ごとに 1 個で足りるので静的サンプラで済ませる。
+		D3D12_STATIC_SAMPLER_DESC staticSamplers[2]{};
+		uint32_t                  staticSamplerCount = 0;
 
-		// ゼロ初期化のままだと MaxLOD が 0 になり、LOD が 0 に切り詰められて先頭のミップしか読まれない
-		// ➡ ミップを持っていても縮小時のちらつきが消えない。上限を外して全段を使わせる。
-		staticSampler.MinLOD = 0.0f;
-		staticSampler.MaxLOD = D3D12_FLOAT32_MAX;
+		if (desc.hasTexture)
+		{
+			D3D12_STATIC_SAMPLER_DESC& sampler = staticSamplers[staticSamplerCount];
+			sampler.Filter                     = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+			sampler.AddressU                   = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			sampler.AddressV                   = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			sampler.AddressW                   = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			sampler.ComparisonFunc             = D3D12_COMPARISON_FUNC_ALWAYS;
+			sampler.ShaderRegister             = 0;
+			sampler.ShaderVisibility           = D3D12_SHADER_VISIBILITY_PIXEL;
+
+			// ゼロ初期化のままだと MaxLOD が 0 になり、LOD が 0 に切り詰められて先頭のミップしか読まれない
+			// ➡ ミップを持っていても縮小時のちらつきが消えない。上限を外して全段を使わせる。
+			sampler.MinLOD = 0.0f;
+			sampler.MaxLOD = D3D12_FLOAT32_MAX;
+			++staticSamplerCount;
+		}
+
+		if (desc.hasShadowMap)
+		{
+			// 比べた結果（遮られていれば 0、いなければ 1）を 4 テクセルで線形に混ぜるフィルタ。
+			// 1 回のサンプルで影の境目が滑らかになる。
+			D3D12_STATIC_SAMPLER_DESC& sampler = staticSamplers[staticSamplerCount];
+			sampler.Filter                     = D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+			sampler.AddressU                   = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+			sampler.AddressV                   = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+			sampler.AddressW                   = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+
+			// マップの外は「一番奥まで何も無い」= 影なしとして扱いたいので、境界色を白にする。
+			sampler.BorderColor    = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE;
+			sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
+			sampler.ShaderRegister   = 1;
+			sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+			sampler.MinLOD = 0.0f;
+			sampler.MaxLOD = D3D12_FLOAT32_MAX;
+			++staticSamplerCount;
+		}
 
 		//------------------------------------------------------------------------
 		// 3. ルートシグネチャのシリアライズと生成
@@ -145,8 +193,8 @@ namespace fang::rhi
 		D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
 		rootSignatureDesc.NumParameters     = rootParameterCount;
 		rootSignatureDesc.pParameters       = rootParameterCount > 0 ? rootParameters : nullptr;
-		rootSignatureDesc.NumStaticSamplers = desc.hasTexture ? 1u : 0u;
-		rootSignatureDesc.pStaticSamplers   = desc.hasTexture ? &staticSampler : nullptr;
+		rootSignatureDesc.NumStaticSamplers = staticSamplerCount;
+		rootSignatureDesc.pStaticSamplers   = staticSamplerCount > 0 ? staticSamplers : nullptr;
 		rootSignatureDesc.Flags             = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
 		ComPtr<ID3DBlob> serializedRootSignature;
@@ -195,22 +243,35 @@ namespace fang::rhi
 			inputElements.push_back(element);
 		}
 
+		// PS が無いということは色を出さないということ ➡ 描画先も要らない。
+		const bool isDepthOnly = desc.pixelShaderBytecode.empty();
+
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineDesc{};
 		pipelineDesc.pRootSignature = entry.rootSignature.Get();
 		pipelineDesc.VS             = { desc.vertexShaderBytecode.data(), desc.vertexShaderBytecode.size() };
-		pipelineDesc.PS             = { desc.pixelShaderBytecode.data(), desc.pixelShaderBytecode.size() };
+
+		if (!isDepthOnly)
+		{
+			pipelineDesc.PS = { desc.pixelShaderBytecode.data(), desc.pixelShaderBytecode.size() };
+
+			pipelineDesc.NumRenderTargets = 1;
+			pipelineDesc.RTVFormats[0]    = DXGI_FORMAT_R8G8B8A8_UNORM;
+		}
 
 		pipelineDesc.InputLayout           = { inputElements.data(), static_cast<UINT>(inputElements.size()) };
 		pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 
-		pipelineDesc.NumRenderTargets = 1;
-		pipelineDesc.RTVFormats[0]    = DXGI_FORMAT_R8G8B8A8_UNORM;
 		pipelineDesc.SampleDesc.Count = 1;
 		pipelineDesc.SampleMask       = UINT_MAX;
 
 		pipelineDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 		pipelineDesc.RasterizerState.CullMode = desc.isAlphaBlendEnabled ? D3D12_CULL_MODE_NONE : D3D12_CULL_MODE_BACK;
 		pipelineDesc.RasterizerState.DepthClipEnable = TRUE;
+
+		// 深度の押し込みはラスタライザがやる。クランプは掛けない（上限を設ける理由が無い）。
+		pipelineDesc.RasterizerState.DepthBias            = desc.depthBias;
+		pipelineDesc.RasterizerState.DepthBiasClamp       = 0.0f;
+		pipelineDesc.RasterizerState.SlopeScaledDepthBias = desc.slopeScaledDepthBias;
 
 		D3D12_RENDER_TARGET_BLEND_DESC& blend = pipelineDesc.BlendState.RenderTarget[0];
 		blend.RenderTargetWriteMask           = D3D12_COLOR_WRITE_ENABLE_ALL;

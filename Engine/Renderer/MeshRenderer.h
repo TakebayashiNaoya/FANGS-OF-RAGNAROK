@@ -103,14 +103,24 @@ namespace fang
 
 		float metallicFactor  = 0.0f; /**< 0 = 非金属。既定はダミーテクスチャのときの見た目を従来に合わせた値。 */
 		float roughnessFactor = 1.0f; /**< 知覚 roughness。1 = 粗い面（ハイライトが弱く広い）。 */
+
+		/**
+		 * @brief 影を作るか。
+		 * @details false なら DrawDepth の対象から呼び出し側（SceneRenderer）が外す。床のような受け専用の
+		 *          ものを false にすると、光の箱（キャスタの AABB の和）を無駄に広げずに済む。
+		 */
+		bool castsShadow = true;
 	};
 
 	/**
 	 * @brief 静的メッシュとスキンメッシュを描く。
 	 * @details 頂点の並びはシェーダとの契約なので、この中で決めて外へ出さない。静的とスキンは頂点形式も
 	 *          パイプラインも別だが、台帳・定数の組み立て・ダミーテクスチャは同じなので 1 クラスに畳んである。
-	 *          ビューポートは持たないので、呼び出し側が Draw の前に CommandList::SetViewport を済ませておくこと。
-	 * @threading メインスレッドのみ。
+	 *          ビューポートは持たないので、呼び出し側が Draw / DrawDepth の前に CommandList::SetViewport を
+	 *          済ませておくこと。
+	 * @threading 生成・解放（Initialize / Shutdown / CreateMesh）はメインスレッドのみ。Draw と DrawDepth は
+	 *            RenderGraph の記録ジョブから呼ばれる。ScenePass と ShadowPass が並列に記録されるが、
+	 *            書き込み先の定数バッファ（b0 / b2）を分けてあるので互いに競合しない。
 	 */
 	class MeshRenderer
 	{
@@ -165,10 +175,11 @@ namespace fang
 		[[nodiscard]] Aabb GetLocalBounds(MeshId mesh) const;
 
 		/**
-		 * @brief 開いているフレームに描画コマンドを積む。
+		 * @brief 開いているフレームに描画コマンドを積む（色 + 影の判定つき）。
 		 * @param device              定数バッファを書き込むために使う。
 		 * @param commandList         BeginFrame が返したコマンドリスト。
 		 * @param frameConstantBuffer b1 に差す視点と光の定数バッファ。中身は呼び出し側が先に書いておくこと。
+		 * @param shadowMap           t1 に差すシャドウマップ。無効なハンドルは呼び出し側の配線漏れなのでアサートに掛かる。
 		 * @param items               描くもの。無効な番号の要素は飛ばす。この呼び出しの間だけ読む。
 		 * @details Initialize に失敗した状態で呼んでも何もせずに戻る。モデルが出ないだけで、
 		 *          ほかの描画は続けられるほうが呼び出し側の分岐が減るため。カリングはしない
@@ -176,6 +187,26 @@ namespace fang
 		 *          const にしていないのは、定数バッファの置き場を書き換えながら進むため。
 		 */
 		void Draw(
+			rhi::GraphicsDevice&        device,
+			rhi::CommandList&           commandList,
+			rhi::BufferHandle           frameConstantBuffer,
+			rhi::TextureHandle          shadowMap,
+			std::span<const RenderItem> items
+		);
+
+		/**
+		 * @brief 開いているフレームに深度専用の描画コマンドを積む。
+		 * @param device              定数バッファを書き込むために使う。
+		 * @param commandList         BeginFrame が返したコマンドリスト。
+		 * @param frameConstantBuffer b1 に差す光の視点の定数バッファ（lightViewProjection）。呼び出し側が先に書いておくこと。
+		 * @param items               描くもの。無効な番号の要素は飛ばす。この呼び出しの間だけ読む。
+		 * @details Draw と同じ形だが、テクスチャもシャドウマップも差さず、深度専用パイプラインで描く。
+		 *          b0 / b2 の書き込み先は Draw と別のプール（m_depthObjectConstantBuffers /
+		 *          m_depthSkinningConstantBuffers）を使う ➡ ShadowPass の記録が ScenePass の記録と
+		 *          並列に走っても、定数の置き場が重ならない。castsShadow による絞り込みはしない
+		 *          （呼び出し側の SceneRenderer が済ませてから渡す）。
+		 */
+		void DrawDepth(
 			rhi::GraphicsDevice&        device,
 			rhi::CommandList&           commandList,
 			rhi::BufferHandle           frameConstantBuffer,
@@ -214,6 +245,12 @@ namespace fang
 		rhi::PipelineHandle m_staticPipeline;  /**< 静的メッシュ用のシェーダとステートの組。 */
 		rhi::PipelineHandle m_skinnedPipeline; /**< スキンメッシュ用。頂点形式と頂点シェーダーだけが違う。 */
 
+		/** @brief 静的メッシュの深度専用 PSO。PS 無し・描画先 0 本。頂点シェーダーは m_staticPipeline と共有。 */
+		rhi::PipelineHandle m_staticDepthPipeline;
+
+		/** @brief スキンメッシュの深度専用 PSO。頂点シェーダーは m_skinnedPipeline と共有。 */
+		rhi::PipelineHandle m_skinnedDepthPipeline;
+
 		std::vector<Mesh> m_meshes; /**< MeshId.index で引く。捨てないので詰め直しも世代も要らない。 */
 
 		/**
@@ -225,6 +262,16 @@ namespace fang
 
 		/** @brief 骨行列の置き場。b2 に差す。スキンメッシュを 1 個描くごとに 1 本使う。 */
 		rhi::BufferHandle m_skinningConstantBuffers[MAX_ITEM_COUNT];
+
+		/**
+		 * @brief DrawDepth 専用の b0 の置き場。
+		 * @details ShadowPass の記録は ScenePass の記録と並列に走るジョブなので、Draw と同じ置き場に書くと
+		 *          お互いの値を上書きしてしまう。用途ごとにプールを分けて衝突を避ける。
+		 */
+		rhi::BufferHandle m_depthObjectConstantBuffers[MAX_ITEM_COUNT];
+
+		/** @brief DrawDepth 専用の b2 の置き場。分ける理由は m_depthObjectConstantBuffers と同じ。 */
+		rhi::BufferHandle m_depthSkinningConstantBuffers[MAX_ITEM_COUNT];
 
 		/** @brief ベースカラーが無いときに差す 1×1。従来の単色と同じ色。 */
 		rhi::TextureHandle m_dummyBaseColor;

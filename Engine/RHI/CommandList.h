@@ -32,11 +32,27 @@ namespace fang::rhi
 		void TransitionBackBuffer(EnResourceState before, EnResourceState after);
 
 		/**
+		 * @brief テクスチャの用途を切り替えるバリアを積む。
+		 * @details TransitionBackBuffer と同じ理由で、積むのは RenderGraph だけ。パスの記録関数からは呼ばない。
+		 * @param handle 切り替える相手。
+		 * @param before 今の用途。直前に宣言したものと食い違うとデバッグレイヤーに叱られる。
+		 * @param after  これからの用途。
+		 */
+		void TransitionTexture(TextureHandle handle, EnResourceState before, EnResourceState after);
+
+		/**
 		 * @brief 今のバックバッファを描画先に据える。
 		 * @details TransitionBackBuffer と同じ理由で、積むのは RenderGraph だけ。パスの記録関数からは呼ばない。
 		 * @param withDepth 深度バッファも一緒に差すか。深度テストをするパイプラインを使うなら true。
 		 */
 		void SetRenderTargetToBackBuffer(bool withDepth);
+
+		/**
+		 * @brief 深度テクスチャだけを描画先に据える。色の描画先は 0 本になる。
+		 * @details 積むのは RenderGraph だけ。パスの記録関数からは呼ばない。
+		 * @param handle CreateDepthTexture で作ったテクスチャ。ふつうのテクスチャを渡すとアサートに掛かる。
+		 */
+		void SetRenderTargetToDepthTexture(TextureHandle handle);
 
 		/**
 		 * @brief 描画先の色を塗りつぶす。SetRenderTargetToBackBuffer の後に呼ぶ。
@@ -45,8 +61,10 @@ namespace fang::rhi
 		void ClearRenderTarget(const ClearColor& color);
 
 		/**
-		 * @brief 深度を一番奥（1.0）で埋める。SetRenderTargetToBackBuffer に true を渡した後に呼ぶ。
-		 * @details 積むのは RenderGraph だけ。パスの記録関数からは呼ばない。
+		 * @brief 直前に差した描画先の深度を一番奥（1.0）で埋める。
+		 * @details 対象は SetRenderTargetToBackBuffer(true) ならデバイスの深度バッファ、
+		 *          SetRenderTargetToDepthTexture ならそのテクスチャ。深度を差していないと何もしない。
+		 *          積むのは RenderGraph だけ。パスの記録関数からは呼ばない。
 		 */
 		void ClearDepth();
 
@@ -107,6 +125,12 @@ namespace fang::rhi
 		void SetTexture(TextureHandle texture);
 
 		/**
+		 * @brief t1 にシャドウマップを差す。
+		 * @param texture 差す深度テクスチャ。hasShadowMap で作ったパイプラインが前提。
+		 */
+		void SetShadowMap(TextureHandle texture);
+
+		/**
 		 * @brief インデックスなしで描く。
 		 * @param vertexCount 頂点バッファの先頭から使う頂点の数。
 		 */
@@ -129,5 +153,12 @@ namespace fang::rhi
 
 		/** @brief 今差さっているパイプラインのルートパラメータ番号。SetPipeline が入れ替える。 */
 		RootParameterLayout m_boundRootParameters;
+
+		/**
+		 * @brief 今差さっている DSV。差していなければ 0。
+		 * @details 実体は D3D12_CPU_DESCRIPTOR_HANDLE の ptr。ヘッダに d3d12.h の型を出さないため数値で持つ。
+		 *          ClearDepth がバックバッファと深度テクスチャのどちらを消すかは、これで決まる。
+		 */
+		uint64_t m_boundDepthStencilView = 0;
 	};
 } // namespace fang::rhi
