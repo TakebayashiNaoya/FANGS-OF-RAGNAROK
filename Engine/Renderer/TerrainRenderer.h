@@ -182,8 +182,5 @@ namespace fang
 		PassRecordArguments m_passRecordArguments; /**< AddPass が埋める userData の実体。 */
 
 		uint32_t m_drawnChunkCount = 0; /**< RecordChunks が書く、直近フレームの描画チャンク数。 */
-
-		/** @brief 初回の記録でカリング判定をログへ残したか。実機の切り分けが済んだらメンバごと消す。 */
-		bool m_hasLoggedCullingDiagnostics = false;
 	};
 } // namespace fang
