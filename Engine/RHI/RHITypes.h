@@ -111,6 +111,13 @@ namespace fang::rhi
 		uint32_t       offsetInBytes = 0;                      /**< 頂点構造体の先頭からの位置。 */
 	};
 
+	/** @brief プリミティブトポロジの種類。 */
+	enum class EnPrimitiveTopology : uint8_t
+	{
+		TriangleList,
+		LineList, /**< デバッグ線描画のように、頂点 2 個ずつを独立した線分として描く。 */
+	};
+
 	/** @brief パイプラインの生成条件。 */
 	struct GraphicsPipelineDesc
 	{
@@ -124,6 +131,9 @@ namespace fang::rhi
 		std::span<const uint8_t> pixelShaderBytecode;
 
 		std::span<const VertexAttribute> vertexLayout; /**< 頂点構造体の並び。 */
+
+		/** @brief 描くプリミティブの形。既定は三角形リスト。 */
+		EnPrimitiveTopology topology = EnPrimitiveTopology::TriangleList;
 
 		/** @brief b0 に置くルート定数の数（32 bit 単位）。0 なら作らない。hasObjectConstantBuffer と排他。 */
 		uint32_t rootConstantCount = 0;
@@ -157,6 +167,13 @@ namespace fang::rhi
 
 		bool isAlphaBlendEnabled = false; /**< 半透明合成をするか。有効にすると裏面も描く。 */
 		bool isDepthTestEnabled  = false; /**< 深度テストと深度書き込みをするか。3D の物を描くときに立てる。 */
+
+		/**
+		 * @brief 深度テストを通ったピクセルの深度を書き込むか。isDepthTestEnabled が true のときだけ効く。
+		 * @details デバッグ線のように「メッシュに隠れてほしいが、深度を汚して他の描画物を隠したくない」ものは
+		 *          false にする。
+		 */
+		bool isDepthWriteEnabled = true;
 
 		/**
 		 * @brief 書き込む深度を一律で奥へずらす量（深度バッファの最小刻み単位）。

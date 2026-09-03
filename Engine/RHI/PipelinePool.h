@@ -27,6 +27,9 @@ namespace fang::rhi
 
 			RootParameterLayout rootParameters; /**< 資源ごとのルートパラメータ番号。 */
 
+			/** @brief SetPipeline が IASetPrimitiveTopology の出し分けに使う。 */
+			EnPrimitiveTopology topology = EnPrimitiveTopology::TriangleList;
+
 			uint32_t generation = 0;     /**< ハンドルの世代と突き合わせる。 */
 			bool     isAlive    = false; /**< false なら空きスロット。次の生成で再利用される。 */
 		};
