@@ -31,12 +31,16 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
+    <ClInclude Include="Source\NonAsciiTestDirectory.h" />
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="Source\AabbTests.cpp" />
     <ClCompile Include="Source\AnimationPlaybackTests.cpp" />
     <ClCompile Include="Source\DdsImageTests.cpp" />
     <ClCompile Include="Source\FrameAllocatorTests.cpp" />
     <ClCompile Include="Source\FramePipelineTests.cpp" />
     <ClCompile Include="Source\FrustumTests.cpp" />
+    <ClCompile Include="Source\GltfMeshTests.cpp" />
     <ClCompile Include="Source\JobSystemStressTests.cpp" />
     <ClCompile Include="Source\JobSystemTests.cpp" />
     <ClCompile Include="Source\Main.cpp" />

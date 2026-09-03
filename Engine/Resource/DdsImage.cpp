@@ -4,6 +4,7 @@
  */
 #include "Pch.h"
 #include "Resource/DdsImage.h"
+#include "Core/Platform/FileSystem.h"
 #include "Resource/ResourceLog.h"
 #include <cstdio>
 #include <cstring>
@@ -134,9 +135,10 @@ namespace fang
 			return false;
 		}
 
-		// fopen は /W4 /WX だと C4996 で止まるので、Windows 専用プロジェクトとして fopen_s を使う。
-		std::FILE* file = nullptr;
-		if (fopen_s(&file, filePath, "rb") != 0 || file == nullptr)
+		// narrow の fopen 系は現在の ANSI コードページでパスを解釈するため、日本語などの
+		// 非 ASCII を含むパスが化ける。OpenFile が内部で UTF-16 に直してから開く。
+		std::FILE* file = OpenFile(filePath, "rb");
+		if (file == nullptr)
 		{
 			FANG_LOG_ERROR(Resource, "DDS を開けなかった: {}", filePath);
 			return false;

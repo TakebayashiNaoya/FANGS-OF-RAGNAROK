@@ -2,10 +2,14 @@
  * @file DdsImageTests.cpp
  * @brief DDS 解析のテスト。ミップの段数と範囲、壊れたヘッダの拒否を確かめる。
  */
+#include "Core/Platform/FileSystem.h"
 #include "Resource/DdsImage.h"
+#include "NonAsciiTestDirectory.h"
 #include <doctest.h>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
+#include <string>
 #include <vector>
 
 
@@ -227,4 +231,30 @@ TEST_CASE("存在しないファイルは false を返して落ちない")
 	fang::DdsImage image;
 	CHECK_FALSE(image.Load("Z:\\存在しない\\Wolf.dds"));
 	CHECK(image.GetMipLevels().empty());
+}
+
+
+TEST_CASE("非 ASCII を含むパスの DDS を読める")
+{
+	fang::test::NonAsciiTestDirectory directory(L"テクスチャ読み込みテスト_日本語パス");
+	const std::string                 path = directory.MakeFilePath("テクスチャ.dds");
+
+	DdsBuilder builder(4, 4, 1, DXGI_R8G8B8A8_UNORM);
+	builder.AppendPixels(64);
+
+	const auto bytes = builder.GetBytes();
+	std::FILE* file  = fang::OpenFile(path.c_str(), "wb");
+	CHECK(file != nullptr);
+	if (file == nullptr)
+	{
+		return;
+	}
+
+	CHECK(std::fwrite(bytes.data(), 1, bytes.size(), file) == bytes.size());
+	std::fclose(file);
+
+	fang::DdsImage image;
+	CHECK(image.Load(path.c_str()));
+	CHECK(image.GetFormat() == fang::rhi::EnTextureFormat::RGBA8);
+	CHECK(image.GetMipLevels().size() == 1);
 }
