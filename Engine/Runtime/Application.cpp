@@ -9,6 +9,7 @@
 #include "Core/Job/JobSystem.h"
 #include "Core/Log/Assert.h"
 #include "Core/Math/Aabb.h"
+#include "Core/Math/MathConstants.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Memory/FrameAllocator.h"
 #include "Core/Platform/AssetPath.h"
@@ -37,9 +38,6 @@ namespace fang
 	namespace
 	{
 		constexpr rhi::ClearColor BACKGROUND_COLOR{ 0.05f, 0.06f, 0.09f, 1.0f };
-
-		/** @brief 円周率。Core/Math がまだ定数を持っていないのでここに置く。 */
-		constexpr float PI = 3.14159265f;
 
 		/** @brief 狼の glTF。アセットの根っこからの相対パス。 */
 		constexpr const char* WOLF_MODEL_RELATIVE_PATH = "Models\\Wolf.gltf";
@@ -394,11 +392,13 @@ namespace fang
 				loopContext.cameraOrbitRadians -= 2.0f * PI;
 			}
 
-			const Vector3 eye{
-				CAMERA_TARGET.x + std::sinf(loopContext.cameraOrbitRadians) * CAMERA_DISTANCE,
-				CAMERA_TARGET.y,
-				CAMERA_TARGET.z + std::cosf(loopContext.cameraOrbitRadians) * CAMERA_DISTANCE,
+			// カメラは Y を変えずに水平に周るので、狼を中心とした円周上のオフセットを注視点へ足すだけでよい。
+			const Vector3 orbitOffset{
+				std::sinf(loopContext.cameraOrbitRadians) * CAMERA_DISTANCE,
+				0.0f,
+				std::cosf(loopContext.cameraOrbitRadians) * CAMERA_DISTANCE,
 			};
+			const Vector3 eye = CAMERA_TARGET + orbitOffset;
 
 			// 最小化すると幅も高さも 0 で来る。ゼロ除算と MakePerspectiveMatrix のアサートを避けて 1 で止める。
 			const float viewportWidth  = static_cast<float>(window.GetWidth() > 0 ? window.GetWidth() : 1);

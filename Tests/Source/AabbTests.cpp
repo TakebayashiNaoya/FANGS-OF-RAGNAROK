@@ -3,6 +3,7 @@
  * @brief 境界ボックスのテスト。無効な既定値、Expand の取り込み、行列変換が 8 頂点を包むことを確かめる。
  */
 #include "Core/Math/Aabb.h"
+#include "Core/Math/MathConstants.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Math/Vector3.h"
 #include <doctest.h>
@@ -11,10 +12,6 @@
 
 namespace
 {
-	/** @brief 円周率。Core/Math にはまだ定数を置いていないので、回転角を作るためにここで持つ。 */
-	constexpr float PI = 3.14159265358979323846f;
-
-
 	/**
 	 * @brief 点を行ベクトルとして左から掛ける（p * M）。
 	 * @details 掛ける向きを間違えると転置した結果でも辻褄が合ってしまうので、テスト側でも規約どおりに手で書く。
@@ -160,7 +157,7 @@ TEST_CASE("TransformAabb は 90 度の回転で軸を入れ替える")
 	const fang::Aabb bounds{ .min = { 0.0f, 0.0f, 0.0f }, .max = { 2.0f, 1.0f, 4.0f } };
 
 	// +90 度で (x, y, z) は (z, y, -x) へ移る。
-	const fang::Matrix4x4 rotation = MakeRotationYMatrix(PI / 2.0f);
+	const fang::Matrix4x4 rotation = MakeRotationYMatrix(fang::PI / 2.0f);
 	const fang::Aabb      rotated  = fang::TransformAabb(bounds, rotation);
 
 	CheckAabbsAreEqual(rotated, fang::Aabb{ .min = { 0.0f, 0.0f, -2.0f }, .max = { 4.0f, 1.0f, 0.0f } });
@@ -171,7 +168,7 @@ TEST_CASE("TransformAabb は斜めの回転でも 8 頂点を過不足なく包�
 {
 	const fang::Aabb bounds{ .min = { -1.0f, -2.0f, -3.0f }, .max = { 4.0f, 5.0f, 6.0f } };
 
-	const fang::Matrix4x4 rotation = MakeRotationYMatrix(PI / 4.0f);
+	const fang::Matrix4x4 rotation = MakeRotationYMatrix(fang::PI / 4.0f);
 	const fang::Aabb      rotated  = fang::TransformAabb(bounds, rotation);
 
 	// 回転で軸に沿わなくなるぶん、包む箱は元より広がる。
@@ -190,7 +187,7 @@ TEST_CASE("TransformAabb は拡縮・回転・平行移動を合成した行列�
 
 	// 行ベクトル規約なので、効かせたい順に左から並べる。
 	const fang::Matrix4x4 scaling     = MakeScalingMatrix(fang::Vector3{ 2.0f, 0.5f, 3.0f });
-	const fang::Matrix4x4 rotation    = MakeRotationYMatrix(PI / 6.0f);
+	const fang::Matrix4x4 rotation    = MakeRotationYMatrix(fang::PI / 6.0f);
 	const fang::Matrix4x4 translation = MakeTranslationMatrix(fang::Vector3{ -7.0f, 8.0f, 9.0f });
 
 	const fang::Matrix4x4 world = fang::Multiply(fang::Multiply(scaling, rotation), translation);

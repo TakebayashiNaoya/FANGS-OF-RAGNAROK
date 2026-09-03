@@ -4,6 +4,7 @@
  */
 #include "Core/Math/Aabb.h"
 #include "Core/Math/Frustum.h"
+#include "Core/Math/MathConstants.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Math/Vector3.h"
 #include <doctest.h>
@@ -12,9 +13,6 @@
 
 namespace
 {
-	/** @brief 円周率。Core/Math にはまだ定数を置いていないので、画角を作るためにここで持つ。 */
-	constexpr float PI = 3.14159265358979323846f;
-
 	/** @brief 判定の対象にする箱の一辺の半分。視錐台の大きさに比べて十分小さくしてある。 */
 	constexpr float PROBE_RADIUS = 0.5f;
 
@@ -39,7 +37,7 @@ namespace
 
 TEST_CASE("抽出した 6 平面の法線が正規化されている")
 {
-	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(PI / 2.0f, 1.0f, 1.0f, 100.0f);
+	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(fang::PI / 2.0f, 1.0f, 1.0f, 100.0f);
 
 	fang::Frustum frustum;
 	frustum.ExtractFromViewProjection(projection);
@@ -58,7 +56,7 @@ TEST_CASE("近平面と遠平面が射影行列の値どおりに出る")
 	constexpr float farZ  = 100.0f;
 
 	// カメラは原点で +Z を向く。ビュー行列を掛けないので、平面の係数を手計算と直に比べられる。
-	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(PI / 2.0f, 1.0f, nearZ, farZ);
+	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(fang::PI / 2.0f, 1.0f, nearZ, farZ);
 
 	fang::Frustum frustum;
 	frustum.ExtractFromViewProjection(projection);
@@ -81,7 +79,7 @@ TEST_CASE("近平面と遠平面が射影行列の値どおりに出る")
 TEST_CASE("原点のカメラで、視錐台の内と外を見分ける")
 {
 	// 垂直画角 90 度・縦横比 1 ➡ 視錐台の中は |x| <= z、|y| <= z、1 <= z <= 100。
-	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(PI / 2.0f, 1.0f, 1.0f, 100.0f);
+	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(fang::PI / 2.0f, 1.0f, 1.0f, 100.0f);
 
 	fang::Frustum frustum;
 	frustum.ExtractFromViewProjection(projection);
@@ -101,7 +99,7 @@ TEST_CASE("原点のカメラで、視錐台の内と外を見分ける")
 
 TEST_CASE("近平面を跨ぐ箱と、視錐台を丸ごと含む箱は交差と判定される")
 {
-	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(PI / 2.0f, 1.0f, 1.0f, 100.0f);
+	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(fang::PI / 2.0f, 1.0f, 1.0f, 100.0f);
 
 	fang::Frustum frustum;
 	frustum.ExtractFromViewProjection(projection);
@@ -131,7 +129,7 @@ TEST_CASE("ビュー行列を掛けた視錐台がカメラの位置と向きに
 		fang::Vector3{ 0.0f, 0.0f, 0.0f },
 		fang::Vector3{ 0.0f, 1.0f, 0.0f }
 	);
-	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(PI / 2.0f, 1.0f, 1.0f, 100.0f);
+	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(fang::PI / 2.0f, 1.0f, 1.0f, 100.0f);
 
 	fang::Frustum frustum;
 	frustum.ExtractFromViewProjection(fang::Multiply(view, projection));

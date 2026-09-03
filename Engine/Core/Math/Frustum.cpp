@@ -7,7 +7,6 @@
 #include "Core/Math/Aabb.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Math/Vector3.h"
-#include <cmath>
 
 
 namespace fang
@@ -15,51 +14,16 @@ namespace fang
 	namespace
 	{
 		/**
-		 * @brief 行列の列を 1 本取り出す。
-		 * @details 行ベクトル規約（p * M）では、クリップ座標の 1 成分が 1 本の列との内積になる。
-		 *          ➡列そのものが「x とは何か」「w とは何か」を表す平面の材料になる。
-		 */
-		Vector4 GetColumn(const Matrix4x4& matrix, int columnIndex)
-		{
-			return Vector4{
-				matrix.m[0][columnIndex],
-				matrix.m[1][columnIndex],
-				matrix.m[2][columnIndex],
-				matrix.m[3][columnIndex],
-			};
-		}
-
-
-		/** @brief 平面の係数どうしを足す。 */
-		Vector4 Add(const Vector4& left, const Vector4& right)
-		{
-			return Vector4{ left.x + right.x, left.y + right.y, left.z + right.z, left.w + right.w };
-		}
-
-
-		/** @brief 平面の係数どうしを引く。 */
-		Vector4 Subtract(const Vector4& left, const Vector4& right)
-		{
-			return Vector4{ left.x - right.x, left.y - right.y, left.z - right.z, left.w - right.w };
-		}
-
-
-		/**
 		 * @brief 法線の長さが 1 になるように平面の係数を割る。
 		 * @details 正規化しておくと w が原点からの実距離になり、交差判定を素の内積 1 本で書ける。
 		 */
 		Vector4 NormalizePlane(const Vector4& plane)
 		{
-			const float length = std::sqrt(plane.x * plane.x + plane.y * plane.y + plane.z * plane.z);
+			const Vector3 normal{ plane.x, plane.y, plane.z };
+			const float   length = Length(normal);
 			FANG_ASSERT(length > 0.0f, "平面の法線が 0 ベクトル。ビュー射影行列が壊れている");
 
-			const float inverseLength = 1.0f / length;
-			return Vector4{
-				plane.x * inverseLength,
-				plane.y * inverseLength,
-				plane.z * inverseLength,
-				plane.w * inverseLength,
-			};
+			return plane * (1.0f / length);
 		}
 	} // namespace
 
@@ -73,12 +37,12 @@ namespace fang
 
 		// 視錐台の中は -w <= x <= w、-w <= y <= w、0 <= z <= w。
 		// 各不等式を「0 以上」の形へ移すと、係数がそのまま内向きの平面になる。
-		planes[0] = NormalizePlane(Add(columnW, columnX));      // 左。x + w >= 0
-		planes[1] = NormalizePlane(Subtract(columnW, columnX)); // 右。w - x >= 0
-		planes[2] = NormalizePlane(Add(columnW, columnY));      // 下。y + w >= 0
-		planes[3] = NormalizePlane(Subtract(columnW, columnY)); // 上。w - y >= 0
-		planes[4] = NormalizePlane(columnZ);                    // 近。深度が [0, 1] なので w を足さない
-		planes[5] = NormalizePlane(Subtract(columnW, columnZ)); // 遠。w - z >= 0
+		planes[0] = NormalizePlane(columnW + columnX); // 左。x + w >= 0
+		planes[1] = NormalizePlane(columnW - columnX); // 右。w - x >= 0
+		planes[2] = NormalizePlane(columnW + columnY); // 下。y + w >= 0
+		planes[3] = NormalizePlane(columnW - columnY); // 上。w - y >= 0
+		planes[4] = NormalizePlane(columnZ);           // 近。深度が [0, 1] なので w を足さない
+		planes[5] = NormalizePlane(columnW - columnZ); // 遠。w - z >= 0
 	}
 
 
@@ -95,8 +59,7 @@ namespace fang
 				(plane.z >= 0.0f) ? bounds.max.z : bounds.min.z,
 			};
 
-			const float distance =
-				plane.x * positiveVertex.x + plane.y * positiveVertex.y + plane.z * positiveVertex.z + plane.w;
+			const float distance = Dot(plane, Vector4{ positiveVertex.x, positiveVertex.y, positiveVertex.z, 1.0f });
 			if (distance < 0.0f)
 			{
 				return false;
