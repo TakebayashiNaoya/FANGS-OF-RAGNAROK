@@ -37,6 +37,8 @@
     <ClInclude Include="Log\Assert.h" />
     <ClInclude Include="Log\Log.h" />
     <ClInclude Include="Log\PlatformLogSink.h" />
+    <ClInclude Include="Math\Aabb.h" />
+    <ClInclude Include="Math\Frustum.h" />
     <ClInclude Include="Math\JointIndices.h" />
     <ClInclude Include="Math\Matrix4x4.h" />
     <ClInclude Include="Math\Pack.h" />
@@ -60,6 +62,8 @@
     <ClCompile Include="Job\JobSystem.cpp" />
     <ClCompile Include="Log\Assert.cpp" />
     <ClCompile Include="Log\Log.cpp" />
+    <ClCompile Include="Math\Aabb.cpp" />
+    <ClCompile Include="Math\Frustum.cpp" />
     <ClCompile Include="Math\Matrix4x4.cpp" />
     <ClCompile Include="Memory\Allocator.cpp" />
     <ClCompile Include="Memory\FrameAllocator.cpp" />
