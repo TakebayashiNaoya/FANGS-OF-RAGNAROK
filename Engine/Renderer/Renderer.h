@@ -9,6 +9,7 @@
 #include "Renderer/MeshRenderer.h"
 #include "Renderer/RenderGraph.h"
 #include "Renderer/RendererLog.h"
+#include "Renderer/SceneRenderer.h"
 #include "Renderer/UnlitRenderer.h"
 
 

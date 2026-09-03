@@ -31,6 +31,7 @@
     <ClInclude Include="RenderGraph.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RendererLog.h" />
+    <ClInclude Include="SceneRenderer.h" />
     <ClInclude Include="UnlitRenderer.h" />
     <ClInclude Include="Shaders\MeshConstants.h" />
     <ClInclude Include="Shaders\UnlitConstants.h" />
@@ -42,6 +43,7 @@
     </ClCompile>
     <ClCompile Include="RenderGraph.cpp" />
     <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="SceneRenderer.cpp" />
     <ClCompile Include="UnlitRenderer.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->

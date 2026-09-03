@@ -42,22 +42,6 @@ namespace fang
 	};
 
 	/**
-	 * @brief 1 フレーム分のカメラと平行光。
-	 * @details ライトを型でなくばらの値で持つのは、光を書くのは Runtime 側（FrameData）で、
-	 *          Renderer はそちらの型を知らないため。呼び出し側が毎フレーム全部を埋めること。
-	 */
-	struct View
-	{
-		Matrix4x4 viewProjection; /**< Multiply(ビュー行列, 透視投影行列)。行ベクトル規約なのでビューが左に来る。 */
-		Vector3   cameraPosition; /**< ワールドの視点。鏡面反射の視線ベクトル用。 */
-
-		Vector3 directionToLight;      /**< 面から光源へ向かう向き。正規化して渡す。 */
-		Vector3 lightColor;            /**< リニア空間の色。 */
-		float   lightIntensity = 0.0f; /**< 明るさの倍率。調整は BRDF の式でなくこちらで行う。 */
-		Vector3 ambientColor;          /**< 環境項。光の裏側の形を読ませる役。 */
-	};
-
-	/**
 	 * @brief 静的メッシュ 1 個ぶんの CPU データ。
 	 * @details 並びのばらばらな配列で受け取り、CreateMesh が内部の頂点形式へ詰め直す。
 	 *          positions と indices は必須で、どちらかが空なら生成に失敗する。
@@ -182,18 +166,19 @@ namespace fang
 
 		/**
 		 * @brief 開いているフレームに描画コマンドを積む。
-		 * @param device      定数バッファを書き込むために使う。
-		 * @param commandList BeginFrame が返したコマンドリスト。
-		 * @param view        このフレームのカメラと光。b1 へ 1 回だけ書く。
-		 * @param items       描くもの。無効な番号の要素は飛ばす。この呼び出しの間だけ読む。
+		 * @param device              定数バッファを書き込むために使う。
+		 * @param commandList         BeginFrame が返したコマンドリスト。
+		 * @param frameConstantBuffer b1 に差す視点と光の定数バッファ。中身は呼び出し側が先に書いておくこと。
+		 * @param items               描くもの。無効な番号の要素は飛ばす。この呼び出しの間だけ読む。
 		 * @details Initialize に失敗した状態で呼んでも何もせずに戻る。モデルが出ないだけで、
-		 *          ほかの描画は続けられるほうが呼び出し側の分岐が減るため。
+		 *          ほかの描画は続けられるほうが呼び出し側の分岐が減るため。カリングはしない
+		 *          ➡ 視錐台で絞るのは呼び出し側（SceneRenderer）の仕事。
 		 *          const にしていないのは、定数バッファの置き場を書き換えながら進むため。
 		 */
 		void Draw(
 			rhi::GraphicsDevice&        device,
 			rhi::CommandList&           commandList,
-			const View&                 view,
+			rhi::BufferHandle           frameConstantBuffer,
 			std::span<const RenderItem> items
 		);
 
@@ -230,9 +215,6 @@ namespace fang
 		rhi::PipelineHandle m_skinnedPipeline; /**< スキンメッシュ用。頂点形式と頂点シェーダーだけが違う。 */
 
 		std::vector<Mesh> m_meshes; /**< MeshId.index で引く。捨てないので詰め直しも世代も要らない。 */
-
-		/** @brief 視点と光（b1）の置き場。フレームに 1 回だけ書く。 */
-		rhi::BufferHandle m_frameConstantBuffer;
 
 		/**
 		 * @brief 描くもの 1 個ぶんの定数（world・材質）の置き場。b0 に差す。

@@ -12,6 +12,7 @@
     <ClInclude Include="RenderGraph.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RendererLog.h" />
+    <ClInclude Include="SceneRenderer.h" />
     <ClInclude Include="UnlitRenderer.h" />
     <ClInclude Include="Shaders\MeshConstants.h">
       <Filter>Shaders</Filter>
@@ -25,6 +26,7 @@
     <ClCompile Include="Pch.cpp" />
     <ClCompile Include="RenderGraph.cpp" />
     <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="SceneRenderer.cpp" />
     <ClCompile Include="UnlitRenderer.cpp" />
   </ItemGroup>
 </Project>

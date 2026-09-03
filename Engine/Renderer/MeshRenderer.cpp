@@ -123,25 +123,6 @@ namespace fang
 			return constants;
 		}
 
-		/** @brief フレームの間ずっと同じ定数を組む。行列の流儀は MakeObjectConstants と同じ。 */
-		[[nodiscard]] MeshFrameConstants MakeFrameConstants(const View& view)
-		{
-			const Vector3 cameraPosition = view.cameraPosition;
-			const Vector3 lightDirection = view.directionToLight;
-			const Vector3 lightColor     = view.lightColor;
-			const Vector3 ambientColor   = view.ambientColor;
-
-			MeshFrameConstants constants{};
-			constants.viewProjection = view.viewProjection;
-
-			constants.cameraPosition   = { cameraPosition.x, cameraPosition.y, cameraPosition.z, 0.0f };
-			constants.directionToLight = { lightDirection.x, lightDirection.y, lightDirection.z, 0.0f };
-			constants.lightColor       = { lightColor.x, lightColor.y, lightColor.z, view.lightIntensity };
-			constants.ambientColor     = { ambientColor.x, ambientColor.y, ambientColor.z, 0.0f };
-
-			return constants;
-		}
-
 		/**
 		 * @brief ベースカラーが無いときの色。テクスチャを貼る前の単色と同じ値の sRGB 表現。
 		 * @details 読み込みに失敗したときの見た目を従来と変えないための値。シェーダは常にサンプルするので、
@@ -228,12 +209,6 @@ namespace fang
 			return false;
 		}
 
-		m_frameConstantBuffer = device.CreateDynamicBuffer(sizeof(MeshFrameConstants), 0, rhi::EnBufferKind::Constant);
-		if (!m_frameConstantBuffer.IsValid())
-		{
-			return false;
-		}
-
 		for (rhi::BufferHandle& buffer : m_objectConstantBuffers)
 		{
 			buffer = device.CreateDynamicBuffer(sizeof(MeshObjectConstants), 0, rhi::EnBufferKind::Constant);
@@ -271,9 +246,6 @@ namespace fang
 			device.DestroyBuffer(buffer);
 			buffer = {};
 		}
-
-		device.DestroyBuffer(m_frameConstantBuffer);
-		m_frameConstantBuffer = {};
 
 		for (const Mesh& mesh : m_meshes)
 		{
@@ -497,19 +469,15 @@ namespace fang
 	void MeshRenderer::Draw(
 		rhi::GraphicsDevice&        device,
 		rhi::CommandList&           commandList,
-		const View&                 view,
+		rhi::BufferHandle           frameConstantBuffer,
 		std::span<const RenderItem> items
 	)
 	{
 		// 初期化に失敗していても落とさない。モデルが出ないだけで、ほかの描画は続けられる。
-		if (items.empty() || !m_frameConstantBuffer.IsValid())
+		if (items.empty() || !frameConstantBuffer.IsValid())
 		{
 			return;
 		}
-
-		// 視点と光は描画物が変わっても変わらないので、items の数によらずフレームに 1 回だけ書く。
-		const MeshFrameConstants frameConstants = MakeFrameConstants(view);
-		device.UpdateBuffer(m_frameConstantBuffer, &frameConstants, sizeof(frameConstants));
 
 		// D3D12 はルートシグネチャを差し替えると根に差したものが外れるので、静的とスキンを行き来したら
 		// b1 も差し直す。前に差したのがどちらだったかをこの 2 つで覚えておく。
@@ -585,7 +553,7 @@ namespace fang
 			if (!hasBoundPipeline || isBoundPipelineSkinned != mesh.isSkinned)
 			{
 				commandList.SetPipeline(pipeline);
-				commandList.SetFrameConstantBuffer(m_frameConstantBuffer);
+				commandList.SetFrameConstantBuffer(frameConstantBuffer);
 
 				hasBoundPipeline       = true;
 				isBoundPipelineSkinned = mesh.isSkinned;
