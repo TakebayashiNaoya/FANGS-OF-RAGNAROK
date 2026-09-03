@@ -5,6 +5,7 @@
 #include "Pch.h"
 #include "Renderer/SkinnedMeshRenderer.h"
 #include "Core/Log/Assert.h"
+#include "Core/Math/Pack.h"
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
 #include "Renderer/RendererLog.h"
@@ -25,17 +26,20 @@ namespace fang
 		/**
 		 * @brief シェーダに渡す頂点。
 		 * @details 並びは SkinnedMeshVS.hlsl との契約なのでヘッダに出さない。
+		 *          法線は 8 bit SNORM、UV は half に圧縮して持つ ➡ 入力アセンブラが float へ展開する。
 		 *          関節の番号は 8 bit × 4 で足りる（狼は 59 関節）。重みは合計 1 に正規化済みのものを
 		 *          そのまま持つ ➡ 量子化して合計がずれると、変形の乱れの原因が 1 つ増える。
 		 */
 		struct SkinnedMeshVertex
 		{
-			float   position[3];
-			float   normal[3];
-			float   texCoord[2];
-			uint8_t joints[4];
-			float   weights[4];
+			float    position[3]; /**< モデルの寸法精度は落とさない。 */
+			int8_t   normal[4];   /**< SNORM。w は未使用で 0。 */
+			uint16_t texCoord[2]; /**< half のビット列。 */
+			uint8_t  joints[4];
+			float    weights[4];
 		};
+
+		static_assert(sizeof(SkinnedMeshVertex) == 40, "頂点の大きさが契約の 40 バイトからずれている");
 
 		/** @brief 16 bit のインデックスで指せる頂点の数。 */
 		constexpr size_t MAX_VERTEX_COUNT = 65536;
@@ -108,8 +112,8 @@ namespace fang
 	{
 		constexpr rhi::VertexAttribute VERTEX_LAYOUT[] = {
 			{ "POSITION", 0, rhi::EnVertexFormat::Float3, offsetof(SkinnedMeshVertex, position) },
-			{ "NORMAL", 0, rhi::EnVertexFormat::Float3, offsetof(SkinnedMeshVertex, normal) },
-			{ "TEXCOORD", 0, rhi::EnVertexFormat::Float2, offsetof(SkinnedMeshVertex, texCoord) },
+			{ "NORMAL", 0, rhi::EnVertexFormat::SByte4Normalized, offsetof(SkinnedMeshVertex, normal) },
+			{ "TEXCOORD", 0, rhi::EnVertexFormat::Half2, offsetof(SkinnedMeshVertex, texCoord) },
 			{ "BLENDINDICES", 0, rhi::EnVertexFormat::UByte4, offsetof(SkinnedMeshVertex, joints) },
 			{ "BLENDWEIGHT", 0, rhi::EnVertexFormat::Float4, offsetof(SkinnedMeshVertex, weights) },
 		};
@@ -249,12 +253,13 @@ namespace fang
 			vertex.position[1] = position.y;
 			vertex.position[2] = position.z;
 
-			vertex.normal[0] = normal.x;
-			vertex.normal[1] = normal.y;
-			vertex.normal[2] = normal.z;
+			vertex.normal[0] = PackSignedNormalized8(normal.x);
+			vertex.normal[1] = PackSignedNormalized8(normal.y);
+			vertex.normal[2] = PackSignedNormalized8(normal.z);
+			vertex.normal[3] = 0;
 
-			vertex.texCoord[0] = texCoord.x;
-			vertex.texCoord[1] = texCoord.y;
+			vertex.texCoord[0] = PackFloat16(texCoord.x);
+			vertex.texCoord[1] = PackFloat16(texCoord.y);
 
 			vertex.joints[0] = joints.joints[0];
 			vertex.joints[1] = joints.joints[1];

@@ -6,6 +6,8 @@
 /**
  * @brief 頂点シェーダーへの入力。
  * @details 並びは MeshRenderer が private に持つ頂点構造体との契約。片方だけ変えない。
+ *          C++ 側の格納は normal が 8 bit SNORM、texCoord が half で、入力アセンブラがここの float へ展開する。
+ *          量子化で normal の長さは 1 からわずかにずれる ➡ MeshPS の normalize が受け皿。
  */
 struct VertexInput
 {
