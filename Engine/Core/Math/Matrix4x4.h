@@ -48,6 +48,25 @@ namespace fang
 	[[nodiscard]] Matrix4x4 MakePerspectiveMatrix(float fieldOfViewYRadians, float aspect, float nearZ, float farZ);
 
 	/**
+	 * @brief ビュー座標をクリップ座標へ移す正射影行列を作る。
+	 * @param left   視錐台の左端。cm。
+	 * @param right  視錐台の右端。cm。left より大きいこと。
+	 * @param bottom 視錐台の下端。cm。
+	 * @param top    視錐台の上端。cm。bottom より大きいこと。
+	 * @param nearZ  近平面までの距離。cm。
+	 * @param farZ   遠平面までの距離。cm。nearZ より大きいこと。
+	 * @return 左手系の正射影行列。深度は D3D に合わせて近平面が 0、遠平面が 1 になる。
+	 */
+	[[nodiscard]] Matrix4x4 MakeOrthographicOffCenterMatrix(
+		float left,
+		float right,
+		float bottom,
+		float top,
+		float nearZ,
+		float farZ
+	);
+
+	/**
 	 * @brief 2 つの行列を掛ける。
 	 * @param left  先に効かせる変換。
 	 * @param right 後に効かせる変換。

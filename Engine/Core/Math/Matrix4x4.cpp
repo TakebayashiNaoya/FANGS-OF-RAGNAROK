@@ -74,6 +74,23 @@ namespace fang
 	}
 
 
+	Matrix4x4 MakeOrthographicOffCenterMatrix(
+		float left,
+		float right,
+		float bottom,
+		float top,
+		float nearZ,
+		float farZ
+	)
+	{
+		FANG_ASSERT(right > left, "視錐台の右端が左端以下");
+		FANG_ASSERT(top > bottom, "視錐台の上端が下端以下");
+		FANG_ASSERT(farZ > nearZ, "遠平面が近平面より手前にある");
+
+		return ToMatrix4x4(DirectX::XMMatrixOrthographicOffCenterLH(left, right, bottom, top, nearZ, farZ));
+	}
+
+
 	Matrix4x4 Multiply(const Matrix4x4& left, const Matrix4x4& right)
 	{
 		return ToMatrix4x4(DirectX::XMMatrixMultiply(ToXMMatrix(left), ToXMMatrix(right)));

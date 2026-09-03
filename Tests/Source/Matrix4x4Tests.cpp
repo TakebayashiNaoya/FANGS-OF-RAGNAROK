@@ -257,3 +257,37 @@ TEST_CASE("透視投影が画角と縦横比どおりに視錐台の端を ±1 �
 	CHECK(bottomLeft.x / bottomLeft.w == doctest::Approx(-1.0f));
 	CHECK(bottomLeft.y / bottomLeft.w == doctest::Approx(-1.0f));
 }
+
+
+TEST_CASE("正射影が視錐台の角と中心を NDC の既知の点へ移す")
+{
+	// 中心を原点からずらした非対称の視錐台にして、オフセンターの計算が効いているか確かめる。
+	constexpr float left   = -100.0f;
+	constexpr float right  = 200.0f;
+	constexpr float bottom = -50.0f;
+	constexpr float top    = 150.0f;
+	constexpr float nearZ  = 10.0f;
+	constexpr float farZ   = 1000.0f;
+
+	const fang::Matrix4x4 projection = fang::MakeOrthographicOffCenterMatrix(left, right, bottom, top, nearZ, farZ);
+
+	const TransformedPoint nearBottomLeft = TransformPoint(projection, fang::Vector3{ left, bottom, nearZ });
+	CHECK(nearBottomLeft.x == doctest::Approx(-1.0f));
+	CHECK(nearBottomLeft.y == doctest::Approx(-1.0f));
+	CHECK(nearBottomLeft.z == doctest::Approx(0.0f));
+	CHECK(nearBottomLeft.w == doctest::Approx(1.0f));
+
+	const TransformedPoint farTopRight = TransformPoint(projection, fang::Vector3{ right, top, farZ });
+	CHECK(farTopRight.x == doctest::Approx(1.0f));
+	CHECK(farTopRight.y == doctest::Approx(1.0f));
+	CHECK(farTopRight.z == doctest::Approx(1.0f));
+	CHECK(farTopRight.w == doctest::Approx(1.0f));
+
+	// 正射影は w で割らないので、中心の座標をそのまま NDC の (0, 0, 0.5) と比較できる。
+	const fang::Vector3 center{ (left + right) / 2.0f, (bottom + top) / 2.0f, (nearZ + farZ) / 2.0f };
+	const TransformedPoint centerPoint = TransformPoint(projection, center);
+	CHECK(centerPoint.x == doctest::Approx(0.0f));
+	CHECK(centerPoint.y == doctest::Approx(0.0f));
+	CHECK(centerPoint.z == doctest::Approx(0.5f));
+	CHECK(centerPoint.w == doctest::Approx(1.0f));
+}
