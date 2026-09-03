@@ -4,7 +4,9 @@
  */
 #pragma once
 
+#include "Core/CoreMacros.h"
 #include "Core/Math/Vector3.h"
+#include "Core/Math/Vector4.h"
 
 
 namespace fang
@@ -62,4 +64,37 @@ namespace fang
 	 *          頂点だけ直して行列を直さないと、骨に沿った動きが Z 方向に裏返る。
 	 */
 	[[nodiscard]] Matrix4x4 ConvertToLeftHanded(const Matrix4x4& rightHanded);
+
+	/**
+	 * @brief 点を行ベクトルとして変換する（p * M）。
+	 * @param point  変換する位置。
+	 * @param matrix 行ベクトル規約の変換行列。
+	 * @return 変換後の位置。平行移動（m[3][0..2]）も足される。
+	 */
+	[[nodiscard]] Vector3 TransformPoint(const Vector3& point, const Matrix4x4& matrix);
+
+	/**
+	 * @brief 向きを行ベクトルとして変換する（p * M）。
+	 * @param direction 変換する向き。
+	 * @param matrix    行ベクトル規約の変換行列。
+	 * @return 変換後の向き。平行移動は掛からない。拡縮を含む行列を渡すと長さは保たれない。
+	 */
+	[[nodiscard]] Vector3 TransformDirection(const Vector3& direction, const Matrix4x4& matrix);
+
+	/** @brief 行列の行を 1 本取り出す。rowIndex は 0〜3。 */
+	[[nodiscard]] FANG_FORCEINLINE Vector4 GetRow(const Matrix4x4& matrix, int rowIndex)
+	{
+		return Vector4{ matrix.m[rowIndex][0], matrix.m[rowIndex][1], matrix.m[rowIndex][2], matrix.m[rowIndex][3] };
+	}
+
+	/** @brief 行列の列を 1 本取り出す。columnIndex は 0〜3。 */
+	[[nodiscard]] FANG_FORCEINLINE Vector4 GetColumn(const Matrix4x4& matrix, int columnIndex)
+	{
+		return Vector4{
+			matrix.m[0][columnIndex],
+			matrix.m[1][columnIndex],
+			matrix.m[2][columnIndex],
+			matrix.m[3][columnIndex],
+		};
+	}
 } // namespace fang

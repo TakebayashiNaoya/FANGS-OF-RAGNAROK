@@ -160,42 +160,47 @@ namespace fang::rhi
 			return false;
 		}
 
-		for (uint32_t bufferIndex = 0; bufferIndex < BACK_BUFFER_COUNT; ++bufferIndex)
+		// 記録の口は起動時に全部そろえておく。フレームの途中で生成すると、そこだけ数ミリ秒の山ができる。
+		for (uint32_t listIndex = 0; listIndex < MAX_COMMAND_LIST_COUNT; ++listIndex)
 		{
+			for (uint32_t bufferIndex = 0; bufferIndex < BACK_BUFFER_COUNT; ++bufferIndex)
+			{
+				if (!CheckHresult(
+						m_device->CreateCommandAllocator(
+							D3D12_COMMAND_LIST_TYPE_DIRECT,
+							IID_PPV_ARGS(&m_commandAllocators[listIndex][bufferIndex])
+						),
+						"コマンドアロケータの生成"
+					))
+				{
+					return false;
+				}
+			}
+
 			if (!CheckHresult(
-					m_device->CreateCommandAllocator(
+					m_device->CreateCommandList(
+						0,
 						D3D12_COMMAND_LIST_TYPE_DIRECT,
-						IID_PPV_ARGS(&m_commandAllocators[bufferIndex])
+						m_commandAllocators[listIndex][m_swapChain.GetFrameIndex()].Get(),
+						nullptr,
+						IID_PPV_ARGS(&m_commandLists[listIndex])
 					),
-					"コマンドアロケータの生成"
+					"コマンドリストの生成"
 				))
 			{
 				return false;
 			}
-		}
 
-		if (!CheckHresult(
-				m_device->CreateCommandList(
-					0,
-					D3D12_COMMAND_LIST_TYPE_DIRECT,
-					m_commandAllocators[m_swapChain.GetFrameIndex()].Get(),
-					nullptr,
-					IID_PPV_ARGS(&m_commandList)
-				),
-				"コマンドリストの生成"
-			))
-		{
-			return false;
-		}
+			// 生成直後は記録中なので閉じておく。貸し出しは必ず Reset から始まる。
+			FANG_VERIFY(SUCCEEDED(m_commandLists[listIndex]->Close()));
 
-		FANG_VERIFY(SUCCEEDED(m_commandList->Close()));
+			m_commandListWrappers[listIndex].m_device = this;
+		}
 
 		if (!m_fence.Initialize(*m_device.Get()))
 		{
 			return false;
 		}
-
-		m_commandListWrapper.m_device = this;
 
 		return true;
 	}
@@ -215,11 +220,15 @@ namespace fang::rhi
 		}
 
 		// 生成と逆の順に手放す。
-		m_commandListWrapper = {};
-		m_commandList.Reset();
-		for (uint32_t bufferIndex = 0; bufferIndex < BACK_BUFFER_COUNT; ++bufferIndex)
+		for (uint32_t listIndex = 0; listIndex < MAX_COMMAND_LIST_COUNT; ++listIndex)
 		{
-			m_commandAllocators[bufferIndex].Reset();
+			m_commandListWrappers[listIndex] = {};
+			m_commandLists[listIndex].Reset();
+
+			for (uint32_t bufferIndex = 0; bufferIndex < BACK_BUFFER_COUNT; ++bufferIndex)
+			{
+				m_commandAllocators[listIndex][bufferIndex].Reset();
+			}
 		}
 
 		m_textures.Shutdown();
@@ -235,8 +244,11 @@ namespace fang::rhi
 		m_device.Reset();
 		m_factory.Reset();
 
-		m_isFrameOpen   = false;
-		m_isInitialized = false;
+		m_acquiredCommandListCount = 0;
+
+		m_isFrameOpen       = false;
+		m_isFrameRecordable = false;
+		m_isInitialized     = false;
 	}
 
 
@@ -360,63 +372,72 @@ namespace fang::rhi
 	}
 
 
-	CommandList* GraphicsDevice::BeginFrame(const ClearColor& clearColor)
+	void GraphicsDevice::BeginFrame()
 	{
 		FANG_ASSERT(m_isInitialized, "GraphicsDevice が初期化されていない");
 		FANG_ASSERT(!m_isFrameOpen, "BeginFrame が二重に呼ばれている");
 
+		m_isFrameOpen              = true;
+		m_isFrameRecordable        = true;
+		m_acquiredCommandListCount = 0;
+
 		// 前にこのバックバッファ用へ記録したコマンドのメモリを巻き戻して再利用する。
 		// EndFrame で毎フレーム GPU の完了を待っているので、GPU が使用中のメモリを巻き戻す事故は起きない。
-		// Reset が失敗するのは主にデバイスロストで、呼び出し側は nullptr を見てフレームループを畳む。
-		ID3D12CommandAllocator* allocator = m_commandAllocators[m_swapChain.GetFrameIndex()].Get();
-		if (!CheckHresult(allocator->Reset(), "コマンドアロケータの Reset"))
+		// Reset が失敗するのは主にデバイスロストで、そのときは AcquireCommandList が貸さなくなる。
+		const uint32_t frameIndex = m_swapChain.GetFrameIndex();
+		for (uint32_t listIndex = 0; listIndex < MAX_COMMAND_LIST_COUNT; ++listIndex)
 		{
-			LogDeviceRemovedReason();
-			return nullptr;
+			if (!CheckHresult(m_commandAllocators[listIndex][frameIndex]->Reset(), "コマンドアロケータの Reset"))
+			{
+				LogDeviceRemovedReason();
+				m_isFrameRecordable = false;
+				return;
+			}
 		}
-
-		// 記録口を「記録開始」状態に戻す。
-		if (!CheckHresult(m_commandList->Reset(allocator, nullptr), "コマンドリストの Reset"))
-		{
-			LogDeviceRemovedReason();
-			return nullptr;
-		}
-
-		// このフレームでシェーダから見えるディスクリプタの置き場を宣言する。
-		ID3D12DescriptorHeap* heaps[] = { m_shaderVisibleHeap.GetNative() };
-		m_commandList->SetDescriptorHeaps(FANG_COUNT_OF(heaps), heaps);
-
-		// リソースバリア: このバックバッファを「表示用」から「描き込み先」へ切り替える宣言。
-		D3D12_RESOURCE_BARRIER barrier{};
-		barrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;  // 「用途の遷移」の宣言。
-		barrier.Transition.pResource   = m_swapChain.GetCurrentBackBuffer();      // 今回のバックバッファを指す
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;            // これまでの用途は「表示用」
-		barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_RENDER_TARGET;      // 今回の用途は「描き込み先」
-		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES; // 全てのミップマップを対象にする
-		m_commandList->ResourceBarrier(1, &barrier);                              // 1 個のバリアを積む
-
-		// 今回のバックバッファと深度バッファを描画先に据える。
-		const D3D12_CPU_DESCRIPTOR_HANDLE renderTargetView = m_swapChain.GetCurrentRenderTargetView();
-		const D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView = m_depthBuffer.GetDepthStencilView();
-		m_commandList->OMSetRenderTargets(1, &renderTargetView, FALSE, &depthStencilView);
-
-		// クリア色を RGBA の float 配列に変換して渡す。D3D12 は 0.0〜1.0 の範囲で読む。
-		const float clearValues[4] = { clearColor.red, clearColor.green, clearColor.blue, clearColor.alpha };
-		m_commandList->ClearRenderTargetView(renderTargetView, clearValues, 0, nullptr);
-
-		// 深度は一番奥の 1.0 で埋める。PSO の DepthFunc が LESS なので、手前の面だけが残る。
-		m_commandList->ClearDepthStencilView(depthStencilView, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-
-		// 公開型の記録口に生のコマンドリストを差して貸し出す。EndFrame で回収する。
-		m_commandListWrapper.m_nativeCommandList = m_commandList.Get();
-
-		m_isFrameOpen = true;
-
-		return &m_commandListWrapper;
 	}
 
 
-	void GraphicsDevice::EndFrame()
+	CommandList* GraphicsDevice::AcquireCommandList()
+	{
+		FANG_ASSERT(m_isInitialized, "GraphicsDevice が初期化されていない");
+		FANG_ASSERT(m_isFrameOpen, "BeginFrame の外でコマンドリストを借りようとしている");
+		FANG_ASSERT(
+			m_acquiredCommandListCount < MAX_COMMAND_LIST_COUNT,
+			"1 フレームで貸せるコマンドリストを使い切った"
+		);
+
+		if (!m_isFrameRecordable || m_acquiredCommandListCount >= MAX_COMMAND_LIST_COUNT)
+		{
+			return nullptr;
+		}
+
+		const uint32_t             listIndex   = m_acquiredCommandListCount;
+		ID3D12CommandAllocator*    allocator   = m_commandAllocators[listIndex][m_swapChain.GetFrameIndex()].Get();
+		ID3D12GraphicsCommandList* commandList = m_commandLists[listIndex].Get();
+
+		// 記録口を「記録開始」状態に戻す。
+		if (!CheckHresult(commandList->Reset(allocator, nullptr), "コマンドリストの Reset"))
+		{
+			LogDeviceRemovedReason();
+			m_isFrameRecordable = false;
+			return nullptr;
+		}
+
+		// シェーダから見えるディスクリプタの置き場は本ごとに宣言する。リストをまたいで引き継がれないため。
+		ID3D12DescriptorHeap* heaps[] = { m_shaderVisibleHeap.GetNative() };
+		commandList->SetDescriptorHeaps(FANG_COUNT_OF(heaps), heaps);
+
+		// 公開型の記録口に生のコマンドリストを差して貸し出す。EndFrame で回収する。
+		CommandList& wrapper        = m_commandListWrappers[listIndex];
+		wrapper.m_nativeCommandList = commandList;
+
+		++m_acquiredCommandListCount;
+
+		return &wrapper;
+	}
+
+
+	void GraphicsDevice::EndFrame(std::span<CommandList* const> commandLists)
 	{
 		FANG_ASSERT(m_isInitialized, "GraphicsDevice が初期化されていない");
 
@@ -425,28 +446,59 @@ namespace fang::rhi
 			return;
 		}
 
-		// BeginFrame の逆向きバリア。「描き込み先」から「表示用」へ戻してから Present する。
-		D3D12_RESOURCE_BARRIER barrier{};
-		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		// 貸した本は全部閉じる。渡されなかった本も記録中のまま残すと、次のフレームの Reset で叱られる。
+		for (uint32_t listIndex = 0; listIndex < m_acquiredCommandListCount; ++listIndex)
+		{
+			FANG_VERIFY(SUCCEEDED(m_commandLists[listIndex]->Close()));
+		}
 
-		barrier.Transition.pResource   = m_swapChain.GetCurrentBackBuffer();
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		barrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PRESENT;
-		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		m_commandList->ResourceBarrier(1, &barrier);
+		ID3D12CommandList* nativeCommandLists[MAX_COMMAND_LIST_COUNT]{};
+		uint32_t           nativeCommandListCount = 0;
+		for (CommandList* commandList : commandLists)
+		{
+			FANG_ASSERT(commandList != nullptr, "EndFrame に空のコマンドリストが混ざっている");
+			FANG_ASSERT(
+				nativeCommandListCount < MAX_COMMAND_LIST_COUNT,
+				"貸した本数より多くのコマンドリストを渡している"
+			);
 
-		FANG_VERIFY(SUCCEEDED(m_commandList->Close()));
+			if (commandList == nullptr || nativeCommandListCount >= MAX_COMMAND_LIST_COUNT)
+			{
+				continue;
+			}
 
-		ID3D12CommandList* commandLists[] = { m_commandList.Get() };
-		m_commandQueue->ExecuteCommandLists(FANG_COUNT_OF(commandLists), commandLists);
+			auto* nativeCommandList = static_cast<ID3D12GraphicsCommandList*>(commandList->m_nativeCommandList);
+			FANG_ASSERT(nativeCommandList != nullptr, "このフレームに借りていないコマンドリストを渡している");
+			if (nativeCommandList == nullptr)
+			{
+				continue;
+			}
+
+			nativeCommandLists[nativeCommandListCount] = nativeCommandList;
+			++nativeCommandListCount;
+		}
+
+		// 1 本も無ければ Present だけ行う。積むものが無いフレームでも画面の更新は止めない。
+		if (nativeCommandListCount > 0)
+		{
+			m_commandQueue->ExecuteCommandLists(nativeCommandListCount, nativeCommandLists);
+		}
 
 		m_swapChain.Present();
 
 		// TODO: GPU を 2〜3 フレーム in-flight にする。今は毎フレーム待つ。
 		m_fence.WaitForGPU(*m_commandQueue.Get());
-		m_commandListWrapper.m_nativeCommandList = nullptr;
+
+		for (uint32_t listIndex = 0; listIndex < m_acquiredCommandListCount; ++listIndex)
+		{
+			m_commandListWrappers[listIndex].m_nativeCommandList = nullptr;
+		}
+
+		m_acquiredCommandListCount = 0;
 
 		m_swapChain.UpdateFrameIndex();
-		m_isFrameOpen = false;
+
+		m_isFrameOpen       = false;
+		m_isFrameRecordable = false;
 	}
 } // namespace fang::rhi

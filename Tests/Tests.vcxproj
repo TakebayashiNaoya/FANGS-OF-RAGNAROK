@@ -15,7 +15,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
 
   <PropertyGroup Label="FangModule">
-    <FangModuleDependencies>Core;Collision;Animation;Scene;Resource;Runtime</FangModuleDependencies>
+    <FangModuleDependencies>Core;RHI;Renderer;Collision;Animation;Scene;Resource;Runtime</FangModuleDependencies>
   </PropertyGroup>
 
   <Import Project="$(FangRoot)Build\Program.props" />
@@ -31,16 +31,21 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
+    <ClCompile Include="Source\AabbTests.cpp" />
     <ClCompile Include="Source\AnimationPlaybackTests.cpp" />
     <ClCompile Include="Source\DdsImageTests.cpp" />
     <ClCompile Include="Source\FrameAllocatorTests.cpp" />
     <ClCompile Include="Source\FramePipelineTests.cpp" />
+    <ClCompile Include="Source\FrustumTests.cpp" />
     <ClCompile Include="Source\JobSystemStressTests.cpp" />
     <ClCompile Include="Source\JobSystemTests.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Matrix4x4Tests.cpp" />
+    <ClCompile Include="Source\MatrixOperationTests.cpp" />
     <ClCompile Include="Source\PackTests.cpp" />
     <ClCompile Include="Source\ParallelForTests.cpp" />
+    <ClCompile Include="Source\RenderGraphTests.cpp" />
+    <ClCompile Include="Source\VectorTests.cpp" />
     <ClCompile Include="Source\WorkStealingDequeTests.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->

@@ -174,7 +174,7 @@ namespace fang::rhi
 
 		// リソースバリア: 「コピーの受け口」から「シェーダが読むもの」へ用途を切り替える宣言。
 		// 生成時に COPY_DEST で作ってあるので、転送コマンドの後ろに積んでおけば
-		// GPU は転送完了 → 切り替えの順で処理する（詳しい理屈は GraphicsDevice.cpp の BeginFrame 側）。
+		// GPU は転送完了 → 切り替えの順で処理する（詳しい理屈は CommandList の TransitionBackBuffer 側）。
 		D3D12_RESOURCE_BARRIER barrier{};
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 

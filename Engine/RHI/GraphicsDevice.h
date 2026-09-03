@@ -17,6 +17,7 @@
 #include "RHI/SwapChain.h"
 #include "RHI/TexturePool.h"
 #include <cstdint>
+#include <span>
 
 
 namespace fang::rhi
@@ -26,12 +27,15 @@ namespace fang::rhi
 	 * @details 部品（SwapChain / DepthBuffer / DescriptorHeap / GPUFence / 各台帳）を持ち、
 	 *          フレームの開始と終了を仕切る。
 	 *          公開する操作は public、D3D12 の実体は private に置く。
-	 * @threading Initialize / Shutdown / BeginFrame / EndFrame はメインスレッドのみ。
+	 * @threading Initialize / Shutdown / BeginFrame / AcquireCommandList / EndFrame / Resize はメインスレッドのみ。
 	 */
 	class GraphicsDevice
 	{
 	public:
 		FANG_NON_COPYABLE(GraphicsDevice);
+
+		/** @brief 1 フレームで貸せるコマンドリストの本数。並列記録の人数の上限でもある。 */
+		static constexpr uint32_t MAX_COMMAND_LIST_COUNT = 8;
 
 		GraphicsDevice();
 		~GraphicsDevice();
@@ -89,6 +93,8 @@ namespace fang::rhi
 		 * @param handle      書き込み先。CreateBuffer / CreateDynamicBuffer が返したもの。
 		 * @param data        書き込む中身。
 		 * @param sizeInBytes data の大きさ（バイト）。作ったときの容量を超えるとアサートに掛かる。
+		 * @threading メインスレッドと記録ジョブから呼べる。台帳を読んでマップ済み領域へ写すだけで、
+		 *            生成も解放もしないため。ただし同じバッファへ同時に書かないことは呼び出し側の約束。
 		 */
 		void UpdateBuffer(BufferHandle handle, const void* data, uint32_t sizeInBytes);
 
@@ -122,21 +128,39 @@ namespace fang::rhi
 		 */
 		void Resize(uint32_t width, uint32_t height);
 
-		/**
-		 * @brief フレームを開始し、クリア済みのバックバッファに積めるコマンドリストを返す。
-		 * @param clearColor 画面を塗りつぶす色。
-		 * @return コマンドリスト。EndFrame まで有効で、解放は不要。失敗したら nullptr（そのフレームは描かずに飛ばす）。
-		 */
-		[[nodiscard]] CommandList* BeginFrame(const ClearColor& clearColor);
+		/** @brief バックバッファの幅（ピクセル）。ビューポートを画面全体に合わせるときに使う。 */
+		[[nodiscard]] FANG_FORCEINLINE uint32_t GetBackBufferWidth() const { return m_swapChain.GetWidth(); }
 
-		/** @brief 積んだコマンドを送って Present し、GPU の完了を待つ。 */
-		void EndFrame();
+		/** @brief バックバッファの高さ（ピクセル）。 */
+		[[nodiscard]] FANG_FORCEINLINE uint32_t GetBackBufferHeight() const { return m_swapChain.GetHeight(); }
+
+		/**
+		 * @brief フレームを開始する。
+		 * @details このフレームぶんの記録メモリを巻き戻して、貸出の帳簿を空にするだけ。バリアもクリアも
+		 *          描画先の設定もしない ➡ どの描画先に何を積むかは呼び出し側が決める。
+		 */
+		void BeginFrame();
+
+		/**
+		 * @brief 記録できる状態のコマンドリストを 1 本借りる。
+		 * @details 借りた本は空で、描画先もビューポートも差さっていない。返した後の片付けは EndFrame がやる。
+		 * @return コマンドリスト。EndFrame まで有効で、解放は不要。
+		 *         失敗したら nullptr（主にデバイスロスト。そのフレームは描かずに畳む）。
+		 */
+		[[nodiscard]] CommandList* AcquireCommandList();
+
+		/**
+		 * @brief 積んだコマンドを送って Present し、GPU の完了を待つ。
+		 * @param commandLists 実行するコマンドリスト。渡した順に GPU が処理する。
+		 *                     借りた本を渡さなくてもよく、空なら Present とフェンス待ちだけを行う。
+		 */
+		void EndFrame(std::span<CommandList* const> commandLists);
 
 
 	private:
 		friend class CommandList;
 
-		/** @brief デバイス削除（ロスト）の理由をログに残す。BeginFrame が失敗したときの診断用。 */
+		/** @brief デバイス削除（ロスト）の理由をログに残す。記録の準備が失敗したときの診断用。 */
 		void LogDeviceRemovedReason() const;
 
 		ComPtr<IDXGIFactory6>      m_factory;      /**< アダプタ列挙とスワップチェーン生成の入口。 */
@@ -152,15 +176,25 @@ namespace fang::rhi
 		BufferPool   m_buffers;   /**< BufferHandle で引く台帳。 */
 		TexturePool  m_textures;  /**< TextureHandle で引く台帳。 */
 
-		ComPtr<ID3D12CommandAllocator> m_commandAllocators[BACK_BUFFER_COUNT]; /**< コマンドの記録メモリ。 */
+		/**
+		 * @brief コマンドの記録メモリ。
+		 * @details 本ごとに分けるのは、記録中の本が同じアロケータを共有できないため。バックバッファぶん持つのは、
+		 *          GPU がまだ読んでいるメモリを巻き戻さないため。
+		 */
+		ComPtr<ID3D12CommandAllocator> m_commandAllocators[MAX_COMMAND_LIST_COUNT][BACK_BUFFER_COUNT];
 
-		ComPtr<ID3D12GraphicsCommandList> m_commandList; /**< コマンドの記録口。毎フレーム Reset する。 */
+		ComPtr<ID3D12GraphicsCommandList> m_commandLists[MAX_COMMAND_LIST_COUNT]; /**< コマンドの記録口。 */
 
-		CommandList m_commandListWrapper; /**< BeginFrame が返す公開型。中身は m_commandList を指す。 */
+		CommandList m_commandListWrappers[MAX_COMMAND_LIST_COUNT]; /**< AcquireCommandList が貸し出す公開型。 */
+
+		uint32_t m_acquiredCommandListCount = 0; /**< このフレームで貸した本数。BeginFrame が 0 に戻す。 */
 
 		/** @brief Initialize に入った時点で立つ。途中で失敗しても Shutdown が片付けられるようにするため。 */
 		bool m_isInitialized = false;
 
 		bool m_isFrameOpen = false; /**< BeginFrame と EndFrame の間なら true。 */
+
+		/** @brief このフレームの記録メモリを巻き戻せたか。倒れていると AcquireCommandList が貸さない。 */
+		bool m_isFrameRecordable = false;
 	};
 } // namespace fang::rhi

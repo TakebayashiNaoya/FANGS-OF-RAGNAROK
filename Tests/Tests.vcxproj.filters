@@ -7,6 +7,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Source\AabbTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\AnimationPlaybackTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
@@ -17,6 +20,9 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\FramePipelineTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\FrustumTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\JobSystemStressTests.cpp">
@@ -31,10 +37,19 @@
     <ClCompile Include="Source\Matrix4x4Tests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\MatrixOperationTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\PackTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\ParallelForTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\RenderGraphTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\VectorTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\WorkStealingDequeTests.cpp">

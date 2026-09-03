@@ -16,12 +16,12 @@ namespace fang::rhi
 		{
 			switch (format)
 			{
-				case EnVertexFormat::Float2: return DXGI_FORMAT_R32G32_FLOAT;
-				case EnVertexFormat::Float3: return DXGI_FORMAT_R32G32B32_FLOAT;
-				case EnVertexFormat::Float4: return DXGI_FORMAT_R32G32B32A32_FLOAT;
+				case EnVertexFormat::Float2:           return DXGI_FORMAT_R32G32_FLOAT;
+				case EnVertexFormat::Float3:           return DXGI_FORMAT_R32G32B32_FLOAT;
+				case EnVertexFormat::Float4:           return DXGI_FORMAT_R32G32B32A32_FLOAT;
 				case EnVertexFormat::UByte4Normalized: return DXGI_FORMAT_R8G8B8A8_UNORM;
-				case EnVertexFormat::UByte4: return DXGI_FORMAT_R8G8B8A8_UINT;
-				case EnVertexFormat::Half2: return DXGI_FORMAT_R16G16_FLOAT;
+				case EnVertexFormat::UByte4:           return DXGI_FORMAT_R8G8B8A8_UINT;
+				case EnVertexFormat::Half2:            return DXGI_FORMAT_R16G16_FLOAT;
 				case EnVertexFormat::SByte4Normalized: return DXGI_FORMAT_R8G8B8A8_SNORM;
 			}
 
@@ -37,7 +37,7 @@ namespace fang::rhi
 		textureRange.NumDescriptors     = 1;
 		textureRange.BaseShaderRegister = 0;
 
-		D3D12_ROOT_PARAMETER rootParameters[3]{};
+		D3D12_ROOT_PARAMETER rootParameters[4]{};
 		uint32_t             rootParameterCount = 0;
 
 		Entry entry;
@@ -73,16 +73,29 @@ namespace fang::rhi
 			++rootParameterCount;
 		}
 
-		if (desc.hasConstantBuffer)
+		if (desc.hasFrameConstantBuffer)
 		{
-			entry.rootParameters.constantBuffer = rootParameterCount;
+			entry.rootParameters.frameConstantBuffer = rootParameterCount;
+
+			// VS がビュー射影行列、PS がカメラ位置と光を同じ b1 から読むので、両方から見えるようにする。
+			D3D12_ROOT_PARAMETER& parameter = rootParameters[rootParameterCount];
+			parameter.ParameterType         = D3D12_ROOT_PARAMETER_TYPE_CBV;
+			parameter.ShaderVisibility      = D3D12_SHADER_VISIBILITY_ALL;
+
+			parameter.Descriptor.ShaderRegister = 1;
+			++rootParameterCount;
+		}
+
+		if (desc.hasSkinningConstantBuffer)
+		{
+			entry.rootParameters.skinningConstantBuffer = rootParameterCount;
 
 			// ディスクリプタを作らず GPU アドレスを直接渡すルート CBV。ヒープのスロットを消費しない。
 			D3D12_ROOT_PARAMETER& parameter = rootParameters[rootParameterCount];
 			parameter.ParameterType         = D3D12_ROOT_PARAMETER_TYPE_CBV;
 			parameter.ShaderVisibility      = D3D12_SHADER_VISIBILITY_VERTEX;
 
-			parameter.Descriptor.ShaderRegister = 1;
+			parameter.Descriptor.ShaderRegister = 2;
 			++rootParameterCount;
 		}
 
@@ -191,8 +204,8 @@ namespace fang::rhi
 			blend.BlendOpAlpha   = D3D12_BLEND_OP_ADD;
 		}
 
-		// 深度を使わないパイプラインにも BeginFrame が DSV を差すので、形式は常に合わせておく。
-		// UNKNOWN のままだと差した DSV と食い違い、デバッグレイヤーに叱られる。
+		// 深度を使わないパイプラインでも、描画先に DSV が差さっていることがある。
+		// UNKNOWN のままだと差した DSV と食い違い、デバッグレイヤーに叱られるので形式は常に合わせておく。
 		pipelineDesc.DSVFormat = DepthBuffer::DEPTH_FORMAT;
 
 		D3D12_DEPTH_STENCIL_DESC& depthStencil = pipelineDesc.DepthStencilState;

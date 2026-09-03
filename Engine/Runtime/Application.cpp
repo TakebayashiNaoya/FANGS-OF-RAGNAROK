@@ -8,6 +8,8 @@
 #include "Animation/SkeletalAnimation.h"
 #include "Core/Job/JobSystem.h"
 #include "Core/Log/Assert.h"
+#include "Core/Math/Aabb.h"
+#include "Core/Math/MathConstants.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Memory/FrameAllocator.h"
 #include "Core/Platform/AssetPath.h"
@@ -15,8 +17,9 @@
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
 #include "Renderer/MeshRenderer.h"
-#include "Renderer/SkinnedMeshRenderer.h"
-#include "Renderer/TriangleRenderer.h"
+#include "Renderer/RenderGraph.h"
+#include "Renderer/SceneRenderer.h"
+#include "Renderer/UnlitRenderer.h"
 #include "Resource/DdsImage.h"
 #include "Resource/GltfMesh.h"
 #include "Runtime/FramePipeline.h"
@@ -35,9 +38,6 @@ namespace fang
 	namespace
 	{
 		constexpr rhi::ClearColor BACKGROUND_COLOR{ 0.05f, 0.06f, 0.09f, 1.0f };
-
-		/** @brief 円周率。Core/Math がまだ定数を持っていないのでここに置く。 */
-		constexpr float PI = 3.14159265f;
 
 		/** @brief 狼の glTF。アセットの根っこからの相対パス。 */
 		constexpr const char* WOLF_MODEL_RELATIVE_PATH = "Models\\Wolf.gltf";
@@ -69,6 +69,12 @@ namespace fang
 
 		/** @brief カメラが狼の周りを 1 周する秒数。 */
 		constexpr float CAMERA_ORBIT_SECONDS = 20.0f;
+
+		// カメラの既定角度（cameraOrbitRadians = 0）は Z 方向から見た側面視点で、体長 204 の X 軸が画面の
+		// 横方向に映る。2 体目をこの方向へずらせば、その角度で見たときに 2 体が画面上で横並びに見える。
+		// 204 よりわずかに大きくして、体同士が重ならない隙間を空ける。
+		/** @brief 2 体目の狼を 1 体目からずらす X 方向のオフセット（cm）。 */
+		constexpr float SECOND_WOLF_OFFSET_X = 220.0f;
 
 		/**
 		 * @brief 狼 1 体ぶんの持ち物。
@@ -106,13 +112,15 @@ namespace fang
 		/** @brief FramePipeline へ渡す、フレームループの持ち物。 */
 		struct FrameLoopContext
 		{
-			IApplication*        application         = nullptr;
-			rhi::GraphicsDevice* device              = nullptr;
-			Window*              window              = nullptr;
-			TriangleRenderer*    triangleRenderer    = nullptr;
-			MeshRenderer*        meshRenderer        = nullptr;
-			SkinnedMeshRenderer* skinnedMeshRenderer = nullptr;
-			WolfModel*           wolf                = nullptr;
+			IApplication*        application   = nullptr;
+			rhi::GraphicsDevice* device        = nullptr;
+			Window*              window        = nullptr;
+			JobSystem*           jobSystem     = nullptr;
+			RenderGraph*         renderGraph   = nullptr;
+			SceneRenderer*       sceneRenderer = nullptr;
+			UnlitRenderer*       unlitRenderer = nullptr;
+			MeshRenderer*        meshRenderer  = nullptr;
+			WolfModel*           wolf          = nullptr;
 
 			/** @brief カメラの水平回転角（ラジアン）。入力の仕組みがまだ無いので時間で回す。 */
 			float cameraOrbitRadians = 0.0f;
@@ -216,12 +224,7 @@ namespace fang
 		 * @brief 狼のモデルを読んで GPU へ載せる。骨を持っていればアニメーションも読む。
 		 * @details 失敗しても落とさない。モデルが出なくても三角形とエディタは動き、ゲームの本質でもないため。
 		 */
-		void LoadWolf(
-			rhi::GraphicsDevice& device,
-			MeshRenderer&        meshRenderer,
-			SkinnedMeshRenderer& skinnedMeshRenderer,
-			WolfModel*           outWolf
-		)
+		void LoadWolf(rhi::GraphicsDevice& device, MeshRenderer& meshRenderer, WolfModel* outWolf)
 		{
 			// GltfMesh は CreateMesh が済めば用済み。15MB の .bin 由来の配列を抱え続けないよう、
 			// この関数を抜けるところで手放す。逆バインド行列と関節名だけは写しを残す。
@@ -262,7 +265,7 @@ namespace fang
 				.jointWeights = model.GetJointWeights(),
 			};
 
-			outWolf->mesh = skinnedMeshRenderer.CreateMesh(device, source);
+			outWolf->mesh = meshRenderer.CreateMesh(device, source);
 			if (!outWolf->mesh.IsValid())
 			{
 				return;
@@ -306,13 +309,63 @@ namespace fang
 			return loopContext.application->OnUpdate(context);
 		}
 
+		/** @brief 三角形パスの記録関数に渡す入力。 */
+		struct UnlitPassRecordArguments
+		{
+			UnlitRenderer*       unlitRenderer = nullptr;
+			rhi::GraphicsDevice* device        = nullptr;
+		};
+
+		/**
+		 * @brief 三角形を積む。
+		 * @details 頂点をクリップ空間で持っているので、恒等行列（Matrix4x4 の既定値）を渡してそのまま通す。
+		 */
+		void RecordUnlitPass(void* userData, rhi::CommandList& commandList)
+		{
+			const auto& arguments = *static_cast<const UnlitPassRecordArguments*>(userData);
+			arguments.unlitRenderer->DrawTriangle(*arguments.device, commandList, Matrix4x4{});
+		}
+
+#if FANG_ENABLE_EDITOR
+		/** @brief エディタパスの記録関数に渡す入力。従来 FrameRenderContext に積んでいたものと同じ中身。 */
+		struct EditorPassRecordArguments
+		{
+			IApplication*        application      = nullptr;
+			rhi::GraphicsDevice* device           = nullptr;
+			const Window*        window           = nullptr;
+			const FrameData*     frameData        = nullptr;
+			uint64_t             frameIndex       = 0;
+			float                deltaTimeSeconds = 0.0f;
+		};
+
+		/**
+		 * @brief 上の層に描画コマンドを積ませる。
+		 * @details ImGui はメインスレッドでしか触れないので、このパスは recordThread = Main で宣言する
+		 *          （01 §9.2）。IApplication の契約は変えず、従来どおり FrameRenderContext を組んで渡す。
+		 */
+		void RecordEditorPass(void* userData, rhi::CommandList& commandList)
+		{
+			const auto& arguments = *static_cast<const EditorPassRecordArguments*>(userData);
+
+			const FrameRenderContext context{
+				*arguments.device,   commandList,          *arguments.window,
+				arguments.frameData, arguments.frameIndex, arguments.deltaTimeSeconds,
+			};
+
+			arguments.application->OnRender(context);
+		}
+#endif
+
 		/** @brief 描画の本体。RHI を触るのはここだけなので、メインスレッドの持ち物が全部そろっている。 */
 		void RenderFrame(void* userData, const FrameData* frameData, uint64_t frameIndex, float deltaTimeSeconds)
 		{
 			auto& loopContext = *static_cast<FrameLoopContext*>(userData);
 
-			rhi::GraphicsDevice& device = *loopContext.device;
-			Window&              window = *loopContext.window;
+			rhi::GraphicsDevice& device        = *loopContext.device;
+			Window&              window        = *loopContext.window;
+			JobSystem&           jobSystem     = *loopContext.jobSystem;
+			RenderGraph&         graph         = *loopContext.renderGraph;
+			SceneRenderer&       sceneRenderer = *loopContext.sceneRenderer;
 
 			// リサイズは更新と関わらないので、ジョブを投げた後のここで済ませる。BeginFrame の中では作り直せない。
 			if (window.ConsumeSizeChange())
@@ -320,106 +373,172 @@ namespace fang
 				device.Resize(window.GetWidth(), window.GetHeight());
 			}
 
-			// このフレームの記録準備（記録メモリの巻き戻し、バックバッファの描き込み先への切り替え、クリア）を
-			// 頼み、描画コマンドの書き込み先を受け取る。EndFrame まで有効。
-			rhi::CommandList* commandList = device.BeginFrame(BACKGROUND_COLOR);
-			if (commandList == nullptr)
+			// このフレームの記録メモリを巻き戻すだけ。バリアもクリアも描画先の設定もしない
+			// （どのパスが何に書くかはこの後の宣言で決まる。積むのはグラフの仕事）。
+			device.BeginFrame();
+
+			graph.Reset();
+			const RenderGraphResourceId backBufferResource  = graph.ImportBackBuffer();
+			const RenderGraphResourceId depthBufferResource = graph.ImportDepthBuffer();
+
+			sceneRenderer.Reset();
+
+			// 入力の仕組みがまだ無いので、時間でカメラを回して全方向から形と前後関係を確かめられるようにする。
+			// 狼を読めているかによらず視点は要る（View が無いと ScenePass が画面をクリアできない）。
+			loopContext.cameraOrbitRadians += deltaTimeSeconds * (2.0f * PI / CAMERA_ORBIT_SECONDS);
+			if (loopContext.cameraOrbitRadians >= 2.0f * PI)
 			{
-				// ここに来るのは主にデバイスロスト。黙って畳むと「起動してすぐ閉じた」ようにしか見えないので残す。
-				FANG_LOG_ERROR(Runtime, "フレーム {} でバックバッファを開けなかった。フレームループを畳む", frameIndex);
-				loopContext.hasDeviceError = true;
-				return;
+				// 積みっぱなしにすると値が大きくなるほど角度の刻みが粗くなるので、1 周ごとに戻す。
+				loopContext.cameraOrbitRadians -= 2.0f * PI;
 			}
 
-			// 三角形を描く。描画コマンドを積むだけで、まだ GPU は動かない。
-			loopContext.triangleRenderer->Draw(*commandList, window.GetWidth(), window.GetHeight());
+			// カメラは Y を変えずに水平に周るので、狼を中心とした円周上のオフセットを注視点へ足すだけでよい。
+			const Vector3 orbitOffset{
+				std::sinf(loopContext.cameraOrbitRadians) * CAMERA_DISTANCE,
+				0.0f,
+				std::cosf(loopContext.cameraOrbitRadians) * CAMERA_DISTANCE,
+			};
+			const Vector3 eye = CAMERA_TARGET + orbitOffset;
+
+			// 最小化すると幅も高さも 0 で来る。ゼロ除算と MakePerspectiveMatrix のアサートを避けて 1 で止める。
+			const float viewportWidth  = static_cast<float>(window.GetWidth() > 0 ? window.GetWidth() : 1);
+			const float viewportHeight = static_cast<float>(window.GetHeight() > 0 ? window.GetHeight() : 1);
+
+			// 光は 1 つ前のフレームの更新が書いたもの。まだ何も書かれていなければ既定の光で描く
+			// ➡ Game が光を書かなくても真っ黒にはならない。
+			const DirectionalLight  defaultLight{};
+			const DirectionalLight& light = frameData != nullptr ? frameData->light : defaultLight;
+
+			const View view{
+				.viewProjection = Multiply(
+					MakeLookAtMatrix(eye, CAMERA_TARGET, CAMERA_UP),
+					MakePerspectiveMatrix(
+						CAMERA_FIELD_OF_VIEW_Y_RADIANS,
+						viewportWidth / viewportHeight,
+						CAMERA_NEAR_Z,
+						CAMERA_FAR_Z
+					)
+				),
+				.cameraPosition   = eye,
+				.directionToLight = light.directionToLight,
+				.lightColor       = light.color,
+				.lightIntensity   = light.intensity,
+				.ambientColor     = light.ambientColor,
+			};
+
+			const ViewId sceneViewId = sceneRenderer.AddView(device, view);
+
+			// graph.Execute が戻るまで生きていること。RenderFrame のローカルなので、Execute より前で
+			// 宣言してあれば足りる（Submit はこの配列を指す span を控えるだけでコピーしない）。
+			RenderItem wolfItems[2];
 
 			// 狼を描く。読めていなければメッシュの描画だけを飛ばし、ほかは今までどおり続ける。
 			WolfModel& wolf = *loopContext.wolf;
 			if (wolf.mesh.IsValid())
 			{
-				// メッシュのレンダラはビューポートを設定しない。TriangleRenderer::Draw が内部で設定しているのに
-				// 頼ると、描く順を入れ替えた途端に壊れる。
-				commandList->SetViewport(window.GetWidth(), window.GetHeight());
-
-				// 入力の仕組みがまだ無いので、時間でカメラを回して全方向から形と前後関係を確かめられるようにする。
-				loopContext.cameraOrbitRadians += deltaTimeSeconds * (2.0f * PI / CAMERA_ORBIT_SECONDS);
-				if (loopContext.cameraOrbitRadians >= 2.0f * PI)
-				{
-					// 積みっぱなしにすると値が大きくなるほど角度の刻みが粗くなるので、1 周ごとに戻す。
-					loopContext.cameraOrbitRadians -= 2.0f * PI;
-				}
-
-				const Vector3 eye{
-					CAMERA_TARGET.x + std::sinf(loopContext.cameraOrbitRadians) * CAMERA_DISTANCE,
-					CAMERA_TARGET.y,
-					CAMERA_TARGET.z + std::cosf(loopContext.cameraOrbitRadians) * CAMERA_DISTANCE,
-				};
-
-				// 最小化すると幅も高さも 0 で来る。ゼロ除算と MakePerspectiveMatrix のアサートを避けて 1 で止める。
-				const float viewportWidth  = static_cast<float>(window.GetWidth() > 0 ? window.GetWidth() : 1);
-				const float viewportHeight = static_cast<float>(window.GetHeight() > 0 ? window.GetHeight() : 1);
-
-				// 光は 1 つ前のフレームの更新が書いたもの。まだ何も書かれていなければ既定の光で描く
-				// ➡ Game が光を書かなくても真っ黒にはならない。
-				const DirectionalLight  defaultLight{};
-				const DirectionalLight& light = frameData != nullptr ? frameData->light : defaultLight;
-
-				const View view{
-					.viewProjection = Multiply(
-						MakeLookAtMatrix(eye, CAMERA_TARGET, CAMERA_UP),
-						MakePerspectiveMatrix(
-							CAMERA_FIELD_OF_VIEW_Y_RADIANS,
-							viewportWidth / viewportHeight,
-							CAMERA_NEAR_Z,
-							CAMERA_FAR_Z
-						)
-					),
-					.cameraPosition   = eye,
-					.directionToLight = light.directionToLight,
-					.lightColor       = light.color,
-					.lightIntensity   = light.intensity,
-					.ambientColor     = light.ambientColor,
-				};
-
-				// 実行中のヒープ確保は 0 が要件なので、std::vector を作らずスタックの配列を span で渡す。
-				// world は既定の単位行列のまま。狼はモデル座標のまま原点に置く。
 				if (wolf.isSkinned)
 				{
 					// 再生位置を進めるのはここ。カメラの回転と同じ場所に置いてある
 					// ➡ Scene ができたらカメラごとゲーム側の更新へ移る。
 					UpdateWolfPose(&wolf, deltaTimeSeconds);
+				}
 
-					const SkinnedRenderItem items[] = {
-						SkinnedRenderItem{
-							.mesh             = wolf.mesh,
-							.skinningMatrices = wolf.skinningMatrices,
-							.baseColor        = wolf.baseColor,
-							.metallicFactor   = wolf.metallicFactor,
-							.roughnessFactor  = wolf.roughnessFactor,
-						},
-					};
-					loopContext.skinnedMeshRenderer->Draw(device, *commandList, view, items);
-				}
-				else
-				{
-					const RenderItem items[] = {
-						RenderItem{
-							.mesh            = wolf.mesh,
-							.baseColor       = wolf.baseColor,
-							.metallicFactor  = wolf.metallicFactor,
-							.roughnessFactor = wolf.roughnessFactor,
-						},
-					};
-					loopContext.meshRenderer->Draw(device, *commandList, view, items);
-				}
+				const Aabb localBounds = loopContext.meshRenderer->GetLocalBounds(wolf.mesh);
+
+				// 2 体目は 1 体目の隣（X 方向）に置く。2 体とも同じ骨行列（span を共有）で描くので、
+				// 同じポーズで並んで歩いて見える。
+				Matrix4x4 secondWolfWorld{};
+				secondWolfWorld.m[3][0] = SECOND_WOLF_OFFSET_X;
+
+				// world が単位行列でなくなったので、bounds は毎回 world で変換して埋める。
+				wolfItems[0] = RenderItem{
+					.mesh             = wolf.mesh,
+					.bounds           = TransformAabb(localBounds, Matrix4x4{}),
+					.skinningMatrices = wolf.skinningMatrices,
+					.baseColor        = wolf.baseColor,
+					.metallicFactor   = wolf.metallicFactor,
+					.roughnessFactor  = wolf.roughnessFactor,
+				};
+				wolfItems[1] = RenderItem{
+					.mesh             = wolf.mesh,
+					.world            = secondWolfWorld,
+					.bounds           = TransformAabb(localBounds, secondWolfWorld),
+					.skinningMatrices = wolf.skinningMatrices,
+					.baseColor        = wolf.baseColor,
+					.metallicFactor   = wolf.metallicFactor,
+					.roughnessFactor  = wolf.roughnessFactor,
+				};
+
+				sceneRenderer.Submit(sceneViewId, wolfItems);
 			}
 
-			// 上の層に描画コマンドを積ませる。読ませるのは 1 つ前のフレームの更新が作ったもの。
-			const FrameRenderContext context{ device, *commandList, window, frameData, frameIndex, deltaTimeSeconds };
-			loopContext.application->OnRender(context);
+			// 三角形を先に描き、深度を持つ狼が上に乗る従来の前後関係を保つ。三角形は深度テストを持たないので、
+			// 狼より後に描くと三角形が常に上書きしてしまう ➡ 画面のクリアもこのパスが引き受ける。
+			UnlitPassRecordArguments unlitArguments{
+				.unlitRenderer = loopContext.unlitRenderer,
+				.device        = &device,
+			};
 
-			device.EndFrame();
+			RenderGraphPassDesc unlitPassDesc{};
+			unlitPassDesc.name               = "UnlitPass";
+			unlitPassDesc.recordThread       = EnPassRecordThread::Job;
+			unlitPassDesc.colorTarget        = backBufferResource;
+			unlitPassDesc.colorLoadOperation = EnLoadOperation::Clear;
+			unlitPassDesc.clearColor         = BACKGROUND_COLOR;
+			unlitPassDesc.depthTarget        = depthBufferResource;
+			unlitPassDesc.depthLoadOperation = EnLoadOperation::Clear;
+			unlitPassDesc.record             = &RecordUnlitPass;
+			unlitPassDesc.userData           = &unlitArguments;
+
+			graph.AddPass(unlitPassDesc);
+
+			// 狼（1 体〜2 体）を描く ScenePass を View ごとに宣言する。三角形パスが画面をクリア済みなので、
+			// 最初の View も Load（前のパスが描いた画の上に重ねる）。
+			sceneRenderer
+				.AddPasses(graph, backBufferResource, depthBufferResource, BACKGROUND_COLOR, EnLoadOperation::Load);
+
+#if FANG_ENABLE_EDITOR
+			// 上の層に描画コマンドを積ませる。読ませるのは 1 つ前のフレームの更新が作ったもの。
+			// ImGui のメインスレッド制約に合わせて Main パスで宣言する。Release では宣言自体をしない
+			// （最終 PRESENT への遷移は Compile が最後に使ったパスの末尾に出すので、これで正しく動く）。
+			EditorPassRecordArguments editorArguments{
+				.application      = loopContext.application,
+				.device           = &device,
+				.window           = &window,
+				.frameData        = frameData,
+				.frameIndex       = frameIndex,
+				.deltaTimeSeconds = deltaTimeSeconds,
+			};
+
+			RenderGraphPassDesc editorPassDesc{};
+			editorPassDesc.name               = "EditorPass";
+			editorPassDesc.recordThread       = EnPassRecordThread::Main;
+			editorPassDesc.colorTarget        = backBufferResource;
+			editorPassDesc.colorLoadOperation = EnLoadOperation::Load;
+			editorPassDesc.depthTarget        = depthBufferResource;
+			editorPassDesc.depthLoadOperation = EnLoadOperation::Load;
+			editorPassDesc.record             = &RecordEditorPass;
+			editorPassDesc.userData           = &editorArguments;
+
+			graph.AddPass(editorPassDesc);
+#endif
+
+			graph.Compile();
+			graph.Execute(device, jobSystem);
+
+			if (graph.GetPassCount() > 0 && graph.GetCommandLists().empty())
+			{
+				// ここに来るのは主にデバイスロスト。黙って畳むと「起動してすぐ閉じた」ようにしか見えないので残す。
+				FANG_LOG_ERROR(
+					Runtime,
+					"フレーム {} でコマンドリストを借りられなかった。フレームループを畳む",
+					frameIndex
+				);
+				loopContext.hasDeviceError = true;
+				return;
+			}
+
+			device.EndFrame(graph.GetCommandLists());
 		}
 	} // namespace
 
@@ -465,34 +584,46 @@ namespace fang
 			FANG_FATAL("D3D12 デバイスを作れなかった");
 		}
 
-		TriangleRenderer triangleRenderer;
-		if (!triangleRenderer.Initialize(device))
+		UnlitRenderer unlitRenderer;
+		if (!unlitRenderer.Initialize(device))
 		{
-			FANG_FATAL("三角形の準備に失敗した");
+			FANG_FATAL("頂点色描画の準備に失敗した");
 		}
 
 		// メッシュ側は失敗しても FANG_FATAL にしない。モデルが出ないだけならゲームは続けられるし、
 		// 起動できないほうが困るため。三角形とエディタは今までどおり動く。
-		MeshRenderer        meshRenderer;
-		SkinnedMeshRenderer skinnedMeshRenderer;
-		WolfModel           wolf;
-		if (meshRenderer.Initialize(device) && skinnedMeshRenderer.Initialize(device))
+		MeshRenderer meshRenderer;
+		WolfModel    wolf;
+		if (meshRenderer.Initialize(device))
 		{
-			LoadWolf(device, meshRenderer, skinnedMeshRenderer, &wolf);
+			LoadWolf(device, meshRenderer, &wolf);
 		}
 		else
 		{
 			FANG_LOG_ERROR(Runtime, "メッシュ描画の準備に失敗した。モデルの表示だけを飛ばす");
 		}
 
+		// RenderGraph はフレームごとに Reset して組み直す入れ物なので、器そのものはここで 1 つだけ作る。
+		RenderGraph renderGraph;
+
+		// SceneRenderer も同じく器を使い回す。meshRenderer の Initialize の成否によらず作る
+		// （失敗していても MeshRenderer::Draw 側が無効なハンドルを見て安全に何もしない）。
+		SceneRenderer sceneRenderer;
+		if (!sceneRenderer.Initialize(device, meshRenderer))
+		{
+			FANG_LOG_ERROR(Runtime, "シーン描画の準備に失敗した。モデルの表示だけを飛ばす");
+		}
+
 		FrameLoopContext loopContext{};
-		loopContext.application         = &application;
-		loopContext.device              = &device;
-		loopContext.window              = &window;
-		loopContext.triangleRenderer    = &triangleRenderer;
-		loopContext.meshRenderer        = &meshRenderer;
-		loopContext.skinnedMeshRenderer = &skinnedMeshRenderer;
-		loopContext.wolf                = &wolf;
+		loopContext.application   = &application;
+		loopContext.device        = &device;
+		loopContext.window        = &window;
+		loopContext.jobSystem     = &jobSystem;
+		loopContext.renderGraph   = &renderGraph;
+		loopContext.sceneRenderer = &sceneRenderer;
+		loopContext.unlitRenderer = &unlitRenderer;
+		loopContext.meshRenderer  = &meshRenderer;
+		loopContext.wolf          = &wolf;
 
 		FramePipeline framePipeline;
 		if (!framePipeline.Initialize(jobSystem, frameMemory, &loopContext, &UpdateFrame, &RenderFrame))
@@ -530,9 +661,9 @@ namespace fang
 
 		framePipeline.Shutdown();
 		application.OnShutdown(device);
-		triangleRenderer.Shutdown(device);
+		unlitRenderer.Shutdown(device);
+		sceneRenderer.Shutdown(device);
 		meshRenderer.Shutdown(device);
-		skinnedMeshRenderer.Shutdown(device);
 		device.DestroyTexture(wolf.baseColor);
 		device.Shutdown();
 		window.Shutdown();

@@ -1,18 +1,18 @@
 /**
  * @file SkinnedMeshVS.hlsl
- * @brief スキンメッシュの頂点シェーダー。骨の姿勢で頂点を変形してから MVP でクリップ座標へ移し、
+ * @brief スキンメッシュの頂点シェーダー。骨の姿勢で頂点を変形してからクリップ座標へ移し、
  *        ライティング用にワールド法線とワールド位置を作る。
  * @details 出力とピクセルシェーダーは静的メッシュと共有する（Mesh.hlsli / MeshPS.hlsl）。
  */
 #include "Mesh.hlsli"
 #include "MeshConstants.h"
 
-/** @brief 骨の上限。SkinnedMeshRenderer の MAX_JOINT_COUNT と対。片方だけ変えると読み書きの範囲がずれる。 */
+/** @brief 骨の上限。MeshRenderer の MAX_JOINT_COUNT と対。片方だけ変えると読み書きの範囲がずれる。 */
 #define MAX_JOINT_COUNT 64
 
 /**
  * @brief 頂点シェーダーへの入力。
- * @details 並びは SkinnedMeshRenderer が private に持つ頂点構造体との契約。片方だけ変えない。
+ * @details 並びは MeshRenderer が private に持つスキン頂点構造体との契約。片方だけ変えない。
  *          C++ 側の格納は normal が 8 bit SNORM、texCoord が half で、入力アセンブラがここの float へ展開する。
  *          量子化で normal の長さは 1 からわずかにずれる ➡ MeshPS の normalize が受け皿。
  */
@@ -31,13 +31,19 @@ struct SkinnedVertexInput
  *          HLSL の定数バッファは既定で列優先に読むので、ここで転置が掛かって辻褄が合う。
  *          ➡ mul(行列, ベクトル) と「行列が左」で書くと、C++ の合成順と一致する。骨行列も同じ規則。
  */
-cbuffer cbPerObject : register(b0)
+cbuffer cbObject : register(b0)
 {
-	MeshObjectConstants constants;
+	MeshObjectConstants objectConstants;
+};
+
+/** @brief フレームの間ずっと同じ定数。並びは MeshConstants.h の MeshFrameConstants。 */
+cbuffer cbFrame : register(b1)
+{
+	MeshFrameConstants frameConstants;
 };
 
 /** @brief スキニング行列。並びは glTF の関節番号のまま。 */
-cbuffer cbSkinning : register(b1)
+cbuffer cbSkinning : register(b2)
 {
 	float4x4 boneMatrices[MAX_JOINT_COUNT];
 };
@@ -52,12 +58,15 @@ VertexOutput VertexMain(SkinnedVertexInput input)
 
 	float4 skinnedPosition = mul(skinMatrix, float4(input.position, 1.0));
 
+	// ワールド位置はライティングでも使うので、先に作ってクリップ座標へ渡す。
+	float4 worldPosition = mul(objectConstants.world, skinnedPosition);
+
 	VertexOutput output;
-	output.position = mul(constants.modelViewProjection, skinnedPosition);
-	output.worldPosition = mul(constants.world, skinnedPosition).xyz;
+	output.position = mul(frameConstants.viewProjection, worldPosition);
+	output.worldPosition = worldPosition.xyz;
 
 	// w = 0 で掛けると平行移動が効かない ➡ 法線は向きだけが回る。骨も world も等倍前提なので逆転置は要らない。
-	output.normal = mul(constants.world, mul(skinMatrix, float4(input.normal, 0.0))).xyz;
+	output.normal = mul(objectConstants.world, mul(skinMatrix, float4(input.normal, 0.0))).xyz;
 
 	output.texCoord = input.texCoord;
 	return output;

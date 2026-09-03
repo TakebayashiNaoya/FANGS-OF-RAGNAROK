@@ -28,30 +28,33 @@
   <ItemGroup>
     <ClInclude Include="MeshRenderer.h" />
     <ClInclude Include="Pch.h" />
+    <ClInclude Include="RenderGraph.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RendererLog.h" />
-    <ClInclude Include="SkinnedMeshRenderer.h" />
-    <ClInclude Include="TriangleRenderer.h" />
+    <ClInclude Include="SceneRenderer.h" />
+    <ClInclude Include="UnlitRenderer.h" />
     <ClInclude Include="Shaders\MeshConstants.h" />
+    <ClInclude Include="Shaders\UnlitConstants.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MeshRenderer.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="RenderGraph.cpp" />
     <ClCompile Include="Renderer.cpp" />
-    <ClCompile Include="SkinnedMeshRenderer.cpp" />
-    <ClCompile Include="TriangleRenderer.cpp" />
+    <ClCompile Include="SceneRenderer.cpp" />
+    <ClCompile Include="UnlitRenderer.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 
   <!-- シェーダーはビルド時に FXC でヘッダ化して埋め込む（UWP に実行時コンパイルが無いため）。生成ツールの対象外なので手で書く -->
   <ItemGroup>
-    <FXCompile Include="Shaders\TriangleVS.hlsl">
+    <FXCompile Include="Shaders\UnlitVS.hlsl">
       <ShaderType>Vertex</ShaderType>
       <EntryPointName>VertexMain</EntryPointName>
     </FXCompile>
-    <FXCompile Include="Shaders\TrianglePS.hlsl">
+    <FXCompile Include="Shaders\UnlitPS.hlsl">
       <ShaderType>Pixel</ShaderType>
       <EntryPointName>PixelMain</EntryPointName>
     </FXCompile>
@@ -67,7 +70,7 @@
       <ShaderType>Vertex</ShaderType>
       <EntryPointName>VertexMain</EntryPointName>
     </FXCompile>
-    <None Include="Shaders\Triangle.hlsli" />
+    <None Include="Shaders\Unlit.hlsli" />
     <None Include="Shaders\Mesh.hlsli" />
   </ItemGroup>
   <ItemDefinitionGroup>

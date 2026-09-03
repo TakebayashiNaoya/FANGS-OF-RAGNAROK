@@ -2,6 +2,7 @@
  * @file Matrix4x4Tests.cpp
  * @brief 行列のテスト。積の値と掛ける順、ビュー行列、透視投影の深度範囲を既知の値で確かめる。
  */
+#include "Core/Math/MathConstants.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Math/Vector3.h"
 #include <doctest.h>
@@ -9,9 +10,6 @@
 
 namespace
 {
-	/** @brief 円周率。Core/Math にはまだ定数を置いていないので、画角を作るためにここで持つ。 */
-	constexpr float PI = 3.14159265358979323846f;
-
 	/** @brief 行ベクトルとして変換した点。w で割る前の同次座標。 */
 	struct TransformedPoint
 	{
@@ -221,7 +219,7 @@ TEST_CASE("透視投影の深度が近平面で 0、遠平面で 1 になる")
 	constexpr float nearZ = 10.0f;
 	constexpr float farZ  = 1000.0f;
 
-	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(PI / 2.0f, 16.0f / 9.0f, nearZ, farZ);
+	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(fang::PI / 2.0f, 16.0f / 9.0f, nearZ, farZ);
 
 	// D3D の深度範囲は [0, 1]。OpenGL 流の [-1, 1] になっていれば近平面が -1 になって落ちる。
 	const TransformedPoint onNearPlane = TransformPoint(projection, fang::Vector3{ 0.0f, 0.0f, nearZ });
@@ -246,7 +244,7 @@ TEST_CASE("透視投影が画角と縦横比どおりに視錐台の端を ±1 �
 	constexpr float distance = 100.0f;
 
 	// 垂直画角 90 度 ➡ 距離 100cm での縦の半分の高さは 100cm、横はその aspect 倍。
-	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(PI / 2.0f, aspect, 10.0f, 1000.0f);
+	const fang::Matrix4x4 projection = fang::MakePerspectiveMatrix(fang::PI / 2.0f, aspect, 10.0f, 1000.0f);
 
 	const TransformedPoint top = TransformPoint(projection, fang::Vector3{ 0.0f, distance, distance });
 	CHECK(top.y / top.w == doctest::Approx(1.0f));

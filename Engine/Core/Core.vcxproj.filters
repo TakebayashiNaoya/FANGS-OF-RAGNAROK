@@ -50,7 +50,16 @@
     <ClInclude Include="Log\PlatformLogSink.h">
       <Filter>Log</Filter>
     </ClInclude>
+    <ClInclude Include="Math\Aabb.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\Frustum.h">
+      <Filter>Math</Filter>
+    </ClInclude>
     <ClInclude Include="Math\JointIndices.h">
+      <Filter>Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Math\MathConstants.h">
       <Filter>Math</Filter>
     </ClInclude>
     <ClInclude Include="Math\Matrix4x4.h">
@@ -104,6 +113,12 @@
     </ClCompile>
     <ClCompile Include="Log\Log.cpp">
       <Filter>Log</Filter>
+    </ClCompile>
+    <ClCompile Include="Math\Aabb.cpp">
+      <Filter>Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Math\Frustum.cpp">
+      <Filter>Math</Filter>
     </ClCompile>
     <ClCompile Include="Math\Matrix4x4.cpp">
       <Filter>Math</Filter>
