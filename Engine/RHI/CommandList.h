@@ -14,13 +14,42 @@ namespace fang::rhi
 	class GraphicsDevice;
 
 	/**
-	 * @brief 1 フレーム分のコマンドを積む口。
-	 * @details 実体は GraphicsDevice が持つ。BeginFrame が返したポインタは EndFrame まで有効。
-	 * @threading 受け取ったスレッドのみ。並列記録にするときは複数本に分ける。
+	 * @brief コマンドを積む口 1 本。
+	 * @details 実体は GraphicsDevice が持つ。AcquireCommandList が返したポインタは EndFrame まで有効。
+	 *          D3D12 のコマンドリストは本をまたいで状態を引き継がないので、描画先もビューポートも本ごとに差し直す。
+	 * @threading 1 本につき 1 スレッド。複数スレッドで記録するなら、スレッドごとに別の本を借りる。
 	 */
 	class CommandList
 	{
 	public:
+		/**
+		 * @brief バックバッファの用途を切り替えるバリアを積む。
+		 * @details 描画先の状態はフレームをまたいで受け渡されるので、積む場所を一か所に集められる呼び出し側
+		 *          （RenderGraph）だけが積む。パスの記録関数からは呼ばない。
+		 * @param before 今の用途。直前に宣言したものと食い違うとデバッグレイヤーに叱られる。
+		 * @param after  これからの用途。
+		 */
+		void TransitionBackBuffer(EnResourceState before, EnResourceState after);
+
+		/**
+		 * @brief 今のバックバッファを描画先に据える。
+		 * @details TransitionBackBuffer と同じ理由で、積むのは RenderGraph だけ。パスの記録関数からは呼ばない。
+		 * @param withDepth 深度バッファも一緒に差すか。深度テストをするパイプラインを使うなら true。
+		 */
+		void SetRenderTargetToBackBuffer(bool withDepth);
+
+		/**
+		 * @brief 描画先の色を塗りつぶす。SetRenderTargetToBackBuffer の後に呼ぶ。
+		 * @details 積むのは RenderGraph だけ。パスの記録関数からは呼ばない。
+		 */
+		void ClearRenderTarget(const ClearColor& color);
+
+		/**
+		 * @brief 深度を一番奥（1.0）で埋める。SetRenderTargetToBackBuffer に true を渡した後に呼ぶ。
+		 * @details 積むのは RenderGraph だけ。パスの記録関数からは呼ばない。
+		 */
+		void ClearDepth();
+
 		/**
 		 * @brief ビューポートとシザーを画面全体に合わせる。
 		 * @param width  描画先の横幅（ピクセル）。ふつうはバックバッファと同じ値を渡す。
@@ -60,7 +89,13 @@ namespace fang::rhi
 		void SetObjectConstantBuffer(BufferHandle buffer);
 
 		/**
-		 * @brief b1 に定数バッファを差す。hasConstantBuffer で作ったパイプラインを差してから呼ぶ。
+		 * @brief b1 に定数バッファを差す。hasFrameConstantBuffer で作ったパイプラインを差してから呼ぶ。
+		 * @param buffer EnBufferKind::Constant で作ったバッファ。中身は UpdateBuffer で先に書いておく。
+		 */
+		void SetFrameConstantBuffer(BufferHandle buffer);
+
+		/**
+		 * @brief b2 に定数バッファを差す。hasConstantBuffer で作ったパイプラインを差してから呼ぶ。
 		 * @param buffer EnBufferKind::Constant で作ったバッファ。中身は UpdateBuffer で先に書いておく。
 		 */
 		void SetConstantBuffer(BufferHandle buffer);

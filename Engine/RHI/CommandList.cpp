@@ -10,6 +10,79 @@
 
 namespace fang::rhi
 {
+	namespace
+	{
+		D3D12_RESOURCE_STATES ToD3D12ResourceState(EnResourceState state)
+		{
+			switch (state)
+			{
+				case EnResourceState::Present: return D3D12_RESOURCE_STATE_PRESENT;
+				case EnResourceState::RenderTarget: return D3D12_RESOURCE_STATE_RENDER_TARGET;
+				case EnResourceState::DepthWrite: return D3D12_RESOURCE_STATE_DEPTH_WRITE;
+				case EnResourceState::PixelShaderResource: return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+			}
+
+			return D3D12_RESOURCE_STATE_COMMON;
+		}
+	} // namespace
+
+
+	void CommandList::TransitionBackBuffer(EnResourceState before, EnResourceState after)
+	{
+		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
+		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
+
+		D3D12_RESOURCE_BARRIER barrier{};
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+
+		barrier.Transition.pResource   = m_device->m_swapChain.GetCurrentBackBuffer();
+		barrier.Transition.StateBefore = ToD3D12ResourceState(before);
+		barrier.Transition.StateAfter  = ToD3D12ResourceState(after);
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		commandList->ResourceBarrier(1, &barrier);
+	}
+
+
+	void CommandList::SetRenderTargetToBackBuffer(bool withDepth)
+	{
+		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
+		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
+
+		const D3D12_CPU_DESCRIPTOR_HANDLE renderTargetView = m_device->m_swapChain.GetCurrentRenderTargetView();
+		const D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView = m_device->m_depthBuffer.GetDepthStencilView();
+
+		commandList->OMSetRenderTargets(1, &renderTargetView, FALSE, withDepth ? &depthStencilView : nullptr);
+	}
+
+
+	void CommandList::ClearRenderTarget(const ClearColor& color)
+	{
+		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
+		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
+
+		// D3D12 は 0.0〜1.0 の RGBA を並びで読む。
+		const float clearValues[4] = { color.red, color.green, color.blue, color.alpha };
+		commandList->ClearRenderTargetView(m_device->m_swapChain.GetCurrentRenderTargetView(), clearValues, 0, nullptr);
+	}
+
+
+	void CommandList::ClearDepth()
+	{
+		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
+		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
+
+		// 一番奥の 1.0 で埋める。PSO の DepthFunc が LESS なので、手前の面だけが残る。
+		commandList->ClearDepthStencilView(
+			m_device->m_depthBuffer.GetDepthStencilView(),
+			D3D12_CLEAR_FLAG_DEPTH,
+			1.0f,
+			0,
+			0,
+			nullptr
+		);
+	}
+
+
 	void CommandList::SetViewport(uint32_t width, uint32_t height)
 	{
 		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
@@ -100,13 +173,28 @@ namespace fang::rhi
 	}
 
 
+	void CommandList::SetFrameConstantBuffer(BufferHandle buffer)
+	{
+		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
+		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
+
+		const uint32_t parameterIndex = m_boundRootParameters.frameConstantBuffer;
+		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "b1 の定数バッファを持たないパイプラインだ");
+
+		const BufferPool::Entry& entry = m_device->m_buffers.Get(buffer);
+		FANG_ASSERT(entry.kind == EnBufferKind::Constant, "定数バッファとして作られていないバッファだ");
+
+		commandList->SetGraphicsRootConstantBufferView(parameterIndex, entry.resource->GetGPUVirtualAddress());
+	}
+
+
 	void CommandList::SetConstantBuffer(BufferHandle buffer)
 	{
 		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
 		const uint32_t parameterIndex = m_boundRootParameters.constantBuffer;
-		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "定数バッファを持たないパイプラインだ");
+		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "b2 の定数バッファを持たないパイプラインだ");
 
 		const BufferPool::Entry& entry = m_device->m_buffers.Get(buffer);
 		FANG_ASSERT(entry.kind == EnBufferKind::Constant, "定数バッファとして作られていないバッファだ");

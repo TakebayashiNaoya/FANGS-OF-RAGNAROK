@@ -37,7 +37,7 @@ cbuffer cbPerObject : register(b0)
 };
 
 /** @brief スキニング行列。並びは glTF の関節番号のまま。 */
-cbuffer cbSkinning : register(b1)
+cbuffer cbSkinning : register(b2)
 {
 	float4x4 boneMatrices[MAX_JOINT_COUNT];
 };

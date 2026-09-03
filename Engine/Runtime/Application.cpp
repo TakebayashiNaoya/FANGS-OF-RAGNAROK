@@ -320,9 +320,11 @@ namespace fang
 				device.Resize(window.GetWidth(), window.GetHeight());
 			}
 
-			// このフレームの記録準備（記録メモリの巻き戻し、バックバッファの描き込み先への切り替え、クリア）を
-			// 頼み、描画コマンドの書き込み先を受け取る。EndFrame まで有効。
-			rhi::CommandList* commandList = device.BeginFrame(BACKGROUND_COLOR);
+			// このフレームの記録メモリを巻き戻してもらい、描画コマンドの書き込み先を 1 本借りる。
+			// 借りた本は EndFrame まで有効。
+			device.BeginFrame();
+
+			rhi::CommandList* commandList = device.AcquireCommandList();
 			if (commandList == nullptr)
 			{
 				// ここに来るのは主にデバイスロスト。黙って畳むと「起動してすぐ閉じた」ようにしか見えないので残す。
@@ -330,6 +332,13 @@ namespace fang
 				loopContext.hasDeviceError = true;
 				return;
 			}
+
+			// バックバッファを描き込み先へ切り替えて描画先に据え、色と深度を初期値で埋める。
+			commandList->TransitionBackBuffer(rhi::EnResourceState::Present, rhi::EnResourceState::RenderTarget);
+			commandList->SetRenderTargetToBackBuffer(true);
+			commandList->ClearRenderTarget(BACKGROUND_COLOR);
+			commandList->ClearDepth();
+			commandList->SetViewport(window.GetWidth(), window.GetHeight());
 
 			// 三角形を描く。描画コマンドを積むだけで、まだ GPU は動かない。
 			loopContext.triangleRenderer->Draw(*commandList, window.GetWidth(), window.GetHeight());
@@ -419,7 +428,11 @@ namespace fang
 			const FrameRenderContext context{ device, *commandList, window, frameData, frameIndex, deltaTimeSeconds };
 			loopContext.application->OnRender(context);
 
-			device.EndFrame();
+			// 表示用へ戻してから送り出す。積んだ本を渡した順に GPU が処理する。
+			commandList->TransitionBackBuffer(rhi::EnResourceState::RenderTarget, rhi::EnResourceState::Present);
+
+			rhi::CommandList* const submittedCommandLists[] = { commandList };
+			device.EndFrame(submittedCommandLists);
 		}
 	} // namespace
 

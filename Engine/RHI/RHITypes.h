@@ -33,6 +33,19 @@ namespace fang::rhi
 	};
 
 	/**
+	 * @brief リソースの用途。
+	 * @details D3D12 は「今この資源を何に使っているか」を追跡していて、用途を変えるにはバリアで宣言し直す
+	 *          必要がある。使う組み合わせだけを並べてあり、増えたらここに足す。
+	 */
+	enum class EnResourceState : uint8_t
+	{
+		Present,             /**< 画面に出す。バックバッファの初期状態でもある。 */
+		RenderTarget,        /**< 色を書き込む。 */
+		DepthWrite,          /**< 深度を書き込む。 */
+		PixelShaderResource, /**< ピクセルシェーダから読む。 */
+	};
+
+	/**
 	 * @brief テクスチャのピクセル形式。DXGI へは RHI の内側で変換する。
 	 * @details Srgb 付きは「読むときに GPU がリニアへ直す」形式。色として見せるもの（ベースカラー）は
 	 *          Srgb 付き、数値として読むもの（フォントのマスクや、いずれ足す法線マップ）は無印を使う。
@@ -83,7 +96,8 @@ namespace fang::rhi
 
 		uint32_t rootConstants        = UNUSED; /**< b0 のルート定数。 */
 		uint32_t objectConstantBuffer = UNUSED; /**< b0 のルート CBV。ルート定数とは排他。 */
-		uint32_t constantBuffer       = UNUSED; /**< b1 のルート CBV。 */
+		uint32_t frameConstantBuffer  = UNUSED; /**< b1 のルート CBV。 */
+		uint32_t constantBuffer       = UNUSED; /**< b2 のルート CBV。 */
 		uint32_t texture              = UNUSED; /**< t0 のディスクリプタテーブル。 */
 	};
 
@@ -117,7 +131,14 @@ namespace fang::rhi
 		bool hasTexture = false;
 
 		/**
-		 * @brief b1 に定数バッファを 1 本差すか。
+		 * @brief b1 に定数バッファを 1 本差すか（VS と PS の両方から見える）。
+		 * @details 1 フレームの間ずっと同じ値を置く口。視点・光のようにフレーム内で変わらないものを分けておくと、
+		 *          描画物ごとに積み直すのは b0 だけで済む。
+		 */
+		bool hasFrameConstantBuffer = false;
+
+		/**
+		 * @brief b2 に定数バッファを 1 本差すか。
 		 * @details ルート定数に載らない大きさのものを渡す口。ディスクリプタを持たないルート CBV なので
 		 *          ヒープの管理が増えない。骨のスキニング行列がこれで渡る。
 		 */
