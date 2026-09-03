@@ -14,8 +14,12 @@
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RendererLog.h" />
     <ClInclude Include="SceneRenderer.h" />
+    <ClInclude Include="TerrainRenderer.h" />
     <ClInclude Include="UnlitRenderer.h" />
     <ClInclude Include="Shaders\MeshConstants.h">
+      <Filter>Shaders</Filter>
+    </ClInclude>
+    <ClInclude Include="Shaders\TerrainConstants.h">
       <Filter>Shaders</Filter>
     </ClInclude>
     <ClInclude Include="Shaders\UnlitConstants.h">
@@ -29,6 +33,7 @@
     <ClCompile Include="RenderGraph.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="SceneRenderer.cpp" />
+    <ClCompile Include="TerrainRenderer.cpp" />
     <ClCompile Include="UnlitRenderer.cpp" />
   </ItemGroup>
 </Project>
