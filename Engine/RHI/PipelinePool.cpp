@@ -16,12 +16,12 @@ namespace fang::rhi
 		{
 			switch (format)
 			{
-				case EnVertexFormat::Float2: return DXGI_FORMAT_R32G32_FLOAT;
-				case EnVertexFormat::Float3: return DXGI_FORMAT_R32G32B32_FLOAT;
-				case EnVertexFormat::Float4: return DXGI_FORMAT_R32G32B32A32_FLOAT;
+				case EnVertexFormat::Float2:           return DXGI_FORMAT_R32G32_FLOAT;
+				case EnVertexFormat::Float3:           return DXGI_FORMAT_R32G32B32_FLOAT;
+				case EnVertexFormat::Float4:           return DXGI_FORMAT_R32G32B32A32_FLOAT;
 				case EnVertexFormat::UByte4Normalized: return DXGI_FORMAT_R8G8B8A8_UNORM;
-				case EnVertexFormat::UByte4: return DXGI_FORMAT_R8G8B8A8_UINT;
-				case EnVertexFormat::Half2: return DXGI_FORMAT_R16G16_FLOAT;
+				case EnVertexFormat::UByte4:           return DXGI_FORMAT_R8G8B8A8_UINT;
+				case EnVertexFormat::Half2:            return DXGI_FORMAT_R16G16_FLOAT;
 				case EnVertexFormat::SByte4Normalized: return DXGI_FORMAT_R8G8B8A8_SNORM;
 			}
 

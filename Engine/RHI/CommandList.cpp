@@ -16,9 +16,9 @@ namespace fang::rhi
 		{
 			switch (state)
 			{
-				case EnResourceState::Present: return D3D12_RESOURCE_STATE_PRESENT;
-				case EnResourceState::RenderTarget: return D3D12_RESOURCE_STATE_RENDER_TARGET;
-				case EnResourceState::DepthWrite: return D3D12_RESOURCE_STATE_DEPTH_WRITE;
+				case EnResourceState::Present:             return D3D12_RESOURCE_STATE_PRESENT;
+				case EnResourceState::RenderTarget:        return D3D12_RESOURCE_STATE_RENDER_TARGET;
+				case EnResourceState::DepthWrite:          return D3D12_RESOURCE_STATE_DEPTH_WRITE;
 				case EnResourceState::PixelShaderResource: return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 			}
 

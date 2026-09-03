@@ -68,8 +68,8 @@ namespace fang::rhi
 		const void* pixels      = nullptr; /**< 左上から右へ、行間の詰め物なし。 */
 		uint32_t    width       = 0;       /**< この段のテクセル数。 */
 		uint32_t    height      = 0;
-		uint32_t    rowPitch    = 0; /**< 1 行のバイト数。 */
-		uint32_t    sizeInBytes = 0; /**< この段の総バイト数。rowPitch × 行数と一致すること。 */
+		uint32_t    rowPitch    = 0;       /**< 1 行のバイト数。 */
+		uint32_t    sizeInBytes = 0;       /**< この段の総バイト数。rowPitch × 行数と一致すること。 */
 	};
 
 	/**
@@ -80,7 +80,7 @@ namespace fang::rhi
 	struct TextureSource
 	{
 		std::span<const TextureMipLevel> mipLevels;
-		EnTextureFormat                  format = EnTextureFormat::RGBA8;
+		EnTextureFormat format = EnTextureFormat::RGBA8;
 	};
 
 	/**
