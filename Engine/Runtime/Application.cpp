@@ -17,6 +17,7 @@
 #include "Core/Platform/Window.h"
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
+#include "Renderer/DebugDraw.h"
 #include "Renderer/MeshRenderer.h"
 #include "Renderer/RenderGraph.h"
 #include "Renderer/SceneRenderer.h"
@@ -77,6 +78,14 @@ namespace fang
 		// 204 よりわずかに大きくして、体同士が重ならない隙間を空ける。
 		/** @brief 2 体目の狼を 1 体目からずらす X 方向のオフセット（cm）。 */
 		constexpr float SECOND_WOLF_OFFSET_X = 220.0f;
+
+#if FANG_ENABLE_DEBUG_DRAW
+		/** @brief RenderItem の境界ボックスを表す線の色。緑系にして他の要素と見分けやすくする。 */
+		constexpr Vector3 DEBUG_DRAW_BOUNDS_COLOR{ 0.0f, 1.0f, 0.3f };
+
+		/** @brief シャドウの光の視錐台を表す線の色。黄系にして境界ボックスと見分けやすくする。 */
+		constexpr Vector3 DEBUG_DRAW_SHADOW_FRUSTUM_COLOR{ 1.0f, 0.85f, 0.0f };
+#endif
 
 		// 狼はワールド原点付近（1 体目は world が単位行列）に立つので、床もそこを中心にする。
 		// 2000×2000 あれば 2 体目のオフセット（220）を足してもまだ大きく余る。
@@ -173,8 +182,11 @@ namespace fang
 			RenderGraph*         renderGraph   = nullptr;
 			SceneRenderer*       sceneRenderer = nullptr;
 			UnlitRenderer*       unlitRenderer = nullptr;
-			MeshRenderer*        meshRenderer  = nullptr;
-			WolfModel*           wolf          = nullptr;
+#if FANG_ENABLE_DEBUG_DRAW
+			DebugDraw* debugDraw = nullptr;
+#endif
+			MeshRenderer* meshRenderer = nullptr;
+			WolfModel*    wolf         = nullptr;
 
 			/** @brief 床の静的メッシュ。読み込みが無いので、生成に失敗しなければ常に有効。 */
 			MeshId floorMesh;
@@ -655,9 +667,39 @@ namespace fang
 				EnLoadOperation::Load
 			);
 
+#if FANG_ENABLE_DEBUG_DRAW
+			//------------------------------------------------------------------------
+			// 8. デバッグ描画の積み込みと DebugLinePass の宣言(FANG_ENABLE_DEBUG_DRAW 内)
+			// 　Reset で前フレームの積み込みを捨ててから、狼(と床)の境界ボックス、シャドウの光の視錐台の順に
+			// 　ワイヤーを積み、DebugLinePass を宣言する。Release では FANG_ENABLE_DEBUG_DRAW が 0 になり、
+			// 　この区画ごとビルドから外れる。
+			//------------------------------------------------------------------------
+			DebugDraw& debugDraw = *loopContext.debugDraw;
+
+			debugDraw.Reset();
+
+			// 要件は狼 2 体の AABB のみが成功条件なので、床を除く判定は入れず bounds が有効な全アイテムを積む。
+			for (const RenderItem& item : submittedItems)
+			{
+				if (item.bounds.IsValid())
+				{
+					debugDraw.AddWireBox(item.bounds, DEBUG_DRAW_BOUNDS_COLOR);
+				}
+			}
+
+			// キャスタが 1 つも無いフレームは視錐台も無い（GetShadowFrustumCorners が空の span を返す）ので、
+			// shadowViewId で先に弾く。
+			if (shadowViewId.IsValid())
+			{
+				debugDraw.AddWireBoxCorners(sceneRenderer.GetShadowFrustumCorners(), DEBUG_DRAW_SHADOW_FRUSTUM_COLOR);
+			}
+
+			debugDraw.AddPass(graph, backBufferResource, depthBufferResource, view.viewProjection);
+#endif
+
 #if FANG_ENABLE_EDITOR
 			//------------------------------------------------------------------------
-			// 8. エディタパスの宣言(FANG_ENABLE_EDITOR 内・Main 記録)
+			// 9. エディタパスの宣言(FANG_ENABLE_EDITOR 内・Main 記録)
 			// 　エディタパスを宣言する。Release ビルドでは FANG_ENABLE_EDITOR が 0 になり、この区画ごと
 			// 　ビルドから外れる。
 			//------------------------------------------------------------------------
@@ -687,14 +729,14 @@ namespace fang
 #endif
 
 			//------------------------------------------------------------------------
-			// 9. Compile と Execute
+			// 10. Compile と Execute
 			// 　宣言したパスから Compile でバリアとクリアの手順を導き、Execute でコマンドリストへ記録する。
 			//------------------------------------------------------------------------
 			graph.Compile();
 			graph.Execute(device, jobSystem);
 
 			//------------------------------------------------------------------------
-			// 10. コマンドリストを借りられなかったときの畳み
+			// 11. コマンドリストを借りられなかったときの畳み
 			// 　パスを宣言したのにコマンドリストが 1 本も返らなかった(主にデバイスロスト)ら、このフレームは
 			// 　EndFrame を呼ばずに畳む。
 			//------------------------------------------------------------------------
@@ -711,7 +753,7 @@ namespace fang
 			}
 
 			//------------------------------------------------------------------------
-			// 11. EndFrame
+			// 12. EndFrame
 			// 　積んだコマンドリストを渡して実行・Present・GPU の完了待ちをまとめて行う。
 			//------------------------------------------------------------------------
 			device.EndFrame(graph.GetCommandLists());
@@ -789,6 +831,15 @@ namespace fang
 			FANG_FATAL("頂点色描画の準備に失敗した");
 		}
 
+#if FANG_ENABLE_DEBUG_DRAW
+		// デバッグ用の可視化なので、失敗しても FANG_FATAL にせず可視化だけを飛ばして続ける。
+		DebugDraw debugDraw;
+		if (!debugDraw.Initialize(device))
+		{
+			FANG_LOG_ERROR(Runtime, "デバッグ描画の準備に失敗した。可視化だけを飛ばす");
+		}
+#endif
+
 		// メッシュ側は失敗しても FANG_FATAL にしない。モデルが出ないだけならゲームは続けられるし、
 		// 起動できないほうが困るため。三角形とエディタは今までどおり動く。
 		MeshRenderer meshRenderer;
@@ -834,9 +885,12 @@ namespace fang
 		loopContext.renderGraph   = &renderGraph;
 		loopContext.sceneRenderer = &sceneRenderer;
 		loopContext.unlitRenderer = &unlitRenderer;
-		loopContext.meshRenderer  = &meshRenderer;
-		loopContext.wolf          = &wolf;
-		loopContext.floorMesh     = floorMesh;
+#if FANG_ENABLE_DEBUG_DRAW
+		loopContext.debugDraw = &debugDraw;
+#endif
+		loopContext.meshRenderer = &meshRenderer;
+		loopContext.wolf         = &wolf;
+		loopContext.floorMesh    = floorMesh;
 
 		FramePipeline framePipeline;
 		if (!framePipeline.Initialize(jobSystem, frameMemory, &loopContext, &UpdateFrame, &RenderFrame))
@@ -887,6 +941,9 @@ namespace fang
 		framePipeline.Shutdown();
 		application.OnShutdown(device);
 		unlitRenderer.Shutdown(device);
+#if FANG_ENABLE_DEBUG_DRAW
+		debugDraw.Shutdown(device);
+#endif
 		sceneRenderer.Shutdown(device);
 		meshRenderer.Shutdown(device);
 		device.DestroyTexture(wolf.baseColor);

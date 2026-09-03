@@ -27,6 +27,18 @@ namespace fang::rhi
 
 			return DXGI_FORMAT_UNKNOWN;
 		}
+
+
+		D3D12_PRIMITIVE_TOPOLOGY_TYPE ToPrimitiveTopologyType(EnPrimitiveTopology topology)
+		{
+			switch (topology)
+			{
+				case EnPrimitiveTopology::TriangleList: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+				case EnPrimitiveTopology::LineList:     return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+			}
+
+			return D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
+		}
 	} // namespace
 
 
@@ -52,6 +64,7 @@ namespace fang::rhi
 		uint32_t             rootParameterCount = 0;
 
 		Entry entry;
+		entry.topology = desc.topology;
 
 		FANG_ASSERT(
 			desc.rootConstantCount == 0 || !desc.hasObjectConstantBuffer,
@@ -259,7 +272,7 @@ namespace fang::rhi
 		}
 
 		pipelineDesc.InputLayout           = { inputElements.data(), static_cast<UINT>(inputElements.size()) };
-		pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		pipelineDesc.PrimitiveTopologyType = ToPrimitiveTopologyType(desc.topology);
 
 		pipelineDesc.SampleDesc.Count = 1;
 		pipelineDesc.SampleMask       = UINT_MAX;
@@ -293,8 +306,11 @@ namespace fang::rhi
 		D3D12_DEPTH_STENCIL_DESC& depthStencil = pipelineDesc.DepthStencilState;
 		if (desc.isDepthTestEnabled)
 		{
-			depthStencil.DepthEnable    = TRUE;
-			depthStencil.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+			depthStencil.DepthEnable = TRUE;
+
+			// デバッグ線のように「隠れてはほしいが深度を汚したくない」描画は書き込みだけ切る。
+			depthStencil.DepthWriteMask =
+				desc.isDepthWriteEnabled ? D3D12_DEPTH_WRITE_MASK_ALL : D3D12_DEPTH_WRITE_MASK_ZERO;
 
 			// 深度は手前ほど小さいので、既に書かれている値より小さいものだけ通す。
 			depthStencil.DepthFunc = D3D12_COMPARISON_FUNC_LESS;

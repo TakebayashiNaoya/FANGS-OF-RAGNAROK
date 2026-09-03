@@ -24,6 +24,18 @@ namespace fang::rhi
 
 			return D3D12_RESOURCE_STATE_COMMON;
 		}
+
+
+		D3D_PRIMITIVE_TOPOLOGY ToD3DPrimitiveTopology(EnPrimitiveTopology topology)
+		{
+			switch (topology)
+			{
+				case EnPrimitiveTopology::TriangleList: return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+				case EnPrimitiveTopology::LineList:     return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+			}
+
+			return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
+		}
 	} // namespace
 
 
@@ -160,7 +172,7 @@ namespace fang::rhi
 
 		commandList->SetGraphicsRootSignature(entry.rootSignature.Get());
 		commandList->SetPipelineState(entry.pipelineState.Get());
-		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		commandList->IASetPrimitiveTopology(ToD3DPrimitiveTopology(entry.topology));
 	}
 
 
