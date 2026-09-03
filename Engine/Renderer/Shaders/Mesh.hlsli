@@ -11,7 +11,8 @@ struct VertexInput
 
 struct VertexOutput
 {
-	float4 position : SV_POSITION;
-	float3 normal   : NORMAL;
-	float2 texCoord : TEXCOORD0;
+	float4 position      : SV_POSITION;
+	float3 normal        : NORMAL;    // ワールド空間。頂点シェーダーが world で回してから渡す。
+	float2 texCoord      : TEXCOORD0;
+	float3 worldPosition : TEXCOORD1; // ライティングの視線ベクトル用。
 };

@@ -1,7 +1,9 @@
 // SkinnedMeshVS.hlsl
-// スキンメッシュの頂点シェーダー。骨の姿勢で頂点を変形してから MVP でクリップ座標へ移す。
+// スキンメッシュの頂点シェーダー。骨の姿勢で頂点を変形してから MVP でクリップ座標へ移し、
+// ライティング用にワールド法線とワールド位置を作る。
 // 出力とピクセルシェーダーは静的メッシュと共有する（Mesh.hlsli / MeshPS.hlsl）。
 #include "Mesh.hlsli"
+#include "MeshConstants.h"
 
 // 骨の上限。SkinnedMeshRenderer の MAX_JOINT_COUNT と対。片方だけ変えると読み書きの範囲がずれる。
 #define MAX_JOINT_COUNT 64
@@ -21,7 +23,7 @@ struct SkinnedVertexInput
 // ➡ mul(行列, ベクトル) と「行列が左」で書くと、C++ の合成順と一致する。骨行列も同じ規則。
 cbuffer cbPerObject : register(b0)
 {
-	float4x4 mvp;
+	MeshObjectConstants constants;
 };
 
 cbuffer cbSkinning : register(b1)
@@ -37,11 +39,14 @@ VertexOutput VertexMain(SkinnedVertexInput input)
 	                    + boneMatrices[input.joints.z] * input.weights.z
 	                    + boneMatrices[input.joints.w] * input.weights.w;
 
-	VertexOutput output;
-	output.position = mul(mvp, mul(skinMatrix, float4(input.position, 1.0)));
+	float4 skinnedPosition = mul(skinMatrix, float4(input.position, 1.0));
 
-	// w = 0 で掛けると平行移動が効かない ➡ 法線は向きだけが回る。等倍前提なので逆転置は要らない。
-	output.normal = mul(skinMatrix, float4(input.normal, 0.0)).xyz;
+	VertexOutput output;
+	output.position = mul(constants.modelViewProjection, skinnedPosition);
+	output.worldPosition = mul(constants.world, skinnedPosition).xyz;
+
+	// w = 0 で掛けると平行移動が効かない ➡ 法線は向きだけが回る。骨も world も等倍前提なので逆転置は要らない。
+	output.normal = mul(constants.world, mul(skinMatrix, float4(input.normal, 0.0))).xyz;
 
 	output.texCoord = input.texCoord;
 	return output;

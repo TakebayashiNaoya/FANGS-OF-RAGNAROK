@@ -40,6 +40,11 @@ namespace fang::rhi
 
 		Entry entry;
 
+		FANG_ASSERT(
+			desc.rootConstantCount == 0 || !desc.hasObjectConstantBuffer,
+			"b0 はルート定数かルート CBV のどちらか片方しか置けない"
+		);
+
 		if (desc.rootConstantCount > 0)
 		{
 			entry.rootParameters.rootConstants = rootParameterCount;
@@ -50,6 +55,19 @@ namespace fang::rhi
 
 			parameter.Constants.Num32BitValues = desc.rootConstantCount;
 			parameter.Constants.ShaderRegister = 0;
+			++rootParameterCount;
+		}
+
+		if (desc.hasObjectConstantBuffer)
+		{
+			entry.rootParameters.objectConstantBuffer = rootParameterCount;
+
+			// VS がワールド行列、PS がライトとマテリアルを同じ b0 から読むので、両方から見えるようにする。
+			D3D12_ROOT_PARAMETER& parameter = rootParameters[rootParameterCount];
+			parameter.ParameterType         = D3D12_ROOT_PARAMETER_TYPE_CBV;
+			parameter.ShaderVisibility      = D3D12_SHADER_VISIBILITY_ALL;
+
+			parameter.Descriptor.ShaderRegister = 0;
 			++rootParameterCount;
 		}
 

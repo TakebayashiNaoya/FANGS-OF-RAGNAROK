@@ -8,6 +8,7 @@
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
 #include "Renderer/RendererLog.h"
+#include "Renderer/Shaders/MeshConstants.h"
 #include <cstddef>
 
 
@@ -36,11 +37,40 @@ namespace fang
 			float   weights[4];
 		};
 
-		/** @brief ルート定数で渡す MVP 行列の要素数。 */
-		constexpr uint32_t MATRIX_ELEMENT_COUNT = 16;
-
 		/** @brief 16 bit のインデックスで指せる頂点の数。 */
 		constexpr size_t MAX_VERTEX_COUNT = 65536;
+
+		/**
+		 * @brief 描くもの 1 個ぶんのルート定数を組む。
+		 * @details 行ベクトル規約なので MVP は World が左に来る。行列は行優先のまま転置せずに渡す。
+		 *          HLSL の定数バッファは既定で列優先に読むので、読む側で転置が掛かって辻褄が合う
+		 *          （シェーダは mul(行列, ベクトル) と書く。骨行列も同じ規則で b1 に置いてある）。
+		 *          MeshRenderer 側と同じ作り。RenderGraph でレンダラを畳むときに一緒に片付ける。
+		 */
+		[[nodiscard]] MeshObjectConstants MakeObjectConstants(
+			const View&      view,
+			const Matrix4x4& world,
+			float            metallicFactor,
+			float            roughnessFactor
+		)
+		{
+			const Vector3 lightDirection = view.directionToLight;
+			const Vector3 lightColor     = view.lightColor;
+			const Vector3 ambientColor   = view.ambientColor;
+			const Vector3 cameraPosition = view.cameraPosition;
+
+			MeshObjectConstants constants{};
+			constants.modelViewProjection = Multiply(world, view.viewProjection);
+			constants.world               = world;
+
+			constants.directionToLight = { lightDirection.x, lightDirection.y, lightDirection.z, 0.0f };
+			constants.lightColor       = { lightColor.x, lightColor.y, lightColor.z, view.lightIntensity };
+			constants.ambientColor     = { ambientColor.x, ambientColor.y, ambientColor.z, 0.0f };
+			constants.cameraPosition   = { cameraPosition.x, cameraPosition.y, cameraPosition.z, 0.0f };
+			constants.material         = { metallicFactor, roughnessFactor, 0.0f, 0.0f };
+
+			return constants;
+		}
 
 		/** @brief 骨行列の置き場 1 本ぶんの大きさ。 */
 		constexpr uint32_t JOINT_MATRIX_BUFFER_SIZE =
@@ -91,12 +121,14 @@ namespace fang
 		pipelineDesc.pixelShaderBytecode  = std::span<const uint8_t>(g_MeshPS, sizeof(g_MeshPS));
 		pipelineDesc.vertexLayout         = VERTEX_LAYOUT;
 
-		// MVP は b0 のルート定数、骨行列は b1 の定数バッファ。59 本 × 64 バイトはルート定数に載らない。
+		// MVP・ライト・マテリアルは b0 のルート CBV（MeshConstants.h）、骨行列は b1 の定数バッファ。
+		// b0 をルート定数にしないのは、実機のドライバが 16 DWORD 超のルート定数のパイプライン生成で
+		// デバイスロストするため。
 		// ベースカラーは t0。無いときはダミーを差すので、パイプラインは常にこの 1 本。
-		pipelineDesc.rootConstantCount  = MATRIX_ELEMENT_COUNT;
-		pipelineDesc.hasConstantBuffer  = true;
-		pipelineDesc.hasTexture         = true;
-		pipelineDesc.isDepthTestEnabled = true;
+		pipelineDesc.hasObjectConstantBuffer = true;
+		pipelineDesc.hasConstantBuffer       = true;
+		pipelineDesc.hasTexture              = true;
+		pipelineDesc.isDepthTestEnabled      = true;
 
 		m_pipeline = device.CreateGraphicsPipeline(pipelineDesc);
 		if (!m_pipeline.IsValid())
@@ -119,6 +151,15 @@ namespace fang
 			}
 		}
 
+		for (rhi::BufferHandle& buffer : m_objectConstantBuffers)
+		{
+			buffer = device.CreateDynamicBuffer(sizeof(MeshObjectConstants), 0, rhi::EnBufferKind::Constant);
+			if (!buffer.IsValid())
+			{
+				return false;
+			}
+		}
+
 		FANG_LOG_INFO(Renderer, "スキンメッシュ描画の準備ができた");
 
 		return true;
@@ -127,6 +168,12 @@ namespace fang
 
 	void SkinnedMeshRenderer::Shutdown(rhi::GraphicsDevice& device)
 	{
+		for (rhi::BufferHandle& buffer : m_objectConstantBuffers)
+		{
+			device.DestroyBuffer(buffer);
+			buffer = {};
+		}
+
 		for (rhi::BufferHandle& buffer : m_jointMatrixBuffers)
 		{
 			device.DestroyBuffer(buffer);
@@ -327,13 +374,13 @@ namespace fang
 
 			const Mesh& mesh = m_meshes[item.mesh.index];
 
-			// 行ベクトル規約なので World が左に来る。
-			const Matrix4x4 modelViewProjection = Multiply(item.world, view.viewProjection);
+			const MeshObjectConstants constants =
+				MakeObjectConstants(view, item.world, item.metallicFactor, item.roughnessFactor);
+			device.UpdateBuffer(m_objectConstantBuffers[usedBufferCount], &constants, sizeof(constants));
 
-			// 行優先のまま、転置せずにルート定数へ渡す。骨行列も同じ規則で b1 に置いてある。
 			commandList.SetVertexBuffer(mesh.vertexBuffer);
 			commandList.SetIndexBuffer(mesh.indexBuffer);
-			commandList.SetRootConstants(&modelViewProjection, MATRIX_ELEMENT_COUNT);
+			commandList.SetObjectConstantBuffer(m_objectConstantBuffers[usedBufferCount]);
 			commandList.SetConstantBuffer(m_jointMatrixBuffers[usedBufferCount]);
 			commandList.SetTexture(item.baseColor.IsValid() ? item.baseColor : m_dummyBaseColor);
 			commandList.DrawIndexed(mesh.indexCount, 0, 0);

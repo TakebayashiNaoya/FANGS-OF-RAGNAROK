@@ -54,6 +54,12 @@ namespace fang::rhi
 		void SetRootConstants(const void* values, uint32_t count32BitValues);
 
 		/**
+		 * @brief b0 に定数バッファを差す。hasObjectConstantBuffer で作ったパイプラインを差してから呼ぶ。
+		 * @param buffer EnBufferKind::Constant で作ったバッファ。中身は UpdateBuffer で先に書いておく。
+		 */
+		void SetObjectConstantBuffer(BufferHandle buffer);
+
+		/**
 		 * @brief b1 に定数バッファを差す。hasConstantBuffer で作ったパイプラインを差してから呼ぶ。
 		 * @param buffer EnBufferKind::Constant で作ったバッファ。中身は UpdateBuffer で先に書いておく。
 		 */

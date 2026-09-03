@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include "Core/Math/Vector3.h"
 #include <cstdint>
 
 
@@ -23,9 +24,23 @@ namespace fang::rhi
 
 namespace fang
 {
-	/** @brief 更新が作り、次のフレームの描画が読むデータの土台。中身は上の層が決める。 */
+	/**
+	 * @brief 平行光 1 本。ここに置くのは向きと色だけの値で、光源というオブジェクトは無い。
+	 * @details Game が毎フレーム FrameData へ書き、Runtime が描画側へ写す。一度も書かれなければ
+	 *          この既定値の光で描かれる（従来の見た目に近い向きにしてある）。
+	 */
+	struct DirectionalLight
+	{
+		Vector3 directionToLight = { 0.309f, 0.722f, -0.619f }; /**< 面から光源へ向かう向き。正規化して渡す。 */
+		Vector3 color            = { 1.0f, 1.0f, 1.0f };        /**< リニア空間の色。 */
+		float   intensity        = 3.14159265f;           /**< BRDF の 1/π を打ち消して従来の明るさに合わせた値。 */
+		Vector3 ambientColor     = { 0.2f, 0.2f, 0.22f }; /**< 環境項。光の裏側の形を読ませる役。 */
+	};
+
+	/** @brief 更新が作り、次のフレームの描画が読むデータ。 */
 	struct FrameData
 	{
+		DirectionalLight light; /**< このフレームの平行光。将来は昼夜サイクルがここへ書く。 */
 	};
 
 	/**

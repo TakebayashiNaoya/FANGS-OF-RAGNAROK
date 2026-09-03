@@ -92,6 +92,12 @@ namespace fang
 		 */
 		[[nodiscard]] FANG_FORCEINLINE std::string_view GetBaseColorImagePath() const { return m_baseColorImagePath; }
 
+		/** @brief マテリアルの metallic 係数。0 = 非金属、1 = 金属。書かれていない glTF では既定値の 1.0。 */
+		[[nodiscard]] FANG_FORCEINLINE float GetMetallicFactor() const { return m_metallicFactor; }
+
+		/** @brief マテリアルの roughness 係数（知覚値）。1 = 粗い面。書かれていない glTF では既定値の 1.0。 */
+		[[nodiscard]] FANG_FORCEINLINE float GetRoughnessFactor() const { return m_roughnessFactor; }
+
 
 	private:
 		/** @brief 配列を全部空にする。読み込みに失敗したとき中途半端な中身を残さないため。 */
@@ -114,5 +120,9 @@ namespace fang
 
 		/** @brief ベースカラー画像の相対パス。指していなければ空。 */
 		std::string m_baseColorImagePath;
+
+		/** @brief マテリアルの係数。glTF の既定値で初期化し、書かれていれば Load が上書きする。 */
+		float m_metallicFactor  = 1.0f;
+		float m_roughnessFactor = 1.0f;
 	};
 } // namespace fang

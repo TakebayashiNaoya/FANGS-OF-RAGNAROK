@@ -38,10 +38,20 @@ namespace fang
 		[[nodiscard]] FANG_FORCEINLINE bool IsValid() const { return index != INVALID_INDEX; }
 	};
 
-	/** @brief 1 フレーム分のカメラ。 */
+	/**
+	 * @brief 1 フレーム分のカメラと平行光。
+	 * @details ライトを型でなくばらの値で持つのは、光を書くのは Runtime 側（FrameData）で、
+	 *          Renderer はそちらの型を知らないため。呼び出し側が毎フレーム全部を埋めること。
+	 */
 	struct View
 	{
 		Matrix4x4 viewProjection; /**< Multiply(ビュー行列, 透視投影行列)。行ベクトル規約なのでビューが左に来る。 */
+		Vector3   cameraPosition; /**< ワールドの視点。鏡面反射の視線ベクトル用。 */
+
+		Vector3 directionToLight;      /**< 面から光源へ向かう向き。正規化して渡す。 */
+		Vector3 lightColor;            /**< リニア空間の色。 */
+		float   lightIntensity = 0.0f; /**< 明るさの倍率。調整は BRDF の式でなくこちらで行う。 */
+		Vector3 ambientColor;          /**< 環境項。光の裏側の形を読ませる役。 */
 	};
 
 	/**
@@ -68,6 +78,9 @@ namespace fang
 
 		/** @brief ベースカラー。無効なら今までと同じ単色（1×1 のダミー）が差さる。 */
 		rhi::TextureHandle baseColor;
+
+		float metallicFactor  = 0.0f; /**< 0 = 非金属。既定はダミーテクスチャのときの見た目を従来に合わせた値。 */
+		float roughnessFactor = 1.0f; /**< 知覚 roughness。1 = 粗い面（ハイライトが弱く広い）。 */
 	};
 
 	/**
@@ -80,6 +93,14 @@ namespace fang
 	{
 	public:
 		FANG_NON_COPYABLE(MeshRenderer);
+
+		/**
+		 * @brief 1 フレームに描けるメッシュの数。
+		 * @details 定数バッファの置き場をこの数だけ持つ。1 本を使い回すと、同じフレームの 2 個目が
+		 *          1 個目の定数を上書きしてしまう（コマンドはあとでまとめて実行されるため）。
+		 *          これを超えたぶんは描かずに警告を出す。増やすのは複数体を出す段の仕事。
+		 */
+		static constexpr uint32_t MAX_ITEM_COUNT = 4;
 
 		MeshRenderer() = default;
 
@@ -101,12 +122,19 @@ namespace fang
 
 		/**
 		 * @brief 開いているフレームに描画コマンドを積む。
+		 * @param device      定数バッファを書き込むために使う。
 		 * @param commandList BeginFrame が返したコマンドリスト。
 		 * @param items       描くもの。無効な番号の要素は飛ばす。この呼び出しの間だけ読む。
 		 * @details Initialize に失敗した状態で呼んでも何もせずに戻る。モデルが出ないだけで、
 		 *          ほかの描画は続けられるほうが呼び出し側の分岐が減るため。
+		 *          const にしていないのは、定数バッファの置き場を書き換えながら進むため。
 		 */
-		void Draw(rhi::CommandList& commandList, const View& view, std::span<const RenderItem> items) const;
+		void Draw(
+			rhi::GraphicsDevice&        device,
+			rhi::CommandList&           commandList,
+			const View&                 view,
+			std::span<const RenderItem> items
+		);
 
 
 	private:
@@ -120,6 +148,13 @@ namespace fang
 
 		rhi::PipelineHandle m_pipeline; /**< メッシュ用のシェーダとステートの組。 */
 		std::vector<Mesh>   m_meshes;   /**< MeshId.index で引く。捨てないので詰め直しも世代も要らない。 */
+
+		/**
+		 * @brief 描くもの 1 個ぶんの定数（MVP・ライト・マテリアル）の置き場。b0 に差す。
+		 * @details ルート定数にしないのは、実機のドライバが 16 DWORD 超のルート定数の
+		 *          パイプライン生成でデバイスロストするため。
+		 */
+		rhi::BufferHandle m_objectConstantBuffers[MAX_ITEM_COUNT];
 
 		/** @brief ベースカラーが無いときに差す 1×1。従来の単色と同じ色。 */
 		rhi::TextureHandle m_dummyBaseColor;

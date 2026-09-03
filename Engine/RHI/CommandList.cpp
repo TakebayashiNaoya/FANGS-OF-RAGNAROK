@@ -85,6 +85,21 @@ namespace fang::rhi
 	}
 
 
+	void CommandList::SetObjectConstantBuffer(BufferHandle buffer)
+	{
+		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
+		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
+
+		const uint32_t parameterIndex = m_boundRootParameters.objectConstantBuffer;
+		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "b0 の定数バッファを持たないパイプラインだ");
+
+		const BufferPool::Entry& entry = m_device->m_buffers.Get(buffer);
+		FANG_ASSERT(entry.kind == EnBufferKind::Constant, "定数バッファとして作られていないバッファだ");
+
+		commandList->SetGraphicsRootConstantBufferView(parameterIndex, entry.resource->GetGPUVirtualAddress());
+	}
+
+
 	void CommandList::SetConstantBuffer(BufferHandle buffer)
 	{
 		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);

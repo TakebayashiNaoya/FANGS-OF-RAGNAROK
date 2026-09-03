@@ -347,6 +347,19 @@ namespace fang::rhi
 	}
 
 
+	void GraphicsDevice::LogDeviceRemovedReason() const
+	{
+		if (m_device == nullptr)
+		{
+			return;
+		}
+
+		// S_OK ならデバイスは生きていて、失敗の原因は別にある。それも分かるので常に出す。
+		const HRESULT reason = m_device->GetDeviceRemovedReason();
+		FANG_LOG_ERROR(RHI, "デバイス削除の理由: {:#010x}", static_cast<uint32_t>(reason));
+	}
+
+
 	CommandList* GraphicsDevice::BeginFrame(const ClearColor& clearColor)
 	{
 		FANG_ASSERT(m_isInitialized, "GraphicsDevice が初期化されていない");
@@ -358,12 +371,14 @@ namespace fang::rhi
 		ID3D12CommandAllocator* allocator = m_commandAllocators[m_swapChain.GetFrameIndex()].Get();
 		if (!CheckHresult(allocator->Reset(), "コマンドアロケータの Reset"))
 		{
+			LogDeviceRemovedReason();
 			return nullptr;
 		}
 
 		// 記録口を「記録開始」状態に戻す。
 		if (!CheckHresult(m_commandList->Reset(allocator, nullptr), "コマンドリストの Reset"))
 		{
+			LogDeviceRemovedReason();
 			return nullptr;
 		}
 

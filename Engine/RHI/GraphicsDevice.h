@@ -136,6 +136,9 @@ namespace fang::rhi
 	private:
 		friend class CommandList;
 
+		/** @brief デバイス削除（ロスト）の理由をログに残す。BeginFrame が失敗したときの診断用。 */
+		void LogDeviceRemovedReason() const;
+
 		ComPtr<IDXGIFactory6>      m_factory;      /**< アダプタ列挙とスワップチェーン生成の入口。 */
 		ComPtr<ID3D12Device>       m_device;       /**< D3D12 の本体。全リソースの生成元。 */
 		ComPtr<ID3D12CommandQueue> m_commandQueue; /**< コマンドを GPU に流す唯一の列。 */

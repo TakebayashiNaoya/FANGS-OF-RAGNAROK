@@ -79,9 +79,10 @@ namespace fang::rhi
 		/** @brief そのパラメータを持っていないことを表す番号。 */
 		static constexpr uint32_t UNUSED = 0xFFFFFFFFu;
 
-		uint32_t rootConstants  = UNUSED; /**< b0 のルート定数。 */
-		uint32_t constantBuffer = UNUSED; /**< b1 のルート CBV。 */
-		uint32_t texture        = UNUSED; /**< t0 のディスクリプタテーブル。 */
+		uint32_t rootConstants        = UNUSED; /**< b0 のルート定数。 */
+		uint32_t objectConstantBuffer = UNUSED; /**< b0 のルート CBV。ルート定数とは排他。 */
+		uint32_t constantBuffer       = UNUSED; /**< b1 のルート CBV。 */
+		uint32_t texture              = UNUSED; /**< t0 のディスクリプタテーブル。 */
 	};
 
 	/** @brief 頂点属性 1 つ。 */
@@ -100,8 +101,15 @@ namespace fang::rhi
 		std::span<const uint8_t> pixelShaderBytecode;  /**< コンパイル済みピクセルシェーダ。 */
 		std::span<const VertexAttribute> vertexLayout; /**< 頂点構造体の並び。 */
 
-		/** @brief b0 に置くルート定数の数（32 bit 単位）。0 なら作らない。 */
+		/** @brief b0 に置くルート定数の数（32 bit 単位）。0 なら作らない。hasObjectConstantBuffer と排他。 */
 		uint32_t rootConstantCount = 0;
+
+		/**
+		 * @brief b0 に定数バッファを 1 本差すか（VS と PS の両方から見える）。rootConstantCount と排他。
+		 * @details 16 DWORD を超える定数の口。実機（Xbox One）のドライバは大きなルート定数の
+		 *          パイプライン生成でデバイスロストするので、大きな定数は必ずこちらで渡す。
+		 */
+		bool hasObjectConstantBuffer = false;
 
 		/** @brief t0 にテクスチャを 1 枚差すか。差すならサンプラ s0 も付く。 */
 		bool hasTexture = false;
