@@ -24,6 +24,7 @@ namespace fang::rhi
 				case EnTextureFormat::RGBA8Srgb: return DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 				case EnTextureFormat::BC7: return DXGI_FORMAT_BC7_UNORM;
 				case EnTextureFormat::BC7Srgb: return DXGI_FORMAT_BC7_UNORM_SRGB;
+				case EnTextureFormat::R16: return DXGI_FORMAT_R16_UNORM;
 			}
 
 			return DXGI_FORMAT_UNKNOWN;

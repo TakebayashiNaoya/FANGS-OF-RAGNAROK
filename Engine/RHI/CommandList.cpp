@@ -16,9 +16,9 @@ namespace fang::rhi
 		{
 			switch (state)
 			{
-				case EnResourceState::Present:             return D3D12_RESOURCE_STATE_PRESENT;
-				case EnResourceState::RenderTarget:        return D3D12_RESOURCE_STATE_RENDER_TARGET;
-				case EnResourceState::DepthWrite:          return D3D12_RESOURCE_STATE_DEPTH_WRITE;
+				case EnResourceState::Present: return D3D12_RESOURCE_STATE_PRESENT;
+				case EnResourceState::RenderTarget: return D3D12_RESOURCE_STATE_RENDER_TARGET;
+				case EnResourceState::DepthWrite: return D3D12_RESOURCE_STATE_DEPTH_WRITE;
 				case EnResourceState::PixelShaderResource: return D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 			}
 
@@ -31,7 +31,7 @@ namespace fang::rhi
 			switch (topology)
 			{
 				case EnPrimitiveTopology::TriangleList: return D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-				case EnPrimitiveTopology::LineList:     return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+				case EnPrimitiveTopology::LineList: return D3D_PRIMITIVE_TOPOLOGY_LINELIST;
 			}
 
 			return D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
@@ -93,7 +93,10 @@ namespace fang::rhi
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
 		const TexturePool::Entry& entry = m_device->m_textures.Get(handle);
-		FANG_ASSERT(entry.depthStencilViewHeap != nullptr, "深度テクスチャとして作られていないテクスチャを描画先にしている");
+		FANG_ASSERT(
+			entry.depthStencilViewHeap != nullptr,
+			"深度テクスチャとして作られていないテクスチャを描画先にしている"
+		);
 
 		const D3D12_CPU_DESCRIPTOR_HANDLE depthStencilView =
 			entry.depthStencilViewHeap->GetCPUDescriptorHandleForHeapStart();
@@ -204,7 +207,10 @@ namespace fang::rhi
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
 		const uint32_t parameterIndex = m_boundRootParameters.rootConstants;
-		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "ルート定数を持たないパイプラインにルート定数を積んでいる");
+		FANG_ASSERT(
+			parameterIndex != RootParameterLayout::UNUSED,
+			"ルート定数を持たないパイプラインにルート定数を積んでいる"
+		);
 
 		commandList->SetGraphicsRoot32BitConstants(parameterIndex, count32BitValues, values, 0);
 	}
@@ -216,7 +222,10 @@ namespace fang::rhi
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
 		const uint32_t parameterIndex = m_boundRootParameters.objectConstantBuffer;
-		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "b0 の定数バッファを持たないパイプラインに定数バッファを差している");
+		FANG_ASSERT(
+			parameterIndex != RootParameterLayout::UNUSED,
+			"b0 の定数バッファを持たないパイプラインに定数バッファを差している"
+		);
 
 		const BufferPool::Entry& entry = m_device->m_buffers.Get(buffer);
 		FANG_ASSERT(entry.kind == EnBufferKind::Constant, "定数バッファとして作られていないバッファを差している");
@@ -231,7 +240,10 @@ namespace fang::rhi
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
 		const uint32_t parameterIndex = m_boundRootParameters.frameConstantBuffer;
-		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "b1 の定数バッファを持たないパイプラインに定数バッファを差している");
+		FANG_ASSERT(
+			parameterIndex != RootParameterLayout::UNUSED,
+			"b1 の定数バッファを持たないパイプラインに定数バッファを差している"
+		);
 
 		const BufferPool::Entry& entry = m_device->m_buffers.Get(buffer);
 		FANG_ASSERT(entry.kind == EnBufferKind::Constant, "定数バッファとして作られていないバッファを差している");
@@ -246,7 +258,10 @@ namespace fang::rhi
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
 		const uint32_t parameterIndex = m_boundRootParameters.skinningConstantBuffer;
-		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "b2 の定数バッファを持たないパイプラインに定数バッファを差している");
+		FANG_ASSERT(
+			parameterIndex != RootParameterLayout::UNUSED,
+			"b2 の定数バッファを持たないパイプラインに定数バッファを差している"
+		);
 
 		const BufferPool::Entry& entry = m_device->m_buffers.Get(buffer);
 		FANG_ASSERT(entry.kind == EnBufferKind::Constant, "定数バッファとして作られていないバッファを差している");
@@ -255,13 +270,19 @@ namespace fang::rhi
 	}
 
 
-	void CommandList::SetTexture(TextureHandle texture)
+	void CommandList::SetTexture(uint32_t slot, TextureHandle texture)
 	{
 		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
-		const uint32_t parameterIndex = m_boundRootParameters.texture;
-		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "テクスチャを持たないパイプラインにテクスチャを差している");
+		FANG_ASSERT(
+			m_boundRootParameters.texture != RootParameterLayout::UNUSED,
+			"テクスチャを持たないパイプラインにテクスチャを差している"
+		);
+		FANG_ASSERT(slot < m_boundRootParameters.textureCount, "パイプラインのテクスチャの枠より大きいスロット番号");
+
+		// テクスチャの枠は 1 枠 1 テーブルで連続して並ぶので、スロット番号ぶん先のテーブルを差す。
+		const uint32_t parameterIndex = m_boundRootParameters.texture + slot;
 
 		const TexturePool::Entry&         entry = m_device->m_textures.Get(texture);
 		const D3D12_GPU_DESCRIPTOR_HANDLE descriptor =
@@ -277,7 +298,10 @@ namespace fang::rhi
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
 		const uint32_t parameterIndex = m_boundRootParameters.shadowMap;
-		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "シャドウマップを持たないパイプラインにシャドウマップを差している");
+		FANG_ASSERT(
+			parameterIndex != RootParameterLayout::UNUSED,
+			"シャドウマップを持たないパイプラインにシャドウマップを差している"
+		);
 
 		const TexturePool::Entry&         entry = m_device->m_textures.Get(texture);
 		const D3D12_GPU_DESCRIPTOR_HANDLE descriptor =

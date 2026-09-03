@@ -176,7 +176,7 @@ namespace fang
 
 		staticPipelineDesc.hasObjectConstantBuffer = true;
 		staticPipelineDesc.hasFrameConstantBuffer  = true;
-		staticPipelineDesc.hasTexture              = true;
+		staticPipelineDesc.textureCount            = 1;
 		staticPipelineDesc.hasShadowMap            = true;
 		staticPipelineDesc.isDepthTestEnabled      = true;
 
@@ -219,7 +219,7 @@ namespace fang
 		rhi::GraphicsPipelineDesc skinnedDepthPipelineDesc = staticDepthPipelineDesc;
 		skinnedDepthPipelineDesc.vertexShaderBytecode =
 			std::span<const uint8_t>(g_SkinnedMeshVS, sizeof(g_SkinnedMeshVS));
-		skinnedDepthPipelineDesc.vertexLayout             = SKINNED_VERTEX_LAYOUT;
+		skinnedDepthPipelineDesc.vertexLayout              = SKINNED_VERTEX_LAYOUT;
 		skinnedDepthPipelineDesc.hasSkinningConstantBuffer = true;
 
 		m_skinnedDepthPipeline = device.CreateGraphicsPipeline(skinnedDepthPipelineDesc);
@@ -727,11 +727,8 @@ namespace fang
 
 			const MeshObjectConstants objectConstants =
 				MakeObjectConstants(item.world, item.metallicFactor, item.roughnessFactor);
-			device.UpdateBuffer(
-				m_depthObjectConstantBuffers[usedBufferCount],
-				&objectConstants,
-				sizeof(objectConstants)
-			);
+			device
+				.UpdateBuffer(m_depthObjectConstantBuffers[usedBufferCount], &objectConstants, sizeof(objectConstants));
 
 			// ① パイプラインを切り替えるときだけ、SetPipeline と一緒に b1(フレーム定数)も差し直す。
 			// 　 最初の 1 個、または静的⇔スキンの境目でだけ通る。差し替えていないパイプラインへ毎回

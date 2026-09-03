@@ -56,6 +56,7 @@ namespace fang::rhi
 		RGBA8Srgb, /**< 同じ並びで、サンプル時にリニアへ直される。 */
 		BC7,       /**< ブロック圧縮。4×4 テクセルが 16 バイト ➡ 1 テクセルあたり 1 バイト。 */
 		BC7Srgb,   /**< 同上。ベースカラーはこれで焼く。 */
+		R16,       /**< 16 bit × 1 の UNORM。行のバイト数は 幅 × 2。ハイトマップに使う。 */
 	};
 
 	/**
@@ -68,8 +69,8 @@ namespace fang::rhi
 		const void* pixels      = nullptr; /**< 左上から右へ、行間の詰め物なし。 */
 		uint32_t    width       = 0;       /**< この段のテクセル数。 */
 		uint32_t    height      = 0;
-		uint32_t    rowPitch    = 0;       /**< 1 行のバイト数。 */
-		uint32_t    sizeInBytes = 0;       /**< この段の総バイト数。rowPitch × 行数と一致すること。 */
+		uint32_t    rowPitch    = 0; /**< 1 行のバイト数。 */
+		uint32_t    sizeInBytes = 0; /**< この段の総バイト数。rowPitch × 行数と一致すること。 */
 	};
 
 	/**
@@ -80,7 +81,7 @@ namespace fang::rhi
 	struct TextureSource
 	{
 		std::span<const TextureMipLevel> mipLevels;
-		EnTextureFormat format = EnTextureFormat::RGBA8;
+		EnTextureFormat                  format = EnTextureFormat::RGBA8;
 	};
 
 	/**
@@ -98,8 +99,17 @@ namespace fang::rhi
 		uint32_t objectConstantBuffer   = UNUSED; /**< b0 のルート CBV。ルート定数とは排他。 */
 		uint32_t frameConstantBuffer    = UNUSED; /**< b1 のルート CBV。 */
 		uint32_t skinningConstantBuffer = UNUSED; /**< b2 のルート CBV。 */
-		uint32_t texture                = UNUSED; /**< t0 のディスクリプタテーブル。 */
-		uint32_t shadowMap              = UNUSED; /**< t1 のディスクリプタテーブル。 */
+
+		/**
+		 * @brief t0 のディスクリプタテーブル。
+		 * @details テクスチャの枠は 1 枠 1 テーブルで、t0 から枠の数だけ連続した番号を占める
+		 *          （枠ごとのハンドルがヒープ上で連続している保証が無いため、1 本のテーブルにまとめられない）。
+		 *          スロット n のテーブル番号は texture + n。
+		 */
+		uint32_t texture = UNUSED;
+
+		uint32_t textureCount = 0;      /**< テクスチャの枠の数。SetTexture のスロット番号の上限。 */
+		uint32_t shadowMap    = UNUSED; /**< シャドウマップのディスクリプタテーブル。t はテクスチャの枠の次の番号。 */
 	};
 
 	/** @brief 頂点属性 1 つ。 */
@@ -116,6 +126,13 @@ namespace fang::rhi
 	{
 		TriangleList,
 		LineList, /**< デバッグ線描画のように、頂点 2 個ずつを独立した線分として描く。 */
+	};
+
+	/** @brief サンプラ s0 が UV の範囲外をどう読むか。 */
+	enum class EnSamplerAddressMode : uint8_t
+	{
+		Clamp, /**< 端のテクセルを引き延ばす。1 枚を 1 回だけ貼るものに使う。 */
+		Wrap,  /**< 繰り返す。地形のレイヤのようにタイリングするものに使う。 */
 	};
 
 	/** @brief パイプラインの生成条件。 */
@@ -145,10 +162,22 @@ namespace fang::rhi
 		 */
 		bool hasObjectConstantBuffer = false;
 
-		/** @brief t0 にテクスチャを 1 枚差すか。差すならサンプラ s0 も付く。 */
-		bool hasTexture = false;
+		/** @brief t0 から並べられるテクスチャの枠の上限。 */
+		static constexpr uint32_t MAX_TEXTURE_COUNT = 4;
 
-		/** @brief t1 に深度テクスチャを 1 枚差すか。差すなら比較サンプラ s1 も付く。 */
+		/**
+		 * @brief t0 から連続で差すテクスチャの枚数。1 枚でも差すならサンプラ s0 も付く。
+		 * @details 差す相手は CommandList::SetTexture がスロット番号で選ぶ。MAX_TEXTURE_COUNT まで。
+		 */
+		uint32_t textureCount = 0;
+
+		/** @brief s0 が UV の範囲外をどう読むか。textureCount が 0 なら意味を持たない。 */
+		EnSamplerAddressMode samplerAddressMode = EnSamplerAddressMode::Clamp;
+
+		/**
+		 * @brief 深度テクスチャを 1 枚差すか。差すなら比較サンプラ s1 も付く。
+		 * @details t の番号は textureCount の次の枠（テクスチャ 1 枚なら t1、4 枚なら t4）。
+		 */
 		bool hasShadowMap = false;
 
 		/**
