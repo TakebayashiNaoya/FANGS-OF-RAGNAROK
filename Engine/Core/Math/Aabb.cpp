@@ -57,6 +57,21 @@ namespace fang
 	}
 
 
+	void Aabb::GetCorners(Vector3 (&outCorners)[8]) const
+	{
+		FANG_ASSERT(IsValid(), "無効な箱の頂点を求めようとしている");
+
+		outCorners[0] = { min.x, min.y, min.z };
+		outCorners[1] = { max.x, min.y, min.z };
+		outCorners[2] = { min.x, max.y, min.z };
+		outCorners[3] = { max.x, max.y, min.z };
+		outCorners[4] = { min.x, min.y, max.z };
+		outCorners[5] = { max.x, min.y, max.z };
+		outCorners[6] = { min.x, max.y, max.z };
+		outCorners[7] = { max.x, max.y, max.z };
+	}
+
+
 	Aabb TransformAabb(const Aabb& bounds, const Matrix4x4& matrix)
 	{
 		FANG_ASSERT(bounds.IsValid(), "無効な箱を変換しようとしている");
@@ -67,6 +82,18 @@ namespace fang
 		Aabb result;
 		result.min = transformedCenter - transformedExtent;
 		result.max = transformedCenter + transformedExtent;
+		return result;
+	}
+
+
+	Aabb MakeAabbFromPoints(std::span<const Vector3> points)
+	{
+		Aabb result;
+		for (const Vector3& point : points)
+		{
+			result.Expand(point);
+		}
+
 		return result;
 	}
 } // namespace fang

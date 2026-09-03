@@ -7,6 +7,7 @@
 #include "Core/CoreMacros.h"
 #include "Core/Math/Vector3.h"
 #include <cfloat>
+#include <span>
 
 
 namespace fang
@@ -30,6 +31,15 @@ namespace fang
 		/** @brief 点を含むように広げる。無効な箱に入れると、その点だけの箱になる。 */
 		void Expand(const Vector3& point);
 
+		/**
+		 * @brief 8 頂点を求める。
+		 * @param outCorners 書き込み先。並びは (min/max の x, y, z) を 2 進数の桁と見た順
+		 *                   （0 = min, 1 = max。x が最下位桁）で、0 番が min、7 番が max になる。
+		 * @details 無効な箱で呼ぶと FANG_ASSERT。デバッグ描画や変換など、min/max だけでは
+		 *          足りない場面のための導出関数。
+		 */
+		void GetCorners(Vector3 (&outCorners)[8]) const;
+
 		Vector3 min{ FLT_MAX, FLT_MAX, FLT_MAX };    /**< 各軸の最小値。 */
 		Vector3 max{ -FLT_MAX, -FLT_MAX, -FLT_MAX }; /**< 各軸の最大値。 */
 	};
@@ -43,4 +53,11 @@ namespace fang
 	 *          回転の向きによらず必ず包む長さになるので、頂点の最大最小を取り直さなくてよい。
 	 */
 	[[nodiscard]] Aabb TransformAabb(const Aabb& bounds, const Matrix4x4& matrix);
+
+	/**
+	 * @brief 点列をすべて含む箱を作る。
+	 * @param points 元になる点列。
+	 * @return points を全部 Expand した箱。points が空なら無効な箱（Aabb::IsValid() が false）。
+	 */
+	[[nodiscard]] Aabb MakeAabbFromPoints(std::span<const Vector3> points);
 } // namespace fang
