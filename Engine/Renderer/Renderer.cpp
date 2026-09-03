@@ -6,6 +6,9 @@
 #include "Renderer/Renderer.h"
 
 
+FANG_DEFINE_LOG_CATEGORY(Renderer);
+
+
 namespace fang
 {
 	const char* GetRendererModuleName()

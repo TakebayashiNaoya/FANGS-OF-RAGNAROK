@@ -15,7 +15,7 @@
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
 #include "Renderer/MeshRenderer.h"
-#include "Renderer/TriangleRenderer.h"
+#include "Renderer/UnlitRenderer.h"
 #include "Resource/DdsImage.h"
 #include "Resource/GltfMesh.h"
 #include "Runtime/FramePipeline.h"
@@ -105,12 +105,12 @@ namespace fang
 		/** @brief FramePipeline へ渡す、フレームループの持ち物。 */
 		struct FrameLoopContext
 		{
-			IApplication*        application      = nullptr;
-			rhi::GraphicsDevice* device           = nullptr;
-			Window*              window           = nullptr;
-			TriangleRenderer*    triangleRenderer = nullptr;
-			MeshRenderer*        meshRenderer     = nullptr;
-			WolfModel*           wolf             = nullptr;
+			IApplication*        application   = nullptr;
+			rhi::GraphicsDevice* device        = nullptr;
+			Window*              window        = nullptr;
+			UnlitRenderer*       unlitRenderer = nullptr;
+			MeshRenderer*        meshRenderer  = nullptr;
+			WolfModel*           wolf          = nullptr;
 
 			/** @brief カメラの水平回転角（ラジアン）。入力の仕組みがまだ無いので時間で回す。 */
 			float cameraOrbitRadians = 0.0f;
@@ -334,16 +334,13 @@ namespace fang
 			commandList->SetViewport(window.GetWidth(), window.GetHeight());
 
 			// 三角形を描く。描画コマンドを積むだけで、まだ GPU は動かない。
-			loopContext.triangleRenderer->Draw(*commandList, window.GetWidth(), window.GetHeight());
+			// 頂点をクリップ空間で持っているので、恒等行列（Matrix4x4 の既定値）を渡してそのまま通す。
+			loopContext.unlitRenderer->DrawTriangle(device, *commandList, Matrix4x4{});
 
 			// 狼を描く。読めていなければメッシュの描画だけを飛ばし、ほかは今までどおり続ける。
 			WolfModel& wolf = *loopContext.wolf;
 			if (wolf.mesh.IsValid())
 			{
-				// メッシュのレンダラはビューポートを設定しない。TriangleRenderer::Draw が内部で設定しているのに
-				// 頼ると、描く順を入れ替えた途端に壊れる。
-				commandList->SetViewport(window.GetWidth(), window.GetHeight());
-
 				// 入力の仕組みがまだ無いので、時間でカメラを回して全方向から形と前後関係を確かめられるようにする。
 				loopContext.cameraOrbitRadians += deltaTimeSeconds * (2.0f * PI / CAMERA_ORBIT_SECONDS);
 				if (loopContext.cameraOrbitRadians >= 2.0f * PI)
@@ -462,10 +459,10 @@ namespace fang
 			FANG_FATAL("D3D12 デバイスを作れなかった");
 		}
 
-		TriangleRenderer triangleRenderer;
-		if (!triangleRenderer.Initialize(device))
+		UnlitRenderer unlitRenderer;
+		if (!unlitRenderer.Initialize(device))
 		{
-			FANG_FATAL("三角形の準備に失敗した");
+			FANG_FATAL("頂点色描画の準備に失敗した");
 		}
 
 		// メッシュ側は失敗しても FANG_FATAL にしない。モデルが出ないだけならゲームは続けられるし、
@@ -482,12 +479,12 @@ namespace fang
 		}
 
 		FrameLoopContext loopContext{};
-		loopContext.application      = &application;
-		loopContext.device           = &device;
-		loopContext.window           = &window;
-		loopContext.triangleRenderer = &triangleRenderer;
-		loopContext.meshRenderer     = &meshRenderer;
-		loopContext.wolf             = &wolf;
+		loopContext.application   = &application;
+		loopContext.device        = &device;
+		loopContext.window        = &window;
+		loopContext.unlitRenderer = &unlitRenderer;
+		loopContext.meshRenderer  = &meshRenderer;
+		loopContext.wolf          = &wolf;
 
 		FramePipeline framePipeline;
 		if (!framePipeline.Initialize(jobSystem, frameMemory, &loopContext, &UpdateFrame, &RenderFrame))
@@ -525,7 +522,7 @@ namespace fang
 
 		framePipeline.Shutdown();
 		application.OnShutdown(device);
-		triangleRenderer.Shutdown(device);
+		unlitRenderer.Shutdown(device);
 		meshRenderer.Shutdown(device);
 		device.DestroyTexture(wolf.baseColor);
 		device.Shutdown();
