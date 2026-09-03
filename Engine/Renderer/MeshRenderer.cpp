@@ -92,18 +92,6 @@ namespace fang
 			outVertex->texCoord[1] = PackFloat16(texCoord.y);
 		}
 
-		/** @brief 位置を全部含む箱を作る。空の列を渡すと無効な箱が返る。 */
-		[[nodiscard]] Aabb MakeLocalBounds(std::span<const Vector3> positions)
-		{
-			Aabb bounds;
-			for (const Vector3& position : positions)
-			{
-				bounds.Expand(position);
-			}
-
-			return bounds;
-		}
-
 		/**
 		 * @brief 描くもの 1 個ぶんの定数を組む。
 		 * @details 行列は行優先のまま転置せずに渡す。HLSL の定数バッファは既定で列優先に読むので、
@@ -326,7 +314,7 @@ namespace fang
 			static_cast<uint32_t>(vertices.size() * sizeof(MeshVertex)),
 			static_cast<uint32_t>(sizeof(MeshVertex)),
 			source.indices,
-			MakeLocalBounds(source.positions),
+			MakeAabbFromPoints(source.positions),
 			false
 		);
 	}
@@ -397,7 +385,7 @@ namespace fang
 			static_cast<uint32_t>(vertices.size() * sizeof(SkinnedMeshVertex)),
 			static_cast<uint32_t>(sizeof(SkinnedMeshVertex)),
 			source.indices,
-			MakeLocalBounds(source.positions),
+			MakeAabbFromPoints(source.positions),
 			true
 		);
 	}

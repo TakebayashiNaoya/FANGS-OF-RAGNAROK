@@ -96,6 +96,15 @@ namespace
 		CHECK(actual.max.y == doctest::Approx(expected.max.y));
 		CHECK(actual.max.z == doctest::Approx(expected.max.z));
 	}
+
+
+	/** @brief 2 つの点が一致するか確かめる。 */
+	void CheckVectorsAreEqual(const fang::Vector3& actual, const fang::Vector3& expected)
+	{
+		CHECK(actual.x == doctest::Approx(expected.x));
+		CHECK(actual.y == doctest::Approx(expected.y));
+		CHECK(actual.z == doctest::Approx(expected.z));
+	}
 } // namespace
 
 
@@ -206,4 +215,48 @@ TEST_CASE("負の拡縮でも箱は反転せず有効なまま")
 
 	CHECK(mirrored.IsValid());
 	CheckAabbsAreEqual(mirrored, fang::Aabb{ .min = { -4.0f, -2.0f, -3.0f }, .max = { 1.0f, 5.0f, 6.0f } });
+}
+
+
+TEST_CASE("MakeAabbFromPoints は空の列から無効な箱を作る")
+{
+	const fang::Aabb bounds = fang::MakeAabbFromPoints({});
+
+	CHECK_FALSE(bounds.IsValid());
+}
+
+
+TEST_CASE("MakeAabbFromPoints は複数の点をすべて含む箱を作る")
+{
+	const fang::Vector3 points[] = {
+		{ 1.0f, 2.0f, 3.0f },
+		{ -5.0f, 2.0f, 10.0f },
+		{ 0.0f, -7.0f, 4.0f },
+	};
+
+	const fang::Aabb bounds = fang::MakeAabbFromPoints(points);
+
+	CHECK(bounds.IsValid());
+	CheckAabbsAreEqual(bounds, fang::Aabb{ .min = { -5.0f, -7.0f, 3.0f }, .max = { 1.0f, 2.0f, 10.0f } });
+}
+
+
+TEST_CASE("GetCorners は min/max の全組み合わせの 8 頂点を返す")
+{
+	const fang::Aabb bounds{ .min = { -1.0f, -2.0f, -3.0f }, .max = { 4.0f, 5.0f, 6.0f } };
+
+	fang::Vector3 corners[8];
+	bounds.GetCorners(corners);
+
+	const fang::Vector3 expected[8] = {
+		{ bounds.min.x, bounds.min.y, bounds.min.z }, { bounds.max.x, bounds.min.y, bounds.min.z },
+		{ bounds.min.x, bounds.max.y, bounds.min.z }, { bounds.max.x, bounds.max.y, bounds.min.z },
+		{ bounds.min.x, bounds.min.y, bounds.max.z }, { bounds.max.x, bounds.min.y, bounds.max.z },
+		{ bounds.min.x, bounds.max.y, bounds.max.z }, { bounds.max.x, bounds.max.y, bounds.max.z },
+	};
+
+	for (size_t index = 0; index < 8; ++index)
+	{
+		CheckVectorsAreEqual(corners[index], expected[index]);
+	}
 }
