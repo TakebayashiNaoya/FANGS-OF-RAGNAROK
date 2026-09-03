@@ -283,6 +283,30 @@ namespace fang
 			return;
 		}
 
+		// TODO: 実機で「手前の地形が見えない」の切り分けが済んだら消す。
+		// 初回の記録だけ、チャンクごとのカリング判定と箱を startup.log に残す
+		// ➡ CPU 側で落ちているのか、描いているのに映らないのかを実機のログで見分ける。
+		if (!m_hasLoggedCullingDiagnostics)
+		{
+			m_hasLoggedCullingDiagnostics = true;
+			for (uint32_t index = 0; index < m_chunkCount; ++index)
+			{
+				const Aabb& bounds = m_chunks[index].bounds;
+				FANG_LOG_INFO(
+					Renderer,
+					"地形チャンク {:2}: 判定 {} / X {:5.0f}〜{:5.0f} / Y {:3.0f}〜{:3.0f} / Z {:5.0f}〜{:5.0f}",
+					index,
+					m_frustum.Intersects(bounds) ? "内" : "外",
+					bounds.min.x,
+					bounds.max.x,
+					bounds.min.y,
+					bounds.max.y,
+					bounds.min.z,
+					bounds.max.z
+				);
+			}
+		}
+
 		// パイプラインと定数とテクスチャは全チャンク共通なので一度だけ差す。
 		commandList.SetPipeline(m_pipeline);
 		commandList.SetObjectConstantBuffer(m_constantBuffer);
