@@ -94,11 +94,11 @@ namespace fang::rhi
 		/** @brief そのパラメータを持っていないことを表す番号。 */
 		static constexpr uint32_t UNUSED = 0xFFFFFFFFu;
 
-		uint32_t rootConstants        = UNUSED; /**< b0 のルート定数。 */
-		uint32_t objectConstantBuffer = UNUSED; /**< b0 のルート CBV。ルート定数とは排他。 */
-		uint32_t frameConstantBuffer  = UNUSED; /**< b1 のルート CBV。 */
-		uint32_t constantBuffer       = UNUSED; /**< b2 のルート CBV。 */
-		uint32_t texture              = UNUSED; /**< t0 のディスクリプタテーブル。 */
+		uint32_t rootConstants          = UNUSED; /**< b0 のルート定数。 */
+		uint32_t objectConstantBuffer   = UNUSED; /**< b0 のルート CBV。ルート定数とは排他。 */
+		uint32_t frameConstantBuffer    = UNUSED; /**< b1 のルート CBV。 */
+		uint32_t skinningConstantBuffer = UNUSED; /**< b2 のルート CBV。 */
+		uint32_t texture                = UNUSED; /**< t0 のディスクリプタテーブル。 */
 	};
 
 	/** @brief 頂点属性 1 つ。 */
@@ -138,11 +138,11 @@ namespace fang::rhi
 		bool hasFrameConstantBuffer = false;
 
 		/**
-		 * @brief b2 に定数バッファを 1 本差すか。
+		 * @brief b2 に骨のスキニング行列を差すか。
 		 * @details ルート定数に載らない大きさのものを渡す口。ディスクリプタを持たないルート CBV なので
-		 *          ヒープの管理が増えない。骨のスキニング行列がこれで渡る。
+		 *          ヒープの管理が増えない。
 		 */
-		bool hasConstantBuffer = false;
+		bool hasSkinningConstantBuffer = false;
 
 		bool isAlphaBlendEnabled = false; /**< 半透明合成をするか。有効にすると裏面も描く。 */
 		bool isDepthTestEnabled  = false; /**< 深度テストと深度書き込みをするか。3D の物を描くときに立てる。 */

@@ -15,7 +15,6 @@
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
 #include "Renderer/MeshRenderer.h"
-#include "Renderer/SkinnedMeshRenderer.h"
 #include "Renderer/TriangleRenderer.h"
 #include "Resource/DdsImage.h"
 #include "Resource/GltfMesh.h"
@@ -106,13 +105,12 @@ namespace fang
 		/** @brief FramePipeline へ渡す、フレームループの持ち物。 */
 		struct FrameLoopContext
 		{
-			IApplication*        application         = nullptr;
-			rhi::GraphicsDevice* device              = nullptr;
-			Window*              window              = nullptr;
-			TriangleRenderer*    triangleRenderer    = nullptr;
-			MeshRenderer*        meshRenderer        = nullptr;
-			SkinnedMeshRenderer* skinnedMeshRenderer = nullptr;
-			WolfModel*           wolf                = nullptr;
+			IApplication*        application      = nullptr;
+			rhi::GraphicsDevice* device           = nullptr;
+			Window*              window           = nullptr;
+			TriangleRenderer*    triangleRenderer = nullptr;
+			MeshRenderer*        meshRenderer     = nullptr;
+			WolfModel*           wolf             = nullptr;
 
 			/** @brief カメラの水平回転角（ラジアン）。入力の仕組みがまだ無いので時間で回す。 */
 			float cameraOrbitRadians = 0.0f;
@@ -216,12 +214,7 @@ namespace fang
 		 * @brief 狼のモデルを読んで GPU へ載せる。骨を持っていればアニメーションも読む。
 		 * @details 失敗しても落とさない。モデルが出なくても三角形とエディタは動き、ゲームの本質でもないため。
 		 */
-		void LoadWolf(
-			rhi::GraphicsDevice& device,
-			MeshRenderer&        meshRenderer,
-			SkinnedMeshRenderer& skinnedMeshRenderer,
-			WolfModel*           outWolf
-		)
+		void LoadWolf(rhi::GraphicsDevice& device, MeshRenderer& meshRenderer, WolfModel* outWolf)
 		{
 			// GltfMesh は CreateMesh が済めば用済み。15MB の .bin 由来の配列を抱え続けないよう、
 			// この関数を抜けるところで手放す。逆バインド行列と関節名だけは写しを残す。
@@ -262,7 +255,7 @@ namespace fang
 				.jointWeights = model.GetJointWeights(),
 			};
 
-			outWolf->mesh = skinnedMeshRenderer.CreateMesh(device, source);
+			outWolf->mesh = meshRenderer.CreateMesh(device, source);
 			if (!outWolf->mesh.IsValid())
 			{
 				return;
@@ -391,37 +384,28 @@ namespace fang
 					.ambientColor     = light.ambientColor,
 				};
 
-				// 実行中のヒープ確保は 0 が要件なので、std::vector を作らずスタックの配列を span で渡す。
-				// world は既定の単位行列のまま。狼はモデル座標のまま原点に置く。
 				if (wolf.isSkinned)
 				{
 					// 再生位置を進めるのはここ。カメラの回転と同じ場所に置いてある
 					// ➡ Scene ができたらカメラごとゲーム側の更新へ移る。
 					UpdateWolfPose(&wolf, deltaTimeSeconds);
+				}
 
-					const SkinnedRenderItem items[] = {
-						SkinnedRenderItem{
-							.mesh             = wolf.mesh,
-							.skinningMatrices = wolf.skinningMatrices,
-							.baseColor        = wolf.baseColor,
-							.metallicFactor   = wolf.metallicFactor,
-							.roughnessFactor  = wolf.roughnessFactor,
-						},
-					};
-					loopContext.skinnedMeshRenderer->Draw(device, *commandList, view, items);
-				}
-				else
-				{
-					const RenderItem items[] = {
-						RenderItem{
-							.mesh            = wolf.mesh,
-							.baseColor       = wolf.baseColor,
-							.metallicFactor  = wolf.metallicFactor,
-							.roughnessFactor = wolf.roughnessFactor,
-						},
-					};
-					loopContext.meshRenderer->Draw(device, *commandList, view, items);
-				}
+				// 実行中のヒープ確保は 0 が要件なので、std::vector を作らずスタックの配列を span で渡す。
+				// world は既定の単位行列のまま。狼はモデル座標のまま原点に置く ➡ 局所の箱がそのまま
+				// ワールドの箱になるので、bounds に変換を掛けずに渡せる。
+				// 骨を持たない狼なら skinningMatrices は空のままで、レンダラが静的メッシュとして描く。
+				const RenderItem items[] = {
+					RenderItem{
+						.mesh             = wolf.mesh,
+						.bounds           = loopContext.meshRenderer->GetLocalBounds(wolf.mesh),
+						.skinningMatrices = wolf.skinningMatrices,
+						.baseColor        = wolf.baseColor,
+						.metallicFactor   = wolf.metallicFactor,
+						.roughnessFactor  = wolf.roughnessFactor,
+					},
+				};
+				loopContext.meshRenderer->Draw(device, *commandList, view, items);
 			}
 
 			// 上の層に描画コマンドを積ませる。読ませるのは 1 つ前のフレームの更新が作ったもの。
@@ -486,12 +470,11 @@ namespace fang
 
 		// メッシュ側は失敗しても FANG_FATAL にしない。モデルが出ないだけならゲームは続けられるし、
 		// 起動できないほうが困るため。三角形とエディタは今までどおり動く。
-		MeshRenderer        meshRenderer;
-		SkinnedMeshRenderer skinnedMeshRenderer;
-		WolfModel           wolf;
-		if (meshRenderer.Initialize(device) && skinnedMeshRenderer.Initialize(device))
+		MeshRenderer meshRenderer;
+		WolfModel    wolf;
+		if (meshRenderer.Initialize(device))
 		{
-			LoadWolf(device, meshRenderer, skinnedMeshRenderer, &wolf);
+			LoadWolf(device, meshRenderer, &wolf);
 		}
 		else
 		{
@@ -499,13 +482,12 @@ namespace fang
 		}
 
 		FrameLoopContext loopContext{};
-		loopContext.application         = &application;
-		loopContext.device              = &device;
-		loopContext.window              = &window;
-		loopContext.triangleRenderer    = &triangleRenderer;
-		loopContext.meshRenderer        = &meshRenderer;
-		loopContext.skinnedMeshRenderer = &skinnedMeshRenderer;
-		loopContext.wolf                = &wolf;
+		loopContext.application      = &application;
+		loopContext.device           = &device;
+		loopContext.window           = &window;
+		loopContext.triangleRenderer = &triangleRenderer;
+		loopContext.meshRenderer     = &meshRenderer;
+		loopContext.wolf             = &wolf;
 
 		FramePipeline framePipeline;
 		if (!framePipeline.Initialize(jobSystem, frameMemory, &loopContext, &UpdateFrame, &RenderFrame))
@@ -545,7 +527,6 @@ namespace fang
 		application.OnShutdown(device);
 		triangleRenderer.Shutdown(device);
 		meshRenderer.Shutdown(device);
-		skinnedMeshRenderer.Shutdown(device);
 		device.DestroyTexture(wolf.baseColor);
 		device.Shutdown();
 		window.Shutdown();

@@ -152,7 +152,7 @@ namespace fang::rhi
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
 		const uint32_t parameterIndex = m_boundRootParameters.rootConstants;
-		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "ルート定数を持たないパイプラインだ");
+		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "ルート定数を持たないパイプライン");
 
 		commandList->SetGraphicsRoot32BitConstants(parameterIndex, count32BitValues, values, 0);
 	}
@@ -164,10 +164,10 @@ namespace fang::rhi
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
 		const uint32_t parameterIndex = m_boundRootParameters.objectConstantBuffer;
-		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "b0 の定数バッファを持たないパイプラインだ");
+		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "b0 の定数バッファを持たないパイプライン");
 
 		const BufferPool::Entry& entry = m_device->m_buffers.Get(buffer);
-		FANG_ASSERT(entry.kind == EnBufferKind::Constant, "定数バッファとして作られていないバッファだ");
+		FANG_ASSERT(entry.kind == EnBufferKind::Constant, "定数バッファとして作られていないバッファ");
 
 		commandList->SetGraphicsRootConstantBufferView(parameterIndex, entry.resource->GetGPUVirtualAddress());
 	}
@@ -179,25 +179,25 @@ namespace fang::rhi
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
 		const uint32_t parameterIndex = m_boundRootParameters.frameConstantBuffer;
-		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "b1 の定数バッファを持たないパイプラインだ");
+		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "b1 の定数バッファを持たないパイプライン");
 
 		const BufferPool::Entry& entry = m_device->m_buffers.Get(buffer);
-		FANG_ASSERT(entry.kind == EnBufferKind::Constant, "定数バッファとして作られていないバッファだ");
+		FANG_ASSERT(entry.kind == EnBufferKind::Constant, "定数バッファとして作られていないバッファ");
 
 		commandList->SetGraphicsRootConstantBufferView(parameterIndex, entry.resource->GetGPUVirtualAddress());
 	}
 
 
-	void CommandList::SetConstantBuffer(BufferHandle buffer)
+	void CommandList::SetSkinningConstantBuffer(BufferHandle buffer)
 	{
 		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
-		const uint32_t parameterIndex = m_boundRootParameters.constantBuffer;
-		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "b2 の定数バッファを持たないパイプラインだ");
+		const uint32_t parameterIndex = m_boundRootParameters.skinningConstantBuffer;
+		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "b2 の定数バッファを持たないパイプライン");
 
 		const BufferPool::Entry& entry = m_device->m_buffers.Get(buffer);
-		FANG_ASSERT(entry.kind == EnBufferKind::Constant, "定数バッファとして作られていないバッファだ");
+		FANG_ASSERT(entry.kind == EnBufferKind::Constant, "定数バッファとして作られていないバッファ");
 
 		commandList->SetGraphicsRootConstantBufferView(parameterIndex, entry.resource->GetGPUVirtualAddress());
 	}
@@ -209,7 +209,7 @@ namespace fang::rhi
 		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
 
 		const uint32_t parameterIndex = m_boundRootParameters.texture;
-		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "テクスチャを持たないパイプラインだ");
+		FANG_ASSERT(parameterIndex != RootParameterLayout::UNUSED, "テクスチャを持たないパイプライン");
 
 		const TexturePool::Entry&         entry = m_device->m_textures.Get(texture);
 		const D3D12_GPU_DESCRIPTOR_HANDLE descriptor =

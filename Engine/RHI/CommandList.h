@@ -95,10 +95,10 @@ namespace fang::rhi
 		void SetFrameConstantBuffer(BufferHandle buffer);
 
 		/**
-		 * @brief b2 に定数バッファを差す。hasConstantBuffer で作ったパイプラインを差してから呼ぶ。
+		 * @brief b2 に骨のスキニング行列を差す。hasSkinningConstantBuffer で作ったパイプラインを差してから呼ぶ。
 		 * @param buffer EnBufferKind::Constant で作ったバッファ。中身は UpdateBuffer で先に書いておく。
 		 */
-		void SetConstantBuffer(BufferHandle buffer);
+		void SetSkinningConstantBuffer(BufferHandle buffer);
 
 		/**
 		 * @brief t0 にテクスチャを差す。

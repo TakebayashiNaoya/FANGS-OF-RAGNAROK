@@ -9,7 +9,6 @@
 #include "Renderer/MeshRenderer.h"
 #include "Renderer/RenderGraph.h"
 #include "Renderer/RendererLog.h"
-#include "Renderer/SkinnedMeshRenderer.h"
 #include "Renderer/TriangleRenderer.h"
 
 

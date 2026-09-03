@@ -86,9 +86,9 @@ namespace fang::rhi
 			++rootParameterCount;
 		}
 
-		if (desc.hasConstantBuffer)
+		if (desc.hasSkinningConstantBuffer)
 		{
-			entry.rootParameters.constantBuffer = rootParameterCount;
+			entry.rootParameters.skinningConstantBuffer = rootParameterCount;
 
 			// ディスクリプタを作らず GPU アドレスを直接渡すルート CBV。ヒープのスロットを消費しない。
 			D3D12_ROOT_PARAMETER& parameter = rootParameters[rootParameterCount];

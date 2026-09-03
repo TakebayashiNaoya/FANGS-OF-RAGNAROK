@@ -12,7 +12,6 @@
     <ClInclude Include="RenderGraph.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RendererLog.h" />
-    <ClInclude Include="SkinnedMeshRenderer.h" />
     <ClInclude Include="TriangleRenderer.h" />
     <ClInclude Include="Shaders\MeshConstants.h">
       <Filter>Shaders</Filter>
@@ -23,7 +22,6 @@
     <ClCompile Include="Pch.cpp" />
     <ClCompile Include="RenderGraph.cpp" />
     <ClCompile Include="Renderer.cpp" />
-    <ClCompile Include="SkinnedMeshRenderer.cpp" />
     <ClCompile Include="TriangleRenderer.cpp" />
   </ItemGroup>
 </Project>

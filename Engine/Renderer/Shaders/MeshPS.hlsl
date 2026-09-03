@@ -15,9 +15,15 @@ static const float PI = 3.14159265;
 static const float DIELECTRIC_REFLECTANCE = 0.04;
 
 /** @brief 描くもの 1 個ぶんの定数。並びは MeshConstants.h の MeshObjectConstants。 */
-cbuffer cbPerObject : register(b0)
+cbuffer cbObject : register(b0)
 {
-	MeshObjectConstants constants;
+	MeshObjectConstants objectConstants;
+};
+
+/** @brief フレームの間ずっと同じ定数。並びは MeshConstants.h の MeshFrameConstants。 */
+cbuffer cbFrame : register(b1)
+{
+	MeshFrameConstants frameConstants;
 };
 
 /** @brief ベースカラー。sRGB の SRV なので、読んだ時点で GPU がリニアへ直している。 */
@@ -28,15 +34,15 @@ float4 PixelMain(VertexOutput input) : SV_TARGET
 {
 	float3 albedo = baseColorTexture.Sample(baseColorSampler, input.texCoord).rgb;
 
-	float metallic = constants.material.x;
+	float metallic = objectConstants.material.x;
 
 	// roughness は知覚値で受け取り、2 乗してから式に入れる（glTF の規約）。
-	float alphaRoughness = constants.material.y * constants.material.y;
+	float alphaRoughness = objectConstants.material.y * objectConstants.material.y;
 	float alphaSquared = alphaRoughness * alphaRoughness;
 
 	float3 normal = normalize(input.normal);
-	float3 directionToLight = constants.directionToLight.xyz;
-	float3 directionToCamera = normalize(constants.cameraPosition.xyz - input.worldPosition);
+	float3 directionToLight = frameConstants.directionToLight.xyz;
+	float3 directionToCamera = normalize(frameConstants.cameraPosition.xyz - input.worldPosition);
 	float3 halfVector = normalize(directionToLight + directionToCamera);
 
 	float dotNL = saturate(dot(normal, directionToLight));
@@ -63,8 +69,8 @@ float4 PixelMain(VertexOutput input) : SV_TARGET
 
 	// 環境項が「光の裏側でも形が読める」役を担う（半ランバートの後継）。metallic で消さないのは、
 	// IBL の無い今、金属を真っ黒にしないための近似。
-	float3 lighting = (diffuse + specular) * constants.lightColor.rgb * constants.lightColor.w * dotNL
-	                + constants.ambientColor.rgb * albedo;
+	float3 lighting = (diffuse + specular) * frameConstants.lightColor.rgb * frameConstants.lightColor.w * dotNL
+	                + frameConstants.ambientColor.rgb * albedo;
 
 	// ここまではリニア空間。バックバッファは UNORM（sRGB でない）なので、最後にガンマへ戻す。
 	// HDR / トーンマップのトピックで、UI 側の補正と一緒にこの pow を消すこと。残すと二重に掛かって白っぽくなる。
