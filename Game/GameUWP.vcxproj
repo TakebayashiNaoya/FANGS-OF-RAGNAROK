@@ -63,6 +63,9 @@
     <None Include="Assets\Models\**\*">
       <DeploymentContent>true</DeploymentContent>
     </None>
+    <None Include="Assets\Terrain\**\*">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
     <Image Include="$(MSBuildProjectDirectory)\Assets\StoreLogo.png" />
     <Image Include="$(MSBuildProjectDirectory)\Assets\Square150x150Logo.png" />
     <Image Include="$(MSBuildProjectDirectory)\Assets\Square44x44Logo.png" />

@@ -49,11 +49,16 @@
        15MB の .bin を毎回コピーしないよう SkipUnchangedFiles を立てる -->
   <ItemGroup>
     <FangAssetFile Include="$(MSBuildProjectDirectory)\Assets\Models\**\*" />
+    <FangTerrainAssetFile Include="$(MSBuildProjectDirectory)\Assets\Terrain\**\*" />
   </ItemGroup>
-  <Target Name="FangCopyAssets" AfterTargets="Build" Inputs="@(FangAssetFile)"
-          Outputs="@(FangAssetFile -> '$(OutDir)Assets\Models\%(RecursiveDir)%(Filename)%(Extension)')">
+  <Target Name="FangCopyAssets" AfterTargets="Build"
+          Inputs="@(FangAssetFile);@(FangTerrainAssetFile)"
+          Outputs="@(FangAssetFile -> '$(OutDir)Assets\Models\%(RecursiveDir)%(Filename)%(Extension)');@(FangTerrainAssetFile -> '$(OutDir)Assets\Terrain\%(RecursiveDir)%(Filename)%(Extension)')">
     <Copy SourceFiles="@(FangAssetFile)"
           DestinationFiles="@(FangAssetFile -> '$(OutDir)Assets\Models\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(FangTerrainAssetFile)"
+          DestinationFiles="@(FangTerrainAssetFile -> '$(OutDir)Assets\Terrain\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
 
