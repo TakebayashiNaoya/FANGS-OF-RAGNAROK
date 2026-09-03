@@ -95,4 +95,23 @@ namespace fang
 
 		return result;
 	}
+
+
+	Vector3 TransformPoint(const Vector3& point, const Matrix4x4& matrix)
+	{
+		DirectX::XMFLOAT3 result;
+		DirectX::XMStoreFloat3(&result, DirectX::XMVector3TransformCoord(ToXMVector(point, 1.0f), ToXMMatrix(matrix)));
+		return Vector3{ result.x, result.y, result.z };
+	}
+
+
+	Vector3 TransformDirection(const Vector3& direction, const Matrix4x4& matrix)
+	{
+		DirectX::XMFLOAT3 result;
+		DirectX::XMStoreFloat3(
+			&result,
+			DirectX::XMVector3TransformNormal(ToXMVector(direction, 0.0f), ToXMMatrix(matrix))
+		);
+		return Vector3{ result.x, result.y, result.z };
+	}
 } // namespace fang

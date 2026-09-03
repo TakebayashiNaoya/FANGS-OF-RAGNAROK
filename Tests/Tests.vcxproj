@@ -41,9 +41,11 @@
     <ClCompile Include="Source\JobSystemTests.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Matrix4x4Tests.cpp" />
+    <ClCompile Include="Source\MatrixOperationTests.cpp" />
     <ClCompile Include="Source\PackTests.cpp" />
     <ClCompile Include="Source\ParallelForTests.cpp" />
     <ClCompile Include="Source\RenderGraphTests.cpp" />
+    <ClCompile Include="Source\VectorTests.cpp" />
     <ClCompile Include="Source\WorkStealingDequeTests.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->

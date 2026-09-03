@@ -40,6 +40,7 @@
     <ClInclude Include="Math\Aabb.h" />
     <ClInclude Include="Math\Frustum.h" />
     <ClInclude Include="Math\JointIndices.h" />
+    <ClInclude Include="Math\MathConstants.h" />
     <ClInclude Include="Math\Matrix4x4.h" />
     <ClInclude Include="Math\Pack.h" />
     <ClInclude Include="Math\Vector2.h" />
