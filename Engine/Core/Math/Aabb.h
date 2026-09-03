@@ -16,9 +16,10 @@ namespace fang
 
 	/**
 	 * @brief 軸平行の境界ボックス。モデル空間にもワールド空間にも使う。
-	 * @details 既定値は min が max より大きい「無効」な箱。➡点を Expand で入れていけば、最初の 1 点で
-	 *          そのまま正しい箱になり、空かどうかの旗を別に持たなくて済む。境界を持たないものは
-	 *          既定値のまま渡され、受け取った側が IsValid で見分ける。
+	 * @details min と max は対角の 2 角で、各軸の最小値・最大値をそれぞれ集めたもの。既定値は min に +FLT_MAX、
+	 *          max に -FLT_MAX という逆さの値を入れた「無効」な箱 ➡ 最初の Expand で min = max = その点になり、
+	 *          空かどうかの旗を別に持たずに済む（最大値探索を -∞ から始めるのと同じ理屈）。境界を持たないもの
+	 *          は既定値のまま渡され、受け取った側が IsValid で見分ける。
 	 */
 	struct Aabb
 	{
@@ -40,8 +41,8 @@ namespace fang
 		 */
 		void GetCorners(Vector3 (&outCorners)[8]) const;
 
-		Vector3 min{ FLT_MAX, FLT_MAX, FLT_MAX };    /**< 各軸の最小値。 */
-		Vector3 max{ -FLT_MAX, -FLT_MAX, -FLT_MAX }; /**< 各軸の最大値。 */
+		Vector3 min{ FLT_MAX, FLT_MAX, FLT_MAX };    /**< 対角の 1 点。各軸の最小値（空の箱の既定は +FLT_MAX）。 */
+		Vector3 max{ -FLT_MAX, -FLT_MAX, -FLT_MAX }; /**< 対角のもう 1 点。各軸の最大値（既定は -FLT_MAX）。 */
 	};
 
 	/**
