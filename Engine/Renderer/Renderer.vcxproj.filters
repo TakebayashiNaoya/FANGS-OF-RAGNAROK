@@ -7,6 +7,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DebugDraw.h" />
     <ClInclude Include="MeshRenderer.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="RenderGraph.h" />
@@ -22,6 +23,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DebugDraw.cpp" />
     <ClCompile Include="MeshRenderer.cpp" />
     <ClCompile Include="Pch.cpp" />
     <ClCompile Include="RenderGraph.cpp" />

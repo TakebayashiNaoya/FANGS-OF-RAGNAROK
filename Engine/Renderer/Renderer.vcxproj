@@ -26,6 +26,7 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
+    <ClInclude Include="DebugDraw.h" />
     <ClInclude Include="MeshRenderer.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="RenderGraph.h" />
@@ -37,6 +38,7 @@
     <ClInclude Include="Shaders\UnlitConstants.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DebugDraw.cpp" />
     <ClCompile Include="MeshRenderer.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>

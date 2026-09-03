@@ -41,11 +41,21 @@ namespace fang
 
 		/**
 		 * @brief キャスタの箱にちょうど合う光の viewProjection を組む。
-		 * @param directionToLight 面から光源へ向かう向き（正規化済み）。
-		 * @param castersBounds    影を落とすものすべてを包むワールド空間の箱。有効であること。
+		 * @param directionToLight  面から光源へ向かう向き（正規化済み）。
+		 * @param castersBounds     影を落とすものすべてを包むワールド空間の箱。有効であること。
+		 * @param outFrustumCorners デバッグ描画用に、光の正射影の箱（実際に使われる光の視錐台）の 8 頂点を
+		 *                          ワールド座標で書き戻す先。並びは Aabb::GetCorners と同じ規則
+		 *                          （0〜3 が近い面、4〜7 が奥の面）。
 		 * @details 8 頂点を光空間へ移して min/max を取るので、事前計算なしで毎フレーム範囲を合わせ直せる。
 		 */
-		[[nodiscard]] Matrix4x4 MakeLightViewProjection(const Vector3& directionToLight, const Aabb& castersBounds)
+		[[nodiscard]] Matrix4x4 MakeLightViewProjection(
+			const Vector3& directionToLight,
+			const Aabb&    castersBounds
+#if FANG_ENABLE_DEBUG_DRAW
+			,
+			Vector3 (&outFrustumCorners)[8]
+#endif
+		)
 		{
 			const Vector3 boxCenter         = (castersBounds.min + castersBounds.max) * 0.5f;
 			const float   boxDiagonalLength = Length(castersBounds.max - castersBounds.min);
@@ -76,6 +86,31 @@ namespace fang
 				lightSpaceBounds.min.z,
 				lightSpaceBounds.max.z + SHADOW_FAR_EXTENSION_CENTIMETERS
 			);
+
+#if FANG_ENABLE_DEBUG_DRAW
+			// MakeLookAtMatrix が内部で作る基底と同じ式（LH の LookAt と同じ組み方）を、デバッグ描画のために
+			// ここでも作り直す。逆行列を新設せず、lightSpaceBounds をワールド座標へ戻すだけで済ませるため。
+			const Vector3 forward = Normalize(boxCenter - eye);
+			const Vector3 right   = Normalize(Cross(upDirection, forward));
+			const Vector3 up      = Cross(forward, right);
+
+			const float minX  = lightSpaceBounds.min.x;
+			const float maxX  = lightSpaceBounds.max.x;
+			const float minY  = lightSpaceBounds.min.y;
+			const float maxY  = lightSpaceBounds.max.y;
+			const float nearZ = lightSpaceBounds.min.z;
+			const float farZ  = lightSpaceBounds.max.z + SHADOW_FAR_EXTENSION_CENTIMETERS;
+
+			// 並びは Aabb::GetCorners と同じ規則（0〜3 が近い面、4〜7 が奥の面。近い面の中は x が最下位桁）。
+			outFrustumCorners[0] = eye + right * minX + up * minY + forward * nearZ;
+			outFrustumCorners[1] = eye + right * maxX + up * minY + forward * nearZ;
+			outFrustumCorners[2] = eye + right * minX + up * maxY + forward * nearZ;
+			outFrustumCorners[3] = eye + right * maxX + up * maxY + forward * nearZ;
+			outFrustumCorners[4] = eye + right * minX + up * minY + forward * farZ;
+			outFrustumCorners[5] = eye + right * maxX + up * minY + forward * farZ;
+			outFrustumCorners[6] = eye + right * minX + up * maxY + forward * farZ;
+			outFrustumCorners[7] = eye + right * maxX + up * maxY + forward * farZ;
+#endif
 
 			return Multiply(lightView, lightProjection);
 		}
@@ -168,6 +203,13 @@ namespace fang
 
 		m_lightViewProjection = Matrix4x4{};
 		m_hasShadowView       = false;
+
+#if FANG_ENABLE_DEBUG_DRAW
+		for (Vector3& corner : m_shadowFrustumCorners)
+		{
+			corner = Vector3{};
+		}
+#endif
 	}
 
 
@@ -204,7 +246,12 @@ namespace fang
 
 		m_viewKinds[viewIndex] = EnViewKind::Shadow;
 
+#if FANG_ENABLE_DEBUG_DRAW
+		const Matrix4x4 lightViewProjection =
+			MakeLightViewProjection(directionToLight, castersBounds, m_shadowFrustumCorners);
+#else
 		const Matrix4x4 lightViewProjection = MakeLightViewProjection(directionToLight, castersBounds);
+#endif
 
 		// 正射影でも平面の取り出し方は透視投影と同じ式なので、カリングは既存の経路にそのまま乗る。
 		m_frustums[viewIndex].ExtractFromViewProjection(lightViewProjection);

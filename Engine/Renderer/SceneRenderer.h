@@ -169,6 +169,18 @@ namespace fang
 		 */
 		[[nodiscard]] FANG_FORCEINLINE rhi::TextureHandle GetShadowMapTexture() const { return m_shadowMap; }
 
+#if FANG_ENABLE_DEBUG_DRAW
+		/**
+		 * @brief 光の正射影の箱（実際に使われる光の視錐台）の 8 頂点をワールド座標で返す。
+		 * @details 並びは Aabb::GetCorners と同じ規則（0〜3 が近い面、4〜7 が奥の面）。シャドウ View が
+		 *          無いフレーム（キャスタが 1 つも無い）は空の span になる。
+		 */
+		[[nodiscard]] FANG_FORCEINLINE std::span<const Vector3> GetShadowFrustumCorners() const
+		{
+			return m_hasShadowView ? std::span<const Vector3>(m_shadowFrustumCorners) : std::span<const Vector3>{};
+		}
+#endif
+
 
 	private:
 		/** @brief View スロットの種別。記録で何を描くかがこれで分かれる。 */
@@ -212,6 +224,11 @@ namespace fang
 
 		/** @brief このフレームにシャドウ View があるか。false ならシーン View の影パラメータを無効にする。 */
 		bool m_hasShadowView = false;
+
+#if FANG_ENABLE_DEBUG_DRAW
+		/** @brief 光の正射影の箱の 8 頂点（ワールド座標）。有効かどうかは m_hasShadowView で見分ける。 */
+		Vector3 m_shadowFrustumCorners[8];
+#endif
 
 		/** @brief Submit が控えた span。実体は呼び出し側が持つ。 */
 		std::span<const RenderItem> m_submittedItems[MAX_VIEW_COUNT];
