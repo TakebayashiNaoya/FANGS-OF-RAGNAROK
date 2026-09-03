@@ -472,10 +472,8 @@ namespace fang
 				sceneRenderer.Submit(sceneViewId, wolfItems);
 			}
 
-			// 狼（1 体〜2 体）を描く ScenePass を View ごとに宣言する。最初の View が画面をクリアする。
-			sceneRenderer.AddPasses(graph, backBufferResource, depthBufferResource, BACKGROUND_COLOR);
-
-			// 三角形のパス。宣言順は従来の描画順（狼の後）に合わせてある。
+			// 三角形を先に描き、深度を持つ狼が上に乗る従来の前後関係を保つ。三角形は深度テストを持たないので、
+			// 狼より後に描くと三角形が常に上書きしてしまう ➡ 画面のクリアもこのパスが引き受ける。
 			UnlitPassRecordArguments unlitArguments{
 				.unlitRenderer = loopContext.unlitRenderer,
 				.device        = &device,
@@ -485,13 +483,19 @@ namespace fang
 			unlitPassDesc.name               = "UnlitPass";
 			unlitPassDesc.recordThread       = EnPassRecordThread::Job;
 			unlitPassDesc.colorTarget        = backBufferResource;
-			unlitPassDesc.colorLoadOperation = EnLoadOperation::Load;
+			unlitPassDesc.colorLoadOperation = EnLoadOperation::Clear;
+			unlitPassDesc.clearColor         = BACKGROUND_COLOR;
 			unlitPassDesc.depthTarget        = depthBufferResource;
-			unlitPassDesc.depthLoadOperation = EnLoadOperation::Load;
+			unlitPassDesc.depthLoadOperation = EnLoadOperation::Clear;
 			unlitPassDesc.record             = &RecordUnlitPass;
 			unlitPassDesc.userData           = &unlitArguments;
 
 			graph.AddPass(unlitPassDesc);
+
+			// 狼（1 体〜2 体）を描く ScenePass を View ごとに宣言する。三角形パスが画面をクリア済みなので、
+			// 最初の View も Load（前のパスが描いた画の上に重ねる）。
+			sceneRenderer
+				.AddPasses(graph, backBufferResource, depthBufferResource, BACKGROUND_COLOR, EnLoadOperation::Load);
 
 #if FANG_ENABLE_EDITOR
 			// 上の層に描画コマンドを積ませる。読ませるのは 1 つ前のフレームの更新が作ったもの。

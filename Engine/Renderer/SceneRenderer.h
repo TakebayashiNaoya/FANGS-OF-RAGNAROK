@@ -107,18 +107,20 @@ namespace fang
 
 		/**
 		 * @brief View ごとに ScenePass を RenderGraph へ宣言する。
-		 * @param backBuffer 色の描画先として登録済みのリソース番号。
-		 * @param depthBuffer 深度の描画先として登録済みのリソース番号。
-		 * @param clearColor 最初の View が色をクリアする値。
-		 * @details 最初の View は色（clearColor）と深度をクリアし、2 つ目以降は前の View が描いたものを残す
-		 *          （Load）。記録はワーカースレッドで走り、Submit した控えを視錐台で絞ってから MeshRenderer::Draw
-		 *          へ渡す。
+		 * @param backBuffer    色の描画先として登録済みのリソース番号。
+		 * @param depthBuffer   深度の描画先として登録済みのリソース番号。
+		 * @param clearColor    最初の View の色を Clear するときに使う値。loadOperation が Load のときは読まない。
+		 * @param loadOperation 最初の View の色・深度に適用する操作。Clear ならその値で塗りつぶし、Load なら
+		 *                      前のパスが描いた画の上に重ねる（呼び出し側が別のパスで先に画面を塗っている場合に使う）。
+		 * @details 2 つ目以降の View は従来どおり常に Load（前の View が描いたものを残す）。記録はワーカースレッド
+		 *          で走り、Submit した控えを視錐台で絞ってから MeshRenderer::Draw へ渡す。
 		 */
 		void AddPasses(
 			RenderGraph&           graph,
 			RenderGraphResourceId  backBuffer,
 			RenderGraphResourceId  depthBuffer,
-			const rhi::ClearColor& clearColor
+			const rhi::ClearColor& clearColor,
+			EnLoadOperation        loadOperation
 		);
 
 		/**

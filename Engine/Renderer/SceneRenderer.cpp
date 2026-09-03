@@ -122,7 +122,8 @@ namespace fang
 		RenderGraph&           graph,
 		RenderGraphResourceId  backBuffer,
 		RenderGraphResourceId  depthBuffer,
-		const rhi::ClearColor& clearColor
+		const rhi::ClearColor& clearColor,
+		EnLoadOperation        loadOperation
 	)
 	{
 		for (uint32_t viewIndex = 0; viewIndex < m_viewCount; ++viewIndex)
@@ -133,17 +134,17 @@ namespace fang
 				.device        = m_device,
 			};
 
-			// 最初の View だけ画面をクリアし、以降は前の View が描いたものの上に重ねる。
-			const EnLoadOperation loadOperation = (viewIndex == 0) ? EnLoadOperation::Clear : EnLoadOperation::Load;
+			// 最初の View だけ呼び出し側の指定（Clear か Load か）に従い、以降は前の View が描いたものの上に重ねる。
+			const EnLoadOperation viewLoadOperation = (viewIndex == 0) ? loadOperation : EnLoadOperation::Load;
 
 			RenderGraphPassDesc passDesc{};
 			passDesc.name               = "ScenePass";
 			passDesc.recordThread       = EnPassRecordThread::Job;
 			passDesc.colorTarget        = backBuffer;
-			passDesc.colorLoadOperation = loadOperation;
+			passDesc.colorLoadOperation = viewLoadOperation;
 			passDesc.clearColor         = clearColor;
 			passDesc.depthTarget        = depthBuffer;
-			passDesc.depthLoadOperation = loadOperation;
+			passDesc.depthLoadOperation = viewLoadOperation;
 			passDesc.record             = &SceneRenderer::RecordScenePass;
 			passDesc.userData           = &m_passRecordArguments[viewIndex];
 
