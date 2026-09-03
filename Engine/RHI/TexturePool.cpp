@@ -88,6 +88,11 @@ namespace fang::rhi
 		UINT64                             uploadSize = 0;
 		device.GetCopyableFootprints(&textureDesc, 0, mipCount, 0, footprints, rowCounts, rowSizes, &uploadSize);
 
+		//------------------------------------------------------------------------
+		// 1. アップロード用バッファの確保
+		// 　CPU から書ける中間バッファ(アップロードヒープ)を必要な大きさぶん確保して Map する。
+		// 　各ミップの中身を D3D が計算した行ピッチに合わせて 1 行ずつコピーし終えたら Unmap する。
+		//------------------------------------------------------------------------
 		ComPtr<ID3D12Resource> uploadBuffer;
 		if (!CreateUploadBuffer(&device, static_cast<uint32_t>(uploadSize), uploadBuffer))
 		{
@@ -132,6 +137,11 @@ namespace fang::rhi
 
 		uploadBuffer->Unmap(0, nullptr);
 
+		//------------------------------------------------------------------------
+		// 2. 各ミップのコピーコマンド
+		// 　転送だけに使う専用のコマンドアロケータとリストを用意し、ミップごとに CopyTextureRegion を積む。
+		// 　コピー元はアップロードバッファ内のその段の置き場(footprints)、コピー先はテクスチャのその段。
+		//------------------------------------------------------------------------
 		// 転送はフレームの外で済ませたいので、その場で 1 本流して待つ。
 		ComPtr<ID3D12CommandAllocator>    uploadAllocator;
 		ComPtr<ID3D12GraphicsCommandList> uploadCommandList;
@@ -172,6 +182,11 @@ namespace fang::rhi
 			uploadCommandList->CopyTextureRegion(&destination, 0, 0, 0, &copySource, nullptr);
 		}
 
+		//------------------------------------------------------------------------
+		// 3. PixelShaderResource への遷移
+		// 　コピー先が「コピーの受け口」のままだとシェーダから読めない。バリアで用途を切り替えてから
+		// 　コマンドリストを Close する。
+		//------------------------------------------------------------------------
 		// リソースバリア: 「コピーの受け口」から「シェーダが読むもの」へ用途を切り替える宣言。
 		// 生成時に COPY_DEST で作ってあるので、転送コマンドの後ろに積んでおけば
 		// GPU は転送完了 → 切り替えの順で処理する（詳しい理屈は CommandList の TransitionBackBuffer 側）。
@@ -186,10 +201,19 @@ namespace fang::rhi
 
 		FANG_VERIFY(SUCCEEDED(uploadCommandList->Close()));
 
+		//------------------------------------------------------------------------
+		// 4. 実行とフェンス待ち
+		// 　積んだコマンドをキューへ渡して実行し、フェンスで GPU の完了を待つ。ここで待ち切ることで、
+		// 　この後 SRV を作る時点では転送が必ず終わっている。
+		//------------------------------------------------------------------------
 		ID3D12CommandList* commandLists[] = { uploadCommandList.Get() };
 		commandQueue.ExecuteCommandLists(FANG_COUNT_OF(commandLists), commandLists);
 		fence.WaitForGPU(commandQueue);
 
+		//------------------------------------------------------------------------
+		// 5. SRV の作成
+		// 　確保しておいたディスクリプタの枠へ、テクスチャを読むための SRV を書き込む。
+		//------------------------------------------------------------------------
 		entry.descriptorIndex = descriptorIndex;
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc{};

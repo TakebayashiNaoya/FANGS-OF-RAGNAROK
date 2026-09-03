@@ -32,6 +32,12 @@ namespace fang::rhi
 
 	PipelineHandle PipelinePool::Create(ID3D12Device& device, const GraphicsPipelineDesc& desc)
 	{
+		//------------------------------------------------------------------------
+		// 1. ルートパラメータの構築(b0 ➡ b1 ➡ b2 ➡ t0 の並びと、desc のフラグでどれが付くか)
+		// 　シェーダから見えるレジスタごとにルートパラメータを 1 個ずつ積む。どれを積むかは
+		// 　GraphicsPipelineDesc のフラグで決まり、並びは b0(rootConstants か objectConstantBuffer)➡
+		// 　b1(frameConstantBuffer) ➡ b2(skinningConstantBuffer) ➡ t0(texture) の順。
+		//------------------------------------------------------------------------
 		D3D12_DESCRIPTOR_RANGE textureRange{};
 		textureRange.RangeType          = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		textureRange.NumDescriptors     = 1;
@@ -112,6 +118,11 @@ namespace fang::rhi
 			++rootParameterCount;
 		}
 
+		//------------------------------------------------------------------------
+		// 2. 静的サンプラ
+		// 　テクスチャを読むときのフィルタ・アドレスモードなどの設定。テクスチャを持つパイプラインだけ
+		// 　ルートシグネチャに 1 個だけ付ける。
+		//------------------------------------------------------------------------
 		// サンプラは 1 種類しか要らないので静的サンプラで済ませる。
 		D3D12_STATIC_SAMPLER_DESC staticSampler{};
 		staticSampler.Filter           = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
@@ -126,6 +137,11 @@ namespace fang::rhi
 		staticSampler.MinLOD = 0.0f;
 		staticSampler.MaxLOD = D3D12_FLOAT32_MAX;
 
+		//------------------------------------------------------------------------
+		// 3. ルートシグネチャのシリアライズと生成
+		// 　組んだルートパラメータと静的サンプラを 1 本のバイナリへシリアライズし、それを渡して
+		// 　ID3D12RootSignature を生成する。
+		//------------------------------------------------------------------------
 		D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
 		rootSignatureDesc.NumParameters     = rootParameterCount;
 		rootSignatureDesc.pParameters       = rootParameterCount > 0 ? rootParameters : nullptr;
@@ -161,6 +177,11 @@ namespace fang::rhi
 			return PipelineHandle{};
 		}
 
+		//------------------------------------------------------------------------
+		// 4. PSO 記述(シェーダ・頂点レイアウト・各ステート)
+		// 　頂点レイアウト・シェーダのバイトコード・ラスタライザ/ブレンド/深度ステンシルなど、
+		// 　パイプラインステート 1 個ぶんの記述を desc の中身から埋める。
+		//------------------------------------------------------------------------
 		std::vector<D3D12_INPUT_ELEMENT_DESC> inputElements;
 		inputElements.reserve(desc.vertexLayout.size());
 		for (const VertexAttribute& attribute : desc.vertexLayout)
@@ -226,6 +247,11 @@ namespace fang::rhi
 		// ステンシルは使わない。
 		depthStencil.StencilEnable = FALSE;
 
+		//------------------------------------------------------------------------
+		// 5. 生成と台帳への登録
+		// 　CreateGraphicsPipelineState で PSO を作り、空いている台帳の枠があればそこへ詰め、
+		// 　無ければ末尾に追加してハンドルを返す。
+		//------------------------------------------------------------------------
 		if (!CheckHresult(
 				device.CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(&entry.pipelineState)),
 				"パイプラインステートの生成"

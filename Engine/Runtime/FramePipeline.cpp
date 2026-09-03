@@ -107,9 +107,15 @@ namespace fang
 	{
 		FANG_ASSERT(m_isPrimed, "助走を走らせないまま 1 周を回そうとしている");
 
+		// ① 面を交換する。
+		// 　 更新と描画が同時に触る面が重ならないよう、面の入れ替えはここメインスレッドだけが握る。
 		// 直前の更新が書いた面が「前の面」へ移り、「今の面」が空く。面の入れ替えを握るのはメインだけ。
 		m_frameMemory->BeginFrame();
 
+		// ② 更新ジョブを投入する。
+		// 　 今の m_frameIndex を「これから描く番号」renderFrameIndex として控えてから m_frameIndex を 1 つ進め、
+		// 　 進めた後の番号向けの更新ジョブを Submit する ➡ 同じ周の中で「描画が読む番号」と「更新が書く番号」が
+		// 　 1 つずれる。
 		const uint64_t renderFrameIndex = m_frameIndex;
 		++m_frameIndex;
 
@@ -131,6 +137,9 @@ namespace fang
 		const auto renderBeginTime = std::chrono::steady_clock::now();
 #endif
 
+		// ③ 1 つ前のフレームを描く。
+		// 　 GetSlotIndex(renderFrameIndex) は増分前の番号の面なので、直前の RunUpdate が書き終えた面を読む
+		// 　 （更新ジョブが今書いている GetSlotIndex(m_frameIndex) とは別の面）。
 		// 1 つ前のフレームを描く。更新が今書いている面とは別の面を読む。
 		m_renderFunction(m_userData, m_frameData[GetSlotIndex(renderFrameIndex)], renderFrameIndex, deltaTimeSeconds);
 
@@ -138,6 +147,7 @@ namespace fang
 		m_renderMilliseconds = GetElapsedMilliseconds(renderBeginTime);
 #endif
 
+		// ④ 更新ジョブの完了を待つ。
 		// フレームメモリのアトミックは全部 relaxed なので、更新が書いた中身が見えるのはこの同期を通った後。
 		// ➡ 周の末尾に置けば、ループを抜けた時点で投げっぱなしのジョブが無いことも一目で分かる。
 		m_jobSystem->Wait(m_updateCounter);

@@ -76,6 +76,9 @@ namespace fang
 
 	void RenderGraph::Compile()
 	{
+		// ① 各リソースの最終使用パスを計算する。
+		// 　 二度目の呼び出しでも同じ結果になるよう、まず追跡中の状態を初期状態へ戻してから、宣言順に
+		// 　 MarkUse で「そのリソースを最後に使うパス」を記録し直す。
 		for (uint32_t passIndex = 0; passIndex < m_passCount; ++passIndex)
 		{
 			m_compiledPasses[passIndex] = CompiledRenderPass{};
@@ -104,6 +107,10 @@ namespace fang
 			}
 		}
 
+		// ② 宣言順の走査でバリアとクリアの指示を導く。
+		// 　 パスの並び順に RequireState で用途の変化を先頭バリアへ積み、Load 操作が Clear のものは
+		// 　 クリアフラグを立て、AddFinalBarriers でこのパスが最後の使用先だったリソースを最終状態へ戻す
+		// 　 末尾バリアを積む。
 		for (uint32_t passIndex = 0; passIndex < m_passCount; ++passIndex)
 		{
 			const RenderGraphPassDesc& pass     = m_passes[passIndex];
@@ -148,6 +155,9 @@ namespace fang
 			return;
 		}
 
+		// ① コマンドリストを一括確保する。
+		// 　 貸し出しはメインスレッド専有なので、ワーカーへ記録を投げ始める前にパスの数ぶんまとめて借りる。
+		// 　 1 本でも借りられなければ何も記録せずに戻る。
 		// 貸し出しはメインスレッド専有なので、記録を始める前に人数ぶんまとめて取る。
 		for (uint32_t passIndex = 0; passIndex < m_passCount; ++passIndex)
 		{
@@ -161,6 +171,8 @@ namespace fang
 			m_commandLists[passIndex] = commandList;
 		}
 
+		// ② ジョブへ渡す入力を準備する。
+		// 　 各パスの記録が読むバックバッファの大きさを控え、ジョブの完了本数を数える JobCounter を用意する。
 		m_commandListCount = m_passCount;
 
 		m_backBufferWidth  = device.GetBackBufferWidth();
@@ -168,6 +180,7 @@ namespace fang
 
 		JobCounter recordCounter;
 
+		// ③ Job 指定のパスをジョブへ投入する。
 		for (uint32_t passIndex = 0; passIndex < m_passCount; ++passIndex)
 		{
 			if (m_passes[passIndex].recordThread != EnPassRecordThread::Job)
@@ -186,6 +199,8 @@ namespace fang
 			jobSystem.Submit(jobDesc, &recordCounter);
 		}
 
+		// ④ Main 指定のパスをこちらのスレッドで記録する。
+		// 　 ワーカーが Job パスを記録している間に、メインスレッドでしか触れないパスをここで記録する。
 		// メイン指定のパスは、ワーカーが走っている間にこちらで積む。
 		for (uint32_t passIndex = 0; passIndex < m_passCount; ++passIndex)
 		{
@@ -195,6 +210,7 @@ namespace fang
 			}
 		}
 
+		// ⑤ ジョブの完了を待つ。
 		jobSystem.Wait(recordCounter);
 	}
 
