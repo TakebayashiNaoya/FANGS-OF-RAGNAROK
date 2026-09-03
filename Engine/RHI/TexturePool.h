@@ -28,6 +28,13 @@ namespace fang::rhi
 			uint32_t               descriptorIndex = 0;     /**< シェーダ可視ヒープ上の位置。 */
 			uint32_t               generation      = 0;     /**< ハンドルの世代と突き合わせる。 */
 			bool                   isAlive         = false; /**< false なら空きスロット。次の生成で再利用される。 */
+
+			/**
+			 * @brief 深度テクスチャのときだけ持つ DSV 1 個の置き場。サンプル専用のテクスチャでは空。
+			 * @details 描画先になれるテクスチャは起動時のシャドウマップ 1 枚だけなので、共有ヒープを
+			 *          用意して枠を配るより、エントリごとに 1 個ぶんのヒープを持つほうが素直。
+			 */
+			ComPtr<ID3D12DescriptorHeap> depthStencilViewHeap;
 		};
 
 		/** @brief ハンドルから中身を引く。無効・解放済みならアサートに掛かる。 */
@@ -48,11 +55,30 @@ namespace fang::rhi
 			const TextureSource& source
 		);
 
+		/**
+		 * @brief 深度を書き込めて、書いた後はシェーダから読めるテクスチャを作る。
+		 * @details 中身はその場で描くのでアップロードが要らない ➡ コマンドキューもフェンスも要らない。
+		 * @param width  横のテクセル数。
+		 * @param height 縦のテクセル数。
+		 * @return 失敗したら無効なハンドル。
+		 */
+		[[nodiscard]] TextureHandle CreateDepth(
+			ID3D12Device&   device,
+			DescriptorHeap& descriptorHeap,
+			uint32_t        width,
+			uint32_t        height
+		);
+
 		/** @brief スロットを空きに戻す。無効・解放済みのハンドルなら何もしない。 */
 		void Destroy(TextureHandle handle);
 
 		/** @brief 台帳ごと捨てる。二重に呼んでも安全。 */
 		void Shutdown();
+
+
+	private:
+		/** @brief 出来上がったエントリを空きスロットか末尾へ置き、そのハンドルを返す。 */
+		[[nodiscard]] TextureHandle Register(const Entry& entry);
 
 
 	private:

@@ -117,6 +117,15 @@ namespace fang::rhi
 		 */
 		[[nodiscard]] TextureHandle CreateTexture2D(const void* pixels, uint32_t width, uint32_t height);
 
+		/**
+		 * @brief 深度を書き込めて、書いた後はシェーダから読めるテクスチャを作る。
+		 * @details シャドウマップ用。作り直す仕組みを持たないので、大きさを決めて起動時に呼ぶ。
+		 * @param width  横のテクセル数。
+		 * @param height 縦のテクセル数。
+		 * @return 失敗したら無効なハンドル。
+		 */
+		[[nodiscard]] TextureHandle CreateDepthTexture(uint32_t width, uint32_t height);
+
 		/** @brief テクスチャを解放する。無効・解放済みのハンドルなら何もしない。 */
 		void DestroyTexture(TextureHandle handle);
 

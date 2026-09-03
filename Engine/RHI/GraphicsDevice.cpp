@@ -392,6 +392,14 @@ namespace fang::rhi
 	}
 
 
+	TextureHandle GraphicsDevice::CreateDepthTexture(uint32_t width, uint32_t height)
+	{
+		FANG_ASSERT(m_isInitialized, "GraphicsDevice が初期化されていない");
+
+		return m_textures.CreateDepth(*m_device.Get(), m_shaderVisibleHeap, width, height);
+	}
+
+
 	void GraphicsDevice::DestroyTexture(TextureHandle handle)
 	{
 		m_textures.Destroy(handle);
