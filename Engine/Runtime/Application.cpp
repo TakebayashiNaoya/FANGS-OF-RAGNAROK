@@ -11,7 +11,6 @@
 #include "Core/Math/Aabb.h"
 #include "Core/Math/MathConstants.h"
 #include "Core/Math/Matrix4x4.h"
-#include "Core/Math/Vector2.h"
 #include "Core/Memory/FrameAllocator.h"
 #include "Core/Platform/AssetPath.h"
 #include "Core/Platform/Window.h"
@@ -61,13 +60,13 @@ namespace fang
 		/** @brief 狼とステージ、どちらの glTF も置く場所。テクスチャの相対パスの組み立てに使う。 */
 		constexpr const char* MODEL_FOLDER_RELATIVE_PATH = "Models\\";
 
-		/** @brief 恒久の RenderItem 配列のうち、毎フレーム書き換える動く席の数（床 1 個 + 狼 2 体）。 */
-		constexpr size_t DYNAMIC_RENDER_ITEM_COUNT = 3;
+		/** @brief 恒久の RenderItem 配列のうち、毎フレーム書き換える動く席の数（狼 2 体）。 */
+		constexpr size_t DYNAMIC_RENDER_ITEM_COUNT = 2;
 
 		/**
 		 * @brief ステージの配置数の上限。
 		 * @details 恒久配列は MeshRenderer::MAX_ITEM_COUNT ぶん確保する（1 フレームに描ける数と揃えないと、
-		 *          ステージだけで b0 の置き場を使い切って床や狼が描けなくなる）。そのうち動く 3 席を
+		 *          ステージだけで b0 の置き場を使い切って狼が描けなくなる）。そのうち動く 2 席を
 		 *          引いた残りがステージの取り分。
 		 */
 		constexpr size_t MAX_STAGE_INSTANCE_COUNT = MeshRenderer::MAX_ITEM_COUNT - DYNAMIC_RENDER_ITEM_COUNT;
@@ -109,16 +108,6 @@ namespace fang
 		constexpr Vector3 DEBUG_DRAW_SHADOW_FRUSTUM_COLOR{ 1.0f, 0.85f, 0.0f };
 #endif
 
-		// 狼はワールド原点付近（1 体目は world が単位行列）に立つので、床もそこを中心にする。
-		// 2000×2000 あれば 2 体目のオフセット（220）を足してもまだ大きく余る。
-		/** @brief 床の一辺の長さ（cm）。 */
-		constexpr float FLOOR_SIZE_CENTIMETERS      = 2000.0f;
-		constexpr float FLOOR_HALF_SIZE_CENTIMETERS = FLOOR_SIZE_CENTIMETERS * 0.5f;
-
-		// 非金属・粗い面。鏡のような映り込みは床らしくないので roughness を高めにする。
-		constexpr float FLOOR_METALLIC_FACTOR  = 0.0f;
-		constexpr float FLOOR_ROUGHNESS_FACTOR = 0.9f;
-
 		// 地形。検証用アセットは Tools/GenerateTerrainAssets.py が生成する。
 		// 寸法の規約(全長・高さスケール・中心が原点)は生成スクリプト側の定数と対で、片方だけ変えない。
 		constexpr const char* TERRAIN_HEIGHTMAP_RELATIVE_PATH = "Terrain\\Heightmap.dds";
@@ -141,48 +130,6 @@ namespace fang
 		// パラメータの JSON 化はエディタのシーン保存と一緒に行う。
 		/** @brief レイヤごとの知覚 roughness。並びは草・岩・土。岩だけ少しハイライトを残す。 */
 		constexpr float TERRAIN_LAYER_ROUGHNESS[3] = { 0.9f, 0.75f, 0.95f };
-
-		/**
-		 * @brief 床（受け専用の静的メッシュ）を作る。
-		 * @details 頂点 4 個・インデックス 6 個の水平な板。法線は全部 (0, 1, 0)、UV は (0, 0)〜(1, 1)。
-		 *          巻き順は GltfMesh の Z 反転 + 巻き順入れ替えと同じ結論（Cross(v1 - v0, v2 - v0) が
-		 *          求める法線に一致する順番）に合わせてあるので、表から見える。
-		 * @return 失敗したら無効な番号（IsValid() が false）。呼び出し側はそのとき床を描かずに飛ばす。
-		 */
-		[[nodiscard]] MeshId CreateFloorMesh(rhi::GraphicsDevice& device, MeshRenderer& meshRenderer)
-		{
-			const Vector3 positions[4] = {
-				{ -FLOOR_HALF_SIZE_CENTIMETERS, 0.0f, -FLOOR_HALF_SIZE_CENTIMETERS },
-				{ -FLOOR_HALF_SIZE_CENTIMETERS, 0.0f, FLOOR_HALF_SIZE_CENTIMETERS },
-				{ FLOOR_HALF_SIZE_CENTIMETERS, 0.0f, FLOOR_HALF_SIZE_CENTIMETERS },
-				{ FLOOR_HALF_SIZE_CENTIMETERS, 0.0f, -FLOOR_HALF_SIZE_CENTIMETERS },
-			};
-
-			const Vector3 normals[4] = {
-				{ 0.0f, 1.0f, 0.0f },
-				{ 0.0f, 1.0f, 0.0f },
-				{ 0.0f, 1.0f, 0.0f },
-				{ 0.0f, 1.0f, 0.0f },
-			};
-
-			const Vector2 texCoords[4] = {
-				{ 0.0f, 0.0f },
-				{ 0.0f, 1.0f },
-				{ 1.0f, 1.0f },
-				{ 1.0f, 0.0f },
-			};
-
-			const uint16_t indices[6] = { 0, 1, 2, 0, 2, 3 };
-
-			const MeshSource source{
-				.positions = positions,
-				.normals   = normals,
-				.texCoords = texCoords,
-				.indices   = indices,
-			};
-
-			return meshRenderer.CreateMesh(device, source);
-		}
 
 		/**
 		 * @brief 狼 1 体ぶんの持ち物。
@@ -273,7 +220,7 @@ namespace fang
 		/**
 		 * @brief 地形を読んで GPU へ載せる。
 		 * @details 失敗しても落とさない。isLoaded が false のままになり、地形なしで起動が続く
-		 *          (床・狼・エディタは今までどおり)。理由は各段階がログに出す。
+		 *          (狼・エディタは今までどおり)。理由は各段階がログに出す。
 		 */
 		void LoadTerrain(rhi::GraphicsDevice& device, TerrainRenderer& terrainRenderer, TerrainModel* outTerrain)
 		{
@@ -363,8 +310,8 @@ namespace fang
 
 		/**
 		 * @brief ステージ 1 つぶんの持ち物。
-		 * @details renderItems は先頭 DYNAMIC_RENDER_ITEM_COUNT 個を床・狼の動く席として空けたまま返す
-		 *          （中身は既定の無効な RenderItem。RenderFrame が毎フレーム上書きする）。4 番目以降は
+		 * @details renderItems は先頭 DYNAMIC_RENDER_ITEM_COUNT 個を狼の動く席として空けたまま返す
+		 *          （中身は既定の無効な RenderItem。RenderFrame が毎フレーム上書きする）。3 番目以降は
 		 *          LoadStage が書いたきり動かない。meshes と textures は終了処理での解放にだけ使う。
 		 */
 		struct StageResources
@@ -394,13 +341,10 @@ namespace fang
 			/** @brief RunApplication が持つ入れ物。graph.Execute の戻り値の後に 4 値を書く。 */
 			RenderStatistics* renderStatistics = nullptr;
 
-			/** @brief 床の静的メッシュ。読み込みが無いので、生成に失敗しなければ常に有効。 */
-			MeshId floorMesh;
-
 			/**
 			 * @brief 恒久の RenderItem 配列。ロード時に resize し切り、以後は要素数を変えない。
-			 * @details 先頭 DYNAMIC_RENDER_ITEM_COUNT 個（床・狼 2 体）は毎フレーム書き換える動く席。
-			 *          4 番目以降はステージの配置で、ロード時に書いたきり動かない。Submit はこの配列
+			 * @details 先頭 DYNAMIC_RENDER_ITEM_COUNT 個（狼 2 体）は毎フレーム書き換える動く席。
+			 *          3 番目以降はステージの配置で、ロード時に書いたきり動かない。Submit はこの配列
 			 *          全体を指す span 1 本で済ませる ➡ 毎フレームのヒープ確保・vector 伸長は無い。
 			 */
 			std::vector<RenderItem> renderItems;
@@ -589,12 +533,18 @@ namespace fang
 		}
 
 		/**
-		 * @brief ステージを読み、メッシュを GPU へ載せ、恒久の RenderItem 配列を作り切る。
+		 * @brief ステージを読み、メッシュを GPU へ載せ、地表へ接地させた恒久の RenderItem 配列を作り切る。
 		 * @details 失敗しても FANG_FATAL にしない。読めなければ舞台なしで起動を続ける（ログだけ出す）。
-		 *          先頭 DYNAMIC_RENDER_ITEM_COUNT 個は床・狼の動く席として空けたまま返す ➡ 呼び出し側
+		 *          先頭 DYNAMIC_RENDER_ITEM_COUNT 個は狼の動く席として空けたまま返す ➡ 呼び出し側
 		 *          （RunApplication）は成否によらずこの関数を抜けた時点で renderItems を Submit に使える。
+		 * @param terrain 接地に使う地形。読めていなければ nullptr を渡す ➡ 配置は glTF のまま y = 0 に置く。
 		 */
-		void LoadStage(rhi::GraphicsDevice& device, MeshRenderer& meshRenderer, StageResources* outStage)
+		void LoadStage(
+			rhi::GraphicsDevice&    device,
+			MeshRenderer&           meshRenderer,
+			const HeightmapTerrain* terrain,
+			StageResources*         outStage
+		)
 		{
 			GltfScene scene;
 
@@ -675,7 +625,7 @@ namespace fang
 			};
 
 			//------------------------------------------------------------------------
-			// 3. 配置ごとに RenderItem を恒久配列(4 番目以降)へ積む
+			// 3. 配置ごとに地表へ載せ、RenderItem を恒久配列(3 番目以降)へ積む
 			// 　上限(MAX_STAGE_INSTANCE_COUNT)を超えたぶんは警告して捨てる。castsShadow は常に false
 			// 　(ステージは受け専用。光の箱はキャスタの AABB の和なので、含めると光源から見える範囲が
 			// 　無駄に広がり、シャドウマップ 1 テクセルが表す実寸が粗くなって狼の影が読めなくなる)。
@@ -683,15 +633,42 @@ namespace fang
 			const size_t loadedInstanceCount = std::min(instances.size(), MAX_STAGE_INSTANCE_COUNT);
 			outStage->renderItems.resize(DYNAMIC_RENDER_ITEM_COUNT + loadedInstanceCount);
 
+			size_t      groundedInstanceCount = 0;
+			size_t      outsideInstanceCount  = 0;
+			std::string firstOutsideName;
+
 			for (size_t index = 0; index < loadedInstanceCount; ++index)
 			{
 				const GltfSceneInstance& instance = instances[index];
 				const GltfSceneMesh&     meshData = meshes[instance.meshIndex];
 				const MeshId             meshId   = outStage->meshes[instance.meshIndex];
 
+				// ステージの glTF はどの組み立ても最下段の底面がローカル y = 0 にそろえてある
+				// ➡ 原点 XZ の地表の高さを Y へ「足す」だけで底が地表に付く(代入すると、原点が底面でない
+				// 　井戸のようなメッシュがめり込む)。回転・スケールには触らない。
+				Matrix4x4 world = instance.world;
+				if (terrain != nullptr)
+				{
+					float groundHeight = 0.0f;
+					if (terrain->TryGetHeightAt(world.m[3][0], world.m[3][2], &groundHeight))
+					{
+						world.m[3][1] += groundHeight;
+						++groundedInstanceCount;
+					}
+					else
+					{
+						// 地形の外。端の高さへ寄せると崖に貼り付いて見えるので、そのまま動かさない。
+						if (outsideInstanceCount == 0)
+						{
+							firstOutsideName = instance.name;
+						}
+						++outsideInstanceCount;
+					}
+				}
+
 				RenderItem item{};
 				item.mesh            = meshId;
-				item.world           = instance.world;
+				item.world           = world;
 				item.baseColor       = findOrLoadTexture(meshData.baseColorImagePath);
 				item.metallicFactor  = meshData.metallicFactor;
 				item.roughnessFactor = meshData.roughnessFactor;
@@ -699,9 +676,10 @@ namespace fang
 
 				// bounds は無効な mesh では作れない（TransformAabb は有効な箱を要求する）。無効なままにする
 				// と「常に描く」扱いになるが、mesh 自体を MeshRenderer が飛ばすので実害は無い。
+				// 接地後の world から作る ➡ カリングと影の箱がずれたまま残らない。
 				if (meshId.IsValid())
 				{
-					item.bounds = TransformAabb(meshRenderer.GetLocalBounds(meshId), instance.world);
+					item.bounds = TransformAabb(meshRenderer.GetLocalBounds(meshId), world);
 				}
 
 				outStage->renderItems[DYNAMIC_RENDER_ITEM_COUNT + index] = item;
@@ -725,6 +703,26 @@ namespace fang
 				loadedInstanceCount,
 				outStage->textures.size()
 			);
+
+			// 接地の結果は必ず 1 行残す。浮いている・沈んでいるように見えたとき、理由をログで切り分けられる。
+			if (terrain == nullptr)
+			{
+				FANG_LOG_WARNING(Runtime, "地形が無いので接地しない。ステージは y=0 のまま");
+			}
+			else
+			{
+				FANG_LOG_INFO(Runtime, "接地 {} 個 / 範囲外 {} 個", groundedInstanceCount, outsideInstanceCount);
+
+				if (outsideInstanceCount > 0)
+				{
+					FANG_LOG_WARNING(
+						Runtime,
+						"地形の範囲外の配置は接地しない: {} 個（最初は {}）",
+						outsideInstanceCount,
+						firstOutsideName
+					);
+				}
+			}
 		}
 
 		/**
@@ -896,9 +894,9 @@ namespace fang
 			};
 
 			//------------------------------------------------------------------------
-			// 4. RenderItem 列の先頭 3 スロットの書き換え(床 + 狼 2 体)
-			// 　loopContext.renderItems は起動時に resize し切った恒久配列。4 番目以降(ステージ)は
-			// 　ロード時に書いたきりなのでここでは触らない。先頭 3 つだけ、読めていれば毎フレーム
+			// 4. RenderItem 列の先頭 2 スロットの書き換え(狼 2 体)
+			// 　loopContext.renderItems は起動時に resize し切った恒久配列。3 番目以降(ステージ)は
+			// 　ロード時に書いたきりなのでここでは触らない。先頭 2 つだけ、読めていれば毎フレーム
 			// 　world / bounds / skinningMatrices を書き直す(読めていなければ既定の無効な RenderItem
 			// 　に戻す ➡ MeshRenderer が黙って飛ばすので、詰め直しの分岐が要らない)。
 			//------------------------------------------------------------------------
@@ -906,24 +904,9 @@ namespace fang
 			// 生きている。Submit はこの配列を指す span を控えるだけでコピーしない。
 			std::vector<RenderItem>& renderItems = loopContext.renderItems;
 
-			// 床は読み込みが要らないので、生成に成功していれば毎フレーム必ず描く。
-			renderItems[0] = RenderItem{};
-			if (loopContext.floorMesh.IsValid())
-			{
-				const Aabb floorLocalBounds = loopContext.meshRenderer->GetLocalBounds(loopContext.floorMesh);
-
-				renderItems[0] = RenderItem{
-					.mesh            = loopContext.floorMesh,
-					.bounds          = TransformAabb(floorLocalBounds, Matrix4x4{}),
-					.metallicFactor  = FLOOR_METALLIC_FACTOR,
-					.roughnessFactor = FLOOR_ROUGHNESS_FACTOR,
-					.castsShadow     = false, // 平面は自分に影を作らない ➡ 光の箱を無駄に広げない。
-				};
-			}
-
 			// 狼を描く。読めていなければメッシュの描画だけを飛ばし、ほかは今までどおり続ける。
+			renderItems[0] = RenderItem{};
 			renderItems[1] = RenderItem{};
-			renderItems[2] = RenderItem{};
 
 			WolfModel& wolf = *loopContext.wolf;
 			if (wolf.mesh.IsValid())
@@ -943,7 +926,7 @@ namespace fang
 				secondWolfWorld.m[3][0] = SECOND_WOLF_OFFSET_X;
 
 				// world が単位行列でなくなったので、bounds は毎回 world で変換して埋める。
-				renderItems[1] = RenderItem{
+				renderItems[0] = RenderItem{
 					.mesh             = wolf.mesh,
 					.bounds           = TransformAabb(localBounds, Matrix4x4{}),
 					.skinningMatrices = wolf.skinningMatrices,
@@ -952,7 +935,7 @@ namespace fang
 					.roughnessFactor  = wolf.roughnessFactor,
 				};
 
-				renderItems[2] = RenderItem{
+				renderItems[1] = RenderItem{
 					.mesh             = wolf.mesh,
 					.world            = secondWolfWorld,
 					.bounds           = TransformAabb(localBounds, secondWolfWorld),
@@ -1241,35 +1224,8 @@ namespace fang
 		}
 #endif
 
-		// メッシュ側は失敗しても FANG_FATAL にしない。モデルが出ないだけならゲームは続けられるし、
-		// 起動できないほうが困るため。三角形とエディタは今までどおり動く。
-		MeshRenderer meshRenderer;
-		WolfModel    wolf;
-		MeshId       floorMesh;
-
-		// 動く 3 席（床・狼 2 体）は読み込みの成否によらず存在させる ➡ RenderFrame が毎フレーム
-		// renderItems[0]〜[2] へ添字で書ける（詰め直しの分岐が要らない）。
-		StageResources stage;
-		stage.renderItems.resize(DYNAMIC_RENDER_ITEM_COUNT);
-
-		if (meshRenderer.Initialize(device))
-		{
-			LoadWolf(device, meshRenderer, &wolf);
-
-			floorMesh = CreateFloorMesh(device, meshRenderer);
-			if (!floorMesh.IsValid())
-			{
-				FANG_LOG_ERROR(Runtime, "床メッシュを作れなかった。床の表示だけを飛ばす");
-			}
-
-			LoadStage(device, meshRenderer, &stage);
-		}
-		else
-		{
-			FANG_LOG_ERROR(Runtime, "メッシュ描画の準備に失敗した。モデルの表示だけを飛ばす");
-		}
-
-		// 地形も失敗を FANG_FATAL にしない。読めなければ地形なしで起動が続き、床・狼・エディタは今までどおり。
+		// 地形は失敗を FANG_FATAL にしない。読めなければ地形なしで起動が続き、狼・エディタは今までどおり。
+		// ステージの接地に地表の高さが要るので、ステージより先に読む。
 		TerrainRenderer terrainRenderer;
 		TerrainModel    terrain;
 		if (terrainRenderer.Initialize(device))
@@ -1279,6 +1235,28 @@ namespace fang
 		else
 		{
 			FANG_LOG_ERROR(Runtime, "地形描画の準備に失敗した。地形の表示だけを飛ばす");
+		}
+
+		// メッシュ側は失敗しても FANG_FATAL にしない。モデルが出ないだけならゲームは続けられるし、
+		// 起動できないほうが困るため。三角形とエディタは今までどおり動く。
+		MeshRenderer meshRenderer;
+		WolfModel    wolf;
+
+		// 動く 2 席（狼 2 体）は読み込みの成否によらず存在させる ➡ RenderFrame が毎フレーム
+		// renderItems[0]〜[1] へ添字で書ける（詰め直しの分岐が要らない）。
+		StageResources stage;
+		stage.renderItems.resize(DYNAMIC_RENDER_ITEM_COUNT);
+
+		if (meshRenderer.Initialize(device))
+		{
+			LoadWolf(device, meshRenderer, &wolf);
+
+			// 地形を読めていないときだけ nullptr。ステージは接地せず glTF のまま y = 0 に置かれる。
+			LoadStage(device, meshRenderer, terrain.isLoaded ? &terrain.heightmap : nullptr, &stage);
+		}
+		else
+		{
+			FANG_LOG_ERROR(Runtime, "メッシュ描画の準備に失敗した。モデルの表示だけを飛ばす");
 		}
 
 		// RenderGraph はフレームごとに Reset して組み直す入れ物なので、器そのものはここで 1 つだけ作る。
@@ -1317,7 +1295,6 @@ namespace fang
 		loopContext.meshRenderer    = &meshRenderer;
 		loopContext.terrainRenderer = &terrainRenderer;
 		loopContext.wolf            = &wolf;
-		loopContext.floorMesh       = floorMesh;
 
 		// stage はここで用済み。renderItems / meshes / textures の実体を loopContext へ移す
 		// （resize 済みの vector をコピーせずそのまま使い回す）。
@@ -1378,8 +1355,8 @@ namespace fang
 		debugDraw.Shutdown(device);
 #endif
 		sceneRenderer.Shutdown(device);
+		meshRenderer.Shutdown(device); // 狼とステージのメッシュはまとめてここで解放される。
 		terrainRenderer.Shutdown(device);
-		meshRenderer.Shutdown(device); // 狼・床・ステージのメッシュはまとめてここで解放される。
 		device.DestroyTexture(wolf.baseColor);
 
 		// 地形のテクスチャは TerrainRenderer にとって借用なので、持ち主のここが返す。
