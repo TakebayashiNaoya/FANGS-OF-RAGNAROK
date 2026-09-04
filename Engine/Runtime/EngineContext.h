@@ -4,6 +4,12 @@
  */
 #pragma once
 
+namespace fang::rhi
+{
+	struct ShaderReloadStatus;
+} // namespace fang::rhi
+
+
 namespace fang
 {
 	class FrameMemory;
@@ -22,5 +28,10 @@ namespace fang
 
 		/** @brief 1 周の並びと所要時間。上の層は数字を読むだけなので const で渡す。 */
 		const FramePipeline& framePipeline;
+
+#if FANG_ENABLE_HOT_RELOAD
+		/** @brief 直近のシェーダーの作り直しの結果。GraphicsDevice が持っているものを借りる。 */
+		const rhi::ShaderReloadStatus* shaderReloadStatus = nullptr;
+#endif
 	};
 } // namespace fang

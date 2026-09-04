@@ -288,6 +288,10 @@ namespace fang::rhi
 			}
 		}
 
+#if FANG_ENABLE_HOT_RELOAD
+		m_shaderHotReload.Shutdown();
+#endif
+
 		m_textures.Shutdown();
 		m_buffers.Shutdown();
 		m_pipelines.Shutdown();
@@ -313,8 +317,38 @@ namespace fang::rhi
 	{
 		FANG_ASSERT(m_isInitialized, "GraphicsDevice が初期化されていない");
 
-		return m_pipelines.Create(*m_device.Get(), desc);
+		const PipelineHandle handle = m_pipelines.Create(*m_device.Get(), desc);
+
+#if FANG_ENABLE_HOT_RELOAD
+		// 作れたパイプラインの出どころをその場で見張りに加える ➡ 誰がいつ作っても取りこぼさない。
+		if (handle.IsValid())
+		{
+			m_shaderHotReload.WatchShaderDirectory(desc.vertexShader.sourceRelativePath);
+			m_shaderHotReload.WatchShaderDirectory(desc.pixelShader.sourceRelativePath);
+		}
+#endif
+
+		return handle;
 	}
+
+
+#if FANG_ENABLE_HOT_RELOAD
+
+	void GraphicsDevice::UpdateShaderHotReload(float deltaTimeSeconds)
+	{
+		FANG_ASSERT(!m_isFrameOpen, "フレームの記録中はパイプラインを差し替えられない");
+
+		if (!m_shaderHotReload.ConsumeDueChange(deltaTimeSeconds))
+		{
+			return;
+		}
+
+		// 差し替えで古い PSO が解放される ➡ GPU がまだ読んでいる間に触らないよう、完了を待ってから作り直す。
+		m_fence.WaitForGPU(*m_commandQueue.Get());
+		m_shaderHotReload.ReloadPipelines(*m_device.Get(), &m_pipelines);
+	}
+
+#endif
 
 
 	void GraphicsDevice::DestroyPipeline(PipelineHandle handle)

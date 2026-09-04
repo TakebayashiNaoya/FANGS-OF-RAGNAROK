@@ -49,10 +49,18 @@ namespace fang
 
 		// シェーダーは UnlitRenderer と共用。頂点レイアウトが一致するので新しい HLSL は要らない。
 		rhi::GraphicsPipelineDesc pipelineDesc{};
-		pipelineDesc.vertexShaderBytecode = std::span<const uint8_t>(g_UnlitVS, sizeof(g_UnlitVS));
-		pipelineDesc.pixelShaderBytecode  = std::span<const uint8_t>(g_UnlitPS, sizeof(g_UnlitPS));
-		pipelineDesc.vertexLayout         = VERTEX_LAYOUT;
-		pipelineDesc.topology             = rhi::EnPrimitiveTopology::LineList;
+		pipelineDesc.vertexShader = rhi::MakeShaderSource(
+			std::span<const uint8_t>(g_UnlitVS, sizeof(g_UnlitVS)),
+			"Engine/Renderer/Shaders/UnlitVS.hlsl",
+			"VertexMain"
+		);
+		pipelineDesc.pixelShader = rhi::MakeShaderSource(
+			std::span<const uint8_t>(g_UnlitPS, sizeof(g_UnlitPS)),
+			"Engine/Renderer/Shaders/UnlitPS.hlsl",
+			"PixelMain"
+		);
+		pipelineDesc.vertexLayout = VERTEX_LAYOUT;
+		pipelineDesc.topology     = rhi::EnPrimitiveTopology::LineList;
 
 		// メッシュには隠れてほしいが、深度を汚して他の描画物を隠したくないので書き込みだけ切る。
 		pipelineDesc.isDepthTestEnabled  = true;

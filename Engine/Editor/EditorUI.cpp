@@ -132,6 +132,14 @@ namespace fang::editor
 			return false;
 		}
 
+#if FANG_ENABLE_HOT_RELOAD
+		if (!m_shaderReloadPanel.Initialize(context.shaderReloadStatus))
+		{
+			FANG_LOG_ERROR(Editor, "シェーダーホットリロードのパネルを作れなかった");
+			return false;
+		}
+#endif
+
 		FANG_LOG_INFO(Editor, "エディタ UI を初期化した");
 
 		return true;
@@ -144,6 +152,10 @@ namespace fang::editor
 		{
 			return;
 		}
+
+#if FANG_ENABLE_HOT_RELOAD
+		m_shaderReloadPanel.Shutdown();
+#endif
 
 		m_renderStatisticsPanel.Shutdown();
 		m_jobSystemPanel.Shutdown();
@@ -171,6 +183,10 @@ namespace fang::editor
 		BuildEngineInfoWindow(window, deltaTimeSeconds);
 		m_jobSystemPanel.BuildFrame(deltaTimeSeconds, m_framePipeline->GetFrameIndex());
 		m_renderStatisticsPanel.BuildFrame(deltaTimeSeconds, renderStatistics);
+
+#if FANG_ENABLE_HOT_RELOAD
+		m_shaderReloadPanel.BuildFrame();
+#endif
 
 		// ImGui 付属のデモ。中身は英語なので既定では出さない。
 		if (m_isDemoWindowVisible)
@@ -241,12 +257,20 @@ namespace fang::editor
 
 		// シェーダーは Shaders/*.hlsl をビルド時に FXC でヘッダ化したもの。UWP に実行時コンパイルが無いため。
 		rhi::GraphicsPipelineDesc pipelineDesc{};
-		pipelineDesc.vertexShaderBytecode = std::span<const uint8_t>(g_ImGuiVS, sizeof(g_ImGuiVS));
-		pipelineDesc.pixelShaderBytecode  = std::span<const uint8_t>(g_ImGuiPS, sizeof(g_ImGuiPS));
-		pipelineDesc.vertexLayout         = VERTEX_LAYOUT;
-		pipelineDesc.rootConstantCount    = 16;
-		pipelineDesc.textureCount         = 1;
-		pipelineDesc.isAlphaBlendEnabled  = true;
+		pipelineDesc.vertexShader = rhi::MakeShaderSource(
+			std::span<const uint8_t>(g_ImGuiVS, sizeof(g_ImGuiVS)),
+			"Engine/Editor/Shaders/ImGuiVS.hlsl",
+			"VertexMain"
+		);
+		pipelineDesc.pixelShader = rhi::MakeShaderSource(
+			std::span<const uint8_t>(g_ImGuiPS, sizeof(g_ImGuiPS)),
+			"Engine/Editor/Shaders/ImGuiPS.hlsl",
+			"PixelMain"
+		);
+		pipelineDesc.vertexLayout        = VERTEX_LAYOUT;
+		pipelineDesc.rootConstantCount   = 16;
+		pipelineDesc.textureCount        = 1;
+		pipelineDesc.isAlphaBlendEnabled = true;
 
 		m_pipeline = device.CreateGraphicsPipeline(pipelineDesc);
 		if (!m_pipeline.IsValid())

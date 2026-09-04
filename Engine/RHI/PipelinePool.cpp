@@ -6,6 +6,7 @@
 #include "RHI/PipelinePool.h"
 #include "Core/Log/Assert.h"
 #include "RHI/DepthBuffer.h"
+#include <algorithm>
 
 
 namespace fang::rhi
@@ -42,8 +43,10 @@ namespace fang::rhi
 	} // namespace
 
 
-	PipelineHandle PipelinePool::Create(ID3D12Device& device, const GraphicsPipelineDesc& desc)
+	bool PipelinePool::BuildEntry(ID3D12Device& device, const GraphicsPipelineDesc& desc, Entry* outEntry)
 	{
+		FANG_ASSERT(outEntry != nullptr, "出力先が nullptr");
+
 		//------------------------------------------------------------------------
 		// 1. ルートパラメータの構築(b0 ➡ b1 ➡ b2 ➡ t0〜 ➡ シャドウマップの並びと、desc のフラグでどれが付くか)
 		// 　シェーダから見えるレジスタごとにルートパラメータを 1 個ずつ積む。どれを積むかは
@@ -70,7 +73,7 @@ namespace fang::rhi
 		D3D12_ROOT_PARAMETER rootParameters[3 + GraphicsPipelineDesc::MAX_TEXTURE_COUNT + 1]{};
 		uint32_t             rootParameterCount = 0;
 
-		Entry entry;
+		Entry& entry   = *outEntry;
 		entry.topology = desc.topology;
 
 		FANG_ASSERT(
@@ -239,7 +242,7 @@ namespace fang::rhi
 				"ルートシグネチャのシリアライズ"
 			))
 		{
-			return PipelineHandle{};
+			return false;
 		}
 
 		if (!CheckHresult(
@@ -252,7 +255,7 @@ namespace fang::rhi
 				"ルートシグネチャの生成"
 			))
 		{
-			return PipelineHandle{};
+			return false;
 		}
 
 		//------------------------------------------------------------------------
@@ -274,15 +277,15 @@ namespace fang::rhi
 		}
 
 		// PS が無いということは色を出さないということ ➡ 描画先も要らない。
-		const bool isDepthOnly = desc.pixelShaderBytecode.empty();
+		const bool isDepthOnly = desc.pixelShader.bytecode.empty();
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineDesc{};
 		pipelineDesc.pRootSignature = entry.rootSignature.Get();
-		pipelineDesc.VS             = { desc.vertexShaderBytecode.data(), desc.vertexShaderBytecode.size() };
+		pipelineDesc.VS             = { desc.vertexShader.bytecode.data(), desc.vertexShader.bytecode.size() };
 
 		if (!isDepthOnly)
 		{
-			pipelineDesc.PS = { desc.pixelShaderBytecode.data(), desc.pixelShaderBytecode.size() };
+			pipelineDesc.PS = { desc.pixelShader.bytecode.data(), desc.pixelShader.bytecode.size() };
 
 			pipelineDesc.NumRenderTargets = 1;
 			pipelineDesc.RTVFormats[0]    = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -342,20 +345,50 @@ namespace fang::rhi
 		depthStencil.StencilEnable = FALSE;
 
 		//------------------------------------------------------------------------
-		// 5. 生成と台帳への登録
-		// 　CreateGraphicsPipelineState で PSO を作り、空いている台帳の枠があればそこへ詰め、
-		// 　無ければ末尾に追加してハンドルを返す。
+		// 5. 生成
+		// 　CreateGraphicsPipelineState で PSO を作る。ここまでで entry の中身がそろう。
 		//------------------------------------------------------------------------
 		if (!CheckHresult(
 				device.CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(&entry.pipelineState)),
 				"パイプラインステートの生成"
 			))
 		{
+			return false;
+		}
+
+		return true;
+	}
+
+
+	PipelineHandle PipelinePool::Create(ID3D12Device& device, const GraphicsPipelineDesc& desc)
+	{
+		Entry entry;
+		if (!BuildEntry(device, desc, &entry))
+		{
 			return PipelineHandle{};
 		}
 
+#if FANG_ENABLE_HOT_RELOAD
+		// 作り直すときの入力を控える。呼び出し側の配列は Initialize を抜けると消えるので、
+		// span で受けた頂点レイアウトだけは中身を写して持つ。
+		FANG_ASSERT(desc.vertexLayout.size() <= MAX_VERTEX_ATTRIBUTE_COUNT, "頂点属性が上限を超えている");
+
+		entry.recipe                       = desc;
+		entry.recipe.vertexShader.bytecode = {};
+		entry.recipe.pixelShader.bytecode  = {};
+		entry.recipe.vertexLayout          = {};
+
+		entry.vertexAttributeCount =
+			static_cast<uint32_t>(std::min<size_t>(desc.vertexLayout.size(), MAX_VERTEX_ATTRIBUTE_COUNT));
+		for (uint32_t attributeIndex = 0; attributeIndex < entry.vertexAttributeCount; ++attributeIndex)
+		{
+			entry.vertexAttributes[attributeIndex] = desc.vertexLayout[attributeIndex];
+		}
+#endif
+
 		entry.isAlive = true;
 
+		// 空いている枠があればそこへ詰め、無ければ末尾に追加してハンドルを返す。
 		for (uint32_t index = 0; index < static_cast<uint32_t>(m_entries.size()); ++index)
 		{
 			if (!m_entries[index].isAlive)
@@ -369,6 +402,54 @@ namespace fang::rhi
 		m_entries.push_back(entry);
 		return PipelineHandle{ static_cast<uint32_t>(m_entries.size() - 1), entry.generation };
 	}
+
+
+#if FANG_ENABLE_HOT_RELOAD
+
+	bool PipelinePool::Recreate(
+		ID3D12Device&            device,
+		uint32_t                 index,
+		std::span<const uint8_t> vertexBytecode,
+		std::span<const uint8_t> pixelBytecode
+	)
+	{
+		if (index >= m_entries.size() || !m_entries[index].isAlive)
+		{
+			return false;
+		}
+
+		const Entry& currentEntry = m_entries[index];
+
+		GraphicsPipelineDesc desc  = currentEntry.recipe;
+		desc.vertexShader.bytecode = vertexBytecode;
+		desc.pixelShader.bytecode  = pixelBytecode;
+		desc.vertexLayout =
+			std::span<const VertexAttribute>(currentEntry.vertexAttributes, currentEntry.vertexAttributeCount);
+
+		// ローカルに組み上げてから差し替える ➡ 途中で失敗しても今の PSO が生きたまま残る。
+		Entry rebuiltEntry;
+		if (!BuildEntry(device, desc, &rebuiltEntry))
+		{
+			return false;
+		}
+
+		// 世代は据え置き。ハンドルを持っている側から見ると中身だけが入れ替わる。
+		// 代入で古い ComPtr が解放されるので、明示的な解放は要らない。
+		rebuiltEntry.recipe               = currentEntry.recipe;
+		rebuiltEntry.vertexAttributeCount = currentEntry.vertexAttributeCount;
+		for (uint32_t attributeIndex = 0; attributeIndex < currentEntry.vertexAttributeCount; ++attributeIndex)
+		{
+			rebuiltEntry.vertexAttributes[attributeIndex] = currentEntry.vertexAttributes[attributeIndex];
+		}
+
+		rebuiltEntry.generation = currentEntry.generation;
+		rebuiltEntry.isAlive    = true;
+
+		m_entries[index] = rebuiltEntry;
+		return true;
+	}
+
+#endif
 
 
 	void PipelinePool::Destroy(PipelineHandle handle)
@@ -404,5 +485,13 @@ namespace fang::rhi
 		FANG_ASSERT(entry.isAlive && entry.generation == handle.generation, "解放済みのパイプラインハンドル");
 
 		return entry;
+	}
+
+
+	const PipelinePool::Entry& PipelinePool::GetByIndex(uint32_t index) const
+	{
+		FANG_ASSERT(index < m_entries.size(), "台帳の範囲外");
+
+		return m_entries[index];
 	}
 } // namespace fang::rhi

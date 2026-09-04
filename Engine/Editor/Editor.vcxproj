@@ -34,6 +34,7 @@
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Panels\JobSystemPanel.h" />
     <ClInclude Include="Panels\RenderStatisticsPanel.h" />
+    <ClInclude Include="Panels\ShaderReloadPanel.h" />
     <ClInclude Include="Xbox\GamepadReader.h" Condition="'$(FangIsXbox)' == 'true'" />
   </ItemGroup>
   <ItemGroup>
@@ -44,6 +45,7 @@
     </ClCompile>
     <ClCompile Include="Panels\JobSystemPanel.cpp" />
     <ClCompile Include="Panels\RenderStatisticsPanel.cpp" />
+    <ClCompile Include="Panels\ShaderReloadPanel.cpp" />
     <ClCompile Include="Windows\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Xbox\GamepadReader.cpp" Condition="'$(FangIsXbox)' == 'true'" />
     <ClCompile Include="Xbox\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' == 'true'" />

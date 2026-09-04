@@ -18,6 +18,7 @@
     <ClInclude Include="RHILog.h" />
     <ClInclude Include="RHITypes.h" />
     <ClInclude Include="ShaderCompiler.h" />
+    <ClInclude Include="ShaderHotReload.h" />
     <ClInclude Include="SwapChain.h" />
     <ClInclude Include="TexturePool.h" />
   </ItemGroup>
@@ -32,6 +33,7 @@
     <ClCompile Include="PipelinePool.cpp" />
     <ClCompile Include="RHI.cpp" />
     <ClCompile Include="ShaderCompiler.cpp" />
+    <ClCompile Include="ShaderHotReload.cpp" />
     <ClCompile Include="SwapChain.cpp" />
     <ClCompile Include="TexturePool.cpp" />
   </ItemGroup>

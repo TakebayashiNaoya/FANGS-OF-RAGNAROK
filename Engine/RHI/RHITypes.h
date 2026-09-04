@@ -6,6 +6,7 @@
  */
 #pragma once
 
+#include "Core/CoreMacros.h"
 #include <cstdint>
 #include <span>
 
@@ -135,17 +136,64 @@ namespace fang::rhi
 		Wrap,  /**< 繰り返す。地形のレイヤのようにタイリングするものに使う。 */
 	};
 
+	/**
+	 * @brief PSO に渡すシェーダ 1 本。
+	 * @details PSO を作るのは常に bytecode。出どころはホットリロードで .hlsl を読み直すときだけ使うので、
+	 *          切ってある構成では 2 つのメンバごと消える。
+	 */
+	struct ShaderSource
+	{
+		std::span<const uint8_t> bytecode; /**< ビルド時に FXC がヘッダ化したもの。 */
+
+#if FANG_ENABLE_HOT_RELOAD
+		/**
+		 * @brief ソースツリーの根からの .hlsl の相対パス。
+		 * @details nullptr なら作り直しの対象外。文字列は寿命の管理をしないので、リテラルを渡すこと。
+		 */
+		const char* sourceRelativePath = nullptr;
+
+		const char* entryPointName = nullptr; /**< ビルド時の EntryPointName と同じ文字列。 */
+#endif
+	};
+
+	/**
+	 * @brief ShaderSource を組み立てる。
+	 * @details 出どころの 2 つはホットリロードを切ると構造体から消える ➡ 呼び出し側に #if を書かせないために包む。
+	 * @param bytecode           ビルド時に FXC がヘッダ化したもの。
+	 * @param sourceRelativePath ソースツリーの根からの .hlsl の相対パス。文字列リテラルを渡すこと。
+	 * @param entryPointName     ビルド時の EntryPointName と同じ文字列。
+	 */
+	[[nodiscard]] inline ShaderSource MakeShaderSource(
+		std::span<const uint8_t> bytecode,
+		const char*              sourceRelativePath,
+		const char*              entryPointName
+	)
+	{
+		ShaderSource shaderSource;
+		shaderSource.bytecode = bytecode;
+
+#if FANG_ENABLE_HOT_RELOAD
+		shaderSource.sourceRelativePath = sourceRelativePath;
+		shaderSource.entryPointName     = entryPointName;
+#else
+		FANG_UNUSED(sourceRelativePath);
+		FANG_UNUSED(entryPointName);
+#endif
+
+		return shaderSource;
+	}
+
 	/** @brief パイプラインの生成条件。 */
 	struct GraphicsPipelineDesc
 	{
-		std::span<const uint8_t> vertexShaderBytecode; /**< コンパイル済み頂点シェーダ。ShaderCompiler の出力を渡す。 */
+		ShaderSource vertexShader; /**< 頂点シェーダ。bytecode は必須。 */
 
 		/**
-		 * @brief コンパイル済みピクセルシェーダ。
-		 * @details 空なら描画先 0 本の深度専用パイプラインになる。色を出さずに深度だけ埋めるパスは
+		 * @brief ピクセルシェーダ。
+		 * @details bytecode が空なら描画先 0 本の深度専用パイプラインになる。色を出さずに深度だけ埋めるパスは
 		 *          ピクセルシェーダも描画先も要らないため。
 		 */
-		std::span<const uint8_t> pixelShaderBytecode;
+		ShaderSource pixelShader;
 
 		std::span<const VertexAttribute> vertexLayout; /**< 頂点構造体の並び。 */
 

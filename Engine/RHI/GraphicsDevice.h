@@ -14,6 +14,7 @@
 #include "RHI/PipelinePool.h"
 #include "RHI/RHIHandles.h"
 #include "RHI/RHITypes.h"
+#include "RHI/ShaderHotReload.h"
 #include "RHI/SwapChain.h"
 #include "RHI/TexturePool.h"
 #include <cstdint>
@@ -59,6 +60,22 @@ namespace fang::rhi
 
 		/** @brief パイプラインを解放する。無効・解放済みのハンドルなら何もしない。 */
 		void DestroyPipeline(PipelineHandle handle);
+
+#if FANG_ENABLE_HOT_RELOAD
+		/**
+		 * @brief .hlsl の保存を見て、必要なら PSO を作り直す。
+		 * @details 1 フレームに 1 回、BeginFrame より前に呼ぶ。記録が始まった後では差し替えられない。
+		 *          保存していないフレームは見張りへの問い合わせだけで済み、ファイルは読まない。
+		 * @param deltaTimeSeconds 前フレームからの経過時間（秒）。保存直後の待ちの消化に使う。
+		 */
+		void UpdateShaderHotReload(float deltaTimeSeconds);
+
+		/** @brief 直近の作り直しの結果。エディタが表示に使う。 */
+		[[nodiscard]] FANG_FORCEINLINE const ShaderReloadStatus& GetShaderReloadStatus() const
+		{
+			return m_shaderHotReload.GetStatus();
+		}
+#endif
 
 		/**
 		 * @brief 中身を変えないバッファを作って data を書き込む。
@@ -182,8 +199,13 @@ namespace fang::rhi
 		GPUFence       m_fence;             /**< GPU の進み具合を知るカウンタ。WaitForGPU で使う。 */
 
 		PipelinePool m_pipelines; /**< PipelineHandle で引く台帳。 */
-		BufferPool   m_buffers;   /**< BufferHandle で引く台帳。 */
-		TexturePool  m_textures;  /**< TextureHandle で引く台帳。 */
+
+#if FANG_ENABLE_HOT_RELOAD
+		ShaderHotReload m_shaderHotReload; /**< .hlsl の保存の見張りと作り直し。 */
+#endif
+
+		BufferPool  m_buffers;  /**< BufferHandle で引く台帳。 */
+		TexturePool m_textures; /**< TextureHandle で引く台帳。 */
 
 		/**
 		 * @brief コマンドの記録メモリ。
