@@ -53,13 +53,13 @@ jobs:
             | xargs -0 clang-format --dry-run --Werror
 
   build:
-    name: ビルド (${{ matrix.configuration }})
+    name: ビルド・テスト (${{ matrix.configuration }})
     runs-on: windows-latest
     strategy:
       # 片方が落ちても、もう片方の結果を最後まで見たい。
       fail-fast: false
       matrix:
-        configuration: [Debug, Release]
+        configuration: [Debug, Preview, Release]
     steps:
       # アセットは LFS。ポインタのままだとコンテンツのコピーで落ちるので実体を取る。
       - uses: actions/checkout@v4
@@ -75,3 +75,8 @@ jobs:
           -p:Platform=x64
           -p:PlatformToolset=${{ env.FANG_TOOLSET }}
           -m -nologo -v:m
+
+      # doctest は失敗した数を終了コードで返すので、そのままステップの成否になる。
+      # 描画デバイスを作るテストは無いので GPU の無いランナーでも動く。
+      - name: テスト
+        run: .\Bin\x64\${{ matrix.configuration }}\Tests.exe
