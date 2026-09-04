@@ -4,6 +4,7 @@
  */
 #include "Pch.h"
 #include "Editor/Xbox/GamepadReader.h"
+#include "Editor/EditorLog.h"
 
 // C++/WinRT（例外前提）を使ってよいのはこの Xbox ディレクトリの TU だけ。例外は外に出さない。
 // この TU は imgui のヘッダを 1 本も include しない。プリプロセッサ定義を丸ごと上書きしている都合で
@@ -11,6 +12,7 @@
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Gaming.Input.h>
+#include <atomic>
 #include <chrono>
 
 
@@ -56,6 +58,21 @@ namespace fang::editor
 
 		bool s_hasSearchedOnce = false;
 
+		/** @brief 抜き差しのイベントを登録したか。 */
+		bool s_hasRegisteredEvents = false;
+
+		/** @brief 抜き差しがあったか。ハンドラはワーカースレッドから来るので atomic で受ける。 */
+		std::atomic<bool> s_hasDeviceChanged{ false };
+
+		/** @brief 掴めたことを 1 度だけ出したか。毎フレーム走るので出しっぱなしにしない。 */
+		bool s_hasLoggedAcquired = false;
+
+		/** @brief 見つからないことを 1 度だけ出したか。 */
+		bool s_hasLoggedMissing = false;
+
+		/** @brief 読み取りの失敗を 1 度だけ出したか。握り潰すと原因が消えるので 1 回だけ残す。 */
+		bool s_hasLoggedReadError = false;
+
 		/**
 		 * @brief 未接続のときの探し直しの間合いを計る。
 		 * @return 探してよければ true。true を返したときだけ次の間合いを数え直す。
@@ -80,9 +97,42 @@ namespace fang::editor
 		}
 
 
+		/**
+		 * @brief 抜き差しのイベントを 1 度だけ登録する。
+		 * @details Gamepads() のポーリングだけでも掴めるが、公式が案内しているのは購読のほう。
+		 *          登録しておくと抜き差しに次のフレームで追いつく（ポーリングは最大 1 秒待つ）。
+		 *          外す口は持たない。プロセスの終わりまで生きていてよい。
+		 * @threading 呼ぶのはメインスレッド。ハンドラはワーカースレッドから来るので atomic しか触らない。
+		 */
+		void EnsureGamepadEventsRegistered()
+		{
+			if (s_hasRegisteredEvents)
+			{
+				return;
+			}
+
+			s_hasRegisteredEvents = true;
+
+			winrt_input::Gamepad::GamepadAdded([](const winrt::Windows::Foundation::IInspectable&,
+												  const winrt_input::Gamepad&) { s_hasDeviceChanged.store(true); });
+
+			winrt_input::Gamepad::GamepadRemoved([](const winrt::Windows::Foundation::IInspectable&,
+													const winrt_input::Gamepad&) { s_hasDeviceChanged.store(true); });
+		}
+
+
 		/** @brief 掴んでいるパッドが無ければ探す。掴めたか掴んでいるなら true。 */
 		bool AcquireGamepad()
 		{
+			EnsureGamepadEventsRegistered();
+
+			// 抜き差しがあったら掴み直す。間合いも待たない。
+			if (s_hasDeviceChanged.exchange(false))
+			{
+				s_cachedGamepad   = nullptr;
+				s_hasSearchedOnce = false;
+			}
+
 			if (s_cachedGamepad != nullptr)
 			{
 				return true;
@@ -96,11 +146,23 @@ namespace fang::editor
 			const auto gamepads = winrt_input::Gamepad::Gamepads();
 			if (gamepads.Size() == 0)
 			{
+				if (!s_hasLoggedMissing)
+				{
+					FANG_LOG_WARNING(Editor, "パッドが見つからない。UWP ではパッドでしか操作できない");
+					s_hasLoggedMissing = true;
+				}
+
 				return false;
 			}
 
 			// エディタを触るのは 1 人なので先頭の 1 台に決め打ちする。
 			s_cachedGamepad = gamepads.GetAt(0);
+
+			if (!s_hasLoggedAcquired)
+			{
+				FANG_LOG_INFO(Editor, "パッドを掴んだ ({} 台つながっている)", gamepads.Size());
+				s_hasLoggedAcquired = true;
+			}
 
 			return true;
 		}
@@ -150,8 +212,18 @@ namespace fang::editor
 
 			return state;
 		}
-		catch (const winrt::hresult_error&)
+		catch (const winrt::hresult_error& error)
 		{
+			if (!s_hasLoggedReadError)
+			{
+				FANG_LOG_WARNING(
+					Editor,
+					"パッドの読み取りに失敗した (HRESULT=0x{:08X})",
+					static_cast<uint32_t>(error.code().value)
+				);
+				s_hasLoggedReadError = true;
+			}
+
 			// 抜かれた等。掴んでいたものを捨てて探し直しに戻す。
 			// ログは出さない。毎フレーム走るので、失敗が続くと出力窓が埋まる。
 			s_cachedGamepad = nullptr;
