@@ -340,10 +340,7 @@ namespace fang::editor
 		// 面の条件を書き換える前に、前の周の結果を引き取る。
 		PushTestLoadSamples(slot);
 
-		// 押している間だけ真になる。押した瞬間だけでは表の数字が動かない。
-		ImGui::Button("テスト負荷（押している間）");
-		slot.isRequested = ImGui::IsItemActive();
-
+		slot.isRequested  = m_isTestLoadRunning;
 		slot.elementCount = m_testLoadElementCount;
 		slot.batchSize    = m_testLoadBatchSize;
 
@@ -353,7 +350,7 @@ namespace fang::editor
 
 		if (m_parallelAverage.sampleCount == 0)
 		{
-			ImGui::TextUnformatted("まだ回していない");
+			BuildTestLoadWaitingText();
 			return;
 		}
 
@@ -363,6 +360,9 @@ namespace fang::editor
 
 	void JobSystemPanel::BuildTestLoadParameters()
 	{
+		// 入れている間ずっと回る。押している間だけのボタンにすると、回しながらスライダを動かせない。
+		ImGui::Checkbox("テスト負荷を回す", &m_isTestLoadRunning);
+
 		bool isChanged = false;
 
 		int elementCount = static_cast<int>(m_testLoadElementCount);
@@ -417,6 +417,18 @@ namespace fang::editor
 	}
 
 
+	void JobSystemPanel::BuildTestLoadWaitingText() const
+	{
+		if (!m_isTestLoadRunning)
+		{
+			ImGui::TextUnformatted("止まっている。上のチェックを入れると回り始める。");
+			return;
+		}
+
+		ImGui::TextUnformatted("条件が変わったので取り直している。数フレームで出る。");
+	}
+
+
 	void JobSystemPanel::PushTestLoadSamples(const TestLoadSlot& slot)
 	{
 		if (!slot.hasRun || slot.runFrameIndex == m_lastAveragedFrameIndex)
@@ -468,7 +480,11 @@ namespace fang::editor
 			ImGui::TextUnformatted("1 を割ったら、積み下ろしのほうが並列で稼いだぶんより高くついている。");
 		}
 
-		ImGui::Text("移動平均は直近 %u 回。条件を変えると空に戻る。", TEST_LOAD_HISTORY_LENGTH);
+		ImGui::Text(
+			"移動平均のサンプル: %u / %u。条件を変えると空に戻る。",
+			m_parallelAverage.sampleCount,
+			TEST_LOAD_HISTORY_LENGTH
+		);
 	}
 
 

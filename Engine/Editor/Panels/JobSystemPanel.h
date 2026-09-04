@@ -21,7 +21,7 @@ namespace fang::editor
 {
 	/**
 	 * @brief 「ジョブシステム」ウィンドウ 1 枚。
-	 * @details 実行者ごとの実行数とジョブプールの使用量を出し、押している間だけ負荷をかけるボタンを持つ。
+	 * @details 実行者ごとの実行数とジョブプールの使用量を出し、入れている間ずっと負荷をかけるチェックを持つ。
 	 *          負荷は同じ本体を ParallelFor と SerialFor の両方で回し、所要時間を並べて出す。
 	 *          並列化で何倍になるか、どの粒度から積み下ろしの元が取れるかを、要素数と分割幅を動かしながら
 	 *          見るための道具。
@@ -54,7 +54,7 @@ namespace fang::editor
 		void BuildFrame(float deltaTimeSeconds, uint64_t updatingFrameIndex);
 
 		/**
-		 * @brief ボタンが押されていれば、そのフレームの負荷を並列と直列の両方で積み、総和を検算する。
+		 * @brief 負荷を回す設定なら、そのフレームの負荷を並列と直列の両方で積み、総和を検算する。
 		 * @param frameIndex 更新しているフレームの番号。
 		 * @threading 更新ジョブの中（ワーカースレッド）から呼ぶ。ImGui には触らない。
 		 */
@@ -78,7 +78,7 @@ namespace fang::editor
 
 		/**
 		 * @brief テスト負荷 1 フレーム分。
-		 * @details 描画側が条件とボタンの状態を書き、更新側が結果を書く。同じ周の更新と描画がぶつからないよう、
+		 * @details 描画側が条件と回すかどうかを書き、更新側が結果を書く。同じ周の更新と描画がぶつからないよう、
 		 *          フレームの偶奇で 2 面持ち、走っている更新が触らないほうだけを描画側が触る。
 		 */
 		struct TestLoadSlot
@@ -139,8 +139,11 @@ namespace fang::editor
 		 */
 		void BuildTestLoadSection(uint64_t drawingFrameIndex);
 
-		/** @brief 要素数と分割幅のスライダを組み立てる。動かしたら移動平均を空に戻す。 */
+		/** @brief 負荷を回すチェックと、要素数・分割幅のスライダを組み立てる。動かしたら移動平均を空に戻す。 */
 		void BuildTestLoadParameters();
+
+		/** @brief 移動平均がまだ空のとき、なぜ数字が出ないのかを 1 行で出す。 */
+		void BuildTestLoadWaitingText() const;
 
 		/** @brief 面に載っている結果を移動平均へ引き取る。まだ回していない面と、条件の違う面は捨てる。 */
 		void PushTestLoadSamples(const TestLoadSlot& slot);
@@ -190,6 +193,13 @@ namespace fang::editor
 
 		uint32_t m_testLoadElementCount = 0; /**< 次に回す要素数。Initialize が既定値を入れ、スライダが動かす。 */
 		uint32_t m_testLoadBatchSize    = 0; /**< 次に回す分割幅。同じく Initialize とスライダが決める。 */
+
+		/**
+		 * @brief 負荷を回し続けるか。
+		 * @details 押している間だけのボタンにすると、回しながらスライダを動かせない。
+		 *          手も入力の焦点も 1 つしかないので、条件を変えた瞬間に負荷が止まり、移動平均が空のまま埋まらない。
+		 */
+		bool m_isTestLoadRunning = false;
 
 		MillisecondsAverage m_parallelAverage; /**< 並列版の所要時間の移動平均。 */
 		MillisecondsAverage m_serialAverage;   /**< 直列版の所要時間の移動平均。 */
