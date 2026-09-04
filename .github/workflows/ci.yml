@@ -1,0 +1,77 @@
+# デスクトップ (x64) のビルドと整形チェック。
+# Xbox 構成 (DebugXbox / PreviewXbox / ReleaseXbox) は GDK が NDA 配布で公開ランナーに置けないため扱わない。
+# ソリューション構成 Debug|x64 / Release|x64 では GameUWP に Build.0 が無いので、
+# ソリューション単位でビルドすれば Xbox プロジェクトは自動的に外れる。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 同じブランチへ続けて push したときは古い実行を打ち切る。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # ローカルは Visual Studio 18 の v145 だが、ホストランナーには入っていない。
+  # ランナー側のツールセットへ切り替える。
+  # ローカルとコンパイラが違うため、/W4 + TreatWarningAsError で警告差分が出ることがある。
+  FANG_TOOLSET: v143
+  # ローカルの Visual Studio 18 同梱版に合わせて固定する。
+  # バージョンが違うと整形結果が変わり、整形済みのコードでも失敗する。
+  FANG_CLANG_FORMAT_VERSION: 22.1.3
+
+jobs:
+  format:
+    name: 整形チェック
+    # 開発機と同じ土俵で見たいので Windows で動かす。
+    # 改行は .gitattributes の eol=crlf でどの OS でも CRLF になるため、そこは理由ではない。
+    runs-on: windows-latest
+    steps:
+      # 整形チェックはテキストしか見ないので LFS の実体は要らない。
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: clang-format を導入
+        run: pip install "clang-format==${{ env.FANG_CLANG_FORMAT_VERSION }}"
+
+      - name: 整形を検証
+        shell: bash
+        run: |
+          # ThirdParty は上流のまま置くので対象外。
+          # .hlsl / .hlsli も .clang-format が Cpp 設定のため除く。
+          git ls-files -z \
+            'Engine/*.h' 'Engine/*.cpp' \
+            'Game/*.h'   'Game/*.cpp' \
+            'Tests/*.h'  'Tests/*.cpp' \
+            'Tools/*.h'  'Tools/*.cpp' \
+            | xargs -0 clang-format --dry-run --Werror
+
+  build:
+    name: ビルド (${{ matrix.configuration }})
+    runs-on: windows-latest
+    strategy:
+      # 片方が落ちても、もう片方の結果を最後まで見たい。
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+      # アセットは LFS。ポインタのままだとコンテンツのコピーで落ちるので実体を取る。
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: ビルド
+        run: >
+          msbuild FangsOfRagnarok.sln
+          -p:Configuration=${{ matrix.configuration }}
+          -p:Platform=x64
+          -p:PlatformToolset=${{ env.FANG_TOOLSET }}
+          -m -nologo -v:m
