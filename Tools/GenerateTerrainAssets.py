@@ -7,28 +7,31 @@
 
     py Tools\\GenerateTerrainAssets.py
 
-書き出すのは次の 5 ファイル。
+書き出すのは次の 8 ファイル。
 
-    Heightmap.dds   513x513 R16_UNORM      地形の高さ
-    Splatmap.dds    513x513 R8G8B8A8_UNORM 地表レイヤの重み（R=草 G=岩 B=土 A=255）
-    LayerGrass.dds  256x256 ミップ付き     草のアルベド
-    LayerRock.dds   256x256 ミップ付き     岩のアルベド
-    LayerDirt.dds   256x256 ミップ付き     土のアルベド
+    Heightmap.dds        513x513 R16_UNORM      地形の高さ
+    Splatmap.dds         513x513 R8G8B8A8_UNORM 地表レイヤの重み（R=草 G=岩 B=土 A=255）
+    LayerGrass.dds       256x256 ミップ付き     草のアルベド
+    LayerRock.dds        256x256 ミップ付き     岩のアルベド
+    LayerDirt.dds        256x256 ミップ付き     土のアルベド
+    LayerGrassNormal.dds 256x256 ミップ付き     草の法線マップ
+    LayerRockNormal.dds  256x256 ミップ付き     岩の法線マップ
+    LayerDirtNormal.dds  256x256 ミップ付き     土の法線マップ
 
-レイヤアルベドは texconv があれば BC7_UNORM_SRGB へ焼く。
-見つからなければ R8G8B8A8_UNORM_SRGB を直接書き、その旨を表示する。
+texconv があればアルベドは BC7_UNORM_SRGB、法線は BC5_UNORM へ焼く。
+見つからなければ RGBA8 を直接書き、その旨を表示する。
+法線に sRGB を掛けないのは、色ではなく数値だから（掛けると陰影が浅くなる）。
+
+DDS の組み立てと texconv 呼び出しは Tools/TextureBaking.py にある。
 """
 
 import array
 import math
 import os
 import random
-import shutil
-import struct
-import subprocess
 import sys
-import tempfile
-import zlib
+
+import TextureBaking
 
 
 ROOT_DIRECTORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -155,54 +158,19 @@ LAYER_DEFINITIONS = (
     ("LayerDirt.dds", (122, 92, 62), 13, (2, 5)),
 )
 
+# 凹凸の高さを作る正弦のオクターブ。(振幅, u の周波数, v の周波数)。
+# アルベドと同じく周波数は整数なので、端で位相がそろいタイリングしても継ぎ目が出ない
+# (ファイル名, オクターブ, 割れ目の本数, 傾きに掛ける倍率)
+# 草は細かい粒、岩は大きい塊に割れ目、土は細かいざらつき
+LAYER_NORMAL_DEFINITIONS = (
+    ("LayerGrassNormal.dds", ((0.55, 24, 24), (0.30, 37, 37), (0.15, 61, 13)), 0, 3.0),
+    ("LayerRockNormal.dds", ((1.00, 3, 3), (0.45, 5, 9), (0.20, 17, 23)), 4, 6.0),
+    ("LayerDirtNormal.dds", ((0.50, 48, 48), (0.30, 29, 71), (0.20, 83, 83)), 0, 2.0),
+)
 
-# --------------------------------------------------------------------------------------
-# DDS
-# --------------------------------------------------------------------------------------
-
-DDS_MAGIC = b"DDS "
-DDS_HEADER_BYTE_SIZE = 124
-DDS_HEADER_DX10_BYTE_SIZE = 20
-DDS_DATA_OFFSET = len(DDS_MAGIC) + DDS_HEADER_BYTE_SIZE + DDS_HEADER_DX10_BYTE_SIZE
-
-DDSD_CAPS = 0x00000001
-DDSD_HEIGHT = 0x00000002
-DDSD_WIDTH = 0x00000004
-DDSD_PITCH = 0x00000008
-DDSD_PIXELFORMAT = 0x00001000
-DDSD_MIPMAPCOUNT = 0x00020000
-DDSD_LINEARSIZE = 0x00080000
-
-DDPF_FOURCC = 0x00000004
-FOURCC_DX10 = 0x30315844
-
-DDSCAPS_COMPLEX = 0x00000008
-DDSCAPS_TEXTURE = 0x00001000
-DDSCAPS_MIPMAP = 0x00400000
-
-DDS_DIMENSION_TEXTURE2D = 3
-
-DXGI_FORMAT_R8G8B8A8_UNORM = 28
-DXGI_FORMAT_R8G8B8A8_UNORM_SRGB = 29
-DXGI_FORMAT_R16_UNORM = 56
-DXGI_FORMAT_BC7_UNORM_SRGB = 99
-
-FORMAT_NAMES = {
-    DXGI_FORMAT_R8G8B8A8_UNORM: "R8G8B8A8_UNORM",
-    DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: "R8G8B8A8_UNORM_SRGB",
-    DXGI_FORMAT_R16_UNORM: "R16_UNORM",
-    DXGI_FORMAT_BC7_UNORM_SRGB: "BC7_UNORM_SRGB",
-}
-
-# ブロック圧縮でない形式の 1 テクセルあたりのバイト数
-TEXEL_BYTE_SIZES = {
-    DXGI_FORMAT_R8G8B8A8_UNORM: 4,
-    DXGI_FORMAT_R8G8B8A8_UNORM_SRGB: 4,
-    DXGI_FORMAT_R16_UNORM: 2,
-}
-
-BLOCK_TEXEL_SIZE = 4
-BC7_BLOCK_BYTE_SIZE = 16
+# 割れ目の深さと、縁の鋭さ。大きいほど溝が細く深くなる
+CRACK_DEPTH = 0.9
+CRACK_SHARPNESS = 6
 
 
 # --------------------------------------------------------------------------------------
@@ -469,230 +437,36 @@ def BuildLayerPixels(base_color, noise_amplitude, frequencies):
     return bytes(pixels)
 
 
-def DownsampleByBox(width, height, pixels):
-    """RGBA8 を 2x2 のボックスフィルタで半分に縮める。"""
-    next_width = max(width // 2, 1)
-    next_height = max(height // 2, 1)
+def BuildLayerHeights(octaves, crack_count):
+    """レイヤの凹凸の高さを 0〜1 で作る。行優先で LAYER_RESOLUTION の 2 乗個。
 
-    downsampled = bytearray(next_width * next_height * 4)
-    for y in range(next_height):
-        top = min(y * 2, height - 1)
-        bottom = min(top + 1, height - 1)
-        for x in range(next_width):
-            left = min(x * 2, width - 1)
-            right = min(left + 1, width - 1)
-
-            for channel in range(4):
-                total = (pixels[(top * width + left) * 4 + channel]
-                         + pixels[(top * width + right) * 4 + channel]
-                         + pixels[(bottom * width + left) * 4 + channel]
-                         + pixels[(bottom * width + right) * 4 + channel])
-                downsampled[(y * next_width + x) * 4 + channel] = (total + 2) // 4
-
-    return bytes(downsampled)
-
-
-def BuildMipChain(width, height, pixels):
-    """1x1 まで縮めたミップの並びを返す。"""
-    chain = [pixels]
-    while width > 1 or height > 1:
-        pixels = DownsampleByBox(width, height, pixels)
-        width = max(width // 2, 1)
-        height = max(height // 2, 1)
-        chain.append(pixels)
-
-    return chain
-
-
-# --------------------------------------------------------------------------------------
-# DDS の書き出しと読み戻し
-# --------------------------------------------------------------------------------------
-
-def CalculateMipByteSize(dxgi_format, width, height):
-    """ミップ 1 段ぶんのバイト数を出す。
-
-    数え方は Engine/Resource/DdsImage.cpp の CalculateMipLayout と合わせてある。
+    正弦の重ね合わせなので、周波数が整数である限りタイリングの継ぎ目は出ない。
+    最後に 0〜1 へ伸ばして幅をそろえる ➡ 強さの調整は倍率 1 か所で済む。
     """
-    if dxgi_format == DXGI_FORMAT_BC7_UNORM_SRGB:
-        block_count_x = (width + BLOCK_TEXEL_SIZE - 1) // BLOCK_TEXEL_SIZE
-        block_count_y = (height + BLOCK_TEXEL_SIZE - 1) // BLOCK_TEXEL_SIZE
-        return block_count_x * block_count_y * BC7_BLOCK_BYTE_SIZE
+    heights = []
+    for y in range(LAYER_RESOLUTION):
+        v = y / LAYER_RESOLUTION
+        for x in range(LAYER_RESOLUTION):
+            u = x / LAYER_RESOLUTION
 
-    return width * TEXEL_BYTE_SIZES[dxgi_format] * height
+            height = 0.0
+            for amplitude, frequency_u, frequency_v in octaves:
+                height += (amplitude
+                           * math.sin(math.tau * frequency_u * u)
+                           * math.cos(math.tau * frequency_v * v))
 
+            # 岩の割れ目。正弦が 0 を切る細い線だけを深く落として溝にする
+            if crack_count > 0:
+                groove = abs(math.sin(math.tau * crack_count * (u + 0.35 * v)))
+                height -= CRACK_DEPTH * (1.0 - groove) ** CRACK_SHARPNESS
 
-def BuildDdsBytes(dxgi_format, width, height, mip_chain):
-    """DX10 拡張ヘッダ付きの DDS を組み立てる。
+            heights.append(height)
 
-    行間に詰め物は入れない。
-    ピクセルはミップ 0 から順に並べる。
-    """
-    mip_count = len(mip_chain)
+    lowest = min(heights)
+    highest = max(heights)
+    span = max(highest - lowest, 1e-6)
 
-    flags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT
-    caps = DDSCAPS_TEXTURE
-    if mip_count > 1:
-        flags |= DDSD_MIPMAPCOUNT
-        caps |= DDSCAPS_COMPLEX | DDSCAPS_MIPMAP
-
-    if dxgi_format == DXGI_FORMAT_BC7_UNORM_SRGB:
-        flags |= DDSD_LINEARSIZE
-        pitch_or_linear_size = CalculateMipByteSize(dxgi_format, width, height)
-    else:
-        flags |= DDSD_PITCH
-        pitch_or_linear_size = width * TEXEL_BYTE_SIZES[dxgi_format]
-
-    header = struct.pack(
-        "<7I",
-        DDS_HEADER_BYTE_SIZE,
-        flags,
-        height,
-        width,
-        pitch_or_linear_size,
-        0,
-        mip_count,
-    )
-    header += b"\x00" * 44  # reserved1[11]
-    header += struct.pack("<8I", 32, DDPF_FOURCC, FOURCC_DX10, 0, 0, 0, 0, 0)
-    header += struct.pack("<5I", caps, 0, 0, 0, 0)
-
-    header_dx10 = struct.pack(
-        "<5I", dxgi_format, DDS_DIMENSION_TEXTURE2D, 0, 1, 0)
-
-    return DDS_MAGIC + header + header_dx10 + b"".join(mip_chain)
-
-
-def WriteDdsFile(path, dxgi_format, width, height, mip_chain):
-    with open(path, "wb") as output_file:
-        output_file.write(BuildDdsBytes(dxgi_format, width, height, mip_chain))
-
-
-def VerifyDdsFile(path, dxgi_format, width, height, mip_count):
-    """書いたファイルを読み戻してヘッダと大きさを確かめる。
-
-    戻り値は (成否, 説明) の組。
-    """
-    with open(path, "rb") as input_file:
-        file_bytes = input_file.read()
-
-    if len(file_bytes) < DDS_DATA_OFFSET:
-        return False, "ヘッダが足りない"
-
-    if file_bytes[:4] != DDS_MAGIC:
-        return False, "magic が違う"
-
-    header = struct.unpack_from("<7I", file_bytes, 4)
-    if header[0] != DDS_HEADER_BYTE_SIZE:
-        return False, "ヘッダの大きさが %d" % header[0]
-
-    pixel_format = struct.unpack_from("<8I", file_bytes, 4 + 28 + 44)
-    if pixel_format[0] != 32:
-        return False, "ピクセルフォーマットの大きさが %d" % pixel_format[0]
-    if (pixel_format[1] & DDPF_FOURCC) == 0 or pixel_format[2] != FOURCC_DX10:
-        return False, "DX10 拡張ヘッダの印が無い"
-
-    header_dx10 = struct.unpack_from(
-        "<5I", file_bytes, 4 + DDS_HEADER_BYTE_SIZE)
-    if header_dx10[0] != dxgi_format:
-        return False, "DXGI_FORMAT が %d" % header_dx10[0]
-    if header_dx10[1] != DDS_DIMENSION_TEXTURE2D:
-        return False, "resourceDimension が %d" % header_dx10[1]
-    if header_dx10[3] != 1:
-        return False, "arraySize が %d" % header_dx10[3]
-
-    if header[2] != height or header[3] != width:
-        return False, "寸法が %dx%d" % (header[3], header[2])
-
-    stored_mip_count = header[6] if header[6] > 0 else 1
-    if stored_mip_count != mip_count:
-        return False, "ミップ段数が %d" % stored_mip_count
-
-    expected_size = DDS_DATA_OFFSET
-    mip_width = width
-    mip_height = height
-    for _ in range(mip_count):
-        expected_size += CalculateMipByteSize(dxgi_format, mip_width, mip_height)
-        mip_width = mip_width // 2 if mip_width > 1 else 1
-        mip_height = mip_height // 2 if mip_height > 1 else 1
-
-    if len(file_bytes) != expected_size:
-        return False, "中身が %d バイト（想定 %d）" % (len(file_bytes), expected_size)
-
-    return True, "%s %dx%d ミップ %d 段 %d バイト" % (
-        FORMAT_NAMES[dxgi_format], width, height, mip_count, len(file_bytes))
-
-
-# --------------------------------------------------------------------------------------
-# texconv
-# --------------------------------------------------------------------------------------
-
-def WritePngFile(path, width, height, pixels):
-    """texconv に渡すための 8 bit RGBA の PNG を書く。"""
-    raw = bytearray()
-    for y in range(height):
-        raw.append(0)  # フィルタ種別。掛けない
-        raw += pixels[y * width * 4:(y + 1) * width * 4]
-
-    def BuildChunk(chunk_type, chunk_body):
-        body = chunk_type + chunk_body
-        return struct.pack(">I", len(chunk_body)) + body + struct.pack(">I", zlib.crc32(body))
-
-    header = struct.pack(">2I5B", width, height, 8, 6, 0, 0, 0)
-
-    with open(path, "wb") as output_file:
-        output_file.write(b"\x89PNG\r\n\x1a\n")
-        output_file.write(BuildChunk(b"IHDR", header))
-        output_file.write(BuildChunk(b"IDAT", zlib.compress(bytes(raw), 9)))
-        output_file.write(BuildChunk(b"IEND", b""))
-
-
-def FindTexconvPath():
-    """texconv.exe を探す。見つからなければ None。"""
-    found = shutil.which("texconv")
-    if found is not None:
-        return found
-
-    candidates = (
-        os.path.expanduser(os.path.join("~", "Desktop", "texconv.exe")),
-        os.path.expanduser(os.path.join("~", "OneDrive", "Desktop", "texconv.exe")),
-    )
-    for candidate in candidates:
-        if os.path.isfile(candidate):
-            return candidate
-
-    return None
-
-
-def ConvertByTexconv(texconv_path, source_png_path, output_path):
-    """PNG を BC7_UNORM_SRGB の DDS へ焼く。
-
-    texconv は出力先をディレクトリで受け取り、名前を入力から決める。
-    作業用のディレクトリへ出してから目的の名前へ移す。
-    """
-    work_directory = os.path.dirname(source_png_path)
-    command = [
-        texconv_path,
-        "-nologo",
-        "-y",
-        "-f", "BC7_UNORM_SRGB",
-        "-dx10",
-        "-m", "0",  # 1x1 までの全ミップ
-        "-o", work_directory,
-        source_png_path,
-    ]
-
-    completed = subprocess.run(
-        command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    if completed.returncode != 0:
-        return False
-
-    base_name = os.path.splitext(os.path.basename(source_png_path))[0]
-    produced_path = os.path.join(work_directory, base_name + ".DDS")
-    if not os.path.isfile(produced_path):
-        return False
-
-    shutil.move(produced_path, output_path)
-    return True
+    return [(value - lowest) / span for value in heights]
 
 
 # --------------------------------------------------------------------------------------
@@ -701,9 +475,9 @@ def ConvertByTexconv(texconv_path, source_png_path, output_path):
 
 def WriteHeightmap(height_field):
     path = os.path.join(OUTPUT_DIRECTORY, "Heightmap.dds")
-    WriteDdsFile(
+    TextureBaking.WriteDdsFile(
         path,
-        DXGI_FORMAT_R16_UNORM,
+        TextureBaking.DXGI_FORMAT_R16_UNORM,
         HEIGHTMAP_RESOLUTION,
         HEIGHTMAP_RESOLUTION,
         [BuildHeightmapPixels(height_field)],
@@ -714,9 +488,9 @@ def WriteHeightmap(height_field):
 def WriteSplatmap(height_field):
     pixels, weight_counts = BuildSplatmapPixels(height_field)
     path = os.path.join(OUTPUT_DIRECTORY, "Splatmap.dds")
-    WriteDdsFile(
+    TextureBaking.WriteDdsFile(
         path,
-        DXGI_FORMAT_R8G8B8A8_UNORM,
+        TextureBaking.DXGI_FORMAT_R8G8B8A8_UNORM,
         HEIGHTMAP_RESOLUTION,
         HEIGHTMAP_RESOLUTION,
         [pixels],
@@ -725,41 +499,48 @@ def WriteSplatmap(height_field):
 
 
 def WriteLayers(texconv_path):
-    """レイヤアルベドを 3 枚書く。
+    """レイヤアルベドを 3 枚書く。戻り値は (パス, 実際に焼けた形式) の並び。"""
+    written = []
+    for file_name, base_color, noise_amplitude, frequencies in LAYER_DEFINITIONS:
+        pixels = BuildLayerPixels(base_color, noise_amplitude, frequencies)
+        output_path = os.path.join(OUTPUT_DIRECTORY, file_name)
 
-    戻り値は (パスの並び, BC7 で焼けたか)。
+        dxgi_format = TextureBaking.BakeTexture(
+            texconv_path,
+            output_path,
+            LAYER_RESOLUTION,
+            pixels,
+            TextureBaking.DXGI_FORMAT_BC7_UNORM_SRGB,
+            TextureBaking.DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
+        )
+        written.append((output_path, dxgi_format))
+
+    return written
+
+
+def WriteLayerNormals(texconv_path):
+    """レイヤの法線マップを 3 枚書く。戻り値は (パス, 形式, 傾きの平均, 傾きの最大) の並び。
+
+    法線は色ではなく数値なので sRGB では焼かない。
     """
-    written_paths = []
-    is_block_compressed = texconv_path is not None
+    written = []
+    for file_name, octaves, crack_count, strength in LAYER_NORMAL_DEFINITIONS:
+        heights = BuildLayerHeights(octaves, crack_count)
+        pixels = TextureBaking.BuildNormalMapPixels(LAYER_RESOLUTION, heights, strength)
+        average_tilt, highest_tilt = TextureBaking.SummarizeNormalMapTilt(pixels)
 
-    with tempfile.TemporaryDirectory(prefix="fang_terrain_") as work_directory:
-        for file_name, base_color, noise_amplitude, frequencies in LAYER_DEFINITIONS:
-            pixels = BuildLayerPixels(base_color, noise_amplitude, frequencies)
-            output_path = os.path.join(OUTPUT_DIRECTORY, file_name)
+        output_path = os.path.join(OUTPUT_DIRECTORY, file_name)
+        dxgi_format = TextureBaking.BakeTexture(
+            texconv_path,
+            output_path,
+            LAYER_RESOLUTION,
+            pixels,
+            TextureBaking.DXGI_FORMAT_BC5_UNORM,
+            TextureBaking.DXGI_FORMAT_R8G8B8A8_UNORM,
+        )
+        written.append((output_path, dxgi_format, average_tilt, highest_tilt))
 
-            if is_block_compressed:
-                png_path = os.path.join(
-                    work_directory, os.path.splitext(file_name)[0] + ".png")
-                WritePngFile(png_path, LAYER_RESOLUTION, LAYER_RESOLUTION, pixels)
-
-                if ConvertByTexconv(texconv_path, png_path, output_path):
-                    written_paths.append(output_path)
-                    continue
-
-                # 途中で失敗したら、残りもまとめて直書きへ倒す
-                print("  texconv の変換に失敗した。RGBA8 sRGB の直書きへ切り替える")
-                is_block_compressed = False
-
-            WriteDdsFile(
-                output_path,
-                DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,
-                LAYER_RESOLUTION,
-                LAYER_RESOLUTION,
-                BuildMipChain(LAYER_RESOLUTION, LAYER_RESOLUTION, pixels),
-            )
-            written_paths.append(output_path)
-
-    return written_paths, is_block_compressed
+    return written
 
 
 def SummarizeHeightField(height_field):
@@ -821,33 +602,38 @@ def main():
 
     written = []
     written.append((WriteHeightmap(height_field),
-                    DXGI_FORMAT_R16_UNORM, HEIGHTMAP_RESOLUTION, 1))
+                    TextureBaking.DXGI_FORMAT_R16_UNORM, HEIGHTMAP_RESOLUTION, 1))
 
     splatmap_path, weight_counts = WriteSplatmap(height_field)
     written.append((splatmap_path,
-                    DXGI_FORMAT_R8G8B8A8_UNORM, HEIGHTMAP_RESOLUTION, 1))
+                    TextureBaking.DXGI_FORMAT_R8G8B8A8_UNORM, HEIGHTMAP_RESOLUTION, 1))
 
-    texconv_path = FindTexconvPath()
+    texconv_path = TextureBaking.FindTexconvPath()
     if texconv_path is None:
-        print("texconv が見つからないので、レイヤは RGBA8 sRGB で直接書く")
+        print("texconv が見つからないので、レイヤは RGBA8 で直接書く")
     else:
         print("texconv: %s" % texconv_path)
 
-    layer_paths, is_block_compressed = WriteLayers(texconv_path)
-    layer_format = (DXGI_FORMAT_BC7_UNORM_SRGB if is_block_compressed
-                    else DXGI_FORMAT_R8G8B8A8_UNORM_SRGB)
     layer_mip_count = LAYER_RESOLUTION.bit_length()  # 256 なら 9 段
-    for layer_path in layer_paths:
+
+    print("レイヤのアルベドを作成中...")
+    for layer_path, layer_format in WriteLayers(texconv_path):
         written.append((layer_path, layer_format, LAYER_RESOLUTION, layer_mip_count))
+
+    print("レイヤの法線マップを作成中...")
+    normal_tilts = []
+    for normal_path, normal_format, average_tilt, highest_tilt in WriteLayerNormals(texconv_path):
+        written.append((normal_path, normal_format, LAYER_RESOLUTION, layer_mip_count))
+        normal_tilts.append((os.path.basename(normal_path), average_tilt, highest_tilt))
 
     print("")
     print("自己検証")
     is_all_valid = True
     for path, dxgi_format, resolution, mip_count in written:
-        is_valid, message = VerifyDdsFile(
+        is_valid, message = TextureBaking.VerifyDdsFile(
             path, dxgi_format, resolution, resolution, mip_count)
         is_all_valid = is_all_valid and is_valid
-        print("  %-14s %s %s"
+        print("  %-20s %s %s"
               % (os.path.basename(path), "OK  " if is_valid else "NG  ", message))
 
     summary = SummarizeHeightField(height_field)
@@ -871,11 +657,16 @@ def main():
             label, weight_counts[key] / total_count * 100.0, weight_counts[key]))
 
     print("")
+    print("法線マップの傾き（真上からの角度）")
+    for file_name, average_tilt, highest_tilt in normal_tilts:
+        print("  %-20s 平均 %4.1f 度 / 最大 %4.1f 度" % (file_name, average_tilt, highest_tilt))
+
+    print("")
     if not is_all_valid:
         print("検証に失敗したファイルがある")
         return 1
 
-    print("5 ファイルを書き出した（レイヤは %s）" % FORMAT_NAMES[layer_format])
+    print("%d ファイルを書き出した" % len(written))
     return 0
 
 
