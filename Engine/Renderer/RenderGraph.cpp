@@ -386,7 +386,10 @@ namespace fang
 			FANG_ASSERT(pass.depthTarget.index < m_resourceCount, "登録していない深度リソースを描画先にしている");
 
 			const Resource& depthResource = m_resources[pass.depthTarget.index];
-			FANG_ASSERT(depthResource.texture.IsValid(), "テクスチャの裏付きが無い深度リソースを色無しで描画先にしている");
+			FANG_ASSERT(
+				depthResource.texture.IsValid(),
+				"テクスチャの裏付きが無い深度リソースを色無しで描画先にしている"
+			);
 
 			commandList.SetRenderTargetToDepthTexture(depthResource.texture);
 			commandList.SetViewport(depthResource.width, depthResource.height);
