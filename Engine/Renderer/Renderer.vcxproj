@@ -33,8 +33,10 @@
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RendererLog.h" />
     <ClInclude Include="SceneRenderer.h" />
+    <ClInclude Include="TerrainRenderer.h" />
     <ClInclude Include="UnlitRenderer.h" />
     <ClInclude Include="Shaders\MeshConstants.h" />
+    <ClInclude Include="Shaders\TerrainConstants.h" />
     <ClInclude Include="Shaders\UnlitConstants.h" />
   </ItemGroup>
   <ItemGroup>
@@ -46,6 +48,7 @@
     <ClCompile Include="RenderGraph.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="SceneRenderer.cpp" />
+    <ClCompile Include="TerrainRenderer.cpp" />
     <ClCompile Include="UnlitRenderer.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
@@ -72,8 +75,18 @@
       <ShaderType>Vertex</ShaderType>
       <EntryPointName>VertexMain</EntryPointName>
     </FXCompile>
+    <FXCompile Include="Shaders\TerrainVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+      <EntryPointName>VertexMain</EntryPointName>
+    </FXCompile>
+    <FXCompile Include="Shaders\TerrainPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+      <EntryPointName>PixelMain</EntryPointName>
+    </FXCompile>
     <None Include="Shaders\Unlit.hlsli" />
     <None Include="Shaders\Mesh.hlsli" />
+    <None Include="Shaders\Lighting.hlsli" />
+    <None Include="Shaders\Terrain.hlsli" />
   </ItemGroup>
   <ItemDefinitionGroup>
     <FXCompile>

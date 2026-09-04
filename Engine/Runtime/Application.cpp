@@ -21,9 +21,11 @@
 #include "Renderer/MeshRenderer.h"
 #include "Renderer/RenderGraph.h"
 #include "Renderer/SceneRenderer.h"
+#include "Renderer/TerrainRenderer.h"
 #include "Renderer/UnlitRenderer.h"
 #include "Resource/DdsImage.h"
 #include "Resource/GltfMesh.h"
+#include "Resource/HeightmapTerrain.h"
 #include "Runtime/FramePipeline.h"
 #include "Runtime/RuntimeLog.h"
 #include <chrono>
@@ -96,6 +98,29 @@ namespace fang
 		// 非金属・粗い面。鏡のような映り込みは床らしくないので roughness を高めにする。
 		constexpr float FLOOR_METALLIC_FACTOR  = 0.0f;
 		constexpr float FLOOR_ROUGHNESS_FACTOR = 0.9f;
+
+		// 地形。検証用アセットは Tools/GenerateTerrainAssets.py が生成する。
+		// 寸法の規約(全長・高さスケール・中心が原点)は生成スクリプト側の定数と対で、片方だけ変えない。
+		constexpr const char* TERRAIN_HEIGHTMAP_RELATIVE_PATH = "Terrain\\Heightmap.dds";
+		constexpr const char* TERRAIN_SPLATMAP_RELATIVE_PATH  = "Terrain\\Splatmap.dds";
+
+		/** @brief レイヤのアルベド。並びはスプラットの重み(R = 草、G = 岩、B = 土)と対。 */
+		constexpr const char* TERRAIN_LAYER_RELATIVE_PATHS[3] = {
+			"Terrain\\LayerGrass.dds",
+			"Terrain\\LayerRock.dds",
+			"Terrain\\LayerDirt.dds",
+		};
+
+		constexpr float TERRAIN_TOTAL_SIZE_CENTIMETERS   = 8192.0f;
+		constexpr float TERRAIN_HEIGHT_SCALE_CENTIMETERS = 600.0f;
+
+		/** @brief レイヤのテクスチャ 1 枚が受け持つ辺長。4m ごとの繰り返しなら近接しても粗さが目立たない。 */
+		constexpr float TERRAIN_LAYER_TILE_CENTIMETERS = 400.0f;
+
+		// 地形は静的なので設定値はここに直書きする(実行時に変える口を増やさない)。
+		// パラメータの JSON 化はエディタのシーン保存と一緒に行う。
+		/** @brief レイヤごとの知覚 roughness。並びは草・岩・土。岩だけ少しハイライトを残す。 */
+		constexpr float TERRAIN_LAYER_ROUGHNESS[3] = { 0.9f, 0.75f, 0.95f };
 
 		/**
 		 * @brief 床（受け専用の静的メッシュ）を作る。
@@ -172,6 +197,150 @@ namespace fang
 			std::vector<Matrix4x4> skinningMatrices;
 		};
 
+		/**
+		 * @brief 地形 1 式の持ち物。
+		 * @details HeightmapTerrain は高さの問い合わせ(狼の接地に使う予定)のため、GPU 化が済んでも持ち続ける。
+		 */
+		struct TerrainModel
+		{
+			HeightmapTerrain heightmap;
+
+			/** @brief スプラットマップ。読めなかったら無効なままで、そのとき地形は描かれない。 */
+			rhi::TextureHandle splatmap;
+
+			/** @brief レイヤのアルベド。並びは草・岩・土。 */
+			rhi::TextureHandle layerAlbedos[3];
+
+			/** @brief 読み込みから CreateTerrain まで通ったか。false なら地形なしで動いている。 */
+			bool isLoaded = false;
+		};
+
+
+		/**
+		 * @brief 地形用のテクスチャを 1 枚読んで GPU へ載せる。
+		 * @param relativePath  アセットの根っこからの相対パス。
+		 * @param outTexelWidth 読めたときだけ画像の横テクセル数を書く。要らなければ nullptr。
+		 * @return 失敗したら無効なハンドル。理由は DdsImage / RHI 側がログに出す。
+		 */
+		[[nodiscard]] rhi::TextureHandle LoadTerrainTexture(
+			rhi::GraphicsDevice& device,
+			const char*          relativePath,
+			uint32_t*            outTexelWidth
+		)
+		{
+			const std::string filePath = MakeAssetPath(relativePath);
+
+			DdsImage image;
+			if (!image.Load(filePath.c_str()))
+			{
+				return rhi::TextureHandle{};
+			}
+
+			if (outTexelWidth != nullptr)
+			{
+				*outTexelWidth = image.GetMipLevels()[0].width;
+			}
+
+			const rhi::TextureSource source{
+				.mipLevels = image.GetMipLevels(),
+				.format    = image.GetFormat(),
+			};
+
+			return device.CreateTexture2D(source);
+		}
+
+
+		/**
+		 * @brief 地形を読んで GPU へ載せる。
+		 * @details 失敗しても落とさない。isLoaded が false のままになり、地形なしで起動が続く
+		 *          (床・狼・エディタは今までどおり)。理由は各段階がログに出す。
+		 */
+		void LoadTerrain(rhi::GraphicsDevice& device, TerrainRenderer& terrainRenderer, TerrainModel* outTerrain)
+		{
+			//------------------------------------------------------------------------
+			// 1. ハイトマップの読み込みとチャンク生成
+			// 　R16 の DDS を読み、ワールド座標の頂点・法線・インデックス・AABB を持つチャンク列を作る。
+			//------------------------------------------------------------------------
+			const HeightmapTerrainDesc terrainDesc{
+				.totalWidth  = TERRAIN_TOTAL_SIZE_CENTIMETERS,
+				.totalDepth  = TERRAIN_TOTAL_SIZE_CENTIMETERS,
+				.heightScale = TERRAIN_HEIGHT_SCALE_CENTIMETERS,
+			};
+
+			const std::string heightmapPath = MakeAssetPath(TERRAIN_HEIGHTMAP_RELATIVE_PATH);
+			if (!outTerrain->heightmap.Load(heightmapPath.c_str(), terrainDesc))
+			{
+				FANG_LOG_ERROR(Runtime, "ハイトマップを読めなかった。地形なしで続ける: {}", heightmapPath);
+				return;
+			}
+
+			//------------------------------------------------------------------------
+			// 2. スプラットマップとレイヤアルベドの読み込み
+			// 　1 枚でも欠けたら地形なしにする(欠けたレイヤだけ単色で補うような分岐を増やさない)。
+			//------------------------------------------------------------------------
+			uint32_t splatTexelCount = 0;
+			outTerrain->splatmap     = LoadTerrainTexture(device, TERRAIN_SPLATMAP_RELATIVE_PATH, &splatTexelCount);
+
+			bool hasAllTextures = outTerrain->splatmap.IsValid();
+			for (size_t index = 0; index < 3; ++index)
+			{
+				outTerrain->layerAlbedos[index] =
+					LoadTerrainTexture(device, TERRAIN_LAYER_RELATIVE_PATHS[index], nullptr);
+				hasAllTextures = hasAllTextures && outTerrain->layerAlbedos[index].IsValid();
+			}
+
+			if (!hasAllTextures)
+			{
+				FANG_LOG_ERROR(Runtime, "地形のテクスチャがそろわなかった。地形なしで続ける");
+				return;
+			}
+
+			//------------------------------------------------------------------------
+			// 3. チャンクの詰め替えと GPU 化
+			// 　Resource の生成結果(TerrainChunkSource)を Renderer の受け口(TerrainChunk)へ写し、
+			// 　CreateTerrain で圧縮頂点にして載せる。読み込み時なのでここのヒープ確保は許す。
+			//------------------------------------------------------------------------
+			const std::span<const TerrainChunkSource> chunkSources = outTerrain->heightmap.GetChunks();
+
+			std::vector<TerrainChunk> chunks;
+			chunks.reserve(chunkSources.size());
+			for (const TerrainChunkSource& source : chunkSources)
+			{
+				chunks.push_back(
+					TerrainChunk{
+						.positions = source.positions,
+						.normals   = source.normals,
+						.indices   = source.indices,
+						.bounds    = source.bounds,
+					}
+				);
+			}
+
+			const TerrainSurface surface{
+				.splatmap       = outTerrain->splatmap,
+				.layerAlbedos   = { outTerrain->layerAlbedos[0],
+									outTerrain->layerAlbedos[1],
+									outTerrain->layerAlbedos[2] },
+				.layerRoughness = { TERRAIN_LAYER_ROUGHNESS[0],
+									TERRAIN_LAYER_ROUGHNESS[1],
+									TERRAIN_LAYER_ROUGHNESS[2] },
+
+				.layerTileCentimeters = TERRAIN_LAYER_TILE_CENTIMETERS,
+				.halfWidth            = TERRAIN_TOTAL_SIZE_CENTIMETERS * 0.5f,
+				.halfDepth            = TERRAIN_TOTAL_SIZE_CENTIMETERS * 0.5f,
+				.splatTexelCount      = splatTexelCount,
+			};
+
+			if (!terrainRenderer.CreateTerrain(device, chunks, surface))
+			{
+				FANG_LOG_ERROR(Runtime, "地形を GPU に載せられなかった。地形なしで続ける");
+				return;
+			}
+
+			outTerrain->isLoaded = true;
+		}
+
+
 		/** @brief FramePipeline へ渡す、フレームループの持ち物。 */
 		struct FrameLoopContext
 		{
@@ -185,8 +354,9 @@ namespace fang
 #if FANG_ENABLE_DEBUG_DRAW
 			DebugDraw* debugDraw = nullptr;
 #endif
-			MeshRenderer* meshRenderer = nullptr;
-			WolfModel*    wolf         = nullptr;
+			MeshRenderer*    meshRenderer    = nullptr;
+			TerrainRenderer* terrainRenderer = nullptr;
+			WolfModel*       wolf            = nullptr;
 
 			/** @brief RunApplication が持つ入れ物。graph.Execute の戻り値の後に 4 値を書く。 */
 			RenderStatistics* renderStatistics = nullptr;
@@ -671,9 +841,30 @@ namespace fang
 				EnLoadOperation::Load
 			);
 
+			//------------------------------------------------------------------------
+			// 8. TerrainPass の宣言(Load・シャドウマップ読み)
+			// 　地形を描く TerrainPass を ScenePass の直後に宣言する。前後関係は深度テストが解決するので
+			// 　順序に意味は無いが、シャドウマップを読むリソースとして宣言することで ShadowPass との
+			// 　バリアを Compile に導かせる。b1 はシーン View の実体を借りる ➡ 光と影が建物と一致する。
+			// 　地形を読めていないときは HasTerrain が false で、パスごと宣言しない。
+			//------------------------------------------------------------------------
+			TerrainRenderer& terrainRenderer = *loopContext.terrainRenderer;
+			if (terrainRenderer.HasTerrain())
+			{
+				terrainRenderer.AddPass(
+					graph,
+					backBufferResource,
+					depthBufferResource,
+					shadowMapResource,
+					sceneRenderer.GetFrameConstantBuffer(sceneViewId),
+					sceneRenderer.GetShadowMapTexture(),
+					view.viewProjection
+				);
+			}
+
 #if FANG_ENABLE_DEBUG_DRAW
 			//------------------------------------------------------------------------
-			// 8. デバッグ描画の積み込みと DebugLinePass の宣言(FANG_ENABLE_DEBUG_DRAW 内)
+			// 9. デバッグ描画の積み込みと DebugLinePass の宣言(FANG_ENABLE_DEBUG_DRAW 内)
 			// 　Reset で前フレームの積み込みを捨ててから、狼(と床)の境界ボックス、シャドウの光の視錐台の順に
 			// 　ワイヤーを積み、DebugLinePass を宣言する。Release では FANG_ENABLE_DEBUG_DRAW が 0 になり、
 			// 　この区画ごとビルドから外れる。
@@ -703,7 +894,7 @@ namespace fang
 
 #if FANG_ENABLE_EDITOR
 			//------------------------------------------------------------------------
-			// 9. エディタパスの宣言(FANG_ENABLE_EDITOR 内・Main 記録)
+			// 10. エディタパスの宣言(FANG_ENABLE_EDITOR 内・Main 記録)
 			// 　エディタパスを宣言する。Release ビルドでは FANG_ENABLE_EDITOR が 0 になり、この区画ごと
 			// 　ビルドから外れる。
 			//------------------------------------------------------------------------
@@ -734,25 +925,26 @@ namespace fang
 #endif
 
 			//------------------------------------------------------------------------
-			// 10. Compile と Execute
+			// 11. Compile と Execute
 			// 　宣言したパスから Compile でバリアとクリアの手順を導き、Execute でコマンドリストへ記録する。
 			//------------------------------------------------------------------------
 			graph.Compile();
 			graph.Execute(device, jobSystem);
 
 			//------------------------------------------------------------------------
-			// 11. レンダリング統計のスナップショット更新
+			// 12. レンダリング統計のスナップショット更新
 			// 　Execute の Wait が済んだこの地点でだけ、Submit 数・描いた数・パス数・コマンドリスト本数を
 			// 　安全に読める（ScenePass の記録がまだ書き込み中の可能性がある間は読めない）。ここで書いた値は
 			// 　次のフレームの EditorPass が読む、1 フレーム遅れのスナップショットになる。
 			//------------------------------------------------------------------------
-			loopContext.renderStatistics->submittedItemCount = sceneRenderer.GetSubmittedItemCount();
-			loopContext.renderStatistics->drawnItemCount     = sceneRenderer.GetLastDrawnItemCount();
-			loopContext.renderStatistics->passCount          = graph.GetPassCount();
-			loopContext.renderStatistics->commandListCount   = static_cast<uint32_t>(graph.GetCommandLists().size());
+			loopContext.renderStatistics->submittedItemCount     = sceneRenderer.GetSubmittedItemCount();
+			loopContext.renderStatistics->drawnItemCount         = sceneRenderer.GetLastDrawnItemCount();
+			loopContext.renderStatistics->drawnTerrainChunkCount = terrainRenderer.GetLastDrawnChunkCount();
+			loopContext.renderStatistics->passCount              = graph.GetPassCount();
+			loopContext.renderStatistics->commandListCount = static_cast<uint32_t>(graph.GetCommandLists().size());
 
 			//------------------------------------------------------------------------
-			// 12. コマンドリストを借りられなかったときの畳み
+			// 13. コマンドリストを借りられなかったときの畳み
 			// 　パスを宣言したのにコマンドリストが 1 本も返らなかった(主にデバイスロスト)ら、このフレームは
 			// 　EndFrame を呼ばずに畳む。
 			//------------------------------------------------------------------------
@@ -769,7 +961,7 @@ namespace fang
 			}
 
 			//------------------------------------------------------------------------
-			// 13. EndFrame
+			// 14. EndFrame
 			// 　積んだコマンドリストを渡して実行・Present・GPU の完了待ちをまとめて行う。
 			//------------------------------------------------------------------------
 			device.EndFrame(graph.GetCommandLists());
@@ -876,6 +1068,18 @@ namespace fang
 			FANG_LOG_ERROR(Runtime, "メッシュ描画の準備に失敗した。モデルの表示だけを飛ばす");
 		}
 
+		// 地形も失敗を FANG_FATAL にしない。読めなければ地形なしで起動が続き、床・狼・エディタは今までどおり。
+		TerrainRenderer terrainRenderer;
+		TerrainModel    terrain;
+		if (terrainRenderer.Initialize(device))
+		{
+			LoadTerrain(device, terrainRenderer, &terrain);
+		}
+		else
+		{
+			FANG_LOG_ERROR(Runtime, "地形描画の準備に失敗した。地形の表示だけを飛ばす");
+		}
+
 		// RenderGraph はフレームごとに Reset して組み直す入れ物なので、器そのものはここで 1 つだけ作る。
 		RenderGraph renderGraph;
 
@@ -909,9 +1113,10 @@ namespace fang
 #if FANG_ENABLE_DEBUG_DRAW
 		loopContext.debugDraw = &debugDraw;
 #endif
-		loopContext.meshRenderer = &meshRenderer;
-		loopContext.wolf         = &wolf;
-		loopContext.floorMesh    = floorMesh;
+		loopContext.meshRenderer    = &meshRenderer;
+		loopContext.terrainRenderer = &terrainRenderer;
+		loopContext.wolf            = &wolf;
+		loopContext.floorMesh       = floorMesh;
 
 		FramePipeline framePipeline;
 		if (!framePipeline.Initialize(jobSystem, frameMemory, &loopContext, &UpdateFrame, &RenderFrame))
@@ -966,8 +1171,17 @@ namespace fang
 		debugDraw.Shutdown(device);
 #endif
 		sceneRenderer.Shutdown(device);
+		terrainRenderer.Shutdown(device);
 		meshRenderer.Shutdown(device);
 		device.DestroyTexture(wolf.baseColor);
+
+		// 地形のテクスチャは TerrainRenderer にとって借用なので、持ち主のここが返す。
+		device.DestroyTexture(terrain.splatmap);
+		for (rhi::TextureHandle& layerAlbedo : terrain.layerAlbedos)
+		{
+			device.DestroyTexture(layerAlbedo);
+		}
+
 		device.Shutdown();
 		window.Shutdown();
 

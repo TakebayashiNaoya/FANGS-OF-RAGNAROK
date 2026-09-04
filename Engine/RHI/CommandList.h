@@ -119,13 +119,20 @@ namespace fang::rhi
 		void SetSkinningConstantBuffer(BufferHandle buffer);
 
 		/**
-		 * @brief t0 にテクスチャを差す。
-		 * @param texture 差すテクスチャ。hasTexture で作ったパイプラインが前提。
+		 * @brief テクスチャの枠 1 つにテクスチャを差す。
+		 * @param slot    差す枠の番号（t のレジスタ番号と同じ）。パイプライン作成時の textureCount 未満であること。
+		 * @param texture 差すテクスチャ。
 		 */
-		void SetTexture(TextureHandle texture);
+		void SetTexture(uint32_t slot, TextureHandle texture);
 
 		/**
-		 * @brief t1 にシャドウマップを差す。
+		 * @brief t0 にテクスチャを差す。スロット 0 を差す糖衣。
+		 * @param texture 差すテクスチャ。textureCount ≧ 1 で作ったパイプラインが前提。
+		 */
+		void SetTexture(TextureHandle texture) { SetTexture(0, texture); }
+
+		/**
+		 * @brief シャドウマップを差す。t の番号はパイプライン作成時の textureCount の次の枠。
 		 * @param texture 差す深度テクスチャ。hasShadowMap で作ったパイプラインが前提。
 		 */
 		void SetShadowMap(TextureHandle texture);

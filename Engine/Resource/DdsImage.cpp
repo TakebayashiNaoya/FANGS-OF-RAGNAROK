@@ -26,6 +26,7 @@ namespace fang
 		/** @brief DXGI_FORMAT の番号。d3d12.h を Resource へ持ち込まないため値で持つ。 */
 		constexpr uint32_t DXGI_R8G8B8A8_UNORM      = 28;
 		constexpr uint32_t DXGI_R8G8B8A8_UNORM_SRGB = 29;
+		constexpr uint32_t DXGI_R16_UNORM           = 56;
 		constexpr uint32_t DXGI_BC7_UNORM           = 98;
 		constexpr uint32_t DXGI_BC7_UNORM_SRGB      = 99;
 
@@ -90,6 +91,9 @@ namespace fang
 		/** @brief 1 テクセル 4 バイト（RGBA8）。 */
 		constexpr uint32_t RGBA8_TEXEL_BYTE_SIZE = 4;
 
+		/** @brief 1 テクセル 2 バイト（R16）。 */
+		constexpr uint32_t R16_TEXEL_BYTE_SIZE = 2;
+
 		[[nodiscard]] bool IsBlockCompressed(rhi::EnTextureFormat format)
 		{
 			return format == rhi::EnTextureFormat::BC7 || format == rhi::EnTextureFormat::BC7Srgb;
@@ -119,7 +123,10 @@ namespace fang
 				return;
 			}
 
-			*outRowPitch = width * RGBA8_TEXEL_BYTE_SIZE;
+			const uint32_t texelByteSize =
+				format == rhi::EnTextureFormat::R16 ? R16_TEXEL_BYTE_SIZE : RGBA8_TEXEL_BYTE_SIZE;
+
+			*outRowPitch = width * texelByteSize;
 			*outRowCount = height;
 		}
 	} // namespace
@@ -236,6 +243,7 @@ namespace fang
 		{
 			case DXGI_R8G8B8A8_UNORM: m_format = rhi::EnTextureFormat::RGBA8; break;
 			case DXGI_R8G8B8A8_UNORM_SRGB: m_format = rhi::EnTextureFormat::RGBA8Srgb; break;
+			case DXGI_R16_UNORM: m_format = rhi::EnTextureFormat::R16; break;
 			case DXGI_BC7_UNORM: m_format = rhi::EnTextureFormat::BC7; break;
 			case DXGI_BC7_UNORM_SRGB: m_format = rhi::EnTextureFormat::BC7Srgb; break;
 			default:

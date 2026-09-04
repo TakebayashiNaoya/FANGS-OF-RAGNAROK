@@ -46,10 +46,11 @@ namespace fang
 	/** @brief 直近に完了した Execute の統計。RenderStatisticsPanel が読む。1 フレーム遅れの値。 */
 	struct RenderStatistics
 	{
-		uint32_t submittedItemCount = 0; /**< Submit の合計（全 View、カリング前）。 */
-		uint32_t drawnItemCount     = 0; /**< 実際に描いた合計（全 View）。 */
-		uint32_t passCount          = 0; /**< RenderGraph に宣言されたパスの数。 */
-		uint32_t commandListCount   = 0; /**< Execute が記録したコマンドリストの本数。 */
+		uint32_t submittedItemCount     = 0; /**< Submit の合計（全 View、カリング前）。 */
+		uint32_t drawnItemCount         = 0; /**< 実際に描いた合計（全 View）。 */
+		uint32_t drawnTerrainChunkCount = 0; /**< 地形で実際に描いたチャンクの数（カリング後）。 */
+		uint32_t passCount              = 0; /**< RenderGraph に宣言されたパスの数。 */
+		uint32_t commandListCount       = 0; /**< Execute が記録したコマンドリストの本数。 */
 	};
 
 	/**

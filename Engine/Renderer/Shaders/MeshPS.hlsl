@@ -1,18 +1,12 @@
 /**
  * @file MeshPS.hlsl
  * @brief メッシュのピクセルシェーダー。平行光 1 本 + 環境項の物理ベースライティング。
- * @details 式は glTF 仕様 Appendix B（Lambert + GGX + Schlick Fresnel）のとおりで、独自の変形はしない
- *          ➡ metallic / roughness の係数の意味がアセットと一致する。
+ * @details 式と影係数は Lighting.hlsli にある（地形と共有する）。ここはリソースを差して呼ぶだけ。
  *          静的メッシュとスキンメッシュの両方がこれを使う。
  */
 #include "Mesh.hlsli"
 #include "MeshConstants.h"
-
-/** @brief 円周率。 */
-static const float PI = 3.14159265;
-
-/** @brief 非金属の垂直入射の反射率。glTF 仕様が定める共通の近似値。 */
-static const float DIELECTRIC_REFLECTANCE = 0.04;
+#include "Lighting.hlsli"
 
 /** @brief 描くもの 1 個ぶんの定数。並びは MeshConstants.h の MeshObjectConstants。 */
 cbuffer cbObject : register(b0)
@@ -36,90 +30,24 @@ Texture2D<float> shadowMap : register(t1);
 /** @brief シャドウマップの比較サンプラ。LESS_EQUAL・境界色 白（マップの外は影なしとして読む）。 */
 SamplerComparisonState shadowComparisonSampler : register(s1);
 
-/**
- * @brief ワールド位置が光にどれだけ見えているかを 0（影）〜1（影なし）で返す。
- * @details 3x3 の PCF（9 回サンプル）で境目を滑らかにする。影が無効なフレームと、
- *          光のフラスタムの外（z が 0〜1 の範囲外）は範囲外を不正に暗くしないため 1 を返す。
- */
-float CalculateShadowFactor(float3 worldPosition)
-{
-	// 早期 return を使うと FXC が「戻り値が初期化されていないかもしれない」という誤検知の警告を出すので、
-	// 1 つの戻り値を条件分岐の中で埋めていく形にする。既定値は影なし（範囲外を不正に暗くしないため）。
-	float shadowFactor = 1.0;
-
-	if (frameConstants.shadowParameters.y >= 0.5)
-	{
-		float4 lightClipPosition = mul(frameConstants.lightViewProjection, float4(worldPosition, 1.0));
-
-		// 正射影なので w 除算は実質 1 だが、既存の書き方に合わせて安全に割っておく。
-		float3 lightNdcPosition = lightClipPosition.xyz / lightClipPosition.w;
-
-		if (lightNdcPosition.z >= 0.0 && lightNdcPosition.z <= 1.0)
-		{
-			float2 shadowMapUV = lightNdcPosition.xy * float2(0.5, -0.5) + 0.5;
-			float texelSize = frameConstants.shadowParameters.x;
-
-			float shadowSum = 0.0;
-			for (int y = -1; y <= 1; ++y)
-			{
-				for (int x = -1; x <= 1; ++x)
-				{
-					float2 sampleUV = shadowMapUV + float2(x, y) * texelSize;
-					shadowSum += shadowMap.SampleCmpLevelZero(shadowComparisonSampler, sampleUV, lightNdcPosition.z);
-				}
-			}
-
-			shadowFactor = shadowSum / 9.0;
-		}
-	}
-
-	return shadowFactor;
-}
-
 float4 PixelMain(VertexOutput input) : SV_TARGET
 {
 	float3 albedo = baseColorTexture.Sample(baseColorSampler, input.texCoord).rgb;
 
-	float metallic = objectConstants.material.x;
-
-	// roughness は知覚値で受け取り、2 乗してから式に入れる（glTF の規約）。
-	float alphaRoughness = objectConstants.material.y * objectConstants.material.y;
-	float alphaSquared = alphaRoughness * alphaRoughness;
-
-	float3 normal = normalize(input.normal);
-	float3 directionToLight = frameConstants.directionToLight.xyz;
-	float3 directionToCamera = normalize(frameConstants.cameraPosition.xyz - input.worldPosition);
-	float3 halfVector = normalize(directionToLight + directionToCamera);
-
-	float dotNL = saturate(dot(normal, directionToLight));
-	float dotNV = saturate(dot(normal, directionToCamera));
-	float dotNH = saturate(dot(normal, halfVector));
-	float dotVH = saturate(dot(directionToCamera, halfVector));
-
-	// F0 は非金属なら 0.04、金属ならベースカラーそのもの。そのぶん金属は拡散を持たない。
-	float3 reflectanceAtZero = lerp(float3(DIELECTRIC_REFLECTANCE, DIELECTRIC_REFLECTANCE, DIELECTRIC_REFLECTANCE),
-	                                albedo, metallic);
-	float3 fresnel = reflectanceAtZero + (1.0 - reflectanceAtZero) * pow(1.0 - dotVH, 5.0);
-
-	float3 diffuse = (1.0 - fresnel) * albedo * (1.0 - metallic) / PI;
-
-	// GGX の法線分布と、Smith の高さ相関マスキング（可視項）。
-	float distributionDenominator = dotNH * dotNH * (alphaSquared - 1.0) + 1.0;
-	float distribution = alphaSquared / (PI * distributionDenominator * distributionDenominator);
-
-	float maskingLight = dotNL * sqrt(dotNV * dotNV * (1.0 - alphaSquared) + alphaSquared);
-	float maskingCamera = dotNV * sqrt(dotNL * dotNL * (1.0 - alphaSquared) + alphaSquared);
-	float visibility = 0.5 / max(maskingLight + maskingCamera, 1e-5);
-
-	float3 specular = distribution * visibility * fresnel;
-
-	// 影は直接光にだけ掛ける。環境項にまで掛けると影の中が真っ黒になり形が読めなくなる。
-	float shadowFactor = CalculateShadowFactor(input.worldPosition);
-
-	// 環境項が「光の裏側でも形が読める」役を担う（半ランバートの後継）。metallic で消さないのは、
-	// IBL の無い今、金属を真っ黒にしないための近似。
-	float3 lighting = shadowFactor * (diffuse + specular) * frameConstants.lightColor.rgb * frameConstants.lightColor.w * dotNL
-	                + frameConstants.ambientColor.rgb * albedo;
+	float3 lighting = CalculateSurfaceLighting(
+		albedo,
+		objectConstants.material.x,
+		objectConstants.material.y,
+		input.normal,
+		input.worldPosition,
+		frameConstants.cameraPosition.xyz,
+		frameConstants.directionToLight.xyz,
+		frameConstants.lightColor,
+		frameConstants.ambientColor.rgb,
+		frameConstants.lightViewProjection,
+		frameConstants.shadowParameters,
+		shadowMap,
+		shadowComparisonSampler);
 
 	// ここまではリニア空間。バックバッファは UNORM（sRGB でない）なので、最後にガンマへ戻す。
 	// HDR / トーンマップのトピックで、UI 側の補正と一緒にこの pow を消すこと。残すと二重に掛かって白っぽくなる。

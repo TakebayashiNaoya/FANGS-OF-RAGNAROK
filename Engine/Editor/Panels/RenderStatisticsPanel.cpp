@@ -111,6 +111,7 @@ namespace fang::editor
 		// Submit したうちの何個が実際に描かれたか（差がカリングで飛んだ数）を並べて読ませる。
 		ImGui::Text("Submit した数: %u", renderStatistics.submittedItemCount);
 		ImGui::Text("描いた数: %u", renderStatistics.drawnItemCount);
+		ImGui::Text("地形の描画チャンク数: %u", renderStatistics.drawnTerrainChunkCount);
 		ImGui::Separator();
 		ImGui::Text("RenderGraph のパス数: %u", renderStatistics.passCount);
 		ImGui::Text("コマンドリスト本数: %u", renderStatistics.commandListCount);

@@ -305,6 +305,17 @@ namespace fang
 	}
 
 
+	rhi::BufferHandle SceneRenderer::GetFrameConstantBuffer(ViewId view) const
+	{
+		if (!view.IsValid() || view.index >= m_viewCount)
+		{
+			return rhi::BufferHandle{};
+		}
+
+		return m_frameConstantBuffers[view.index];
+	}
+
+
 	void SceneRenderer::AddPasses(
 		RenderGraph&           graph,
 		RenderGraphResourceId  backBuffer,

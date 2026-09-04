@@ -177,6 +177,15 @@ namespace fang
 		 */
 		[[nodiscard]] FANG_FORCEINLINE rhi::TextureHandle GetShadowMapTexture() const { return m_shadowMap; }
 
+		/**
+		 * @brief その View の b1（視点と光の定数バッファ）。
+		 * @details 地形のように SceneRenderer の外のパスで描くものが、建物と同じ視点・光・影パラメータを
+		 *          共有するための口。中身は AddView が書き込むので、AddView の後に取ること。所有権は渡さない。
+		 * @param view AddView / AddShadowView が返した番号。
+		 * @return 登録していない番号なら無効なハンドル。
+		 */
+		[[nodiscard]] rhi::BufferHandle GetFrameConstantBuffer(ViewId view) const;
+
 #if FANG_ENABLE_DEBUG_DRAW
 		/**
 		 * @brief 光の正射影の箱（実際に使われる光の視錐台）の 8 頂点をワールド座標で返す。

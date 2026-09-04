@@ -245,7 +245,7 @@ namespace fang::editor
 		pipelineDesc.pixelShaderBytecode  = std::span<const uint8_t>(g_ImGuiPS, sizeof(g_ImGuiPS));
 		pipelineDesc.vertexLayout         = VERTEX_LAYOUT;
 		pipelineDesc.rootConstantCount    = 16;
-		pipelineDesc.hasTexture           = true;
+		pipelineDesc.textureCount         = 1;
 		pipelineDesc.isAlphaBlendEnabled  = true;
 
 		m_pipeline = device.CreateGraphicsPipeline(pipelineDesc);

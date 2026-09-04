@@ -16,12 +16,12 @@ namespace fang::rhi
 		{
 			switch (format)
 			{
-				case EnVertexFormat::Float2:           return DXGI_FORMAT_R32G32_FLOAT;
-				case EnVertexFormat::Float3:           return DXGI_FORMAT_R32G32B32_FLOAT;
-				case EnVertexFormat::Float4:           return DXGI_FORMAT_R32G32B32A32_FLOAT;
+				case EnVertexFormat::Float2: return DXGI_FORMAT_R32G32_FLOAT;
+				case EnVertexFormat::Float3: return DXGI_FORMAT_R32G32B32_FLOAT;
+				case EnVertexFormat::Float4: return DXGI_FORMAT_R32G32B32A32_FLOAT;
 				case EnVertexFormat::UByte4Normalized: return DXGI_FORMAT_R8G8B8A8_UNORM;
-				case EnVertexFormat::UByte4:           return DXGI_FORMAT_R8G8B8A8_UINT;
-				case EnVertexFormat::Half2:            return DXGI_FORMAT_R16G16_FLOAT;
+				case EnVertexFormat::UByte4: return DXGI_FORMAT_R8G8B8A8_UINT;
+				case EnVertexFormat::Half2: return DXGI_FORMAT_R16G16_FLOAT;
 				case EnVertexFormat::SByte4Normalized: return DXGI_FORMAT_R8G8B8A8_SNORM;
 			}
 
@@ -34,7 +34,7 @@ namespace fang::rhi
 			switch (topology)
 			{
 				case EnPrimitiveTopology::TriangleList: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-				case EnPrimitiveTopology::LineList:     return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+				case EnPrimitiveTopology::LineList: return D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 			}
 
 			return D3D12_PRIMITIVE_TOPOLOGY_TYPE_UNDEFINED;
@@ -45,22 +45,29 @@ namespace fang::rhi
 	PipelineHandle PipelinePool::Create(ID3D12Device& device, const GraphicsPipelineDesc& desc)
 	{
 		//------------------------------------------------------------------------
-		// 1. ルートパラメータの構築(b0 ➡ b1 ➡ b2 ➡ t0 ➡ t1 の並びと、desc のフラグでどれが付くか)
+		// 1. ルートパラメータの構築(b0 ➡ b1 ➡ b2 ➡ t0〜 ➡ シャドウマップの並びと、desc のフラグでどれが付くか)
 		// 　シェーダから見えるレジスタごとにルートパラメータを 1 個ずつ積む。どれを積むかは
 		// 　GraphicsPipelineDesc のフラグで決まり、並びは b0(rootConstants か objectConstantBuffer)➡
-		// 　b1(frameConstantBuffer) ➡ b2(skinningConstantBuffer) ➡ t0(texture) ➡ t1(shadowMap) の順。
+		// 　b1(frameConstantBuffer) ➡ b2(skinningConstantBuffer) ➡ t0 から textureCount 枚のテクスチャ ➡
+		// 　シャドウマップ(t はテクスチャの次の枠)の順。テクスチャは 1 枠 1 テーブルで積む
+		// 　(枠ごとのハンドルがヒープ上で連続している保証が無いため、1 本のテーブルにまとめられない)。
 		//------------------------------------------------------------------------
-		D3D12_DESCRIPTOR_RANGE textureRange{};
-		textureRange.RangeType          = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		textureRange.NumDescriptors     = 1;
-		textureRange.BaseShaderRegister = 0;
+		FANG_ASSERT(desc.textureCount <= GraphicsPipelineDesc::MAX_TEXTURE_COUNT, "テクスチャの枠が上限を超えている");
+
+		D3D12_DESCRIPTOR_RANGE textureRanges[GraphicsPipelineDesc::MAX_TEXTURE_COUNT]{};
+		for (uint32_t slot = 0; slot < desc.textureCount; ++slot)
+		{
+			textureRanges[slot].RangeType          = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+			textureRanges[slot].NumDescriptors     = 1;
+			textureRanges[slot].BaseShaderRegister = slot;
+		}
 
 		D3D12_DESCRIPTOR_RANGE shadowMapRange{};
 		shadowMapRange.RangeType          = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		shadowMapRange.NumDescriptors     = 1;
-		shadowMapRange.BaseShaderRegister = 1;
+		shadowMapRange.BaseShaderRegister = desc.textureCount;
 
-		D3D12_ROOT_PARAMETER rootParameters[5]{};
+		D3D12_ROOT_PARAMETER rootParameters[3 + GraphicsPipelineDesc::MAX_TEXTURE_COUNT + 1]{};
 		uint32_t             rootParameterCount = 0;
 
 		Entry entry;
@@ -123,17 +130,22 @@ namespace fang::rhi
 			++rootParameterCount;
 		}
 
-		if (desc.hasTexture)
+		if (desc.textureCount > 0)
 		{
-			entry.rootParameters.texture = rootParameterCount;
+			entry.rootParameters.texture      = rootParameterCount;
+			entry.rootParameters.textureCount = desc.textureCount;
 
-			D3D12_ROOT_PARAMETER& parameter = rootParameters[rootParameterCount];
-			parameter.ParameterType         = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-			parameter.ShaderVisibility      = D3D12_SHADER_VISIBILITY_PIXEL;
+			// スロット n のテーブル番号が texture + n になるよう、枠の順にそのまま積む。
+			for (uint32_t slot = 0; slot < desc.textureCount; ++slot)
+			{
+				D3D12_ROOT_PARAMETER& parameter = rootParameters[rootParameterCount];
+				parameter.ParameterType         = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+				parameter.ShaderVisibility      = D3D12_SHADER_VISIBILITY_PIXEL;
 
-			parameter.DescriptorTable.NumDescriptorRanges = 1;
-			parameter.DescriptorTable.pDescriptorRanges   = &textureRange;
-			++rootParameterCount;
+				parameter.DescriptorTable.NumDescriptorRanges = 1;
+				parameter.DescriptorTable.pDescriptorRanges   = &textureRanges[slot];
+				++rootParameterCount;
+			}
 		}
 
 		if (desc.hasShadowMap)
@@ -158,13 +170,18 @@ namespace fang::rhi
 		D3D12_STATIC_SAMPLER_DESC staticSamplers[2]{};
 		uint32_t                  staticSamplerCount = 0;
 
-		if (desc.hasTexture)
+		if (desc.textureCount > 0)
 		{
+			// 地形のレイヤのようにタイリングするパイプラインだけ Wrap にする。既定は従来どおり Clamp。
+			const D3D12_TEXTURE_ADDRESS_MODE addressMode = desc.samplerAddressMode == EnSamplerAddressMode::Wrap
+															   ? D3D12_TEXTURE_ADDRESS_MODE_WRAP
+															   : D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+
 			D3D12_STATIC_SAMPLER_DESC& sampler = staticSamplers[staticSamplerCount];
 			sampler.Filter                     = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
-			sampler.AddressU                   = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-			sampler.AddressV                   = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
-			sampler.AddressW                   = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+			sampler.AddressU                   = addressMode;
+			sampler.AddressV                   = addressMode;
+			sampler.AddressW                   = addressMode;
 			sampler.ComparisonFunc             = D3D12_COMPARISON_FUNC_ALWAYS;
 			sampler.ShaderRegister             = 0;
 			sampler.ShaderVisibility           = D3D12_SHADER_VISIBILITY_PIXEL;
