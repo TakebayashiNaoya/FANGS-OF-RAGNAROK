@@ -8,6 +8,7 @@
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Math/Vector2.h"
 #include "Core/Math/Vector3.h"
+#include "Core/Math/Vector4.h"
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -38,14 +39,23 @@ namespace fang
 		std::span<const Vector2>  texCoords;
 		std::span<const uint16_t> indices;
 
+		/** @brief 頂点の接線（TANGENT）。glTF が持っていなければ空。受け取る側が UV から作る。 */
+		std::span<const Vector4> tangents;
+
 		/** @brief マテリアルが指すベースカラー画像のパス。glTF ファイルからの相対。指していなければ空。 */
 		std::string_view baseColorImagePath;
+
+		/** @brief マテリアルが指す法線マップ画像のパス。扱いは baseColorImagePath と同じ。 */
+		std::string_view normalImagePath;
 
 		/** @brief マテリアルの metallic 係数。0 = 非金属、1 = 金属。書かれていない glTF では既定値の 1.0。 */
 		float metallicFactor = 1.0f;
 
 		/** @brief マテリアルの roughness 係数（知覚値）。1 = 粗い面。書かれていない glTF では既定値の 1.0。 */
 		float roughnessFactor = 1.0f;
+
+		/** @brief 法線マップの強さ（normalTexture.scale）。書かれていない glTF では既定値の 1.0。 */
+		float normalScale = 1.0f;
 	};
 
 	/**
@@ -110,10 +120,13 @@ namespace fang
 			std::vector<Vector3>  positions;
 			std::vector<Vector3>  normals;
 			std::vector<Vector2>  texCoords;
+			std::vector<Vector4>  tangents;
 			std::vector<uint16_t> indices;
 			std::string           baseColorImagePath;
+			std::string           normalImagePath;
 			float                 metallicFactor  = 1.0f;
 			float                 roughnessFactor = 1.0f;
+			float                 normalScale     = 1.0f;
 		};
 
 		/** @brief 配置 1 個分の実体。GltfSceneInstance::name はここの name を指す。 */

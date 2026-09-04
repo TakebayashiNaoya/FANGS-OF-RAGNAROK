@@ -8,6 +8,7 @@
 #include "Core/Math/Pack.h"
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
+#include "Renderer/DummyTexture.h"
 #include "Renderer/RendererLog.h"
 #include "Renderer/Shaders/TerrainConstants.h"
 #include <cstddef>
@@ -52,7 +53,7 @@ namespace fang
 			{ "NORMAL", 0, rhi::EnVertexFormat::SByte4Normalized, offsetof(TerrainVertex, normal) },
 		};
 
-		// t0 = スプラット、t1〜t3 = レイヤのアルベド、その次の t4 = シャドウマップ。
+		// t0 = スプラット、t1〜t3 = レイヤのアルベド、t4〜t6 = レイヤの法線、その次の t7 = シャドウマップ。
 		// サンプラはレイヤのタイリングのため WRAP（スプラット側はシェーダが UV をクランプして守る）。
 		// b0 は地形の定数（ロード時に 1 回書くだけ）、b1 はシーン View の MeshFrameConstants を借りる。
 		rhi::GraphicsPipelineDesc pipelineDesc{};
@@ -70,7 +71,7 @@ namespace fang
 
 		pipelineDesc.hasObjectConstantBuffer = true;
 		pipelineDesc.hasFrameConstantBuffer  = true;
-		pipelineDesc.textureCount            = 4;
+		pipelineDesc.textureCount            = 7;
 		pipelineDesc.samplerAddressMode      = rhi::EnSamplerAddressMode::Wrap;
 		pipelineDesc.hasShadowMap            = true;
 		pipelineDesc.isDepthTestEnabled      = true;
@@ -87,6 +88,12 @@ namespace fang
 			return false;
 		}
 
+		m_dummyNormalMap = CreateDummyNormalMap(device);
+		if (!m_dummyNormalMap.IsValid())
+		{
+			return false;
+		}
+
 		FANG_LOG_INFO(Renderer, "地形描画の準備ができた");
 
 		return true;
@@ -97,9 +104,11 @@ namespace fang
 	{
 		DestroyChunks(device);
 
+		device.DestroyTexture(m_dummyNormalMap);
 		device.DestroyBuffer(m_constantBuffer);
 		device.DestroyPipeline(m_pipeline);
 
+		m_dummyNormalMap = {};
 		m_constantBuffer = {};
 		m_pipeline       = {};
 
@@ -299,6 +308,14 @@ namespace fang
 		commandList.SetTexture(1, m_surface.layerAlbedos[0]);
 		commandList.SetTexture(2, m_surface.layerAlbedos[1]);
 		commandList.SetTexture(3, m_surface.layerAlbedos[2]);
+
+		// 法線マップは欠けていることがある ➡ 無効なものにはダミーを差し、シェーダに分岐を持たせない。
+		for (uint32_t layer = 0; layer < FANG_COUNT_OF(m_surface.layerNormals); ++layer)
+		{
+			const rhi::TextureHandle layerNormal = m_surface.layerNormals[layer];
+			commandList.SetTexture(4 + layer, layerNormal.IsValid() ? layerNormal : m_dummyNormalMap);
+		}
+
 		commandList.SetShadowMap(m_shadowMap);
 
 		for (uint32_t index = 0; index < m_chunkCount; ++index)

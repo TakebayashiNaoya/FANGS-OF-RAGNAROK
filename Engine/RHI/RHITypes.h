@@ -49,7 +49,7 @@ namespace fang::rhi
 	/**
 	 * @brief テクスチャのピクセル形式。DXGI へは RHI の内側で変換する。
 	 * @details Srgb 付きは「読むときに GPU がリニアへ直す」形式。色として見せるもの（ベースカラー）は
-	 *          Srgb 付き、数値として読むもの（フォントのマスクや、いずれ足す法線マップ）は無印を使う。
+	 *          Srgb 付き、数値として読むもの（フォントのマスクや法線マップ）は無印を使う。
 	 */
 	enum class EnTextureFormat : uint8_t
 	{
@@ -57,6 +57,7 @@ namespace fang::rhi
 		RGBA8Srgb, /**< 同じ並びで、サンプル時にリニアへ直される。 */
 		BC7,       /**< ブロック圧縮。4×4 テクセルが 16 バイト ➡ 1 テクセルあたり 1 バイト。 */
 		BC7Srgb,   /**< 同上。ベースカラーはこれで焼く。 */
+		BC5,       /**< ブロック圧縮の 2 チャンネル（赤と緑）。BC7 と同じく 4×4 テクセルが 16 バイト。法線マップに使う。 */
 		R16,       /**< 16 bit × 1 の UNORM。行のバイト数は 幅 × 2。ハイトマップに使う。 */
 	};
 
@@ -210,8 +211,12 @@ namespace fang::rhi
 		 */
 		bool hasObjectConstantBuffer = false;
 
-		/** @brief t0 から並べられるテクスチャの枠の上限。 */
-		static constexpr uint32_t MAX_TEXTURE_COUNT = 4;
+		/**
+		 * @brief t0 から並べられるテクスチャの枠の上限。
+		 * @details 一番食うのは地形で、スプラット 1 枚 + レイヤ 3 枚 ×（アルベド + 法線）の 7 枠。
+		 *          枠 1 つがルートパラメータ 1 個になるので、上げるとルートシグネチャの DWORD 数も増える。
+		 */
+		static constexpr uint32_t MAX_TEXTURE_COUNT = 8;
 
 		/**
 		 * @brief t0 から連続で差すテクスチャの枚数。1 枚でも差すならサンプラ s0 も付く。

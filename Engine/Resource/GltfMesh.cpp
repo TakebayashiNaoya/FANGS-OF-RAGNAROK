@@ -334,7 +334,17 @@ namespace fang
 			return false;
 		}
 
-		if (m_normals.size() != m_positions.size() || m_texCoords.size() != m_positions.size())
+		// TANGENT は必須にしない。無ければ受け取る側（MeshRenderer::CreateMesh）が UV から作る。
+		const cgltf_accessor* tangentAccessor = FindAttributeAccessor(primitive, cgltf_attribute_type_tangent, 0);
+		if (tangentAccessor != nullptr && !ReadTangentAttribute(*tangentAccessor, &m_tangents))
+		{
+			FANG_LOG_ERROR(Resource, "glTF の TANGENT を読めなかった: {}", filePath);
+			Clear();
+			return false;
+		}
+
+		if (m_normals.size() != m_positions.size() || m_texCoords.size() != m_positions.size() ||
+			(!m_tangents.empty() && m_tangents.size() != m_positions.size()))
 		{
 			FANG_LOG_ERROR(Resource, "glTF の属性ごとに頂点数が違う: {}", filePath);
 			Clear();
@@ -374,21 +384,34 @@ namespace fang
 			m_jointNames.push_back(jointName.c_str());
 		}
 
-		// マテリアルが指すベースカラー画像。無くてもエラーにしない ➡ 単色で描けばよい。
-		if (primitive.material != nullptr && primitive.material->has_pbr_metallic_roughness != 0)
+		// マテリアルが指す画像。無くてもエラーにしない ➡ 単色・凹凸なしで描けばよい。
+		if (primitive.material != nullptr)
 		{
-			// cgltf は書かれていない係数を glTF の既定値（どちらも 1.0）で埋めて返すので、そのまま写せばよい。
-			m_metallicFactor  = primitive.material->pbr_metallic_roughness.metallic_factor;
-			m_roughnessFactor = primitive.material->pbr_metallic_roughness.roughness_factor;
-
-			const cgltf_texture* baseColorTexture =
-				primitive.material->pbr_metallic_roughness.base_color_texture.texture;
-			if (baseColorTexture != nullptr && baseColorTexture->image != nullptr &&
-				baseColorTexture->image->uri != nullptr)
+			if (primitive.material->has_pbr_metallic_roughness != 0)
 			{
-				// URI は空白などがパーセント符号化されていることがある。写しの上で戻す。
-				m_baseColorImagePath = baseColorTexture->image->uri;
-				m_baseColorImagePath.resize(cgltf_decode_uri(m_baseColorImagePath.data()));
+				// cgltf は書かれていない係数を glTF の既定値（どちらも 1.0）で埋めて返すので、そのまま写せばよい。
+				m_metallicFactor  = primitive.material->pbr_metallic_roughness.metallic_factor;
+				m_roughnessFactor = primitive.material->pbr_metallic_roughness.roughness_factor;
+
+				const cgltf_texture* baseColorTexture =
+					primitive.material->pbr_metallic_roughness.base_color_texture.texture;
+				if (baseColorTexture != nullptr && baseColorTexture->image != nullptr &&
+					baseColorTexture->image->uri != nullptr)
+				{
+					// URI は空白などがパーセント符号化されていることがある。写しの上で戻す。
+					m_baseColorImagePath = baseColorTexture->image->uri;
+					m_baseColorImagePath.resize(cgltf_decode_uri(m_baseColorImagePath.data()));
+				}
+			}
+
+			// 法線マップは pbrMetallicRoughness の外にある ➡ 上の分岐に入れない。
+			const cgltf_texture* normalTexture = primitive.material->normal_texture.texture;
+			if (normalTexture != nullptr && normalTexture->image != nullptr && normalTexture->image->uri != nullptr)
+			{
+				m_normalImagePath = normalTexture->image->uri;
+				m_normalImagePath.resize(cgltf_decode_uri(m_normalImagePath.data()));
+
+				m_normalScale = primitive.material->normal_texture.scale;
 			}
 		}
 
@@ -410,6 +433,7 @@ namespace fang
 		m_positions.clear();
 		m_normals.clear();
 		m_texCoords.clear();
+		m_tangents.clear();
 		m_indices.clear();
 
 		// 名前を指すポインタから先に捨てる。実体が消えた後に残っているとぶら下がりになる。
@@ -419,8 +443,10 @@ namespace fang
 		m_jointWeights.clear();
 		m_inverseBindMatrices.clear();
 		m_baseColorImagePath.clear();
+		m_normalImagePath.clear();
 
 		m_metallicFactor  = 1.0f;
 		m_roughnessFactor = 1.0f;
+		m_normalScale     = 1.0f;
 	}
 } // namespace fang

@@ -8,6 +8,7 @@
 #include "MeshConstants.h"
 #include "TerrainConstants.h"
 #include "Lighting.hlsli"
+#include "NormalMapping.hlsli"
 
 /** @brief 地形の定数。並びは TerrainConstants.h。読み込みのときに 1 回書かれたきり変わらない。 */
 cbuffer cbObject : register(b0)
@@ -36,11 +37,30 @@ Texture2D<float4> layerAlbedoTexture2 : register(t3);
 /** @brief 共有サンプラ。レイヤのタイリングのため WRAP で作られる（スプラット側は UV をクランプして守る）。 */
 SamplerState terrainSampler : register(s0);
 
-/** @brief シャドウマップ。t はテクスチャ 4 枚の次の枠。 */
-Texture2D<float> shadowMap : register(t4);
+/** @brief レイヤ 0（草）の法線マップ。接線空間で、RG だけを読む。 */
+Texture2D<float4> layerNormalTexture0 : register(t4);
+
+/** @brief レイヤ 1（岩）の法線マップ。 */
+Texture2D<float4> layerNormalTexture1 : register(t5);
+
+/** @brief レイヤ 2（土）の法線マップ。 */
+Texture2D<float4> layerNormalTexture2 : register(t6);
+
+/** @brief シャドウマップ。t はテクスチャ 7 枚の次の枠。 */
+Texture2D<float> shadowMap : register(t7);
 
 /** @brief シャドウマップの比較サンプラ。LESS_EQUAL・境界色 白（マップの外は影なしとして読む）。 */
 SamplerComparisonState shadowComparisonSampler : register(s1);
+
+/**
+ * @brief 地形の接線。レイヤ UV はワールド XZ の一次関数なので、頂点にも定数にも持たず固定値で書ける。
+ * @details ∂P/∂u = ワールド +X ➡ 接線は (1, 0, 0)。∂P/∂v = ワールド +Z が要るが、法線が ほぼ +Y のとき
+ *          cross(N, T) は (0, 0, -1) を向く ➡ w を -1 にして裏返す。ここを +1 にすると斜面の陰影が上下逆になる。
+ */
+static const float4 TERRAIN_TANGENT = float4(1.0, 0.0, 0.0, -1.0);
+
+/** @brief 地形の法線マップの強さ。生成器が意図した強さで焼くので、実行時の調整点は作らない。 */
+static const float TERRAIN_NORMAL_STRENGTH = 1.0;
 
 float4 PixelMain(VertexOutput input) : SV_TARGET
 {
@@ -68,12 +88,21 @@ float4 PixelMain(VertexOutput input) : SV_TARGET
 
 	float perceptualRoughness = dot(terrainConstants.layerRoughness.xyz, layerWeights);
 
+	// 3 レイヤの法線は接線空間のまま重みで混ぜ、ワールドへ回すのは 1 回だけ。重みの合計は 1 に
+	// 正規化済みなので境目でも向きが連続する ➡ レイヤの継ぎ目が出ない。
+	float3 tangentSpaceNormal =
+		  DecodeTangentSpaceNormal(layerNormalTexture0.Sample(terrainSampler, layerUV).rg, TERRAIN_NORMAL_STRENGTH) * layerWeights.r
+		+ DecodeTangentSpaceNormal(layerNormalTexture1.Sample(terrainSampler, layerUV).rg, TERRAIN_NORMAL_STRENGTH) * layerWeights.g
+		+ DecodeTangentSpaceNormal(layerNormalTexture2.Sample(terrainSampler, layerUV).rg, TERRAIN_NORMAL_STRENGTH) * layerWeights.b;
+
+	float3 surfaceNormal = ApplyNormalMap(input.normal, TERRAIN_TANGENT, tangentSpaceNormal);
+
 	// metallic は 0 固定。地面が金属になる状況が無いので、スプラットに 4 チャンネル目を足さない。
 	float3 lighting = CalculateSurfaceLighting(
 		albedo,
 		0.0,
 		perceptualRoughness,
-		input.normal,
+		surfaceNormal,
 		input.worldPosition,
 		frameConstants.cameraPosition.xyz,
 		frameConstants.directionToLight.xyz,

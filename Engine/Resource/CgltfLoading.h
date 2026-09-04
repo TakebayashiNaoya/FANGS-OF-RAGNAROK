@@ -10,6 +10,7 @@
 #include "Core/CoreMacros.h"
 #include "Core/Math/Vector2.h"
 #include "Core/Math/Vector3.h"
+#include "Core/Math/Vector4.h"
 #include <cstdint>
 #include <vector>
 
@@ -86,6 +87,14 @@ namespace fang
 	 * @return 型が VEC3 でないか、読み出しに失敗したら false。
 	 */
 	[[nodiscard]] bool ReadVector3Attribute(const cgltf_accessor& accessor, std::vector<Vector3>* outValues);
+
+	/**
+	 * @brief VEC4 の TANGENT アクセサを読み、右手系 Y-up から左手系 Y-up へ直して詰める。
+	 * @details Z の反転は鏡映（行列式が負）なので、xyz を裏返すだけでは従法線の向きが合わない
+	 *          ➡ w（従法線の符号）も一緒に反転する。片方だけだと従法線が裏返り、光を裏返して受ける。
+	 * @return 型が VEC4 でないか、読み出しに失敗したら false。
+	 */
+	[[nodiscard]] bool ReadTangentAttribute(const cgltf_accessor& accessor, std::vector<Vector4>* outValues);
 
 	/**
 	 * @brief VEC2 のアクセサを読んで詰める。

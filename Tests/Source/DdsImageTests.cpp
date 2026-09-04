@@ -21,6 +21,7 @@ namespace
 
 	constexpr uint32_t DXGI_R8G8B8A8_UNORM     = 28;
 	constexpr uint32_t DXGI_R16_UNORM          = 56;
+	constexpr uint32_t DXGI_BC5_UNORM          = 83;
 	constexpr uint32_t DXGI_BC7_UNORM_SRGB     = 99;
 	constexpr uint32_t DDS_DIMENSION_TEXTURE2D = 3;
 
@@ -151,6 +152,30 @@ TEST_CASE("BC7 はブロック単位で数える")
 	CHECK(mipLevels[2].rowPitch == 16);
 	CHECK(mipLevels[3].width == 1);
 	CHECK(mipLevels[3].sizeInBytes == 16);
+}
+
+
+TEST_CASE("BC5 も BC7 と同じブロックの数え方で読む")
+{
+	// 法線マップの形式。ブロックは BC7 と同じ 16 バイトなので、8x8 の 1 段目は 32 バイト × 2 行 = 64。
+	DdsBuilder builder(8, 8, 2, DXGI_BC5_UNORM);
+	builder.AppendPixels(64 + 16);
+
+	fang::DdsImage image;
+	CHECK(image.LoadFromMemory(builder.GetBytes()));
+	CHECK(image.GetFormat() == fang::rhi::EnTextureFormat::BC5);
+
+	const auto mipLevels = image.GetMipLevels();
+	CHECK_EQ(mipLevels.size(), 2);
+	if (mipLevels.size() != 2)
+	{
+		return;
+	}
+
+	CHECK(mipLevels[0].rowPitch == 32);
+	CHECK(mipLevels[0].sizeInBytes == 64);
+	CHECK(mipLevels[1].width == 4);
+	CHECK(mipLevels[1].sizeInBytes == 16);
 }
 
 

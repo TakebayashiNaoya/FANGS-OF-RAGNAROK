@@ -27,6 +27,7 @@ namespace fang
 		constexpr uint32_t DXGI_R8G8B8A8_UNORM      = 28;
 		constexpr uint32_t DXGI_R8G8B8A8_UNORM_SRGB = 29;
 		constexpr uint32_t DXGI_R16_UNORM           = 56;
+		constexpr uint32_t DXGI_BC5_UNORM           = 83;
 		constexpr uint32_t DXGI_BC7_UNORM           = 98;
 		constexpr uint32_t DXGI_BC7_UNORM_SRGB      = 99;
 
@@ -85,8 +86,8 @@ namespace fang
 		/** @brief BC 系のブロックが受け持つテクセルの幅。 */
 		constexpr uint32_t BLOCK_TEXEL_SIZE = 4;
 
-		/** @brief BC7 のブロック 1 個のバイト数。 */
-		constexpr uint32_t BC7_BLOCK_BYTE_SIZE = 16;
+		/** @brief ブロック圧縮のブロック 1 個のバイト数。BC7 も BC5 も 16 バイト。 */
+		constexpr uint32_t BLOCK_BYTE_SIZE = 16;
 
 		/** @brief 1 テクセル 4 バイト（RGBA8）。 */
 		constexpr uint32_t RGBA8_TEXEL_BYTE_SIZE = 4;
@@ -96,7 +97,8 @@ namespace fang
 
 		[[nodiscard]] bool IsBlockCompressed(rhi::EnTextureFormat format)
 		{
-			return format == rhi::EnTextureFormat::BC7 || format == rhi::EnTextureFormat::BC7Srgb;
+			return format == rhi::EnTextureFormat::BC7 || format == rhi::EnTextureFormat::BC7Srgb ||
+				   format == rhi::EnTextureFormat::BC5;
 		}
 
 		/**
@@ -118,7 +120,7 @@ namespace fang
 				const uint32_t blockCountX = (width + BLOCK_TEXEL_SIZE - 1) / BLOCK_TEXEL_SIZE;
 				const uint32_t blockCountY = (height + BLOCK_TEXEL_SIZE - 1) / BLOCK_TEXEL_SIZE;
 
-				*outRowPitch = blockCountX * BC7_BLOCK_BYTE_SIZE;
+				*outRowPitch = blockCountX * BLOCK_BYTE_SIZE;
 				*outRowCount = blockCountY;
 				return;
 			}
@@ -244,6 +246,7 @@ namespace fang
 			case DXGI_R8G8B8A8_UNORM: m_format = rhi::EnTextureFormat::RGBA8; break;
 			case DXGI_R8G8B8A8_UNORM_SRGB: m_format = rhi::EnTextureFormat::RGBA8Srgb; break;
 			case DXGI_R16_UNORM: m_format = rhi::EnTextureFormat::R16; break;
+			case DXGI_BC5_UNORM: m_format = rhi::EnTextureFormat::BC5; break;
 			case DXGI_BC7_UNORM: m_format = rhi::EnTextureFormat::BC7; break;
 			case DXGI_BC7_UNORM_SRGB: m_format = rhi::EnTextureFormat::BC7Srgb; break;
 			default:

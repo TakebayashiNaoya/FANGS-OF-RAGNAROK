@@ -97,10 +97,13 @@ namespace fang
 			mesh.positions          = storage.positions;
 			mesh.normals            = storage.normals;
 			mesh.texCoords          = storage.texCoords;
+			mesh.tangents           = storage.tangents;
 			mesh.indices            = storage.indices;
 			mesh.baseColorImagePath = storage.baseColorImagePath;
+			mesh.normalImagePath    = storage.normalImagePath;
 			mesh.metallicFactor     = storage.metallicFactor;
 			mesh.roughnessFactor    = storage.roughnessFactor;
+			mesh.normalScale        = storage.normalScale;
 			m_meshes.push_back(mesh);
 		}
 
@@ -304,8 +307,22 @@ namespace fang
 			return false;
 		}
 
+		// TANGENT は必須にしない。無ければ受け取る側（MeshRenderer::CreateMesh）が UV から作る。
+		const cgltf_accessor* tangentAccessor = FindAttributeAccessor(primitive, cgltf_attribute_type_tangent, 0);
+		if (tangentAccessor != nullptr && !ReadTangentAttribute(*tangentAccessor, &outStorage->tangents))
+		{
+			FANG_LOG_ERROR(
+				Resource,
+				"glTF の TANGENT を読めなかった: {} のプリミティブ {}",
+				displayName,
+				primitiveIndex
+			);
+			return false;
+		}
+
 		if ((!outStorage->normals.empty() && outStorage->normals.size() != outStorage->positions.size()) ||
-			(!outStorage->texCoords.empty() && outStorage->texCoords.size() != outStorage->positions.size()))
+			(!outStorage->texCoords.empty() && outStorage->texCoords.size() != outStorage->positions.size()) ||
+			(!outStorage->tangents.empty() && outStorage->tangents.size() != outStorage->positions.size()))
 		{
 			FANG_LOG_ERROR(
 				Resource,
@@ -322,21 +339,34 @@ namespace fang
 			return false;
 		}
 
-		// マテリアルが指すベースカラー画像。無くてもエラーにしない ➡ 単色で描けばよい。
-		if (primitive.material != nullptr && primitive.material->has_pbr_metallic_roughness != 0)
+		// マテリアルが指す画像。無くてもエラーにしない ➡ 単色・凹凸なしで描けばよい。
+		if (primitive.material != nullptr)
 		{
-			// cgltf は書かれていない係数を glTF の既定値（どちらも 1.0）で埋めて返すので、そのまま写せばよい。
-			outStorage->metallicFactor  = primitive.material->pbr_metallic_roughness.metallic_factor;
-			outStorage->roughnessFactor = primitive.material->pbr_metallic_roughness.roughness_factor;
-
-			const cgltf_texture* baseColorTexture =
-				primitive.material->pbr_metallic_roughness.base_color_texture.texture;
-			if (baseColorTexture != nullptr && baseColorTexture->image != nullptr &&
-				baseColorTexture->image->uri != nullptr)
+			if (primitive.material->has_pbr_metallic_roughness != 0)
 			{
-				// URI は空白などがパーセント符号化されていることがある。写しの上で戻す。
-				outStorage->baseColorImagePath = baseColorTexture->image->uri;
-				outStorage->baseColorImagePath.resize(cgltf_decode_uri(outStorage->baseColorImagePath.data()));
+				// cgltf は書かれていない係数を glTF の既定値（どちらも 1.0）で埋めて返すので、そのまま写せばよい。
+				outStorage->metallicFactor  = primitive.material->pbr_metallic_roughness.metallic_factor;
+				outStorage->roughnessFactor = primitive.material->pbr_metallic_roughness.roughness_factor;
+
+				const cgltf_texture* baseColorTexture =
+					primitive.material->pbr_metallic_roughness.base_color_texture.texture;
+				if (baseColorTexture != nullptr && baseColorTexture->image != nullptr &&
+					baseColorTexture->image->uri != nullptr)
+				{
+					// URI は空白などがパーセント符号化されていることがある。写しの上で戻す。
+					outStorage->baseColorImagePath = baseColorTexture->image->uri;
+					outStorage->baseColorImagePath.resize(cgltf_decode_uri(outStorage->baseColorImagePath.data()));
+				}
+			}
+
+			// 法線マップは pbrMetallicRoughness の外にある ➡ 上の分岐に入れない。
+			const cgltf_texture* normalTexture = primitive.material->normal_texture.texture;
+			if (normalTexture != nullptr && normalTexture->image != nullptr && normalTexture->image->uri != nullptr)
+			{
+				outStorage->normalImagePath = normalTexture->image->uri;
+				outStorage->normalImagePath.resize(cgltf_decode_uri(outStorage->normalImagePath.data()));
+
+				outStorage->normalScale = primitive.material->normal_texture.scale;
 			}
 		}
 

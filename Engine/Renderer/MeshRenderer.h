@@ -55,11 +55,18 @@ namespace fang
 		std::span<const Vector3>  normals;
 		std::span<const Vector2>  texCoords;
 		std::span<const uint16_t> indices;
+
+		/**
+		 * @brief 接線。xyz = 接線、w = 従法線の符号（±1）。
+		 * @details 空でもよく、空なら UV から作る ➡ TANGENT を持たない glTF でも法線マップが効く。
+		 *          空でないなら要素数が positions と同じであること。違えば生成に失敗する。
+		 */
+		std::span<const Vector4> tangents;
 	};
 
 	/**
 	 * @brief スキンメッシュ 1 個ぶんの CPU データ。
-	 * @details 静的メッシュ（MeshSource）に関節の番号と重みが加わったもの。すべて必須で、
+	 * @details 静的メッシュ（MeshSource）に関節の番号と重みが加わったもの。tangents 以外はすべて必須で、
 	 *          要素数は positions と同じであること。違えば生成に失敗する。
 	 *          インデックスが 16 bit なので頂点は 65,536 個まで。
 	 */
@@ -71,6 +78,9 @@ namespace fang
 		std::span<const uint16_t>     indices;
 		std::span<const JointIndices> jointIndices;
 		std::span<const Vector4>      jointWeights;
+
+		/** @brief 接線。MeshSource::tangents と同じ扱いで、空なら UV から作る。 */
+		std::span<const Vector4> tangents;
 	};
 
 	/**
@@ -101,8 +111,17 @@ namespace fang
 		/** @brief ベースカラー。無効なら今までと同じ単色（1×1 のダミー）が差さる。 */
 		rhi::TextureHandle baseColor;
 
+		/**
+		 * @brief 法線マップ。接線空間で、RG だけを読む。
+		 * @details 無効なら平坦な 1×1 のダミーが差さる ➡ 持たないマテリアルは頂点法線のままで描ける。
+		 */
+		rhi::TextureHandle normalMap;
+
 		float metallicFactor  = 0.0f; /**< 0 = 非金属。既定はダミーテクスチャのときの見た目を従来に合わせた値。 */
 		float roughnessFactor = 1.0f; /**< 知覚 roughness。1 = 粗い面（ハイライトが弱く広い）。 */
+
+		/** @brief 法線マップの強さ。glTF の normalTexture.scale と同じ意味。1.0 が焼いたとおり。 */
+		float normalScale = 1.0f;
 
 		/**
 		 * @brief 影を作るか。
@@ -188,7 +207,7 @@ namespace fang
 		 * @param device              定数バッファを書き込むために使う。
 		 * @param commandList         BeginFrame が返したコマンドリスト。
 		 * @param frameConstantBuffer b1 に差す視点と光の定数バッファ。中身は呼び出し側が先に書いておくこと。
-		 * @param shadowMap           t1 に差すシャドウマップ。無効なハンドルは呼び出し側の配線漏れなのでアサートに掛かる。
+		 * @param shadowMap           シャドウマップ。無効なハンドルは呼び出し側の配線漏れなのでアサートに掛かる。
 		 * @param items               描くもの。無効な番号の要素は飛ばす。この呼び出しの間だけ読む。
 		 * @details Initialize に失敗した状態で呼んでも何もせずに戻る。モデルが出ないだけで、
 		 *          ほかの描画は続けられるほうが呼び出し側の分岐が減るため。カリングはしない
@@ -284,5 +303,8 @@ namespace fang
 
 		/** @brief ベースカラーが無いときに差す 1×1。従来の単色と同じ色。 */
 		rhi::TextureHandle m_dummyBaseColor;
+
+		/** @brief 法線マップが無いときに差す 1×1 の平坦法線。 */
+		rhi::TextureHandle m_dummyNormalMap;
 	};
 } // namespace fang

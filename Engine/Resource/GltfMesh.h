@@ -53,6 +53,12 @@ namespace fang
 		/** @brief 頂点のテクスチャ座標（TEXCOORD_0）。位置と同じ数だけある。 */
 		[[nodiscard]] FANG_FORCEINLINE std::span<const Vector2> GetTexCoords() const { return m_texCoords; }
 
+		/**
+		 * @brief 頂点の接線（TANGENT）。xyz = 接線、w = 従法線の符号。
+		 * @details glTF が持っていなければ空。受け取る側が UV から作る契約なので、無くてもエラーにしない。
+		 */
+		[[nodiscard]] FANG_FORCEINLINE std::span<const Vector4> GetTangents() const { return m_tangents; }
+
 		/** @brief 三角形リストのインデックス。3 個で 1 三角形。 */
 		[[nodiscard]] FANG_FORCEINLINE std::span<const uint16_t> GetIndices() const { return m_indices; }
 
@@ -98,6 +104,15 @@ namespace fang
 		/** @brief マテリアルの roughness 係数（知覚値）。1 = 粗い面。書かれていない glTF では既定値の 1.0。 */
 		[[nodiscard]] FANG_FORCEINLINE float GetRoughnessFactor() const { return m_roughnessFactor; }
 
+		/**
+		 * @brief マテリアルが指す法線マップ画像のパス。glTF ファイルからの相対。
+		 * @details 指していなければ空。扱いは GetBaseColorImagePath と同じ。
+		 */
+		[[nodiscard]] FANG_FORCEINLINE std::string_view GetNormalImagePath() const { return m_normalImagePath; }
+
+		/** @brief 法線マップの強さ（normalTexture.scale）。書かれていない glTF では既定値の 1.0。 */
+		[[nodiscard]] FANG_FORCEINLINE float GetNormalScale() const { return m_normalScale; }
+
 
 	private:
 		/** @brief 配列を全部空にする。読み込みに失敗したとき中途半端な中身を残さないため。 */
@@ -106,6 +121,7 @@ namespace fang
 		std::vector<Vector3>  m_positions;
 		std::vector<Vector3>  m_normals;
 		std::vector<Vector2>  m_texCoords;
+		std::vector<Vector4>  m_tangents; /**< glTF が TANGENT を持っていなければ空。 */
 		std::vector<uint16_t> m_indices;
 
 		std::vector<JointIndices> m_jointIndices;
@@ -121,8 +137,12 @@ namespace fang
 		/** @brief ベースカラー画像の相対パス。指していなければ空。 */
 		std::string m_baseColorImagePath;
 
+		/** @brief 法線マップ画像の相対パス。指していなければ空。 */
+		std::string m_normalImagePath;
+
 		/** @brief マテリアルの係数。glTF の既定値で初期化し、書かれていれば Load が上書きする。 */
 		float m_metallicFactor  = 1.0f;
 		float m_roughnessFactor = 1.0f;
+		float m_normalScale     = 1.0f;
 	};
 } // namespace fang

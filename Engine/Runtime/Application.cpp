@@ -131,6 +131,13 @@ namespace fang
 			"Terrain\\LayerDirt.dds",
 		};
 
+		/** @brief レイヤの法線マップ。並びはアルベドと対。欠けても地形は描ける(平坦なダミーが差さる)。 */
+		constexpr const char* TERRAIN_LAYER_NORMAL_RELATIVE_PATHS[3] = {
+			"Terrain\\LayerGrassNormal.dds",
+			"Terrain\\LayerRockNormal.dds",
+			"Terrain\\LayerDirtNormal.dds",
+		};
+
 		constexpr float TERRAIN_TOTAL_SIZE_CENTIMETERS   = 8192.0f;
 		constexpr float TERRAIN_HEIGHT_SCALE_CENTIMETERS = 600.0f;
 
@@ -160,9 +167,13 @@ namespace fang
 			/** @brief ベースカラー。読めなかったら無効なままで、レンダラがダミー（単色）を差す。 */
 			rhi::TextureHandle baseColor;
 
+			/** @brief 法線マップ。読めなかったら無効なままで、レンダラが平坦なダミーを差す。 */
+			rhi::TextureHandle normalMap;
+
 			// マテリアルの係数。読み込みのときに glTF から写す。狼は metallic 0（非金属）・roughness 1（粗い面）。
 			float metallicFactor  = 0.0f;
 			float roughnessFactor = 1.0f;
+			float normalScale     = 1.0f;
 
 			/** @brief バインドポーズを打ち消す行列。glTF の関節の並び。読み込みのときだけ確保する。 */
 			std::vector<Matrix4x4> inverseBindMatrices;
@@ -188,6 +199,9 @@ namespace fang
 
 			/** @brief レイヤのアルベド。並びは草・岩・土。 */
 			rhi::TextureHandle layerAlbedos[3];
+
+			/** @brief レイヤの法線マップ。並びはアルベドと同じ。欠けたものは無効なままにする。 */
+			rhi::TextureHandle layerNormals[3];
 
 			/** @brief 読み込みから CreateTerrain まで通ったか。false なら地形なしで動いている。 */
 			bool isLoaded = false;
@@ -273,6 +287,21 @@ namespace fang
 				return;
 			}
 
+			// 法線マップは欠けても地形なしにしない ➡ 凹凸が出ないだけで、絵は今までどおり出る。
+			for (size_t index = 0; index < 3; ++index)
+			{
+				outTerrain->layerNormals[index] =
+					LoadTerrainTexture(device, TERRAIN_LAYER_NORMAL_RELATIVE_PATHS[index], nullptr);
+				if (!outTerrain->layerNormals[index].IsValid())
+				{
+					FANG_LOG_WARNING(
+						Runtime,
+						"地形レイヤの法線マップを読めなかった。凹凸なしで描く: {}",
+						TERRAIN_LAYER_NORMAL_RELATIVE_PATHS[index]
+					);
+				}
+			}
+
 			//------------------------------------------------------------------------
 			// 3. チャンクの詰め替えと GPU 化
 			// 　Resource の生成結果(TerrainChunkSource)を Renderer の受け口(TerrainChunk)へ写し、
@@ -299,6 +328,9 @@ namespace fang
 				.layerAlbedos   = { outTerrain->layerAlbedos[0],
 									outTerrain->layerAlbedos[1],
 									outTerrain->layerAlbedos[2] },
+				.layerNormals   = { outTerrain->layerNormals[0],
+									outTerrain->layerNormals[1],
+									outTerrain->layerNormals[2] },
 				.layerRoughness = { TERRAIN_LAYER_ROUGHNESS[0],
 									TERRAIN_LAYER_ROUGHNESS[1],
 									TERRAIN_LAYER_ROUGHNESS[2] },
@@ -410,24 +442,29 @@ namespace fang
 		}
 
 		/**
-		 * @brief 狼のベースカラーを読んで GPU へ載せる。
-		 * @details 失敗しても落とさない。無効なハンドルのままなら、レンダラがダミー（単色）を差す。
+		 * @brief 狼のマテリアルが指す画像を 1 枚読んで GPU へ載せる。
+		 * @param imagePath glTF からの相対パス。空なら何もせず無効なハンドルを返す。
+		 * @param usageName ログに出す用途の名前（「ベースカラー」など）。
+		 * @details 失敗しても落とさない。無効なハンドルのままなら、レンダラがダミーを差す。
 		 */
-		[[nodiscard]] rhi::TextureHandle LoadWolfBaseColor(rhi::GraphicsDevice& device, const GltfMesh& model)
+		[[nodiscard]] rhi::TextureHandle LoadWolfTexture(
+			rhi::GraphicsDevice& device,
+			std::string_view     imagePath,
+			const char*          usageName
+		)
 		{
-			if (model.GetBaseColorImagePath().empty())
+			if (imagePath.empty())
 			{
 				return rhi::TextureHandle{};
 			}
 
 			// DdsImage は転送が済めば用済み。5MB の中身をこの関数を抜けるところで手放す。
-			const std::string filePath =
-				MakeModelTexturePath(MODEL_FOLDER_RELATIVE_PATH, model.GetBaseColorImagePath());
+			const std::string filePath = MakeModelTexturePath(MODEL_FOLDER_RELATIVE_PATH, imagePath);
 
 			DdsImage image;
 			if (!image.Load(filePath.c_str()))
 			{
-				FANG_LOG_ERROR(Runtime, "狼のベースカラーを読めなかった。単色で描く: {}", filePath);
+				FANG_LOG_ERROR(Runtime, "狼の{}を読めなかった。ダミーで描く: {}", usageName, filePath);
 				return rhi::TextureHandle{};
 			}
 
@@ -501,10 +538,12 @@ namespace fang
 			// 　あれば関節番号・重みも合わせて取り出してスキンメッシュとして載せ、続けて逆バインド行列を
 			// 　写し、LoadWolfAnimation でスケルトンとクリップを読む。
 			//------------------------------------------------------------------------
-			outWolf->baseColor = LoadWolfBaseColor(device, model);
+			outWolf->baseColor = LoadWolfTexture(device, model.GetBaseColorImagePath(), "ベースカラー");
+			outWolf->normalMap = LoadWolfTexture(device, model.GetNormalImagePath(), "法線マップ");
 
 			outWolf->metallicFactor  = model.GetMetallicFactor();
 			outWolf->roughnessFactor = model.GetRoughnessFactor();
+			outWolf->normalScale     = model.GetNormalScale();
 
 			if (!model.HasSkin())
 			{
@@ -514,6 +553,7 @@ namespace fang
 					.normals   = model.GetNormals(),
 					.texCoords = model.GetTexCoords(),
 					.indices   = model.GetIndices(),
+					.tangents  = model.GetTangents(),
 				};
 
 				outWolf->mesh = meshRenderer.CreateMesh(device, source);
@@ -527,6 +567,7 @@ namespace fang
 				.indices      = model.GetIndices(),
 				.jointIndices = model.GetJointIndices(),
 				.jointWeights = model.GetJointWeights(),
+				.tangents     = model.GetTangents(),
 			};
 
 			outWolf->mesh = meshRenderer.CreateMesh(device, source);
@@ -585,6 +626,7 @@ namespace fang
 					.normals   = mesh.normals,
 					.texCoords = mesh.texCoords,
 					.indices   = mesh.indices,
+					.tangents  = mesh.tangents,
 				};
 				outStage->meshes.push_back(meshRenderer.CreateMesh(device, source));
 			}
@@ -629,7 +671,7 @@ namespace fang
 				}
 				else
 				{
-					FANG_LOG_ERROR(Runtime, "ステージのベースカラーを読めなかった。単色で描く: {}", imageFilePath);
+					FANG_LOG_ERROR(Runtime, "ステージのテクスチャを読めなかった。ダミーで描く: {}", imageFilePath);
 				}
 
 				// 失敗した画像パスも登録しておく（無効なハンドルのまま）。同じ壊れたパスを指す次のメッシュで
@@ -684,8 +726,10 @@ namespace fang
 				item.mesh            = meshId;
 				item.world           = world;
 				item.baseColor       = findOrLoadTexture(meshData.baseColorImagePath);
+				item.normalMap       = findOrLoadTexture(meshData.normalImagePath);
 				item.metallicFactor  = meshData.metallicFactor;
 				item.roughnessFactor = meshData.roughnessFactor;
+				item.normalScale     = meshData.normalScale;
 				item.castsShadow     = false;
 
 				// bounds は無効な mesh では作れない（TransformAabb は有効な箱を要求する）。無効なままにする
@@ -982,8 +1026,10 @@ namespace fang
 						.bounds           = TransformAabb(localBounds, world),
 						.skinningMatrices = wolf.skinningMatrices,
 						.baseColor        = wolf.baseColor,
+						.normalMap        = wolf.normalMap,
 						.metallicFactor   = wolf.metallicFactor,
 						.roughnessFactor  = wolf.roughnessFactor,
+						.normalScale      = wolf.normalScale,
 					};
 				}
 			}
@@ -1411,6 +1457,7 @@ namespace fang
 		sceneRenderer.Shutdown(device);
 		meshRenderer.Shutdown(device); // 狼とステージのメッシュはまとめてここで解放される。
 		terrainRenderer.Shutdown(device);
+		device.DestroyTexture(wolf.normalMap);
 		device.DestroyTexture(wolf.baseColor);
 
 		// 地形のテクスチャは TerrainRenderer にとって借用なので、持ち主のここが返す。
@@ -1418,6 +1465,11 @@ namespace fang
 		for (rhi::TextureHandle& layerAlbedo : terrain.layerAlbedos)
 		{
 			device.DestroyTexture(layerAlbedo);
+		}
+
+		for (rhi::TextureHandle& layerNormal : terrain.layerNormals)
+		{
+			device.DestroyTexture(layerNormal);
 		}
 
 		// ステージのテクスチャも同じ理由でここが返す。

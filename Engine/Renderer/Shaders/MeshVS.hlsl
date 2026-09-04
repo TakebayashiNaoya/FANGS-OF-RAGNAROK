@@ -36,6 +36,9 @@ VertexOutput VertexMain(VertexInput input)
 	// w = 0 で掛けると平行移動が効かない ➡ 法線は向きだけが回る。等倍前提なので逆転置は要らない。
 	output.normal = mul(objectConstants.world, float4(input.normal, 0.0)).xyz;
 
+	// 接線も同じ回し方。w（従法線の符号）は向きではないので回さずそのまま渡す。
+	output.tangent = float4(mul(objectConstants.world, float4(input.tangent.xyz, 0.0)).xyz, input.tangent.w);
+
 	output.texCoord = input.texCoord;
 	return output;
 }
