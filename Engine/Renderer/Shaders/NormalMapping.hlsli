@@ -6,6 +6,14 @@
  */
 
 /**
+ * @brief 1 にすると法線マップを無視し、頂点法線のまま描く。凹凸の有無を見比べるための切り替え。
+ * @details このファイルを保存するとホットリロードが拾う ➡ 起動したまま 0 ⇄ 1 を往復できる
+ *          （メッシュと地形の両方に同時に効く）。0 のときはコンパイル時に消えるので実行時の負担は無い。
+ *          **0 のまま commit すること。**
+ */
+#define FANG_DISABLE_NORMAL_MAP 0
+
+/**
  * @brief 法線マップの RG から接線空間の法線を復元する。
  * @param encodedRedGreen テクスチャから読んだ 0〜1 の 2 成分。
  * @param strength        強さ。glTF の normalTexture.scale と同じ意味で、1.0 が焼いたとおり。
@@ -31,6 +39,9 @@ float3 ApplyNormalMap(float3 vertexNormal, float4 tangent, float3 tangentSpaceNo
 {
 	float3 normal = normalize(vertexNormal);
 
+#if FANG_DISABLE_NORMAL_MAP
+	return normal;
+#else
 	// 補間で接線が法線と直交しなくなっているので、ここで直交化してから TBN を組む。
 	float3 tangentAxis = normalize(tangent.xyz - normal * dot(normal, tangent.xyz));
 	float3 bitangentAxis = cross(normal, tangentAxis) * tangent.w;
@@ -38,4 +49,5 @@ float3 ApplyNormalMap(float3 vertexNormal, float4 tangent, float3 tangentSpaceNo
 	return normalize(tangentSpaceNormal.x * tangentAxis
 	               + tangentSpaceNormal.y * bitangentAxis
 	               + tangentSpaceNormal.z * normal);
+#endif
 }
