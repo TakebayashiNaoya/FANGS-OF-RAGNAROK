@@ -5,6 +5,7 @@
 #include "Pch.h"
 #include "Editor/Panels/BudgetPanel.h"
 #include "Core/Platform/Budget.h"
+#include "Core/Platform/Thread.h"
 #include "Runtime/EngineContext.h"
 #include <imgui.h>
 
@@ -141,7 +142,21 @@ namespace fang::editor
 		const float scaledMilliseconds = m_budget->GetScaledFrameSeconds() * 1000.0f;
 		const float scaledRatio        = scaledMilliseconds / budgetMilliseconds;
 
-		ImGui::Text("使えるコア: %u（占有 4 + 共有 2）", budget::USABLE_CORE_COUNT);
+		// Windows ビルドは実コア数で走るので、予算の値だけ出すと実態とずれる。両方見せる。
+		const uint32_t usableCoreCount = GetUsableCoreCount();
+		if (usableCoreCount == budget::USABLE_CORE_COUNT)
+		{
+			ImGui::Text("使えるコア: %u（Xbox の割り当てどおり。占有 4 + 共有 2）", usableCoreCount);
+		}
+		else
+		{
+			ImGui::TextColored(
+				NEAR_BUDGET_COLOR,
+				"使えるコア: %u（Xbox の割り当ては %u）",
+				usableCoreCount,
+				budget::USABLE_CORE_COUNT
+			);
+		}
 		ImGui::Text("実処理: %.2f ms", workMilliseconds);
 
 		ImGui::TextColored(
