@@ -11,7 +11,7 @@ namespace fang::rhi
 	namespace
 	{
 		/** @brief シェーダから見えるディスクリプタヒープの大きさ。リングバッファ化するまでの暫定。 */
-		constexpr uint32_t SHADER_VISIBLE_DESCRIPTOR_COUNT = 64;
+		constexpr uint32_t SHADER_VISIBLE_DESCRIPTOR_COUNT = 1024;
 	} // namespace
 
 

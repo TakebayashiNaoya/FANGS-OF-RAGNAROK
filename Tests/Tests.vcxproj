@@ -41,6 +41,7 @@
     <ClCompile Include="Source\FramePipelineTests.cpp" />
     <ClCompile Include="Source\FrustumTests.cpp" />
     <ClCompile Include="Source\GltfMeshTests.cpp" />
+    <ClCompile Include="Source\GltfSceneTests.cpp" />
     <ClCompile Include="Source\HeightmapTerrainTests.cpp" />
     <ClCompile Include="Source\JobSystemStressTests.cpp" />
     <ClCompile Include="Source\JobSystemTests.cpp" />

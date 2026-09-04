@@ -25,13 +25,16 @@
 #include "Renderer/UnlitRenderer.h"
 #include "Resource/DdsImage.h"
 #include "Resource/GltfMesh.h"
+#include "Resource/GltfScene.h"
 #include "Resource/HeightmapTerrain.h"
 #include "Runtime/FramePipeline.h"
 #include "Runtime/RuntimeLog.h"
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 
@@ -51,6 +54,23 @@ namespace fang
 		// その場で脚だけが動く ➡ 移動処理がまだ無くても再生の正しさが確かめられる。
 		constexpr const char* WOLF_SKELETON_RELATIVE_PATH = "Models\\WolfSkeleton.ozz";
 		constexpr const char* WOLF_CLIP_RELATIVE_PATH     = "Models\\A_WalkSlow_F.ozz";
+
+		/** @brief ステージの glTF。アセットの根っこからの相対パス。 */
+		constexpr const char* STAGE_MODEL_RELATIVE_PATH = "Models\\Stage.gltf";
+
+		/** @brief 狼とステージ、どちらの glTF も置く場所。テクスチャの相対パスの組み立てに使う。 */
+		constexpr const char* MODEL_FOLDER_RELATIVE_PATH = "Models\\";
+
+		/** @brief 恒久の RenderItem 配列のうち、毎フレーム書き換える動く席の数（床 1 個 + 狼 2 体）。 */
+		constexpr size_t DYNAMIC_RENDER_ITEM_COUNT = 3;
+
+		/**
+		 * @brief ステージの配置数の上限。
+		 * @details 恒久配列は MeshRenderer::MAX_ITEM_COUNT ぶん確保する（1 フレームに描ける数と揃えないと、
+		 *          ステージだけで b0 の置き場を使い切って床や狼が描けなくなる）。そのうち動く 3 席を
+		 *          引いた残りがステージの取り分。
+		 */
+		constexpr size_t MAX_STAGE_INSTANCE_COUNT = MeshRenderer::MAX_ITEM_COUNT - DYNAMIC_RENDER_ITEM_COUNT;
 
 		// 狼の頂点の実測範囲は X[-92.6, 111.4]（体長 204）、Y[-0.39, 106.6]（高さ 107）、Z[±18.2]（幅 36）。
 		// 単位は 1 = 1cm。狼は X 軸に沿って立っているので、真横に当たる Z 方向から見るのが素直。
@@ -341,6 +361,19 @@ namespace fang
 		}
 
 
+		/**
+		 * @brief ステージ 1 つぶんの持ち物。
+		 * @details renderItems は先頭 DYNAMIC_RENDER_ITEM_COUNT 個を床・狼の動く席として空けたまま返す
+		 *          （中身は既定の無効な RenderItem。RenderFrame が毎フレーム上書きする）。4 番目以降は
+		 *          LoadStage が書いたきり動かない。meshes と textures は終了処理での解放にだけ使う。
+		 */
+		struct StageResources
+		{
+			std::vector<RenderItem>         renderItems;
+			std::vector<MeshId>             meshes;
+			std::vector<rhi::TextureHandle> textures;
+		};
+
 		/** @brief FramePipeline へ渡す、フレームループの持ち物。 */
 		struct FrameLoopContext
 		{
@@ -364,6 +397,20 @@ namespace fang
 			/** @brief 床の静的メッシュ。読み込みが無いので、生成に失敗しなければ常に有効。 */
 			MeshId floorMesh;
 
+			/**
+			 * @brief 恒久の RenderItem 配列。ロード時に resize し切り、以後は要素数を変えない。
+			 * @details 先頭 DYNAMIC_RENDER_ITEM_COUNT 個（床・狼 2 体）は毎フレーム書き換える動く席。
+			 *          4 番目以降はステージの配置で、ロード時に書いたきり動かない。Submit はこの配列
+			 *          全体を指す span 1 本で済ませる ➡ 毎フレームのヒープ確保・vector 伸長は無い。
+			 */
+			std::vector<RenderItem> renderItems;
+
+			/** @brief ステージのメッシュ番号。終了処理では使わない（MeshRenderer::Shutdown がまとめて解放する）。 */
+			std::vector<MeshId> stageMeshes;
+
+			/** @brief ステージのベースカラー。終了処理でまとめて DestroyTexture するために持つ。 */
+			std::vector<rhi::TextureHandle> stageTextures;
+
 			/** @brief カメラの水平回転角（ラジアン）。入力の仕組みがまだ無いので時間で回す。 */
 			float cameraOrbitRadians = 0.0f;
 
@@ -375,11 +422,15 @@ namespace fang
 		/**
 		 * @brief glTF が指す画像パスから、実際に読む .dds の絶対パスを作る。
 		 * @details 画像は texconv でオフライン変換してある ➡ glTF は .png を指したままなので、
-		 *          拡張子をここで差し替える。区切りの / も \ へ直す。
+		 *          拡張子をここで差し替える。区切りの / も \ へ直す。folder はアセットの根っこからの
+		 *          相対パス（例: MODEL_FOLDER_RELATIVE_PATH）で、狼とステージのどちらも同じ手順を通す。
 		 */
-		[[nodiscard]] std::string MakeWolfTexturePath(std::string_view imagePath)
+		[[nodiscard]] std::string MakeModelTexturePath(
+			std::string_view modelFolderRelativePath,
+			std::string_view imagePath
+		)
 		{
-			std::string relativePath = "Models\\";
+			std::string relativePath(modelFolderRelativePath);
 			relativePath += imagePath;
 
 			for (char& character : relativePath)
@@ -412,7 +463,8 @@ namespace fang
 			}
 
 			// DdsImage は転送が済めば用済み。5MB の中身をこの関数を抜けるところで手放す。
-			const std::string filePath = MakeWolfTexturePath(model.GetBaseColorImagePath());
+			const std::string filePath =
+				MakeModelTexturePath(MODEL_FOLDER_RELATIVE_PATH, model.GetBaseColorImagePath());
 
 			DdsImage image;
 			if (!image.Load(filePath.c_str()))
@@ -534,6 +586,145 @@ namespace fang
 			outWolf->skinningMatrices.resize(inverseBindMatrices.size());
 
 			LoadWolfAnimation(model, outWolf);
+		}
+
+		/**
+		 * @brief ステージを読み、メッシュを GPU へ載せ、恒久の RenderItem 配列を作り切る。
+		 * @details 失敗しても FANG_FATAL にしない。読めなければ舞台なしで起動を続ける（ログだけ出す）。
+		 *          先頭 DYNAMIC_RENDER_ITEM_COUNT 個は床・狼の動く席として空けたまま返す ➡ 呼び出し側
+		 *          （RunApplication）は成否によらずこの関数を抜けた時点で renderItems を Submit に使える。
+		 */
+		void LoadStage(rhi::GraphicsDevice& device, MeshRenderer& meshRenderer, StageResources* outStage)
+		{
+			GltfScene scene;
+
+			const std::string filePath = MakeAssetPath(STAGE_MODEL_RELATIVE_PATH);
+			if (!scene.Load(filePath.c_str()))
+			{
+				FANG_LOG_ERROR(Runtime, "ステージを読めなかった。舞台なしで続ける: {}", filePath);
+				return;
+			}
+
+			const std::span<const GltfSceneMesh>     meshes    = scene.GetMeshes();
+			const std::span<const GltfSceneInstance> instances = scene.GetInstances();
+
+			//------------------------------------------------------------------------
+			// 1. メッシュごとに GPU へ載せる
+			// 　失敗した番号は無効なまま outStage->meshes へ残す ➡ MeshRenderer::Draw / DrawDepth が
+			// 　黙って飛ばすので、ここで詰め直す必要が無い。
+			//------------------------------------------------------------------------
+			outStage->meshes.reserve(meshes.size());
+			for (const GltfSceneMesh& mesh : meshes)
+			{
+				const MeshSource source{
+					.positions = mesh.positions,
+					.normals   = mesh.normals,
+					.texCoords = mesh.texCoords,
+					.indices   = mesh.indices,
+				};
+				outStage->meshes.push_back(meshRenderer.CreateMesh(device, source));
+			}
+
+			//------------------------------------------------------------------------
+			// 2. 画像パスごとにテクスチャを読む
+			// 　同じパスを指すメッシュが並ぶので、パスごとに 1 回だけ読む対応表を挟む。数十件なので
+			// 　線形探索で足りる(二分探索や辞書を持ち出すほどの件数ではない)。
+			//------------------------------------------------------------------------
+			std::vector<std::pair<std::string, rhi::TextureHandle>> pathToTexture;
+
+			auto findOrLoadTexture = [&](std::string_view imagePath) -> rhi::TextureHandle {
+				if (imagePath.empty())
+				{
+					return rhi::TextureHandle{};
+				}
+
+				for (const auto& entry : pathToTexture)
+				{
+					if (entry.first == imagePath)
+					{
+						return entry.second;
+					}
+				}
+
+				const std::string imageFilePath = MakeModelTexturePath(MODEL_FOLDER_RELATIVE_PATH, imagePath);
+
+				rhi::TextureHandle handle;
+				DdsImage           image;
+				if (image.Load(imageFilePath.c_str()))
+				{
+					const rhi::TextureSource textureSource{
+						.mipLevels = image.GetMipLevels(),
+						.format    = image.GetFormat(),
+					};
+
+					handle = device.CreateTexture2D(textureSource);
+					if (handle.IsValid())
+					{
+						outStage->textures.push_back(handle);
+					}
+				}
+				else
+				{
+					FANG_LOG_ERROR(Runtime, "ステージのベースカラーを読めなかった。単色で描く: {}", imageFilePath);
+				}
+
+				// 失敗した画像パスも登録しておく（無効なハンドルのまま）。同じ壊れたパスを指す次のメッシュで
+				// また読みに行って同じ理由のログを重ねて出す、ということを避けるため。
+				pathToTexture.emplace_back(std::string(imagePath), handle);
+				return handle;
+			};
+
+			//------------------------------------------------------------------------
+			// 3. 配置ごとに RenderItem を恒久配列(4 番目以降)へ積む
+			// 　上限(MAX_STAGE_INSTANCE_COUNT)を超えたぶんは警告して捨てる。castsShadow は常に false
+			// 　(ステージは受け専用。光の箱はキャスタの AABB の和なので、含めると光源から見える範囲が
+			// 　無駄に広がり、シャドウマップ 1 テクセルが表す実寸が粗くなって狼の影が読めなくなる)。
+			//------------------------------------------------------------------------
+			const size_t loadedInstanceCount = std::min(instances.size(), MAX_STAGE_INSTANCE_COUNT);
+			outStage->renderItems.resize(DYNAMIC_RENDER_ITEM_COUNT + loadedInstanceCount);
+
+			for (size_t index = 0; index < loadedInstanceCount; ++index)
+			{
+				const GltfSceneInstance& instance = instances[index];
+				const GltfSceneMesh&     meshData = meshes[instance.meshIndex];
+				const MeshId             meshId   = outStage->meshes[instance.meshIndex];
+
+				RenderItem item{};
+				item.mesh            = meshId;
+				item.world           = instance.world;
+				item.baseColor       = findOrLoadTexture(meshData.baseColorImagePath);
+				item.metallicFactor  = meshData.metallicFactor;
+				item.roughnessFactor = meshData.roughnessFactor;
+				item.castsShadow     = false;
+
+				// bounds は無効な mesh では作れない（TransformAabb は有効な箱を要求する）。無効なままにする
+				// と「常に描く」扱いになるが、mesh 自体を MeshRenderer が飛ばすので実害は無い。
+				if (meshId.IsValid())
+				{
+					item.bounds = TransformAabb(meshRenderer.GetLocalBounds(meshId), instance.world);
+				}
+
+				outStage->renderItems[DYNAMIC_RENDER_ITEM_COUNT + index] = item;
+			}
+
+			const size_t discardedInstanceCount = instances.size() - loadedInstanceCount;
+			if (discardedInstanceCount > 0)
+			{
+				FANG_LOG_WARNING(
+					Runtime,
+					"ステージの配置が上限（{}）を超えた。{} 個を捨てた",
+					MAX_STAGE_INSTANCE_COUNT,
+					discardedInstanceCount
+				);
+			}
+
+			FANG_LOG_INFO(
+				Runtime,
+				"ステージを読んだ: メッシュ {} 個 / 配置 {} 個 / テクスチャ {} 枚",
+				outStage->meshes.size(),
+				loadedInstanceCount,
+				outStage->textures.size()
+			);
 		}
 
 		/**
@@ -705,31 +896,35 @@ namespace fang
 			};
 
 			//------------------------------------------------------------------------
-			// 4. RenderItem 列の組み立て(床 + 狼 2 体)
-			// 　床(受け専用)と、読めていれば狼 2 体ぶんの RenderItem を 1 本の配列にまとめる。この列を
-			// 　次の区画でシーン View とシャドウ View の両方へ同じ実体で Submit する。
+			// 4. RenderItem 列の先頭 3 スロットの書き換え(床 + 狼 2 体)
+			// 　loopContext.renderItems は起動時に resize し切った恒久配列。4 番目以降(ステージ)は
+			// 　ロード時に書いたきりなのでここでは触らない。先頭 3 つだけ、読めていれば毎フレーム
+			// 　world / bounds / skinningMatrices を書き直す(読めていなければ既定の無効な RenderItem
+			// 　に戻す ➡ MeshRenderer が黙って飛ばすので、詰め直しの分岐が要らない)。
 			//------------------------------------------------------------------------
-			// graph.Execute が戻るまで生きていること。RenderFrame のローカルなので、Execute より前で
-			// 宣言してあれば足りる（Submit はこの配列を指す span を控えるだけでコピーしない）。
-			RenderItem items[3]; // 床 1 個 + 狼 2 体。
-			uint32_t   itemCount = 0;
+			// loopContext は RenderFrame の外（RunApplication）が持つので、graph.Execute が戻るまで
+			// 生きている。Submit はこの配列を指す span を控えるだけでコピーしない。
+			std::vector<RenderItem>& renderItems = loopContext.renderItems;
 
 			// 床は読み込みが要らないので、生成に成功していれば毎フレーム必ず描く。
+			renderItems[0] = RenderItem{};
 			if (loopContext.floorMesh.IsValid())
 			{
 				const Aabb floorLocalBounds = loopContext.meshRenderer->GetLocalBounds(loopContext.floorMesh);
 
-				items[itemCount] = RenderItem{
+				renderItems[0] = RenderItem{
 					.mesh            = loopContext.floorMesh,
 					.bounds          = TransformAabb(floorLocalBounds, Matrix4x4{}),
 					.metallicFactor  = FLOOR_METALLIC_FACTOR,
 					.roughnessFactor = FLOOR_ROUGHNESS_FACTOR,
 					.castsShadow     = false, // 平面は自分に影を作らない ➡ 光の箱を無駄に広げない。
 				};
-				++itemCount;
 			}
 
 			// 狼を描く。読めていなければメッシュの描画だけを飛ばし、ほかは今までどおり続ける。
+			renderItems[1] = RenderItem{};
+			renderItems[2] = RenderItem{};
+
 			WolfModel& wolf = *loopContext.wolf;
 			if (wolf.mesh.IsValid())
 			{
@@ -748,7 +943,7 @@ namespace fang
 				secondWolfWorld.m[3][0] = SECOND_WOLF_OFFSET_X;
 
 				// world が単位行列でなくなったので、bounds は毎回 world で変換して埋める。
-				items[itemCount] = RenderItem{
+				renderItems[1] = RenderItem{
 					.mesh             = wolf.mesh,
 					.bounds           = TransformAabb(localBounds, Matrix4x4{}),
 					.skinningMatrices = wolf.skinningMatrices,
@@ -756,9 +951,8 @@ namespace fang
 					.metallicFactor   = wolf.metallicFactor,
 					.roughnessFactor  = wolf.roughnessFactor,
 				};
-				++itemCount;
 
-				items[itemCount] = RenderItem{
+				renderItems[2] = RenderItem{
 					.mesh             = wolf.mesh,
 					.world            = secondWolfWorld,
 					.bounds           = TransformAabb(localBounds, secondWolfWorld),
@@ -767,10 +961,9 @@ namespace fang
 					.metallicFactor   = wolf.metallicFactor,
 					.roughnessFactor  = wolf.roughnessFactor,
 				};
-				++itemCount;
 			}
 
-			const std::span<const RenderItem> submittedItems(items, itemCount);
+			const std::span<const RenderItem> submittedItems(renderItems);
 
 			//------------------------------------------------------------------------
 			// 5. シャドウ View とシーン View の登録・Submit
@@ -1029,8 +1222,8 @@ namespace fang
 		}
 
 		//------------------------------------------------------------------------
-		// 5. レンダラ一式と狼モデル
-		// 　Unlit(頂点色の三角形)、MeshRenderer(狼)、RenderGraph(パスとバリアの管理)、
+		// 5. レンダラ一式と狼モデル・ステージ
+		// 　Unlit(頂点色の三角形)、MeshRenderer(狼・床・ステージ)、RenderGraph(パスとバリアの管理)、
 		// 　SceneRenderer(View とカリング)を順に用意する。
 		//------------------------------------------------------------------------
 		UnlitRenderer unlitRenderer;
@@ -1053,6 +1246,12 @@ namespace fang
 		MeshRenderer meshRenderer;
 		WolfModel    wolf;
 		MeshId       floorMesh;
+
+		// 動く 3 席（床・狼 2 体）は読み込みの成否によらず存在させる ➡ RenderFrame が毎フレーム
+		// renderItems[0]〜[2] へ添字で書ける（詰め直しの分岐が要らない）。
+		StageResources stage;
+		stage.renderItems.resize(DYNAMIC_RENDER_ITEM_COUNT);
+
 		if (meshRenderer.Initialize(device))
 		{
 			LoadWolf(device, meshRenderer, &wolf);
@@ -1062,6 +1261,8 @@ namespace fang
 			{
 				FANG_LOG_ERROR(Runtime, "床メッシュを作れなかった。床の表示だけを飛ばす");
 			}
+
+			LoadStage(device, meshRenderer, &stage);
 		}
 		else
 		{
@@ -1118,6 +1319,12 @@ namespace fang
 		loopContext.wolf            = &wolf;
 		loopContext.floorMesh       = floorMesh;
 
+		// stage はここで用済み。renderItems / meshes / textures の実体を loopContext へ移す
+		// （resize 済みの vector をコピーせずそのまま使い回す）。
+		loopContext.renderItems   = std::move(stage.renderItems);
+		loopContext.stageMeshes   = std::move(stage.meshes);
+		loopContext.stageTextures = std::move(stage.textures);
+
 		FramePipeline framePipeline;
 		if (!framePipeline.Initialize(jobSystem, frameMemory, &loopContext, &UpdateFrame, &RenderFrame))
 		{
@@ -1172,7 +1379,7 @@ namespace fang
 #endif
 		sceneRenderer.Shutdown(device);
 		terrainRenderer.Shutdown(device);
-		meshRenderer.Shutdown(device);
+		meshRenderer.Shutdown(device); // 狼・床・ステージのメッシュはまとめてここで解放される。
 		device.DestroyTexture(wolf.baseColor);
 
 		// 地形のテクスチャは TerrainRenderer にとって借用なので、持ち主のここが返す。
@@ -1180,6 +1387,12 @@ namespace fang
 		for (rhi::TextureHandle& layerAlbedo : terrain.layerAlbedos)
 		{
 			device.DestroyTexture(layerAlbedo);
+		}
+
+		// ステージのテクスチャも同じ理由でここが返す。
+		for (const rhi::TextureHandle& textureHandle : loopContext.stageTextures)
+		{
+			device.DestroyTexture(textureHandle);
 		}
 
 		device.Shutdown();

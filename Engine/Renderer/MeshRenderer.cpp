@@ -550,7 +550,10 @@ namespace fang
 		bool hasBoundPipeline       = false;
 		bool isBoundPipelineSkinned = false;
 
-		uint32_t usedBufferCount = 0;
+		// b0(オブジェクト定数)は静的・スキン共通、b2(骨行列)はスキンだけが使う ➡ 本数が違うので
+		// カウンタも別に持つ。共通 1 本のままだと b2 も MAX_ITEM_COUNT ぶん確保する羽目になる。
+		uint32_t usedObjectBufferCount   = 0;
+		uint32_t usedSkinningBufferCount = 0;
 		for (const RenderItem& item : items)
 		{
 			// 無効な番号は CreateMesh が失敗した合図で、想定内の入力。黙って飛ばす。
@@ -574,7 +577,8 @@ namespace fang
 				continue;
 			}
 
-			if (usedBufferCount >= MAX_ITEM_COUNT)
+			// b0 は全アイテム共通の置き場。ここが尽きたら静的もスキンも描けないので打ち切る。
+			if (usedObjectBufferCount >= MAX_ITEM_COUNT)
 			{
 				FANG_LOG_WARNING(
 					Renderer,
@@ -584,8 +588,21 @@ namespace fang
 				break;
 			}
 
+			uint32_t skinningBufferIndex = 0;
 			if (mesh.isSkinned)
 			{
+				// b2 はスキンだけの置き場で本数が少ない。ここに掛かってもこのアイテムだけ飛ばし、
+				// あとに続く静的メッシュの描画は止めない。
+				if (usedSkinningBufferCount >= MAX_SKINNED_ITEM_COUNT)
+				{
+					FANG_LOG_WARNING(
+						Renderer,
+						"1 フレームに描けるスキンメッシュは {} 個まで。このアイテムを飛ばした",
+						static_cast<uint32_t>(MAX_SKINNED_ITEM_COUNT)
+					);
+					continue;
+				}
+
 				if (item.skinningMatrices.size() > MAX_JOINT_COUNT)
 				{
 					FANG_LOG_ERROR(
@@ -597,6 +614,8 @@ namespace fang
 					continue;
 				}
 
+				skinningBufferIndex = usedSkinningBufferCount;
+
 				// 単位行列で埋めてから受け取ったぶんを書く ➡ 行列が足りない・空のときはバインドポーズで出る
 				// （重みの合計が 1 なので、単位行列を掛けると元の頂点に戻る）。
 				Matrix4x4 jointMatrices[MAX_JOINT_COUNT];
@@ -606,15 +625,20 @@ namespace fang
 				}
 
 				device.UpdateBuffer(
-					m_skinningConstantBuffers[usedBufferCount],
+					m_skinningConstantBuffers[skinningBufferIndex],
 					jointMatrices,
 					SKINNING_CONSTANT_BUFFER_SIZE
 				);
+				++usedSkinningBufferCount;
 			}
 
 			const MeshObjectConstants objectConstants =
 				MakeObjectConstants(item.world, item.metallicFactor, item.roughnessFactor);
-			device.UpdateBuffer(m_objectConstantBuffers[usedBufferCount], &objectConstants, sizeof(objectConstants));
+			device.UpdateBuffer(
+				m_objectConstantBuffers[usedObjectBufferCount],
+				&objectConstants,
+				sizeof(objectConstants)
+			);
 
 			// ① パイプラインを切り替えるときだけ、SetPipeline と一緒に b1(フレーム定数)も差し直す。
 			// 　 最初の 1 個、または静的⇔スキンの境目でだけ通る。差し替えていないパイプラインへ毎回
@@ -632,15 +656,15 @@ namespace fang
 			// ② 頂点・インデックス・b0(オブジェクト定数)・(スキンなら b2)を差し、Draw する。
 			commandList.SetVertexBuffer(mesh.vertexBuffer);
 			commandList.SetIndexBuffer(mesh.indexBuffer);
-			commandList.SetObjectConstantBuffer(m_objectConstantBuffers[usedBufferCount]);
+			commandList.SetObjectConstantBuffer(m_objectConstantBuffers[usedObjectBufferCount]);
 			if (mesh.isSkinned)
 			{
-				commandList.SetSkinningConstantBuffer(m_skinningConstantBuffers[usedBufferCount]);
+				commandList.SetSkinningConstantBuffer(m_skinningConstantBuffers[skinningBufferIndex]);
 			}
 			commandList.SetTexture(item.baseColor.IsValid() ? item.baseColor : m_dummyBaseColor);
 			commandList.DrawIndexed(mesh.indexCount, 0, 0);
 
-			++usedBufferCount;
+			++usedObjectBufferCount;
 		}
 	}
 
@@ -663,7 +687,10 @@ namespace fang
 		bool hasBoundPipeline       = false;
 		bool isBoundPipelineSkinned = false;
 
-		uint32_t usedBufferCount = 0;
+		// b0(オブジェクト定数)は静的・スキン共通、b2(骨行列)はスキンだけが使う ➡ 本数が違うので
+		// カウンタも別に持つ。共通 1 本のままだと b2 も MAX_ITEM_COUNT ぶん確保する羽目になる。
+		uint32_t usedObjectBufferCount   = 0;
+		uint32_t usedSkinningBufferCount = 0;
 		for (const RenderItem& item : items)
 		{
 			// 無効な番号は CreateMesh が失敗した合図で、想定内の入力。黙って飛ばす。
@@ -687,7 +714,8 @@ namespace fang
 				continue;
 			}
 
-			if (usedBufferCount >= MAX_ITEM_COUNT)
+			// b0 は全アイテム共通の置き場。ここが尽きたら静的もスキンも描けないので打ち切る。
+			if (usedObjectBufferCount >= MAX_ITEM_COUNT)
 			{
 				FANG_LOG_WARNING(
 					Renderer,
@@ -697,8 +725,21 @@ namespace fang
 				break;
 			}
 
+			uint32_t skinningBufferIndex = 0;
 			if (mesh.isSkinned)
 			{
+				// b2 はスキンだけの置き場で本数が少ない。ここに掛かってもこのアイテムだけ飛ばし、
+				// あとに続く静的メッシュの描画は止めない。
+				if (usedSkinningBufferCount >= MAX_SKINNED_ITEM_COUNT)
+				{
+					FANG_LOG_WARNING(
+						Renderer,
+						"1 フレームに描けるスキンメッシュは {} 個まで。このアイテムを飛ばした",
+						static_cast<uint32_t>(MAX_SKINNED_ITEM_COUNT)
+					);
+					continue;
+				}
+
 				if (item.skinningMatrices.size() > MAX_JOINT_COUNT)
 				{
 					FANG_LOG_ERROR(
@@ -710,6 +751,8 @@ namespace fang
 					continue;
 				}
 
+				skinningBufferIndex = usedSkinningBufferCount;
+
 				// 単位行列で埋めてから受け取ったぶんを書く ➡ 行列が足りない・空のときはバインドポーズで出る
 				// （重みの合計が 1 なので、単位行列を掛けると元の頂点に戻る）。
 				Matrix4x4 jointMatrices[MAX_JOINT_COUNT];
@@ -719,16 +762,20 @@ namespace fang
 				}
 
 				device.UpdateBuffer(
-					m_depthSkinningConstantBuffers[usedBufferCount],
+					m_depthSkinningConstantBuffers[skinningBufferIndex],
 					jointMatrices,
 					SKINNING_CONSTANT_BUFFER_SIZE
 				);
+				++usedSkinningBufferCount;
 			}
 
 			const MeshObjectConstants objectConstants =
 				MakeObjectConstants(item.world, item.metallicFactor, item.roughnessFactor);
-			device
-				.UpdateBuffer(m_depthObjectConstantBuffers[usedBufferCount], &objectConstants, sizeof(objectConstants));
+			device.UpdateBuffer(
+				m_depthObjectConstantBuffers[usedObjectBufferCount],
+				&objectConstants,
+				sizeof(objectConstants)
+			);
 
 			// ① パイプラインを切り替えるときだけ、SetPipeline と一緒に b1(フレーム定数)も差し直す。
 			// 　 最初の 1 個、または静的⇔スキンの境目でだけ通る。差し替えていないパイプラインへ毎回
@@ -746,14 +793,14 @@ namespace fang
 			// 　 深度専用パイプラインはテクスチャもシャドウマップも持たないので、そのぶんの Set は無い。
 			commandList.SetVertexBuffer(mesh.vertexBuffer);
 			commandList.SetIndexBuffer(mesh.indexBuffer);
-			commandList.SetObjectConstantBuffer(m_depthObjectConstantBuffers[usedBufferCount]);
+			commandList.SetObjectConstantBuffer(m_depthObjectConstantBuffers[usedObjectBufferCount]);
 			if (mesh.isSkinned)
 			{
-				commandList.SetSkinningConstantBuffer(m_depthSkinningConstantBuffers[usedBufferCount]);
+				commandList.SetSkinningConstantBuffer(m_depthSkinningConstantBuffers[skinningBufferIndex]);
 			}
 			commandList.DrawIndexed(mesh.indexCount, 0, 0);
 
-			++usedBufferCount;
+			++usedObjectBufferCount;
 		}
 	}
 } // namespace fang

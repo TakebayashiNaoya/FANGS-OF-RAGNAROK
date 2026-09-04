@@ -33,6 +33,9 @@
     <ClCompile Include="Source\GltfMeshTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\GltfSceneTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\HeightmapTerrainTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
