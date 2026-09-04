@@ -120,6 +120,12 @@ namespace fang::editor
 			return false;
 		}
 
+		if (!m_budgetPanel.Initialize(context))
+		{
+			FANG_LOG_ERROR(Editor, "Xbox 予算のパネルを作れなかった");
+			return false;
+		}
+
 		if (!m_jobSystemPanel.Initialize(context))
 		{
 			FANG_LOG_ERROR(Editor, "ジョブシステムのパネルを作れなかった");
@@ -159,6 +165,7 @@ namespace fang::editor
 
 		m_renderStatisticsPanel.Shutdown();
 		m_jobSystemPanel.Shutdown();
+		m_budgetPanel.Shutdown();
 		ShutdownBackend(device);
 
 		m_framePipeline = nullptr;
@@ -183,6 +190,7 @@ namespace fang::editor
 		BuildEngineInfoWindow(window, deltaTimeSeconds);
 		m_jobSystemPanel.BuildFrame(deltaTimeSeconds, m_framePipeline->GetFrameIndex());
 		m_renderStatisticsPanel.BuildFrame(deltaTimeSeconds, renderStatistics);
+		m_budgetPanel.BuildFrame();
 
 #if FANG_ENABLE_HOT_RELOAD
 		m_shaderReloadPanel.BuildFrame();

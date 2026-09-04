@@ -50,8 +50,10 @@
     <ClInclude Include="Memory\FrameAllocator.h" />
     <ClInclude Include="Memory\UniquePtr.h" />
     <ClInclude Include="Platform\AssetPath.h" />
+    <ClInclude Include="Platform\Budget.h" />
     <ClInclude Include="Platform\DirectoryWatcher.h" />
     <ClInclude Include="Platform\FileSystem.h" />
+    <ClInclude Include="Platform\MemoryUsage.h" />
     <ClInclude Include="Platform\SystemFont.h" />
     <ClInclude Include="Platform\Thread.h" />
     <ClInclude Include="Platform\UWPApplication.h" />
@@ -70,9 +72,11 @@
     <ClCompile Include="Math\Matrix4x4.cpp" />
     <ClCompile Include="Memory\Allocator.cpp" />
     <ClCompile Include="Memory\FrameAllocator.cpp" />
+    <ClCompile Include="Platform\Budget.cpp" />
     <ClCompile Include="Windows\AssetPath.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Windows\DirectoryWatcher.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Windows\FileSystem.cpp" Condition="'$(FangIsXbox)' != 'true'" />
+    <ClCompile Include="Windows\MemoryUsage.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Windows\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Windows\SystemFont.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Windows\Thread.cpp" Condition="'$(FangIsXbox)' != 'true'" />
@@ -80,6 +84,7 @@
     <ClCompile Include="Xbox\AssetPath.cpp" Condition="'$(FangIsXbox)' == 'true'" />
     <ClCompile Include="Xbox\DirectoryWatcher.cpp" Condition="'$(FangIsXbox)' == 'true'" />
     <ClCompile Include="Xbox\FileSystem.cpp" Condition="'$(FangIsXbox)' == 'true'" />
+    <ClCompile Include="Xbox\MemoryUsage.cpp" Condition="'$(FangIsXbox)' == 'true'" />
     <ClCompile Include="Xbox\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' == 'true'" />
     <ClCompile Include="Xbox\SystemFont.cpp" Condition="'$(FangIsXbox)' == 'true'" />
     <ClCompile Include="Xbox\Thread.cpp" Condition="'$(FangIsXbox)' == 'true'" />
@@ -91,7 +96,7 @@
   <!-- C++/WinRT を使う TU だけ例外を有効にする（例外は全構成オフの方針で、WinRT の境界だけ許す）。生成ツールの対象外なので手で書く。
        PCH は例外オフでコンパイルされているので、この 2 つだけ使わない（Pch.h は普通の include として読まれる）-->
   <ItemGroup Condition="'$(FangIsXbox)' == 'true'">
-    <ClCompile Update="Xbox\AssetPath.cpp;Xbox\PlatformLogSink.cpp;Xbox\SystemFont.cpp;Xbox\UWPApplication.cpp;Xbox\Window.cpp">
+    <ClCompile Update="Xbox\AssetPath.cpp;Xbox\MemoryUsage.cpp;Xbox\PlatformLogSink.cpp;Xbox\SystemFont.cpp;Xbox\UWPApplication.cpp;Xbox\Window.cpp">
       <ExceptionHandling>Sync</ExceptionHandling>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PreprocessorDefinitions>$(FangFeatureDefines);$(FangPlatformDefines);_HAS_EXCEPTIONS=1</PreprocessorDefinitions>

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Core/CoreMacros.h"
+#include "Editor/Panels/BudgetPanel.h"
 #include "Editor/Panels/JobSystemPanel.h"
 #include "Editor/Panels/RenderStatisticsPanel.h"
 #include "Editor/Panels/ShaderReloadPanel.h"
@@ -95,6 +96,7 @@ namespace fang::editor
 
 
 	private:
+		BudgetPanel           m_budgetPanel;           /**< Xbox の予算に対する現在値と、換算・制限の操作。 */
 		JobSystemPanel        m_jobSystemPanel;        /**< ジョブシステムの稼働状況。 */
 		RenderStatisticsPanel m_renderStatisticsPanel; /**< 描画の中身（Submit数・描いた数・パス数など）。 */
 

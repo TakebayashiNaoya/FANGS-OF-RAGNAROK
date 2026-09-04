@@ -32,6 +32,7 @@
     <ClInclude Include="EditorUI.h" />
     <ClInclude Include="ImGuiPlatformInput.h" />
     <ClInclude Include="Pch.h" />
+    <ClInclude Include="Panels\BudgetPanel.h" />
     <ClInclude Include="Panels\JobSystemPanel.h" />
     <ClInclude Include="Panels\RenderStatisticsPanel.h" />
     <ClInclude Include="Panels\ShaderReloadPanel.h" />
@@ -43,6 +44,7 @@
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Panels\BudgetPanel.cpp" />
     <ClCompile Include="Panels\JobSystemPanel.cpp" />
     <ClCompile Include="Panels\RenderStatisticsPanel.cpp" />
     <ClCompile Include="Panels\ShaderReloadPanel.cpp" />

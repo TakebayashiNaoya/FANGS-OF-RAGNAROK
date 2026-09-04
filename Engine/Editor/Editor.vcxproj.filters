@@ -18,6 +18,9 @@
     <ClInclude Include="EditorUI.h" />
     <ClInclude Include="ImGuiPlatformInput.h" />
     <ClInclude Include="Pch.h" />
+    <ClInclude Include="Panels\BudgetPanel.h">
+      <Filter>Panels</Filter>
+    </ClInclude>
     <ClInclude Include="Panels\JobSystemPanel.h">
       <Filter>Panels</Filter>
     </ClInclude>
@@ -35,6 +38,9 @@
     <ClCompile Include="Editor.cpp" />
     <ClCompile Include="EditorUI.cpp" />
     <ClCompile Include="Pch.cpp" />
+    <ClCompile Include="Panels\BudgetPanel.cpp">
+      <Filter>Panels</Filter>
+    </ClCompile>
     <ClCompile Include="Panels\JobSystemPanel.cpp">
       <Filter>Panels</Filter>
     </ClCompile>
