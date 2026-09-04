@@ -24,6 +24,9 @@
     <ClInclude Include="Panels\RenderStatisticsPanel.h">
       <Filter>Panels</Filter>
     </ClInclude>
+    <ClInclude Include="Panels\ShaderReloadPanel.h">
+      <Filter>Panels</Filter>
+    </ClInclude>
     <ClInclude Include="Xbox\GamepadReader.h">
       <Filter>Xbox</Filter>
     </ClInclude>
@@ -36,6 +39,9 @@
       <Filter>Panels</Filter>
     </ClCompile>
     <ClCompile Include="Panels\RenderStatisticsPanel.cpp">
+      <Filter>Panels</Filter>
+    </ClCompile>
+    <ClCompile Include="Panels\ShaderReloadPanel.cpp">
       <Filter>Panels</Filter>
     </ClCompile>
     <ClCompile Include="Windows\ImGuiPlatformInput.cpp">

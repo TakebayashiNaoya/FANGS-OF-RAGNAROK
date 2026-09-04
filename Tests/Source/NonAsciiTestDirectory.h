@@ -37,6 +37,13 @@ namespace fang::test
 		/** @brief ディレクトリを中身ごと削除する。 */
 		~NonAsciiTestDirectory() { std::filesystem::remove_all(m_path); }
 
+		/** @brief ディレクトリ自身の絶対パスを UTF-8 で返す。末尾に区切り文字は付けない。 */
+		[[nodiscard]] std::string GetPath() const
+		{
+			const std::u8string directoryUtf8 = m_path.u8string();
+			return std::string(reinterpret_cast<const char*>(directoryUtf8.data()), directoryUtf8.size());
+		}
+
 		/**
 		 * @brief ディレクトリの下にあるファイルの絶対パスを UTF-8 で返す。
 		 * @details fileName は文字列の結合でそのまま繋ぐ。std::filesystem::path の narrow 文字列側の
@@ -46,9 +53,7 @@ namespace fang::test
 		 */
 		[[nodiscard]] std::string MakeFilePath(std::string_view fileName) const
 		{
-			const std::u8string directoryUtf8 = m_path.u8string();
-
-			std::string path(reinterpret_cast<const char*>(directoryUtf8.data()), directoryUtf8.size());
+			std::string path = GetPath();
 			path += '\\';
 			path += fileName;
 			return path;

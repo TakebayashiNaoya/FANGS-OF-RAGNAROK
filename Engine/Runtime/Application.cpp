@@ -836,6 +836,12 @@ namespace fang
 				device.Resize(window.GetWidth(), window.GetHeight());
 			}
 
+#if FANG_ENABLE_HOT_RELOAD
+			// .hlsl の保存を見て PSO を作り直す。リサイズと同じ理由でここに置く
+			// （記録が始まった後ではパイプラインを差し替えられない）。保存が無ければ何も起きない。
+			device.UpdateShaderHotReload(deltaTimeSeconds);
+#endif
+
 			//------------------------------------------------------------------------
 			// 2. BeginFrame とグラフの Reset・バックバッファと深度の Import
 			// 　device.BeginFrame() でこのフレームの記録メモリを巻き戻す。
@@ -1357,7 +1363,11 @@ namespace fang
 		// 　エンジン側の参照一式を EngineContext に束ねて渡す。
 		//------------------------------------------------------------------------
 		// 全部の初期化が終わってから束ねる。上の層はここで受けた参照を持ち続ける。
+#if FANG_ENABLE_HOT_RELOAD
+		const EngineContext context{ jobSystem, frameMemory, framePipeline, &device.GetShaderReloadStatus() };
+#else
 		const EngineContext context{ jobSystem, frameMemory, framePipeline };
+#endif
 		if (!application.OnInitialize(context, device, window))
 		{
 			FANG_FATAL("上の層の初期化に失敗した");

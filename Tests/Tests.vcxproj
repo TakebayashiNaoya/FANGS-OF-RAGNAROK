@@ -36,7 +36,9 @@
   <ItemGroup>
     <ClCompile Include="Source\AabbTests.cpp" />
     <ClCompile Include="Source\AnimationPlaybackTests.cpp" />
+    <ClCompile Include="Source\AssetPathTests.cpp" />
     <ClCompile Include="Source\DdsImageTests.cpp" />
+    <ClCompile Include="Source\DirectoryWatcherTests.cpp" />
     <ClCompile Include="Source\FrameAllocatorTests.cpp" />
     <ClCompile Include="Source\FramePipelineTests.cpp" />
     <ClCompile Include="Source\FrustumTests.cpp" />

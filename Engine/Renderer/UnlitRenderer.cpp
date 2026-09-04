@@ -55,9 +55,17 @@ namespace fang
 
 		// シェーダーは Shaders/*.hlsl をビルド時に FXC でヘッダ化したもの。UWP に実行時コンパイルが無いため。
 		rhi::GraphicsPipelineDesc pipelineDesc{};
-		pipelineDesc.vertexShaderBytecode = std::span<const uint8_t>(g_UnlitVS, sizeof(g_UnlitVS));
-		pipelineDesc.pixelShaderBytecode  = std::span<const uint8_t>(g_UnlitPS, sizeof(g_UnlitPS));
-		pipelineDesc.vertexLayout         = VERTEX_LAYOUT;
+		pipelineDesc.vertexShader = rhi::MakeShaderSource(
+			std::span<const uint8_t>(g_UnlitVS, sizeof(g_UnlitVS)),
+			"Engine/Renderer/Shaders/UnlitVS.hlsl",
+			"VertexMain"
+		);
+		pipelineDesc.pixelShader = rhi::MakeShaderSource(
+			std::span<const uint8_t>(g_UnlitPS, sizeof(g_UnlitPS)),
+			"Engine/Renderer/Shaders/UnlitPS.hlsl",
+			"PixelMain"
+		);
+		pipelineDesc.vertexLayout = VERTEX_LAYOUT;
 
 		// 行列は b0 のルート CBV で渡す（UnlitConstants.h）。深度テストは持たない。
 		pipelineDesc.hasObjectConstantBuffer = true;

@@ -170,9 +170,17 @@ namespace fang
 		// デバイスロストするため。ベースカラーは t0 で、無いときはダミーを差すのでパイプラインは分岐しない。
 		// 立体は前後関係が要るので深度テストを有効にする。
 		rhi::GraphicsPipelineDesc staticPipelineDesc{};
-		staticPipelineDesc.vertexShaderBytecode = std::span<const uint8_t>(g_MeshVS, sizeof(g_MeshVS));
-		staticPipelineDesc.pixelShaderBytecode  = std::span<const uint8_t>(g_MeshPS, sizeof(g_MeshPS));
-		staticPipelineDesc.vertexLayout         = STATIC_VERTEX_LAYOUT;
+		staticPipelineDesc.vertexShader = rhi::MakeShaderSource(
+			std::span<const uint8_t>(g_MeshVS, sizeof(g_MeshVS)),
+			"Engine/Renderer/Shaders/MeshVS.hlsl",
+			"VertexMain"
+		);
+		staticPipelineDesc.pixelShader = rhi::MakeShaderSource(
+			std::span<const uint8_t>(g_MeshPS, sizeof(g_MeshPS)),
+			"Engine/Renderer/Shaders/MeshPS.hlsl",
+			"PixelMain"
+		);
+		staticPipelineDesc.vertexLayout = STATIC_VERTEX_LAYOUT;
 
 		staticPipelineDesc.hasObjectConstantBuffer = true;
 		staticPipelineDesc.hasFrameConstantBuffer  = true;
@@ -187,8 +195,12 @@ namespace fang
 		}
 
 		rhi::GraphicsPipelineDesc skinnedPipelineDesc = staticPipelineDesc;
-		skinnedPipelineDesc.vertexShaderBytecode = std::span<const uint8_t>(g_SkinnedMeshVS, sizeof(g_SkinnedMeshVS));
-		skinnedPipelineDesc.vertexLayout         = SKINNED_VERTEX_LAYOUT;
+		skinnedPipelineDesc.vertexShader              = rhi::MakeShaderSource(
+			std::span<const uint8_t>(g_SkinnedMeshVS, sizeof(g_SkinnedMeshVS)),
+			"Engine/Renderer/Shaders/SkinnedMeshVS.hlsl",
+			"VertexMain"
+		);
+		skinnedPipelineDesc.vertexLayout = SKINNED_VERTEX_LAYOUT;
 
 		skinnedPipelineDesc.hasSkinningConstantBuffer = true;
 
@@ -202,7 +214,11 @@ namespace fang
 		// （b1 に光の viewProjection を差すだけで同じ変換が使える）➡ 新しい頂点シェーダーも頂点契約の
 		// 複製も要らない。PS を空にすると描画先 0 本の深度専用 PSO になる（GraphicsPipelineDesc の規約）。
 		rhi::GraphicsPipelineDesc staticDepthPipelineDesc{};
-		staticDepthPipelineDesc.vertexShaderBytecode    = std::span<const uint8_t>(g_MeshVS, sizeof(g_MeshVS));
+		staticDepthPipelineDesc.vertexShader = rhi::MakeShaderSource(
+			std::span<const uint8_t>(g_MeshVS, sizeof(g_MeshVS)),
+			"Engine/Renderer/Shaders/MeshVS.hlsl",
+			"VertexMain"
+		);
 		staticDepthPipelineDesc.vertexLayout            = STATIC_VERTEX_LAYOUT;
 		staticDepthPipelineDesc.hasObjectConstantBuffer = true;
 		staticDepthPipelineDesc.hasFrameConstantBuffer  = true;
@@ -217,8 +233,11 @@ namespace fang
 		}
 
 		rhi::GraphicsPipelineDesc skinnedDepthPipelineDesc = staticDepthPipelineDesc;
-		skinnedDepthPipelineDesc.vertexShaderBytecode =
-			std::span<const uint8_t>(g_SkinnedMeshVS, sizeof(g_SkinnedMeshVS));
+		skinnedDepthPipelineDesc.vertexShader              = rhi::MakeShaderSource(
+			std::span<const uint8_t>(g_SkinnedMeshVS, sizeof(g_SkinnedMeshVS)),
+			"Engine/Renderer/Shaders/SkinnedMeshVS.hlsl",
+			"VertexMain"
+		);
 		skinnedDepthPipelineDesc.vertexLayout              = SKINNED_VERTEX_LAYOUT;
 		skinnedDepthPipelineDesc.hasSkinningConstantBuffer = true;
 

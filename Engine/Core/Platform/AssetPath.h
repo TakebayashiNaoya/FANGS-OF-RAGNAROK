@@ -19,6 +19,17 @@ namespace fang
 	[[nodiscard]] std::string GetAssetRootPath();
 
 	/**
+	 * @brief ソースツリーの根っこのディレクトリを返す。
+	 * @details ビルド出力に .hlsl のようなソースは含まれないので、実行中にソースを読みたいものはここから引く。
+	 *          Windows は exe のあるディレクトリから上へ FangsOfRagnarok.sln を探す
+	 *          ➡ チェックアウト先が変わってもリビルドなしで追従する。
+	 *          UWP はパッケージの外を読めないので常に空文字列。
+	 * @return UTF-8 の絶対パス。末尾に区切り文字は付けない。見つからなければ空文字列。
+	 * @threading 任意のスレッド。
+	 */
+	[[nodiscard]] std::string GetSourceRootPath();
+
+	/**
 	 * @brief 根っこからの相対パスを絶対パスに直す。
 	 * @details 中身は文字列を繋ぐだけでプラットフォームに依らないので、ここに置く。
 	 *          .cpp に出すと Windows\AssetPath.cpp と同名になり、.obj の出力先が衝突する。

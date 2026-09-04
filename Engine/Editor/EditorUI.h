@@ -7,6 +7,7 @@
 #include "Core/CoreMacros.h"
 #include "Editor/Panels/JobSystemPanel.h"
 #include "Editor/Panels/RenderStatisticsPanel.h"
+#include "Editor/Panels/ShaderReloadPanel.h"
 #include "RHI/RHIHandles.h"
 #include <imgui.h>
 #include <vector>
@@ -96,6 +97,10 @@ namespace fang::editor
 	private:
 		JobSystemPanel        m_jobSystemPanel;        /**< ジョブシステムの稼働状況。 */
 		RenderStatisticsPanel m_renderStatisticsPanel; /**< 描画の中身（Submit数・描いた数・パス数など）。 */
+
+#if FANG_ENABLE_HOT_RELOAD
+		ShaderReloadPanel m_shaderReloadPanel; /**< .hlsl を保存したときの作り直しの結果。 */
+#endif
 
 		/** @brief 更新・描画・1 周の所要時間の出どころ。RunApplication が持っているものを借りるだけ。 */
 		const FramePipeline* m_framePipeline = nullptr;

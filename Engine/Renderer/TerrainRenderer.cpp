@@ -56,9 +56,17 @@ namespace fang
 		// サンプラはレイヤのタイリングのため WRAP（スプラット側はシェーダが UV をクランプして守る）。
 		// b0 は地形の定数（ロード時に 1 回書くだけ）、b1 はシーン View の MeshFrameConstants を借りる。
 		rhi::GraphicsPipelineDesc pipelineDesc{};
-		pipelineDesc.vertexShaderBytecode = std::span<const uint8_t>(g_TerrainVS, sizeof(g_TerrainVS));
-		pipelineDesc.pixelShaderBytecode  = std::span<const uint8_t>(g_TerrainPS, sizeof(g_TerrainPS));
-		pipelineDesc.vertexLayout         = VERTEX_LAYOUT;
+		pipelineDesc.vertexShader = rhi::MakeShaderSource(
+			std::span<const uint8_t>(g_TerrainVS, sizeof(g_TerrainVS)),
+			"Engine/Renderer/Shaders/TerrainVS.hlsl",
+			"VertexMain"
+		);
+		pipelineDesc.pixelShader = rhi::MakeShaderSource(
+			std::span<const uint8_t>(g_TerrainPS, sizeof(g_TerrainPS)),
+			"Engine/Renderer/Shaders/TerrainPS.hlsl",
+			"PixelMain"
+		);
+		pipelineDesc.vertexLayout = VERTEX_LAYOUT;
 
 		pipelineDesc.hasObjectConstantBuffer = true;
 		pipelineDesc.hasFrameConstantBuffer  = true;
