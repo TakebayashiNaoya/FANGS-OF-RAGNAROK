@@ -45,7 +45,7 @@ namespace fang
 		float4   ambientColor;     /**< rgb = 環境項。w は未使用。 */
 
 		float4x4 lightViewProjection; /**< 光の View ➡ 正射影。影の判定でワールド位置を光のクリップ空間へ移す。 */
-		float4 shadowParameters; /**< x = シャドウマップ 1 テクセルの UV 幅。y = 影の有効(0 か 1)。z と w は未使用。 */
+		float4   shadowParameters;    /**< x = シャドウマップ 1 テクセルの UV 幅。y = 影の有効(0 か 1)。zw は未使用。 */
 	};
 
 #ifdef __cplusplus
