@@ -1,6 +1,6 @@
 ﻿/**
  * @file ParallelFor.h
- * @brief 範囲を分けて並列に回す糖衣。
+ * @brief 範囲を分けて並列に回す糖衣と、比較用に同じ本体を 1 本で回す直列版。
  */
 #pragma once
 
@@ -78,5 +78,25 @@ namespace fang
 		}
 
 		jobSystem.Wait(counter);
+	}
+
+
+	/**
+	 * @brief [begin, end) を呼んだスレッド 1 本でそのまま回す。ParallelFor との比較用。
+	 * @param workerIndex body へ渡す番号。走るスレッドは 1 本なので、ワーカーごとの配列のどの枠を使うかは
+	 *                    呼ぶ側が決める。
+	 * @param body        void(uint32_t index, uint32_t workerIndex)。ParallelFor と同じものを渡せる。
+	 * @details ジョブを積まないので分割幅は要らない。
+	 *          本体も添字をたどる順も並列版とそろえられるので、出た差はジョブの積み下ろしと複数コアの
+	 *          効果だけになる。
+	 * @threading 任意のスレッド。
+	 */
+	template <typename TBody>
+	inline void SerialFor(uint32_t begin, uint32_t end, uint32_t workerIndex, const TBody& body)
+	{
+		for (uint32_t index = begin; index < end; ++index)
+		{
+			body(index, workerIndex);
+		}
 	}
 } // namespace fang
