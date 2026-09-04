@@ -284,7 +284,7 @@ TEST_CASE("正射影が視錐台の角と中心を NDC の既知の点へ移す"
 	CHECK(farTopRight.w == doctest::Approx(1.0f));
 
 	// 正射影は w で割らないので、中心の座標をそのまま NDC の (0, 0, 0.5) と比較できる。
-	const fang::Vector3 center{ (left + right) / 2.0f, (bottom + top) / 2.0f, (nearZ + farZ) / 2.0f };
+	const fang::Vector3    center{ (left + right) / 2.0f, (bottom + top) / 2.0f, (nearZ + farZ) / 2.0f };
 	const TransformedPoint centerPoint = TransformPoint(projection, center);
 	CHECK(centerPoint.x == doctest::Approx(0.0f));
 	CHECK(centerPoint.y == doctest::Approx(0.0f));

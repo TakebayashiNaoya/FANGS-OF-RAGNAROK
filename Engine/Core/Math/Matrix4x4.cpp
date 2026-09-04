@@ -74,14 +74,7 @@ namespace fang
 	}
 
 
-	Matrix4x4 MakeOrthographicOffCenterMatrix(
-		float left,
-		float right,
-		float bottom,
-		float top,
-		float nearZ,
-		float farZ
-	)
+	Matrix4x4 MakeOrthographicOffCenterMatrix(float left, float right, float bottom, float top, float nearZ, float farZ)
 	{
 		FANG_ASSERT(right > left, "視錐台の右端が左端以下");
 		FANG_ASSERT(top > bottom, "視錐台の上端が下端以下");

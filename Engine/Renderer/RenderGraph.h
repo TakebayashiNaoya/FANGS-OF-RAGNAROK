@@ -160,7 +160,11 @@ namespace fang
 		 * @details 初期状態も最終状態も DepthWrite。バックバッファ・深度バッファと同じく毎フレーム
 		 *          登録し直す前提で、途中の遷移は Compile が導く。
 		 */
-		[[nodiscard]] RenderGraphResourceId ImportDepthTexture(rhi::TextureHandle texture, uint32_t width, uint32_t height);
+		[[nodiscard]] RenderGraphResourceId ImportDepthTexture(
+			rhi::TextureHandle texture,
+			uint32_t           width,
+			uint32_t           height
+		);
 
 		/**
 		 * @brief パスを 1 つ宣言する。
