@@ -8,9 +8,12 @@
 #include "Core/Math/Pack.h"
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
+#include "Renderer/DummyTexture.h"
 #include "Renderer/RendererLog.h"
 #include "Renderer/Shaders/MeshConstants.h"
+#include "Renderer/TangentGeneration.h"
 #include <cstddef>
+#include <vector>
 
 
 // FXC の /Fh が吐くヘッダは BYTE 型の配列なので、<windows.h> を入れずに済むよう自前で合わせる。
@@ -33,11 +36,12 @@ namespace fang
 		struct MeshVertex
 		{
 			float    position[3]; /**< モデルの寸法精度は落とさない。 */
-			int8_t   normal[4];   /**< SNORM。w は未使用で 0。接線を足す日は別属性で足す。 */
+			int8_t   normal[4];   /**< SNORM。w は未使用で 0。 */
 			uint16_t texCoord[2]; /**< half のビット列。 */
+			int8_t   tangent[4];  /**< SNORM。xyz = 接線、w = 従法線の符号（±127 = ±1.0）。 */
 		};
 
-		static_assert(sizeof(MeshVertex) == 20, "頂点の大きさが契約の 20 バイトからずれている");
+		static_assert(sizeof(MeshVertex) == 24, "頂点の大きさが契約の 24 バイトからずれている");
 
 		/**
 		 * @brief シェーダに渡すスキンメッシュの頂点。
@@ -51,11 +55,12 @@ namespace fang
 			float    position[3]; /**< モデルの寸法精度は落とさない。 */
 			int8_t   normal[4];   /**< SNORM。w は未使用で 0。 */
 			uint16_t texCoord[2]; /**< half のビット列。 */
+			int8_t   tangent[4];  /**< SNORM。xyz = 接線、w = 従法線の符号（±127 = ±1.0）。 */
 			uint8_t  joints[4];
 			float    weights[4];
 		};
 
-		static_assert(sizeof(SkinnedMeshVertex) == 40, "頂点の大きさが契約の 40 バイトからずれている");
+		static_assert(sizeof(SkinnedMeshVertex) == 44, "頂点の大きさが契約の 44 バイトからずれている");
 
 		/** @brief 16 bit のインデックスで指せる頂点の数。 */
 		constexpr size_t MAX_VERTEX_COUNT = 65536;
@@ -74,7 +79,7 @@ namespace fang
 		constexpr Vector2 DEFAULT_TEX_COORD = { 0.0f, 0.0f };
 
 		/**
-		 * @brief 位置・法線・UV を頂点へ圧縮して書き込む。
+		 * @brief 位置・法線・UV・接線を頂点へ圧縮して書き込む。
 		 * @details 静的とスキンで頂点の前半が同じ並びなので、2 か所に同じ圧縮を書かずに済むようテンプレートにした。
 		 */
 		template <typename TVertex>
@@ -82,6 +87,7 @@ namespace fang
 			const Vector3& position,
 			const Vector3& normal,
 			const Vector2& texCoord,
+			const Vector4& tangent,
 			TVertex*       outVertex
 		)
 		{
@@ -96,6 +102,36 @@ namespace fang
 
 			outVertex->texCoord[0] = PackFloat16(texCoord.x);
 			outVertex->texCoord[1] = PackFloat16(texCoord.y);
+
+			outVertex->tangent[0] = PackSignedNormalized8(tangent.x);
+			outVertex->tangent[1] = PackSignedNormalized8(tangent.y);
+			outVertex->tangent[2] = PackSignedNormalized8(tangent.z);
+			outVertex->tangent[3] = PackSignedNormalized8(tangent.w);
+		}
+
+
+		/**
+		 * @brief 接線を用意する。渡されていればそれを、無ければ UV から作ったものを返す。
+		 * @param generated 作った場合の置き場。戻り値がここを指すので、使い終わるまで生かすこと。
+		 */
+		[[nodiscard]] std::span<const Vector4> ResolveTangents(
+			std::span<const Vector3>  positions,
+			std::span<const Vector3>  normals,
+			std::span<const Vector2>  texCoords,
+			std::span<const uint16_t> indices,
+			std::span<const Vector4>  sourceTangents,
+			std::vector<Vector4>*     generated
+		)
+		{
+			if (!sourceTangents.empty())
+			{
+				return sourceTangents;
+			}
+
+			generated->resize(positions.size());
+			GenerateTangents(positions, normals, texCoords, indices, *generated);
+
+			return *generated;
 		}
 
 		/**
@@ -107,12 +143,13 @@ namespace fang
 		[[nodiscard]] MeshObjectConstants MakeObjectConstants(
 			const Matrix4x4& world,
 			float            metallicFactor,
-			float            roughnessFactor
+			float            roughnessFactor,
+			float            normalScale
 		)
 		{
 			MeshObjectConstants constants{};
 			constants.world    = world;
-			constants.material = { metallicFactor, roughnessFactor, 0.0f, 0.0f };
+			constants.material = { metallicFactor, roughnessFactor, normalScale, 0.0f };
 
 			return constants;
 		}
@@ -151,12 +188,14 @@ namespace fang
 			{ "POSITION", 0, rhi::EnVertexFormat::Float3, offsetof(MeshVertex, position) },
 			{ "NORMAL", 0, rhi::EnVertexFormat::SByte4Normalized, offsetof(MeshVertex, normal) },
 			{ "TEXCOORD", 0, rhi::EnVertexFormat::Half2, offsetof(MeshVertex, texCoord) },
+			{ "TANGENT", 0, rhi::EnVertexFormat::SByte4Normalized, offsetof(MeshVertex, tangent) },
 		};
 
 		constexpr rhi::VertexAttribute SKINNED_VERTEX_LAYOUT[] = {
 			{ "POSITION", 0, rhi::EnVertexFormat::Float3, offsetof(SkinnedMeshVertex, position) },
 			{ "NORMAL", 0, rhi::EnVertexFormat::SByte4Normalized, offsetof(SkinnedMeshVertex, normal) },
 			{ "TEXCOORD", 0, rhi::EnVertexFormat::Half2, offsetof(SkinnedMeshVertex, texCoord) },
+			{ "TANGENT", 0, rhi::EnVertexFormat::SByte4Normalized, offsetof(SkinnedMeshVertex, tangent) },
 			{ "BLENDINDICES", 0, rhi::EnVertexFormat::UByte4, offsetof(SkinnedMeshVertex, joints) },
 			{ "BLENDWEIGHT", 0, rhi::EnVertexFormat::Float4, offsetof(SkinnedMeshVertex, weights) },
 		};
@@ -167,8 +206,8 @@ namespace fang
 		//
 		// world と材質は b0、視点と光は b1、骨行列は b2 のルート CBV で渡す（MeshConstants.h）。
 		// ルート定数にしないのは、実機のドライバが 16 DWORD 超のルート定数のパイプライン生成で
-		// デバイスロストするため。ベースカラーは t0 で、無いときはダミーを差すのでパイプラインは分岐しない。
-		// 立体は前後関係が要るので深度テストを有効にする。
+		// デバイスロストするため。ベースカラーは t0、法線マップは t1 で、無いときはダミーを差すので
+		// パイプラインは分岐しない。立体は前後関係が要るので深度テストを有効にする。
 		rhi::GraphicsPipelineDesc staticPipelineDesc{};
 		staticPipelineDesc.vertexShader = rhi::MakeShaderSource(
 			std::span<const uint8_t>(g_MeshVS, sizeof(g_MeshVS)),
@@ -184,7 +223,7 @@ namespace fang
 
 		staticPipelineDesc.hasObjectConstantBuffer = true;
 		staticPipelineDesc.hasFrameConstantBuffer  = true;
-		staticPipelineDesc.textureCount            = 1;
+		staticPipelineDesc.textureCount            = 2;
 		staticPipelineDesc.hasShadowMap            = true;
 		staticPipelineDesc.isDepthTestEnabled      = true;
 
@@ -249,6 +288,12 @@ namespace fang
 
 		m_dummyBaseColor = CreateDummyBaseColor(device);
 		if (!m_dummyBaseColor.IsValid())
+		{
+			return false;
+		}
+
+		m_dummyNormalMap = CreateDummyNormalMap(device);
+		if (!m_dummyNormalMap.IsValid())
 		{
 			return false;
 		}
@@ -328,6 +373,9 @@ namespace fang
 		}
 		m_meshes.clear();
 
+		device.DestroyTexture(m_dummyNormalMap);
+		m_dummyNormalMap = {};
+
 		device.DestroyTexture(m_dummyBaseColor);
 		m_dummyBaseColor = {};
 
@@ -388,7 +436,28 @@ namespace fang
 			return MeshId{};
 		}
 
+		if (!source.tangents.empty() && source.tangents.size() != source.positions.size())
+		{
+			FANG_LOG_ERROR(
+				Renderer,
+				"接線の数が位置と合っていない: {} と {}",
+				source.tangents.size(),
+				source.positions.size()
+			);
+			return MeshId{};
+		}
+
 		// 詰め直しの作業領域。読み込みのときにしか通らないので、ここでのヒープ確保は許す。
+		std::vector<Vector4>           generatedTangents;
+		const std::span<const Vector4> tangents = ResolveTangents(
+			source.positions,
+			source.normals,
+			source.texCoords,
+			source.indices,
+			source.tangents,
+			&generatedTangents
+		);
+
 		std::vector<MeshVertex> vertices(source.positions.size());
 		for (size_t index = 0; index < vertices.size(); ++index)
 		{
@@ -396,6 +465,7 @@ namespace fang
 				source.positions[index],
 				hasNormals ? source.normals[index] : DEFAULT_NORMAL,
 				hasTexCoords ? source.texCoords[index] : DEFAULT_TEX_COORD,
+				tangents[index],
 				&vertices[index]
 			);
 		}
@@ -439,7 +509,23 @@ namespace fang
 			return MeshId{};
 		}
 
+		if (!source.tangents.empty() && source.tangents.size() != vertexCount)
+		{
+			FANG_LOG_ERROR(Renderer, "接線の数が位置と合っていない: {} と {}", source.tangents.size(), vertexCount);
+			return MeshId{};
+		}
+
 		// 詰め直しの作業領域。読み込みのときにしか通らないので、ここでのヒープ確保は許す。
+		std::vector<Vector4>           generatedTangents;
+		const std::span<const Vector4> tangents = ResolveTangents(
+			source.positions,
+			source.normals,
+			source.texCoords,
+			source.indices,
+			source.tangents,
+			&generatedTangents
+		);
+
 		std::vector<SkinnedMeshVertex> vertices(vertexCount);
 		for (size_t index = 0; index < vertexCount; ++index)
 		{
@@ -458,7 +544,13 @@ namespace fang
 			}
 
 			SkinnedMeshVertex& vertex = vertices[index];
-			PackCommonVertex(source.positions[index], source.normals[index], source.texCoords[index], &vertex);
+			PackCommonVertex(
+				source.positions[index],
+				source.normals[index],
+				source.texCoords[index],
+				tangents[index],
+				&vertex
+			);
 
 			vertex.joints[0] = joints.joints[0];
 			vertex.joints[1] = joints.joints[1];
@@ -652,7 +744,7 @@ namespace fang
 			}
 
 			const MeshObjectConstants objectConstants =
-				MakeObjectConstants(item.world, item.metallicFactor, item.roughnessFactor);
+				MakeObjectConstants(item.world, item.metallicFactor, item.roughnessFactor, item.normalScale);
 			device.UpdateBuffer(
 				m_objectConstantBuffers[usedObjectBufferCount],
 				&objectConstants,
@@ -680,7 +772,8 @@ namespace fang
 			{
 				commandList.SetSkinningConstantBuffer(m_skinningConstantBuffers[skinningBufferIndex]);
 			}
-			commandList.SetTexture(item.baseColor.IsValid() ? item.baseColor : m_dummyBaseColor);
+			commandList.SetTexture(0, item.baseColor.IsValid() ? item.baseColor : m_dummyBaseColor);
+			commandList.SetTexture(1, item.normalMap.IsValid() ? item.normalMap : m_dummyNormalMap);
 			commandList.DrawIndexed(mesh.indexCount, 0, 0);
 
 			++usedObjectBufferCount;
@@ -789,7 +882,7 @@ namespace fang
 			}
 
 			const MeshObjectConstants objectConstants =
-				MakeObjectConstants(item.world, item.metallicFactor, item.roughnessFactor);
+				MakeObjectConstants(item.world, item.metallicFactor, item.roughnessFactor, item.normalScale);
 			device.UpdateBuffer(
 				m_depthObjectConstantBuffers[usedObjectBufferCount],
 				&objectConstants,

@@ -7,8 +7,11 @@
 
     py Tools\\GenerateStageGltf.py
 
-出力先はこのリポジトリの Game/Assets/Models 固定（Wolf.gltf と同じ場所。テクスチャの相対パスも
+出力先はこのリポジトリの Game/Assets/Models 固定（Wolf.gltf と同じ場所。ベースカラーの相対パスは
 Wolf 用の textures/Wolf.png を指すので、狼と同じ textures フォルダをそのまま使う）。
+
+法線マップ（textures/StageNormal.dds）もここで焼く。石積みの目地の溝と面の荒れを高さで作り、
+中央差分で法線へ直したもの。数値なので sRGB では焼かない。
 """
 
 import io
@@ -16,6 +19,8 @@ import json
 import math
 import os
 import struct
+
+import TextureBaking
 
 
 ROOT_DIRECTORY   = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,6 +33,36 @@ BIN_FILENAME = "Stage.bin"
 # 狼と同じ画像（Game/Assets/Models/textures/Wolf.dds。実行時に拡張子を .dds へ差し替えて読む）を
 # ベースカラーに使う。新しい画像を用意しなくても、複数マテリアルが同じ画像パスを指す状態を作れる。
 BASE_COLOR_IMAGE_URI = "textures/Wolf.png"
+
+# 法線マップ。エンジンは読むときに拡張子を .dds へ差し替えるので、ここは .png のままでよい
+NORMAL_IMAGE_URI      = "textures/StageNormal.png"
+NORMAL_IMAGE_FILENAME = "StageNormal.dds"
+
+BASE_COLOR_TEXTURE_INDEX = 0
+NORMAL_TEXTURE_INDEX     = 1
+
+
+#---------------------------------------------------------------------------
+# 石積みの法線マップ
+#---------------------------------------------------------------------------
+NORMAL_RESOLUTION = 256
+
+# 石の並び。縦の段数と横の個数。1 段おきに半個ずらす（芋目地にしない）
+# 段数を偶数にしてあるので、上下に繰り返してもずらしの位相が合う
+BRICK_ROW_COUNT    = 8
+BRICK_COLUMN_COUNT = 4
+
+# 目地の幅。石 1 個の辺を 1 としたときの割合
+MORTAR_WIDTH = 0.06
+
+# 目地の深さ。面の荒れ（振幅の合計 0.67）より深くして、溝がはっきり出るようにする
+MORTAR_DEPTH = 1.0
+
+# 面の荒れ。(振幅, u の周波数, v の周波数)。周波数が整数なのでタイリングの継ぎ目が出ない
+SURFACE_OCTAVES = ((0.35, 37, 41), (0.20, 61, 23), (0.12, 97, 89))
+
+# 傾きに掛ける倍率
+NORMAL_STRENGTH = 5.0
 
 COMPONENT_TYPE_FLOAT          = 5126
 COMPONENT_TYPE_UNSIGNED_SHORT = 5123
@@ -158,6 +193,78 @@ def MakeVerticalQuad(halfWidth, height):
 #---------------------------------------------------------------------------
 # glTF の組み立て
 #---------------------------------------------------------------------------
+def SmoothStep(edgeZero, edgeOne, value):
+    """edgeZero〜edgeOne を 0〜1 へ、両端がなめらかになるように写す。"""
+    t = (value - edgeZero) / (edgeOne - edgeZero)
+    t = max(0.0, min(1.0, t))
+    return t * t * (3.0 - 2.0 * t)
+
+
+def MortarDepth(fraction):
+    """石 1 個の中の位置（0〜1）から、目地の深さ 0〜1 を返す。縁で 1、内側で 0。"""
+    edgeDistance = min(fraction, 1.0 - fraction)
+    return 1.0 - SmoothStep(0.0, MORTAR_WIDTH, edgeDistance)
+
+
+def BuildStoneHeights():
+    """石積みの高さを 0〜1 で作る。行優先で NORMAL_RESOLUTION の 2 乗個。
+
+    目地は石の縁にある溝、面の荒れは整数周波数の正弦の重ね合わせ。どちらもテクスチャの端で
+    位相と格子が合うので、タイリングしても継ぎ目が出ない。
+    """
+    heights = []
+    for y in range(NORMAL_RESOLUTION):
+        v = y / NORMAL_RESOLUTION
+
+        rowPosition   = v * BRICK_ROW_COUNT
+        rowIndex      = int(rowPosition)
+        rowFraction   = rowPosition - rowIndex
+        columnOffset  = 0.5 if rowIndex % 2 == 1 else 0.0
+
+        for x in range(NORMAL_RESOLUTION):
+            u = x / NORMAL_RESOLUTION
+
+            columnFraction = (u * BRICK_COLUMN_COUNT + columnOffset) % 1.0
+
+            height = 0.0
+            for amplitude, frequencyU, frequencyV in SURFACE_OCTAVES:
+                height += (amplitude
+                           * math.sin(math.tau * frequencyU * u)
+                           * math.cos(math.tau * frequencyV * v))
+
+            # 縦横どちらの目地にも掛かる角は、深いほうを採る
+            groove = max(MortarDepth(rowFraction), MortarDepth(columnFraction))
+            height -= MORTAR_DEPTH * groove
+
+            heights.append(height)
+
+    lowest  = min(heights)
+    highest = max(heights)
+    span    = max(highest - lowest, 1e-6)
+
+    return [(value - lowest) / span for value in heights]
+
+
+def WriteStoneNormalMap(texconvPath):
+    """石積みの法線マップを 1 枚焼く。戻り値は (パス, 形式, 傾きの平均, 傾きの最大)。"""
+    heights = BuildStoneHeights()
+    pixels  = TextureBaking.BuildNormalMapPixels(NORMAL_RESOLUTION, heights, NORMAL_STRENGTH)
+
+    averageTilt, highestTilt = TextureBaking.SummarizeNormalMapTilt(pixels)
+
+    outputPath = os.path.join(OUTPUT_DIRECTORY, "textures", NORMAL_IMAGE_FILENAME)
+    dxgiFormat = TextureBaking.BakeTexture(
+        texconvPath,
+        outputPath,
+        NORMAL_RESOLUTION,
+        pixels,
+        TextureBaking.DXGI_FORMAT_BC5_UNORM,
+        TextureBaking.DXGI_FORMAT_R8G8B8A8_UNORM,
+    )
+
+    return outputPath, dxgiFormat, averageTilt, highestTilt
+
+
 class GltfDocument:
     """バッファ・アクセサ・メッシュ・マテリアル・ノードを積み上げて最後に辞書へまとめる。"""
 
@@ -168,7 +275,7 @@ class GltfDocument:
         self.meshes       = []
         self.materials    = []
         self.nodes        = []
-        self.textureIndex = None
+        self.hasTextures  = False
 
     def _AppendAligned(self, rawBytes, alignment):
         while len(self.bufferBytes) % alignment != 0:
@@ -217,11 +324,9 @@ class GltfDocument:
         rawBytes = struct.pack("<%dH" % len(indices), *indices)
         return self._AddAccessor(COMPONENT_TYPE_UNSIGNED_SHORT, len(indices), "SCALAR", rawBytes, 2)
 
-    def EnsureBaseColorTexture(self):
-        """全マテリアル共通の 1 枚（狼と同じ画像）を指すテクスチャの番号を返す。1 度しか作らない。"""
-        if self.textureIndex is None:
-            self.textureIndex = 0
-        return self.textureIndex
+    def EnsureTextures(self):
+        """全マテリアルが共通で指すテクスチャ（ベースカラーと法線）を document へ出すことにする。"""
+        self.hasTextures = True
 
     def AddMesh(self, name, builder, material=None):
         """builder の中身をアクセサへ写し、mesh 番号を返す。material は (metallicFactor, roughnessFactor) か None。"""
@@ -243,14 +348,16 @@ class GltfDocument:
         if material is not None:
             metallicFactor, roughnessFactor = material
             materialIndex = len(self.materials)
+            self.EnsureTextures()
             self.materials.append(
                 {
                     "name": name,
                     "pbrMetallicRoughness": {
-                        "baseColorTexture": {"index": self.EnsureBaseColorTexture()},
+                        "baseColorTexture": {"index": BASE_COLOR_TEXTURE_INDEX},
                         "metallicFactor":   metallicFactor,
                         "roughnessFactor":  roughnessFactor,
                     },
+                    "normalTexture": {"index": NORMAL_TEXTURE_INDEX},
                 }
             )
             primitive["material"] = materialIndex
@@ -293,10 +400,16 @@ class GltfDocument:
 
         if self.materials:
             document["materials"] = self.materials
-        if self.textureIndex is not None:
-            document["images"]   = [{"uri": BASE_COLOR_IMAGE_URI, "mimeType": "image/png"}]
+        if self.hasTextures:
+            document["images"] = [
+                {"uri": BASE_COLOR_IMAGE_URI, "mimeType": "image/png"},
+                {"uri": NORMAL_IMAGE_URI, "mimeType": "image/png"},
+            ]
             document["samplers"] = [{"magFilter": 9729, "minFilter": 9987}]
-            document["textures"] = [{"sampler": 0, "source": 0}]
+            document["textures"] = [
+                {"sampler": 0, "source": BASE_COLOR_TEXTURE_INDEX},
+                {"sampler": 0, "source": NORMAL_TEXTURE_INDEX},
+            ]
 
         return document
 
@@ -468,6 +581,27 @@ def main():
     )
     print(GLTF_PATH)
     print(BIN_PATH)
+
+    texconvPath = TextureBaking.FindTexconvPath()
+    if texconvPath is None:
+        print("texconv が見つからないので、法線マップは RGBA8 で直接書く")
+
+    normalPath, dxgiFormat, averageTilt, highestTilt = WriteStoneNormalMap(texconvPath)
+
+    mipCount = NORMAL_RESOLUTION.bit_length()  # 256 なら 9 段
+    isValid, message = TextureBaking.VerifyDdsFile(
+        normalPath, dxgiFormat, NORMAL_RESOLUTION, NORMAL_RESOLUTION, mipCount)
+
+    print(
+        "石積みの法線マップを書き出した: %s / 傾きは平均 %.1f 度・最大 %.1f 度"
+        % (message, averageTilt, highestTilt)
+    )
+    print(normalPath)
+
+    if not isValid:
+        print("法線マップの検証に失敗した")
+        return 1
+
     return 0
 
 

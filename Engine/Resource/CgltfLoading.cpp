@@ -198,6 +198,31 @@ namespace fang
 	}
 
 
+	bool ReadTangentAttribute(const cgltf_accessor& accessor, std::vector<Vector4>* outValues)
+	{
+		if (accessor.type != cgltf_type_vec4)
+		{
+			return false;
+		}
+
+		outValues->resize(accessor.count);
+		for (cgltf_size index = 0; index < accessor.count; ++index)
+		{
+			float values[4] = {};
+			if (cgltf_accessor_read_float(&accessor, index, values, FANG_COUNT_OF(values)) == 0)
+			{
+				return false;
+			}
+
+			// 位置や法線と同じく Z を反転する。ただしこれは鏡映なので従法線の向きも裏返る
+			// ➡ w も一緒に反転しないと、cross(N, T) * w が ∂P/∂v とずれて陰影が裏返る。
+			(*outValues)[index] = Vector4{ values[0], values[1], -values[2], -values[3] };
+		}
+
+		return true;
+	}
+
+
 	bool ReadVector2Attribute(const cgltf_accessor& accessor, std::vector<Vector2>* outValues)
 	{
 		if (accessor.type != cgltf_type_vec2)

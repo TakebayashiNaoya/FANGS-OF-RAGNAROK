@@ -69,6 +69,9 @@
     <ClCompile Include="Source\RenderGraphTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\TangentGenerationTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\VectorTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>

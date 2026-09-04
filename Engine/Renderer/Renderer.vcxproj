@@ -27,12 +27,14 @@
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
     <ClInclude Include="DebugDraw.h" />
+    <ClInclude Include="DummyTexture.h" />
     <ClInclude Include="MeshRenderer.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="RenderGraph.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RendererLog.h" />
     <ClInclude Include="SceneRenderer.h" />
+    <ClInclude Include="TangentGeneration.h" />
     <ClInclude Include="TerrainRenderer.h" />
     <ClInclude Include="UnlitRenderer.h" />
     <ClInclude Include="Shaders\MeshConstants.h" />
@@ -41,6 +43,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DebugDraw.cpp" />
+    <ClCompile Include="DummyTexture.cpp" />
     <ClCompile Include="MeshRenderer.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -48,6 +51,7 @@
     <ClCompile Include="RenderGraph.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="SceneRenderer.cpp" />
+    <ClCompile Include="TangentGeneration.cpp" />
     <ClCompile Include="TerrainRenderer.cpp" />
     <ClCompile Include="UnlitRenderer.cpp" />
   </ItemGroup>

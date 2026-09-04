@@ -47,6 +47,12 @@ namespace fang
 		rhi::TextureHandle splatmap;        /**< RGBA8。RGB が 3 レイヤの重み。 */
 		rhi::TextureHandle layerAlbedos[3]; /**< レイヤのアルベド。0 = 草、1 = 岩、2 = 土の順で焼いてある。 */
 
+		/**
+		 * @brief レイヤの法線マップ。並びは layerAlbedos と同じ。
+		 * @details 無効なものには平坦な 1×1 のダミーが差さる ➡ 法線マップが欠けても地形は今までどおり描ける。
+		 */
+		rhi::TextureHandle layerNormals[3];
+
 		float layerRoughness[3] = { 1.0f, 1.0f, 1.0f }; /**< レイヤごとの知覚 roughness。 */
 
 		/** @brief レイヤのテクスチャ 1 枚がワールドで受け持つ辺長（cm）。小さいほど細かくタイリングする。 */
@@ -84,7 +90,7 @@ namespace fang
 		TerrainRenderer() = default;
 
 		/**
-		 * @brief パイプライン（4 枚のテクスチャ + WRAP サンプラ + シャドウマップ + 深度テスト）と b0 を作る。
+		 * @brief パイプライン（7 枚のテクスチャ + WRAP サンプラ + シャドウマップ + 深度テスト）と b0 を作る。
 		 * @return 失敗したら false。
 		 */
 		[[nodiscard]] bool Initialize(rhi::GraphicsDevice& device);
@@ -171,6 +177,9 @@ namespace fang
 		uint32_t m_chunkCount = 0;
 
 		TerrainSurface m_surface; /**< テクスチャのハンドルは借用。所有権は呼び出し側。 */
+
+		/** @brief レイヤの法線マップが無いときに差す 1×1 の平坦法線。これだけはこのクラスが持つ。 */
+		rhi::TextureHandle m_dummyNormalMap;
 
 		Frustum m_frustum; /**< AddPass が viewProjection から抽出した、このフレームの 6 平面。 */
 

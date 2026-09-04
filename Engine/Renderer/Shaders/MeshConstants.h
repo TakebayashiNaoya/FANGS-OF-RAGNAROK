@@ -28,7 +28,7 @@ namespace fang
 	struct MeshObjectConstants
 	{
 		float4x4 world;    /**< ワールド法線・ワールド位置用。等倍前提。 */
-		float4   material; /**< x = metallic、y = roughness（知覚値）。z と w は未使用。 */
+		float4   material; /**< x = metallic、y = roughness（知覚値）、z = 法線マップの強さ。w は未使用。 */
 	};
 
 	/**

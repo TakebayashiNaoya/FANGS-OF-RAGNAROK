@@ -7,6 +7,7 @@
 #include "Mesh.hlsli"
 #include "MeshConstants.h"
 #include "Lighting.hlsli"
+#include "NormalMapping.hlsli"
 
 /** @brief 描くもの 1 個ぶんの定数。並びは MeshConstants.h の MeshObjectConstants。 */
 cbuffer cbObject : register(b0)
@@ -24,8 +25,11 @@ cbuffer cbFrame : register(b1)
 Texture2D<float4> baseColorTexture : register(t0);
 SamplerState baseColorSampler : register(s0);
 
-/** @brief シャドウマップ。深度専用パスが光の視点で書いたもの。 */
-Texture2D<float> shadowMap : register(t1);
+/** @brief 法線マップ。接線空間で、RG だけを読む。無いときは平坦な 1×1 のダミーが差さる。 */
+Texture2D<float4> normalMapTexture : register(t1);
+
+/** @brief シャドウマップ。t はテクスチャ 2 枚の次の枠。深度専用パスが光の視点で書いたもの。 */
+Texture2D<float> shadowMap : register(t2);
 
 /** @brief シャドウマップの比較サンプラ。LESS_EQUAL・境界色 白（マップの外は影なしとして読む）。 */
 SamplerComparisonState shadowComparisonSampler : register(s1);
@@ -34,11 +38,16 @@ float4 PixelMain(VertexOutput input) : SV_TARGET
 {
 	float3 albedo = baseColorTexture.Sample(baseColorSampler, input.texCoord).rgb;
 
+	// 面の向きだけを頂点法線から法線マップへ差し替える。ライティングの式そのものは変えない。
+	float2 encodedNormal = normalMapTexture.Sample(baseColorSampler, input.texCoord).rg;
+	float3 tangentSpaceNormal = DecodeTangentSpaceNormal(encodedNormal, objectConstants.material.z);
+	float3 surfaceNormal = ApplyNormalMap(input.normal, input.tangent, tangentSpaceNormal);
+
 	float3 lighting = CalculateSurfaceLighting(
 		albedo,
 		objectConstants.material.x,
 		objectConstants.material.y,
-		input.normal,
+		surfaceNormal,
 		input.worldPosition,
 		frameConstants.cameraPosition.xyz,
 		frameConstants.directionToLight.xyz,
