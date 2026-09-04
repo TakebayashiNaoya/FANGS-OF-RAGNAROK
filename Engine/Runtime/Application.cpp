@@ -13,6 +13,7 @@
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Memory/FrameAllocator.h"
 #include "Core/Platform/AssetPath.h"
+#include "Core/Platform/Budget.h"
 #include "Core/Platform/Window.h"
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
@@ -1408,11 +1409,18 @@ namespace fang
 		// 7. 上の層(ゲーム / エディタ)の初期化
 		// 　エンジン側の参照一式を EngineContext に束ねて渡す。
 		//------------------------------------------------------------------------
+		// 予算はフレームループが毎周更新し、エディタが読み書きする。context より長く生きる必要がある。
+		PlatformBudget platformBudget;
+
 		// 全部の初期化が終わってから束ねる。上の層はここで受けた参照を持ち続ける。
 #if FANG_ENABLE_HOT_RELOAD
-		const EngineContext context{ jobSystem, frameMemory, framePipeline, &device.GetShaderReloadStatus() };
+		const EngineContext context{ jobSystem,
+									 frameMemory,
+									 framePipeline,
+									 platformBudget,
+									 &device.GetShaderReloadStatus() };
 #else
-		const EngineContext context{ jobSystem, frameMemory, framePipeline };
+		const EngineContext context{ jobSystem, frameMemory, framePipeline, platformBudget };
 #endif
 		if (!application.OnInitialize(context, device, window))
 		{
@@ -1440,6 +1448,12 @@ namespace fang
 			previousTime                 = currentTime;
 
 			framePipeline.RunFrame(deltaTimeSeconds);
+
+			// 予算の判定と、制限が入っているときの待ちはここで行う。
+			// 待った分は次の周の deltaTimeSeconds に乗るので、実処理の時間だけを渡す。
+			const float frameWorkSeconds =
+				std::chrono::duration<float>(std::chrono::steady_clock::now() - currentTime).count();
+			platformBudget.EndFrame(frameWorkSeconds);
 		}
 
 		FANG_LOG_INFO(Runtime, "フレームループを終了");

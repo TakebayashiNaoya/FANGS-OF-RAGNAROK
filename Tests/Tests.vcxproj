@@ -52,6 +52,7 @@
     <ClCompile Include="Source\MatrixOperationTests.cpp" />
     <ClCompile Include="Source\PackTests.cpp" />
     <ClCompile Include="Source\ParallelForTests.cpp" />
+    <ClCompile Include="Source\PlatformBudgetTests.cpp" />
     <ClCompile Include="Source\RenderGraphTests.cpp" />
     <ClCompile Include="Source\TangentGenerationTests.cpp" />
     <ClCompile Include="Source\VectorTests.cpp" />
