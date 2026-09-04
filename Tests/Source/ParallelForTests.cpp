@@ -1,6 +1,7 @@
 ﻿/**
  * @file ParallelForTests.cpp
- * @brief ParallelFor のテスト。境界値と、ワーカー数を変えても結果が変わらないこと。
+ * @brief ParallelFor と SerialFor のテスト。
+ *        境界値、ワーカー数を変えても結果が変わらないこと、並列版と直列版の答えが一致すること。
  */
 #include "Core/Job/JobSystem.h"
 #include "Core/Job/ParallelFor.h"
@@ -23,6 +24,30 @@ namespace
 			0,
 			elementCount,
 			batchSize,
+			[partialSumsData](uint32_t index, uint32_t workerIndex) { partialSumsData[workerIndex] += index; }
+		);
+
+		uint64_t totalSum = 0;
+		for (const uint64_t partialSum : partialSums)
+		{
+			totalSum += partialSum;
+		}
+
+		return totalSum;
+	}
+
+
+	/** @brief [0, elementCount) の総和を SerialFor で 1 本のまま足し、合計を返す。 */
+	uint64_t SumIndicesInSerial(uint32_t elementCount)
+	{
+		// 走るのは 1 本だけだが、ParallelFor とまったく同じ本体を渡すために置き場の形もそろえる。
+		std::vector<uint64_t> partialSums(fang::JobSystem::MAX_WORKER_COUNT + 1, 0);
+		uint64_t*             partialSumsData = partialSums.data();
+
+		fang::SerialFor(
+			0,
+			elementCount,
+			fang::JobSystem::MAIN_WORKER_INDEX,
 			[partialSumsData](uint32_t index, uint32_t workerIndex) { partialSumsData[workerIndex] += index; }
 		);
 
@@ -142,6 +167,35 @@ TEST_CASE("ParallelFor はジョブの中からも呼べる")
 	jobSystem.Wait(counter);
 
 	CHECK(innerSum.load() == GetExpectedSum(10000));
+
+	jobSystem.Shutdown();
+}
+
+
+TEST_CASE("SerialFor は要素数 0 / 1 / 100 万のどれでも正しい")
+{
+	CHECK(SumIndicesInSerial(0) == GetExpectedSum(0));
+	CHECK(SumIndicesInSerial(1) == GetExpectedSum(1));
+	CHECK(SumIndicesInSerial(2) == GetExpectedSum(2));
+	CHECK(SumIndicesInSerial(999) == GetExpectedSum(999));
+	CHECK(SumIndicesInSerial(1000000) == GetExpectedSum(1000000));
+}
+
+
+TEST_CASE("同じ本体なら SerialFor と ParallelFor は同じ結果になる")
+{
+	constexpr uint32_t ELEMENT_COUNT = 250000;
+	constexpr uint32_t BATCH_SIZE    = 256;
+
+	fang::JobSystem jobSystem;
+	if (!jobSystem.Initialize(fang::JobSystemDesc{ .workerCount = 4 }))
+	{
+		CHECK_MESSAGE(false, "ジョブシステムを開始できなかった");
+		return;
+	}
+
+	// 速さを比べる道具は、両者が同じ答えを出すことが崩れた時点で意味を失う。ここで固定しておく。
+	CHECK(SumIndicesInSerial(ELEMENT_COUNT) == SumIndicesInParallel(jobSystem, ELEMENT_COUNT, BATCH_SIZE));
 
 	jobSystem.Shutdown();
 }
