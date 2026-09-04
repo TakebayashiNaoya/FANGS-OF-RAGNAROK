@@ -18,7 +18,13 @@
     <ClCompile Include="Source\AnimationPlaybackTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\AssetPathTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\DdsImageTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\DirectoryWatcherTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\FrameAllocatorTests.cpp">

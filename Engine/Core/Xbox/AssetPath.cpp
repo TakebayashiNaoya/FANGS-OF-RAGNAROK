@@ -41,4 +41,11 @@ namespace fang
 			return std::string();
 		}
 	}
+
+
+	std::string GetSourceRootPath()
+	{
+		// UWP はパッケージの外を読めない ➡ ソースツリーは実機に存在しない。呼ぶ側は空を「無い」として扱う。
+		return std::string();
+	}
 } // namespace fang
