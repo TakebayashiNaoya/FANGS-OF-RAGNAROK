@@ -29,6 +29,7 @@
 #include "Runtime/FramePipeline.h"
 #include "Runtime/RuntimeLog.h"
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <span>
@@ -73,32 +74,42 @@ namespace fang
 
 		// 狼の頂点の実測範囲は X[-92.6, 111.4]（体長 204）、Y[-0.39, 106.6]（高さ 107）、Z[±18.2]（幅 36）。
 		// 単位は 1 = 1cm。狼は X 軸に沿って立っているので、真横に当たる Z 方向から見るのが素直。
-		constexpr Vector3 CAMERA_TARGET{ 9.4f, 53.0f, 0.0f };
+		// 注視点は 2 体の中点（接地後の高さ）へ毎フレーム足す ➡ 狼が上下しても画の中でずれない。
+		constexpr Vector3 CAMERA_TARGET_OFFSET{ 9.4f, 53.0f, 0.0f };
 		constexpr Vector3 CAMERA_UP{ 0.0f, 1.0f, 0.0f };
 
 		/** @brief 垂直画角。ラジアン。 */
 		constexpr float CAMERA_FIELD_OF_VIEW_Y_RADIANS = 60.0f * PI / 180.0f;
 
-		// 注視点からカメラまでの距離。カメラは水平に一周するので、どの角度でも全身が収まる距離が要る。
-		// 横: 16:9 なので tan(横半角) = (16/9) * tan(30 度) = 1.026 ➡ 横半角 45.7 度。水平面での外接円の
-		// 半径は sqrt(102^2 + 18.2^2) = 103.6 なので 103.6 / sin(45.7 度) = 144.5 あればよい。
-		// 縦: 手前を向いた縁でも高さは 107 あるため、外接円の外側に 53.5 / tan(30 度) = 92.7 が要る ➡ 196.2。
-		// 縦のほうが厳しいので、そちらに 15% ほど余白を足した値にする。
-		constexpr float CAMERA_DISTANCE = 225.0f;
+		// 注視点からカメラまでの距離。カメラは一周するので、どの角度でも 2 体とも収まる距離が要る。
+		// 2 体は Z 方向へ 1150 離れていて体の張り出しは片側 111 ➡ 収めたい半径は 1150 / 2 + 111 = 686。
+		// 16:9 なので tan(横半角) = (16/9) * tan(30 度) = 1.026 ➡ 横半角 45.7 度。686 / sin(45.7 度) = 959。
+		// これに少し余白を足した値にする。
+		constexpr float CAMERA_DISTANCE = 1000.0f;
+
+		// カメラの俯角。水平のままだと視点の高さが 98 で、周回する円（水平半径 940）上の地表 195 に潜る。
+		// 20 度なら視点が 440 まで上がり、地表との間に 245 の余裕が残る。
+		constexpr float CAMERA_PITCH_RADIANS = 20.0f * PI / 180.0f;
 
 		// 近平面・遠平面。狼が 100〜200 単位なので、0.1 のような近さに置くと深度の精度を捨てることになる。
-		// 手前の面が奥を隠しているかを見るのが目的なので、狼の手前（225 - 117 = 108）より少し内側に置けば足りる。
+		// 手前の面が奥を隠しているかを見るのが目的なので、手前の狼までの距離より内側にあれば足りる。
+		// 遠平面は、視点が原点から最大 1600 離れるのに対し地形が原点から対角 5792 まで広がる ➡ 端まで映る値。
 		constexpr float CAMERA_NEAR_Z = 10.0f;
-		constexpr float CAMERA_FAR_Z  = 2000.0f;
+		constexpr float CAMERA_FAR_Z  = 8000.0f;
 
 		/** @brief カメラが狼の周りを 1 周する秒数。 */
 		constexpr float CAMERA_ORBIT_SECONDS = 20.0f;
 
-		// カメラの既定角度（cameraOrbitRadians = 0）は Z 方向から見た側面視点で、体長 204 の X 軸が画面の
-		// 横方向に映る。2 体目をこの方向へずらせば、その角度で見たときに 2 体が画面上で横並びに見える。
-		// 204 よりわずかに大きくして、体同士が重ならない隙間を空ける。
-		/** @brief 2 体目の狼を 1 体目からずらす X 方向のオフセット（cm）。 */
-		constexpr float SECOND_WOLF_OFFSET_X = 220.0f;
+		// 狼 2 体のワールド XZ。Y は毎フレーム地表から決めるので持たない。
+		// 1 体目はクリアリング（半径 800 の平地、地表 12.0）の中心。2 体目はその外へ出して、高さの違う
+		// 2 点で正しく載ることが 1 枚の画で見えるようにする（地表 78.3 ➡ 1 体目より 66.3 高い）。
+		// (0, 1150) は体の前後（X 方向 -92.6〜+111）で地表差が 0.1、左右（Z 方向 ±18.2）でも 11.5 しか
+		// 無いので、脚 IK がまだ無くても 4 本の脚が地表から ±6 に収まる。
+		/** @brief 狼 2 体を置くワールド XZ。要素数を動く席の数に縛ってある。 */
+		constexpr std::array<Vector3, DYNAMIC_RENDER_ITEM_COUNT> WOLF_POSITIONS{
+			Vector3{ 0.0f, 0.0f, 0.0f },
+			Vector3{ 0.0f, 0.0f, 1150.0f },
+		};
 
 #if FANG_ENABLE_DEBUG_DRAW
 		/** @brief RenderItem の境界ボックスを表す線の色。緑系にして他の要素と見分けやすくする。 */
@@ -337,6 +348,9 @@ namespace fang
 			MeshRenderer*    meshRenderer    = nullptr;
 			TerrainRenderer* terrainRenderer = nullptr;
 			WolfModel*       wolf            = nullptr;
+
+			/** @brief 狼の足元の高さの問い合わせ先。地形を読めていなければ nullptr ➡ 接地せず y = 0 に立つ。 */
+			const HeightmapTerrain* terrain = nullptr;
 
 			/** @brief RunApplication が持つ入れ物。graph.Execute の戻り値の後に 4 値を書く。 */
 			RenderStatistics* renderStatistics = nullptr;
@@ -843,10 +857,11 @@ namespace fang
 			);
 
 			//------------------------------------------------------------------------
-			// 3. View の組み立て(時間で回るカメラ)
+			// 3. 狼の足元の高さと View の組み立て(時間で回るカメラ)
 			// 　SceneRenderer::Reset で前フレームの View を捨ててから、カメラ位置と視射影行列を計算して View を
 			// 　組み立てる。登録(AddShadowView / AddView)はキャスタの箱がそろう次の区画でまとめて行う。
 			// 　入力の仕組みがまだ無いので、経過時間だけでカメラを狼の周りに回す。
+			// 　地表の高さは注視点にも狼の world にも要る ➡ 区画 4 より先にここで引いて、両方で使い回す。
 			//------------------------------------------------------------------------
 			sceneRenderer.Reset();
 
@@ -859,13 +874,34 @@ namespace fang
 				loopContext.cameraOrbitRadians -= 2.0f * PI;
 			}
 
-			// カメラは Y を変えずに水平に周るので、狼を中心とした円周上のオフセットを注視点へ足すだけでよい。
+			// 狼 2 体の足元の地表の高さ。地形を読めていなければ 0 のままで、狼もカメラも y = 0 基準に戻る。
+			// GetHeightAt は範囲外を端の高さへクランプする ➡ 狼が地形の外へ出ても高さが未定義にならない。
+			float   groundHeights[DYNAMIC_RENDER_ITEM_COUNT]{};
+			Vector3 groundedCenter{};
+			for (size_t index = 0; index < DYNAMIC_RENDER_ITEM_COUNT; ++index)
+			{
+				const Vector3& wolfPosition = WOLF_POSITIONS[index];
+				if (loopContext.terrain != nullptr)
+				{
+					groundHeights[index] = loopContext.terrain->GetHeightAt(wolfPosition.x, wolfPosition.z);
+				}
+
+				groundedCenter += Vector3{ wolfPosition.x, wolfPosition.y + groundHeights[index], wolfPosition.z };
+			}
+
+			// 注視点は 2 体の中点（接地後の高さ）。狼が上下しても画の中でずれない。
+			const Vector3 cameraTarget =
+				groundedCenter * (1.0f / static_cast<float>(DYNAMIC_RENDER_ITEM_COUNT)) + CAMERA_TARGET_OFFSET;
+
+			// カメラは俯角を付けた円錐面を周る。水平半径は距離 × cos(俯角)、高さは距離 × sin(俯角)。
+			// 水平のままだと周回の途中で丘に潜るので、俯角で視点を持ち上げてある。
+			const float   orbitRadius = CAMERA_DISTANCE * std::cosf(CAMERA_PITCH_RADIANS);
 			const Vector3 orbitOffset{
-				std::sinf(loopContext.cameraOrbitRadians) * CAMERA_DISTANCE,
-				0.0f,
-				std::cosf(loopContext.cameraOrbitRadians) * CAMERA_DISTANCE,
+				std::sinf(loopContext.cameraOrbitRadians) * orbitRadius,
+				CAMERA_DISTANCE * std::sinf(CAMERA_PITCH_RADIANS),
+				std::cosf(loopContext.cameraOrbitRadians) * orbitRadius,
 			};
-			const Vector3 eye = CAMERA_TARGET + orbitOffset;
+			const Vector3 eye = cameraTarget + orbitOffset;
 
 			// 最小化すると幅も高さも 0 で来る。ゼロ除算と MakePerspectiveMatrix のアサートを避けて 1 で止める。
 			const float viewportWidth  = static_cast<float>(window.GetWidth() > 0 ? window.GetWidth() : 1);
@@ -878,7 +914,7 @@ namespace fang
 
 			const View view{
 				.viewProjection = Multiply(
-					MakeLookAtMatrix(eye, CAMERA_TARGET, CAMERA_UP),
+					MakeLookAtMatrix(eye, cameraTarget, CAMERA_UP),
 					MakePerspectiveMatrix(
 						CAMERA_FIELD_OF_VIEW_Y_RADIANS,
 						viewportWidth / viewportHeight,
@@ -905,8 +941,10 @@ namespace fang
 			std::vector<RenderItem>& renderItems = loopContext.renderItems;
 
 			// 狼を描く。読めていなければメッシュの描画だけを飛ばし、ほかは今までどおり続ける。
-			renderItems[0] = RenderItem{};
-			renderItems[1] = RenderItem{};
+			for (RenderItem& dynamicItem : std::span(renderItems).first(DYNAMIC_RENDER_ITEM_COUNT))
+			{
+				dynamicItem = RenderItem{};
+			}
 
 			WolfModel& wolf = *loopContext.wolf;
 			if (wolf.mesh.IsValid())
@@ -920,30 +958,28 @@ namespace fang
 
 				const Aabb localBounds = loopContext.meshRenderer->GetLocalBounds(wolf.mesh);
 
-				// 2 体目は 1 体目の隣（X 方向）に置く。2 体とも同じ骨行列（span を共有）で描くので、
-				// 同じポーズで並んで歩いて見える。
-				Matrix4x4 secondWolfWorld{};
-				secondWolfWorld.m[3][0] = SECOND_WOLF_OFFSET_X;
+				// 2 体とも同じ骨行列（span を共有）で描くので、同じポーズで歩いて見える。
+				for (size_t index = 0; index < DYNAMIC_RENDER_ITEM_COUNT; ++index)
+				{
+					// 狼の足裏はローカル y = 0 ➡ 地表の高さを Y へ足すだけで接地する（ステージの glTF と
+					// 同じ規約）。bounds は接地後の world から作るので、箱が地面に取り残されない。
+					const Vector3& wolfPosition = WOLF_POSITIONS[index];
 
-				// world が単位行列でなくなったので、bounds は毎回 world で変換して埋める。
-				renderItems[0] = RenderItem{
-					.mesh             = wolf.mesh,
-					.bounds           = TransformAabb(localBounds, Matrix4x4{}),
-					.skinningMatrices = wolf.skinningMatrices,
-					.baseColor        = wolf.baseColor,
-					.metallicFactor   = wolf.metallicFactor,
-					.roughnessFactor  = wolf.roughnessFactor,
-				};
+					Matrix4x4 world{};
+					world.m[3][0] = wolfPosition.x;
+					world.m[3][1] = wolfPosition.y + groundHeights[index];
+					world.m[3][2] = wolfPosition.z;
 
-				renderItems[1] = RenderItem{
-					.mesh             = wolf.mesh,
-					.world            = secondWolfWorld,
-					.bounds           = TransformAabb(localBounds, secondWolfWorld),
-					.skinningMatrices = wolf.skinningMatrices,
-					.baseColor        = wolf.baseColor,
-					.metallicFactor   = wolf.metallicFactor,
-					.roughnessFactor  = wolf.roughnessFactor,
-				};
+					renderItems[index] = RenderItem{
+						.mesh             = wolf.mesh,
+						.world            = world,
+						.bounds           = TransformAabb(localBounds, world),
+						.skinningMatrices = wolf.skinningMatrices,
+						.baseColor        = wolf.baseColor,
+						.metallicFactor   = wolf.metallicFactor,
+						.roughnessFactor  = wolf.roughnessFactor,
+					};
+				}
 			}
 
 			const std::span<const RenderItem> submittedItems(renderItems);
@@ -1295,6 +1331,14 @@ namespace fang
 		loopContext.meshRenderer    = &meshRenderer;
 		loopContext.terrainRenderer = &terrainRenderer;
 		loopContext.wolf            = &wolf;
+
+		// 地形を読めていないときだけ nullptr。狼は接地せず y = 0 に立ち、同じく y = 0 のステージと足並みが
+		// そろう。理由はここで 1 行だけ出す（毎フレームの経路にログを置かない）。
+		loopContext.terrain = terrain.isLoaded ? &terrain.heightmap : nullptr;
+		if (loopContext.terrain == nullptr)
+		{
+			FANG_LOG_WARNING(Runtime, "地形が無いので狼を接地しない。狼は y = 0 のまま");
+		}
 
 		// stage はここで用済み。renderItems / meshes / textures の実体を loopContext へ移す
 		// （resize 済みの vector をコピーせずそのまま使い回す）。
