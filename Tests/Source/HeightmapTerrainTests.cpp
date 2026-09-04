@@ -77,6 +77,75 @@ TEST_CASE("範囲外の問い合わせは端へクランプされる")
 }
 
 
+TEST_CASE("TryGetHeightAt は範囲内で GetHeightAt と同じ高さを書く")
+{
+	const std::vector<uint16_t> heights = { 0, 65535, 0, 65535 };
+
+	fang::HeightmapTerrain terrain;
+	CHECK(terrain.BuildFromHeights(heights, 2, 2, MakeDesc()));
+
+	const float sampleX[3] = { -25.0f, 0.0f, 12.5f };
+	for (const float worldX : sampleX)
+	{
+		float height = -1.0f;
+		CHECK(terrain.TryGetHeightAt(worldX, 10.0f, &height));
+		CHECK(height == doctest::Approx(terrain.GetHeightAt(worldX, 10.0f)));
+	}
+
+	// 端ちょうどは範囲内。地形の縁に置いた配置を弾かない。
+	float edgeHeight = -1.0f;
+	CHECK(terrain.TryGetHeightAt(-50.0f, -50.0f, &edgeHeight));
+	CHECK(edgeHeight == doctest::Approx(0.0f));
+	CHECK(terrain.TryGetHeightAt(50.0f, 50.0f, &edgeHeight));
+	CHECK(edgeHeight == doctest::Approx(100.0f));
+}
+
+
+TEST_CASE("TryGetHeightAt は範囲外を端へ寄せずに false を返す")
+{
+	const std::vector<uint16_t> heights = { 0, 65535, 0, 65535 };
+
+	fang::HeightmapTerrain terrain;
+	CHECK(terrain.BuildFromHeights(heights, 2, 2, MakeDesc()));
+
+	// 失敗したときは出力に触らない ➡ 呼び出し側は初期値（接地なし）をそのまま使える。
+	float height = -1.0f;
+	CHECK_FALSE(terrain.TryGetHeightAt(50.1f, 0.0f, &height));
+	CHECK_FALSE(terrain.TryGetHeightAt(-50.1f, 0.0f, &height));
+	CHECK_FALSE(terrain.TryGetHeightAt(0.0f, 10000.0f, &height));
+	CHECK(height == doctest::Approx(-1.0f));
+
+	// 同じ座標を GetHeightAt に聞けば端の高さが返る。クランプする版はそのまま残っている。
+	CHECK(terrain.GetHeightAt(10000.0f, 0.0f) == doctest::Approx(100.0f));
+}
+
+
+TEST_CASE("TryGetHeightAt は未読み込みなら false を返す")
+{
+	fang::HeightmapTerrain terrain;
+
+	float height = -1.0f;
+	CHECK_FALSE(terrain.TryGetHeightAt(0.0f, 0.0f, &height));
+	CHECK(height == doctest::Approx(-1.0f));
+}
+
+
+TEST_CASE("同じ XZ への問い合わせは何度でも同じ高さになる")
+{
+	// 柱の Base / Shaft / Cap のように XZ が同一の配置を別々に接地させても、積み重ねが崩れない根拠。
+	const std::vector<uint16_t> heights = { 0, 20000, 40000, 65535 };
+
+	fang::HeightmapTerrain terrain;
+	CHECK(terrain.BuildFromHeights(heights, 2, 2, MakeDesc()));
+
+	float first  = 0.0f;
+	float second = 0.0f;
+	CHECK(terrain.TryGetHeightAt(13.5f, -27.5f, &first));
+	CHECK(terrain.TryGetHeightAt(13.5f, -27.5f, &second));
+	CHECK(first == second);
+}
+
+
 TEST_CASE("チャンクは指定クワッド数で分割され、縁の頂点が隣と重複する")
 {
 	// 5x5 画素 = 4x4 クワッドをチャンク 1 辺 2 クワッドで割ると 2x2 = 4 チャンク。

@@ -173,6 +173,38 @@ namespace fang
 		const float pixelSpaceZ =
 			std::clamp((worldZ - m_originZ) / m_cellSizeZ, 0.0f, static_cast<float>(m_pixelCountZ - 1));
 
+		return SampleHeightAtPixel(pixelSpaceX, pixelSpaceZ);
+	}
+
+
+	bool HeightmapTerrain::TryGetHeightAt(float worldX, float worldZ, float* outHeight) const
+	{
+		if (m_heights.empty())
+		{
+			return false;
+		}
+
+		// クランプせずに画素空間へ移す。範囲の判定は地形自身が持つ寸法で行う
+		// ➡ 呼び出し側が全長や原点の定数を写さずに済む。
+		const float pixelSpaceX = (worldX - m_originX) / m_cellSizeX;
+		const float pixelSpaceZ = (worldZ - m_originZ) / m_cellSizeZ;
+
+		// 端ちょうどは範囲内。地形の縁に置いたものを弾かないため。
+		const float lastPixelX = static_cast<float>(m_pixelCountX - 1);
+		const float lastPixelZ = static_cast<float>(m_pixelCountZ - 1);
+		if (!(pixelSpaceX >= 0.0f && pixelSpaceX <= lastPixelX && pixelSpaceZ >= 0.0f && pixelSpaceZ <= lastPixelZ))
+		{
+			return false;
+		}
+
+		*outHeight = SampleHeightAtPixel(pixelSpaceX, pixelSpaceZ);
+
+		return true;
+	}
+
+
+	float HeightmapTerrain::SampleHeightAtPixel(float pixelSpaceX, float pixelSpaceZ) const
+	{
 		// 右端・下端ちょうどでも 4 画素が範囲に収まるよう、基準の画素は 1 つ内側までに抑える。
 		const uint32_t baseX = std::min(static_cast<uint32_t>(pixelSpaceX), m_pixelCountX - 2);
 		const uint32_t baseZ = std::min(static_cast<uint32_t>(pixelSpaceZ), m_pixelCountZ - 2);

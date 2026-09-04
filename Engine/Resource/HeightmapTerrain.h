@@ -59,8 +59,8 @@ namespace fang
 	 * @details GPU リソースは作らない。DdsImage と同じで、CPU 側のデータを返すところまでがこのクラスの仕事。
 	 *          地形は静的なので、読み込み後に中身が変わることはない。高さ配列は GetHeightAt のために
 	 *          持ち続ける（接地判定を CPU 側でも使えるようにするため）。
-	 * @threading Load / BuildFromHeights はメインスレッドのみ。GetChunks / GetHeightAt は書き込みが無いので、
-	 *            読み込み完了後はどのスレッドから読んでもよい。
+	 * @threading Load / BuildFromHeights はメインスレッドのみ。GetChunks / GetHeightAt / TryGetHeightAt は
+	 *            書き込みが無いので、読み込み完了後はどのスレッドから読んでもよい。
 	 */
 	class HeightmapTerrain
 	{
@@ -108,6 +108,17 @@ namespace fang
 		 */
 		[[nodiscard]] float GetHeightAt(float worldX, float worldZ) const;
 
+		/**
+		 * @brief ワールド XZ の地表の高さを問い合わせる。範囲外・未読み込みなら false。
+		 * @details GetHeightAt と違い端へクランプしない ➡ 地形の外にあるものを端の高さへ黙って吸い寄せない。
+		 *          読み込み時にステージの配置を接地させる用途のように、範囲外を「高さが無い」と扱いたい側が使う。
+		 * @param worldX    問い合わせる X 座標（cm）。
+		 * @param worldZ    問い合わせる Z 座標（cm）。
+		 * @param outHeight 範囲内のときだけ高さ（cm）を書く。false のときは触らない。
+		 * @return 範囲内で高さを書けたら true。地形の端ちょうどは範囲内として扱う。
+		 */
+		[[nodiscard]] bool TryGetHeightAt(float worldX, float worldZ, float* outHeight) const;
+
 
 	private:
 		/** @brief チャンクの実体の置き場。TerrainChunkSource の span はここを指す。 */
@@ -117,6 +128,15 @@ namespace fang
 			std::vector<Vector3>  normals;
 			std::vector<uint16_t> indices;
 		};
+
+		/**
+		 * @brief 画素空間の座標を隣接 4 画素でバイリニア補間する。
+		 * @details GetHeightAt と TryGetHeightAt が範囲の扱いを決めたあと、どちらもここを通る
+		 *          ➡ 端へクランプするかどうかだけが違い、補間の結果は同じになる。
+		 * @param pixelSpaceX 画素単位の X。0 以上 pixelCountX - 1 以下であること。
+		 * @param pixelSpaceZ 画素単位の Z。0 以上 pixelCountZ - 1 以下であること。
+		 */
+		[[nodiscard]] float SampleHeightAtPixel(float pixelSpaceX, float pixelSpaceZ) const;
 
 		/** @brief 画素の値を cm の高さへ直す。 */
 		[[nodiscard]] float PixelToHeight(uint32_t pixelX, uint32_t pixelZ) const;
