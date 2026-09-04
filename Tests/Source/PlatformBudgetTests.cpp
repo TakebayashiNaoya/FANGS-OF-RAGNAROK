@@ -35,7 +35,8 @@ TEST_CASE("倍率は決めた範囲で丸められる")
 {
 	fang::PlatformBudget budget;
 
-	CHECK(budget.GetCpuScaleFactor() == doctest::Approx(1.0f));
+	// 既定は構成で違う。実機は 1.0（換算しない）、PC は実測値。
+	CHECK(budget.GetCpuScaleFactor() == doctest::Approx(fang::budget::DEFAULT_CPU_SCALE_FACTOR));
 
 	budget.SetCpuScaleFactor(4.5f);
 	CHECK(budget.GetCpuScaleFactor() == doctest::Approx(4.5f));

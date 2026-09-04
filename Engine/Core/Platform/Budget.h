@@ -29,6 +29,26 @@ namespace fang
 		/** @brief メモリがこの割合を超えたら警告を出す。 */
 		inline constexpr float MEMORY_WARNING_RATIO = 0.8f;
 
+		/**
+		 * @brief Xbox が PC の何倍の時間をかけるか。2026-09-04 に実測した値。
+		 * @details JobSystemPanel のテスト負荷（要素数 1048576 / 分割幅 256）の直列の移動平均を
+		 *          両方で測って割った。実機 1.150 ms ÷ ノート 0.180 ms = 6.39。
+		 *          実機は Xbox One S、ノートは i7-13620H。総和の検算は両方で一致していた。
+		 *          この負荷は自動ベクトル化が効くので、分岐の多いコードでは差がもっと縮む。
+		 *          ➡上限側の目安として使う。実機計測の代わりにはならない。
+		 */
+		inline constexpr float MEASURED_CPU_SCALE_FACTOR = 6.39f;
+
+		/**
+		 * @brief 起動時の倍率。
+		 * @details 実機で換算しても意味が無いので実機は 1.0。PC は実測値から始める。
+		 */
+#if FANG_TARGET_XBOX
+		inline constexpr float DEFAULT_CPU_SCALE_FACTOR = 1.0f;
+#else
+		inline constexpr float DEFAULT_CPU_SCALE_FACTOR = MEASURED_CPU_SCALE_FACTOR;
+#endif
+
 		/** @brief CPU 倍率の下限。1.0 は「換算しない」。Xbox が PC より速いことはないので下は切る。 */
 		inline constexpr float MINIMUM_CPU_SCALE_FACTOR = 1.0f;
 
@@ -103,8 +123,8 @@ namespace fang
 
 
 	private:
-		float m_frameWorkSeconds = 0.0f; /**< 直近のフレームの実処理時間。 */
-		float m_cpuScaleFactor   = 1.0f; /**< Xbox 換算の倍率。1.0 は未計測。 */
+		float m_frameWorkSeconds = 0.0f;                             /**< 直近のフレームの実処理時間。 */
+		float m_cpuScaleFactor   = budget::DEFAULT_CPU_SCALE_FACTOR; /**< Xbox 換算の倍率。1.0 は換算しない。 */
 
 		uint64_t m_memoryUsedBytes        = 0; /**< 直近に測った使用量。 */
 		uint64_t m_memoryPeakBytes        = 0; /**< 使用量の最高水位。 */

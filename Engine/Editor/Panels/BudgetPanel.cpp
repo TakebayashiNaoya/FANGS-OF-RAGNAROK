@@ -192,10 +192,10 @@ namespace fang::editor
 		if (scaleFactor <= budget::MINIMUM_CPU_SCALE_FACTOR)
 		{
 			// 状態は短い 1 行に分けておく。1 行にまとめると「1.00 / 倍」の位置で折り返して読みにくい。
-			ImGui::TextDisabled("倍率 1.00 倍。まだ換算していない。");
+			ImGui::TextDisabled("倍率 1.00 倍。換算していない（実機ではこれでよい）。");
 			ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
 			ImGui::TextWrapped(
-				"ジョブシステムパネルのテスト負荷を実機と PC で回し、直列の所要時間の比をここへ入れると効き始める。"
+				"PC で換算したいときは、テスト負荷を実機と PC で回して直列の所要時間の比をここへ入れる。"
 			);
 			ImGui::PopStyleColor();
 		}
