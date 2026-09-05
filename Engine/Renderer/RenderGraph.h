@@ -115,6 +115,38 @@ namespace fang
 	};
 
 	/**
+	 * @brief タイムスタンプ 2 つの差をミリ秒へ直す。
+	 * @param beginTicks     区間の頭の tick。
+	 * @param endTicks       区間の末尾の tick。
+	 * @param ticksPerSecond 1 秒あたりの tick 数（GraphicsDevice::GetTimestampFrequency）。
+	 * @return endTicks が beginTicks より前（書き込み前の枠を読んだとき）か ticksPerSecond が 0 なら 0。
+	 */
+	[[nodiscard]] inline float ConvertTimestampTicksToMilliseconds(
+		uint64_t beginTicks,
+		uint64_t endTicks,
+		uint64_t ticksPerSecond
+	)
+	{
+		if (endTicks < beginTicks || ticksPerSecond == 0)
+		{
+			return 0.0f;
+		}
+
+		return static_cast<float>(
+			static_cast<double>(endTicks - beginTicks) * 1000.0 / static_cast<double>(ticksPerSecond)
+		);
+	}
+
+#if FANG_ENABLE_PROFILER
+	/** @brief パス 1 つの GPU 時間。 */
+	struct RenderGraphPassGpuTime
+	{
+		std::string_view name; /**< 宣言の string_view そのもの。Execute が終わるまで有効。 */
+		float            milliseconds = 0.0f;
+	};
+#endif
+
+	/**
 	 * @brief 1 フレームぶんの描画パスをまとめ、バリアとクリアを導いて実行する。
 	 * @details パスは宣言順のまま実行する（並べ替えない）。毎フレーム Reset ➡ 宣言 ➡ Compile ➡ Execute と
 	 *          組み直す前提で、持ち物は全部固定長 ➡ 定常状態のヒープ確保は 0。
@@ -202,6 +234,23 @@ namespace fang
 		 * @return 宣言順に並んだ本。GraphicsDevice::EndFrame へそのまま渡す。記録できなかったフレームは空。
 		 */
 		[[nodiscard]] std::span<rhi::CommandList* const> GetCommandLists() const;
+
+#if FANG_ENABLE_PROFILER
+		/**
+		 * @brief 直前のフレームのパス別 GPU 時間と、先頭パスの開始から末尾パスの終了までの合計を読む。
+		 * @details EndFrame の後に呼ぶ。device が待ち終えたタイムスタンプとこのグラフのパス列が同じフレームのもの
+		 *          であること（今は毎フレーム待ち切るので成立する。in-flight を増やすときはパス名も面ごとに控える）。
+		 * @param device               タイムスタンプの読み元。
+		 * @param outPassTimes         パス順に書く。長さがパス数より短ければ、入るぶんだけ書く。
+		 * @param outFrameMilliseconds 先頭の開始から末尾の終了まで。本と本の隙間も含めた GPU の占有時間。
+		 * @return 書いたパスの数。タイムスタンプが取れない環境は 0。
+		 */
+		uint32_t ReadPassGpuTimes(
+			const rhi::GraphicsDevice&        device,
+			std::span<RenderGraphPassGpuTime> outPassTimes,
+			float*                            outFrameMilliseconds
+		) const;
+#endif
 
 
 	private:

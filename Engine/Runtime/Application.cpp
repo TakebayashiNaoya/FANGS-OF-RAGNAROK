@@ -33,6 +33,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstring>
 #include <span>
 #include <string>
 #include <utility>
@@ -44,6 +45,14 @@ FANG_DEFINE_LOG_CATEGORY(Runtime);
 
 namespace fang
 {
+#if FANG_ENABLE_PROFILER
+	static_assert(
+		RenderStatistics::MAX_TIMED_PASS_COUNT == RenderGraph::MAX_PASS_COUNT,
+		"スナップショットに載せられるパス別 GPU 時間の数が RenderGraph のパス数と合っていない"
+	);
+#endif
+
+
 	namespace
 	{
 		constexpr rhi::ClearColor BACKGROUND_COLOR{ 0.05f, 0.06f, 0.09f, 1.0f };
@@ -870,6 +879,11 @@ namespace fang
 			RenderGraph&         graph         = *loopContext.renderGraph;
 			SceneRenderer&       sceneRenderer = *loopContext.sceneRenderer;
 
+#if FANG_ENABLE_PROFILER
+			// 描画（メイン）の内訳の 1 つ目。ここから EndFrame を呼ぶ手前までが「記録」。
+			const auto recordStartTime = std::chrono::steady_clock::now();
+#endif
+
 			//------------------------------------------------------------------------
 			// 1. リサイズ処理
 			// 　ウィンドウの大きさが変わっていたら、スワップチェーンと深度バッファをその大きさで作り直す。
@@ -1229,7 +1243,48 @@ namespace fang
 			// 14. EndFrame
 			// 　積んだコマンドリストを渡して実行・Present・GPU の完了待ちをまとめて行う。
 			//------------------------------------------------------------------------
+#if FANG_ENABLE_PROFILER
+			const float recordMilliseconds =
+				std::chrono::duration<float, std::milli>(std::chrono::steady_clock::now() - recordStartTime).count();
+#endif
+
 			device.EndFrame(graph.GetCommandLists());
+
+#if FANG_ENABLE_PROFILER
+			//------------------------------------------------------------------------
+			// 15. GPU 時間と EndFrame の内訳のスナップショット更新
+			// 　どちらも EndFrame が GPU の完了を待った後でしか確定しないので、区画 12 とは別にここで書く。
+			// 　区画 13 で畳んだフレームは前の値が残るだけで、読み手に特別扱いは要らない。
+			//------------------------------------------------------------------------
+			RenderStatistics& statistics = *loopContext.renderStatistics;
+
+			RenderGraphPassGpuTime passGpuTimes[RenderStatistics::MAX_TIMED_PASS_COUNT];
+			float                  gpuFrameMilliseconds = 0.0f;
+
+			const uint32_t timedPassCount = graph.ReadPassGpuTimes(device, passGpuTimes, &gpuFrameMilliseconds);
+			for (uint32_t passIndex = 0; passIndex < timedPassCount; ++passIndex)
+			{
+				RenderPassGpuTime& destination = statistics.passGpuTimes[passIndex];
+
+				// 名前の指す先は Execute までしか生きていないので、固定長の配列へ写す。余りは 0 で埋めておく。
+				const std::string_view name       = passGpuTimes[passIndex].name;
+				const size_t           copyLength = std::min(name.size(), RenderPassGpuTime::MAX_NAME_LENGTH - 1);
+				std::memset(destination.name, 0, RenderPassGpuTime::MAX_NAME_LENGTH);
+				std::memcpy(destination.name, name.data(), copyLength);
+
+				destination.milliseconds = passGpuTimes[passIndex].milliseconds;
+			}
+
+			statistics.timedPassCount       = timedPassCount;
+			statistics.gpuFrameMilliseconds = gpuFrameMilliseconds;
+			statistics.hasGpuTimestamps     = device.HasGpuTimestamps();
+
+			const rhi::EndFrameTiming& endFrameTiming = device.GetLastEndFrameTiming();
+
+			statistics.recordMilliseconds  = recordMilliseconds;
+			statistics.presentMilliseconds = endFrameTiming.presentMilliseconds;
+			statistics.gpuWaitMilliseconds = endFrameTiming.gpuWaitMilliseconds;
+#endif
 		}
 	} // namespace
 

@@ -16,7 +16,7 @@ namespace fang::editor
 		constexpr float WINDOW_MIN_WIDTH = 480.0f;
 
 		/** @brief 初回に置く位置。既定のままだとレンダリング統計に重なる。 */
-		constexpr ImVec2 FIRST_USE_POSITION{ 900.0f, 320.0f };
+		constexpr ImVec2 FIRST_USE_POSITION{ 900.0f, 530.0f };
 
 		/** @brief 失敗しているときの文字色。 */
 		constexpr ImVec4 FAILURE_COLOR{ 1.0f, 0.4f, 0.4f, 1.0f };

@@ -5,6 +5,8 @@
 #include "Pch.h"
 #include "RHI/GraphicsDevice.h"
 #include "Core/Log/Assert.h"
+#include <chrono>
+#include <cstring>
 
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -31,6 +33,13 @@ namespace fang::rhi
 
 			return "不明";
 		}
+
+
+#if FANG_ENABLE_PROFILER
+		/** @brief 読み出し先のうち、1 つの面が使う大きさ（バイト）。 */
+		constexpr size_t TIMESTAMP_READBACK_BYTES_PER_FRAME =
+			GraphicsDevice::MAX_TIMESTAMP_SLOT_COUNT * sizeof(uint64_t);
+#endif
 	} // namespace
 
 
@@ -259,8 +268,119 @@ namespace fang::rhi
 			return false;
 		}
 
+#if FANG_ENABLE_PROFILER
+		//------------------------------------------------------------------------
+		// 11. GPU タイムスタンプ
+		// 　パスごとの GPU 時間を測るためのクエリヒープと読み出し先。
+		// 　取れない環境でも起動は止めない ➡ 失敗は警告だけ出してタイムスタンプ無しで続ける。
+		//------------------------------------------------------------------------
+		m_hasGpuTimestamps = InitializeGpuTimestamps();
+		if (!m_hasGpuTimestamps)
+		{
+			FANG_LOG_WARNING(RHI, "GPU タイムスタンプを用意できなかった。パス別の GPU 時間は出ない");
+			m_timestampQueryHeap.Reset();
+			m_timestampReadbackBuffer.Reset();
+			m_timestampFrequency = 0;
+		}
+#endif
+
 		return true;
 	}
+
+
+#if FANG_ENABLE_PROFILER
+
+	bool GraphicsDevice::InitializeGpuTimestamps()
+	{
+		D3D12_QUERY_HEAP_DESC queryHeapDesc{};
+		queryHeapDesc.Type  = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
+		queryHeapDesc.Count = MAX_TIMESTAMP_SLOT_COUNT;
+		if (!CheckHresult(
+				m_device->CreateQueryHeap(&queryHeapDesc, IID_PPV_ARGS(&m_timestampQueryHeap)),
+				"タイムスタンプのクエリヒープの生成"
+			))
+		{
+			return false;
+		}
+
+		// 読み出し先は面ごとに区画を分ける。GPU がまだ書いている区画を CPU が読まないため。
+		D3D12_HEAP_PROPERTIES heapProperties{};
+		heapProperties.Type = D3D12_HEAP_TYPE_READBACK;
+
+		D3D12_RESOURCE_DESC resourceDesc{};
+		resourceDesc.Dimension        = D3D12_RESOURCE_DIMENSION_BUFFER;
+		resourceDesc.Width            = TIMESTAMP_READBACK_BYTES_PER_FRAME * BACK_BUFFER_COUNT;
+		resourceDesc.Height           = 1;
+		resourceDesc.DepthOrArraySize = 1;
+		resourceDesc.MipLevels        = 1;
+		resourceDesc.Format           = DXGI_FORMAT_UNKNOWN;
+		resourceDesc.SampleDesc.Count = 1;
+		resourceDesc.Layout           = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		if (!CheckHresult(
+				m_device->CreateCommittedResource(
+					&heapProperties,
+					D3D12_HEAP_FLAG_NONE,
+					&resourceDesc,
+					D3D12_RESOURCE_STATE_COPY_DEST,
+					nullptr,
+					IID_PPV_ARGS(&m_timestampReadbackBuffer)
+				),
+				"タイムスタンプの読み出し先の生成"
+			))
+		{
+			return false;
+		}
+
+		// tick を秒へ直す分母。機種ごとに違うので起動時にキューから取る。
+		if (!CheckHresult(m_commandQueue->GetTimestampFrequency(&m_timestampFrequency), "タイムスタンプ周波数の取得"))
+		{
+			return false;
+		}
+
+		return m_timestampFrequency != 0;
+	}
+
+
+	void GraphicsDevice::ReadCompletedTimestamps()
+	{
+		if (!m_hasGpuTimestamps)
+		{
+			return;
+		}
+
+		// 読むのは今の面の区画だけ。Map に範囲を渡すと、その分しか CPU 側へ引き寄せない。
+		const size_t      offsetInBytes = TIMESTAMP_READBACK_BYTES_PER_FRAME * m_swapChain.GetFrameIndex();
+		const D3D12_RANGE readRange{ offsetInBytes, offsetInBytes + TIMESTAMP_READBACK_BYTES_PER_FRAME };
+
+		void* mapped = nullptr;
+		if (!CheckHresult(m_timestampReadbackBuffer->Map(0, &readRange, &mapped), "タイムスタンプの読み出し先の Map"))
+		{
+			return;
+		}
+
+		std::memcpy(
+			m_completedTimestamps,
+			static_cast<const uint8_t*>(mapped) + offsetInBytes,
+			TIMESTAMP_READBACK_BYTES_PER_FRAME
+		);
+
+		// 書いていないので Unmap には空の範囲を渡す。
+		const D3D12_RANGE writtenRange{ 0, 0 };
+		m_timestampReadbackBuffer->Unmap(0, &writtenRange);
+	}
+
+
+	std::span<const uint64_t> GraphicsDevice::GetCompletedTimestamps() const
+	{
+		if (!m_hasGpuTimestamps)
+		{
+			return {};
+		}
+
+		return std::span<const uint64_t>(m_completedTimestamps, MAX_TIMESTAMP_SLOT_COUNT);
+	}
+
+#endif
 
 
 	void GraphicsDevice::Shutdown()
@@ -295,6 +415,14 @@ namespace fang::rhi
 		m_textures.Shutdown();
 		m_buffers.Shutdown();
 		m_pipelines.Shutdown();
+
+#if FANG_ENABLE_PROFILER
+		m_timestampReadbackBuffer.Reset();
+		m_timestampQueryHeap.Reset();
+
+		m_timestampFrequency = 0;
+		m_hasGpuTimestamps   = false;
+#endif
 
 		m_fence.Shutdown();
 		m_shaderVisibleHeap.Shutdown();
@@ -582,6 +710,10 @@ namespace fang::rhi
 			++nativeCommandListCount;
 		}
 
+#if FANG_ENABLE_PROFILER
+		const auto presentStartTime = std::chrono::steady_clock::now();
+#endif
+
 		// ③ ExecuteCommandLists で一括投入する。
 		// 　 1 本も無ければ Present だけ行う。積むものが無いフレームでも画面の更新は止めない。
 		if (nativeCommandListCount > 0)
@@ -592,9 +724,26 @@ namespace fang::rhi
 		// ④ Present で表裏を入れ替える。
 		m_swapChain.Present();
 
+#if FANG_ENABLE_PROFILER
+		const auto waitStartTime = std::chrono::steady_clock::now();
+#endif
+
 		// ⑤ フェンスで GPU の完了を待つ。
 		// TODO: GPU を 2〜3 フレーム in-flight にする。今は毎フレーム待つ。
 		m_fence.WaitForGPU(*m_commandQueue.Get());
+
+#if FANG_ENABLE_PROFILER
+		// vsync のフリップ待ちは Present の中で起きるので、③④をまとめて Present の時間とする。
+		const auto waitEndTime = std::chrono::steady_clock::now();
+
+		m_lastEndFrameTiming.presentMilliseconds =
+			std::chrono::duration<float, std::milli>(waitStartTime - presentStartTime).count();
+		m_lastEndFrameTiming.gpuWaitMilliseconds =
+			std::chrono::duration<float, std::milli>(waitEndTime - waitStartTime).count();
+
+		// GPU の仕事が全部終わった地点なので、待ちを増やさずに今の面の枠を読める。
+		ReadCompletedTimestamps();
+#endif
 
 		// ⑥ 貸し出しの帳簿を締め、次のフレームの面へ進める。
 		for (uint32_t listIndex = 0; listIndex < m_acquiredCommandListCount; ++listIndex)

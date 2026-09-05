@@ -1,26 +1,22 @@
 ﻿/**
  * @file RenderStatisticsPanel.h
- * @brief 描画の中身（Submit数・描いた数・パス数・コマンドリスト本数）を出すパネル。
+ * @brief 描画の中身（Submit数・描いた数・パス数・コマンドリスト本数）と、描画時間の内訳を出すパネル。
  */
 #pragma once
 
 #include "Core/CoreMacros.h"
+#include "Runtime/FrameContext.h"
 #include <cstdint>
-
-
-namespace fang
-{
-	struct RenderStatistics;
-} // namespace fang
 
 
 namespace fang::editor
 {
 	/**
 	 * @brief 「レンダリング統計」ウィンドウ 1 枚。
-	 * @details フレーム時間（ms）と FPS は自前の移動平均、残り 4 値（Submit 数・描いた数・パス数・コマンド
-	 *          リスト本数）は BuildFrame が受けた RenderStatistics をそのまま表示する。カメラを回して
-	 *          描いた数が Submit 数より減ることを見せる、カリングの可視化道具。
+	 * @details フレーム時間（ms）と FPS、描画（メイン）の内訳、パス別の GPU 時間は自前の移動平均で出す。
+	 *          件数（Submit 数・描いた数・パス数・コマンドリスト本数）は BuildFrame が受けた RenderStatistics
+	 *          をそのまま表示する。カメラを回して描いた数が Submit 数より減ることと、そのときにどのパスの
+	 *          GPU 時間が動くかを見せる道具。
 	 * @threading 組み立て・移動平均の更新ともメインスレッドのみ。
 	 */
 	class RenderStatisticsPanel
@@ -28,8 +24,8 @@ namespace fang::editor
 	public:
 		FANG_NON_COPYABLE(RenderStatisticsPanel);
 
-		/** @brief 移動平均に使う履歴の長さ（フレーム数）。 */
-		static constexpr uint32_t FRAME_TIME_HISTORY_LENGTH = 120;
+		/** @brief 移動平均に使う履歴の長さ（フレーム数）。全部の行で共有する。 */
+		static constexpr uint32_t HISTORY_LENGTH = 120;
 
 		RenderStatisticsPanel()  = default;
 		~RenderStatisticsPanel() = default;
@@ -55,10 +51,29 @@ namespace fang::editor
 
 	private:
 		/**
-		 * @brief フレーム時間の履歴へ 1 件積み、移動和を更新する。
+		 * @brief 固定長の履歴と移動和。
 		 * @details 押し出す値を和から引く ➡ 新しい値を書いて和に足す ➡ 書き込み位置を進める、の O(1)。
+		 * @threading メインスレッドのみ。
 		 */
-		void PushFrameTimeSample(float deltaTimeSeconds);
+		struct MovingAverage
+		{
+			/** @brief 1 件積む。 */
+			void Push(float value);
+
+			/** @brief 今の平均。まだ 1 件も無ければ 0。 */
+			[[nodiscard]] float Get() const;
+
+			/** @brief 空に戻す。別の条件で出た値を混ぜないために呼ぶ。 */
+			void Reset();
+
+			float    history[HISTORY_LENGTH]{}; /**< リングバッファ。 */
+			uint32_t writeIndex  = 0;           /**< 次に書き込む位置。 */
+			uint32_t sampleCount = 0;           /**< 埋まった数。起動直後は分母をこれに絞る。 */
+			float    movingSum   = 0.0f;        /**< 履歴の合計。サンプル数で割ると移動平均になる。 */
+		};
+
+		/** @brief 全部の移動平均を空に戻す。Initialize と Shutdown の中身。 */
+		void ResetAverages();
 
 		/** @brief 移動平均のフレーム時間（ms）と FPS を組み立てる。 */
 		void BuildFrameTimeSection() const;
@@ -66,13 +81,31 @@ namespace fang::editor
 		/** @brief Submit 数・描いた数・パス数・コマンドリスト本数をそのまま並べる。 */
 		void BuildRenderStatisticsSection(const RenderStatistics& renderStatistics) const;
 
+#if FANG_ENABLE_PROFILER
+		/** @brief 内訳と GPU 時間を移動平均へ積む。パス名が変わった番号は履歴を捨ててから積む。 */
+		void PushTimingSamples(const RenderStatistics& renderStatistics);
+
+		/** @brief 描画（メイン）の内訳 3 行を組み立てる。 */
+		void BuildRenderTimeBreakdownSection() const;
+
+		/** @brief GPU 合計とパス別の行を組み立てる。取れない環境は「なし」の 1 行。 */
+		void BuildGpuTimeSection(const RenderStatistics& renderStatistics) const;
+#endif
+
 
 	private:
-		float m_frameTimeSecondsHistory[FRAME_TIME_HISTORY_LENGTH]{}; /**< リングバッファ。秒単位。 */
+		MovingAverage m_frameTimeSeconds; /**< 秒単位。FPS も同じ平均から出す。 */
 
-		uint32_t m_frameTimeHistoryWriteIndex  = 0; /**< 次に書き込む位置。 */
-		uint32_t m_frameTimeHistorySampleCount = 0; /**< 埋まった数。起動直後は分母をこれに絞る。 */
+#if FANG_ENABLE_PROFILER
+		MovingAverage m_recordMilliseconds;
+		MovingAverage m_presentMilliseconds;
+		MovingAverage m_gpuWaitMilliseconds;
+		MovingAverage m_gpuFrameMilliseconds;
 
-		float m_frameTimeMovingSumSeconds = 0.0f; /**< 履歴の合計。サンプル数で割ると移動平均になる。 */
+		MovingAverage m_passGpuMilliseconds[RenderStatistics::MAX_TIMED_PASS_COUNT]; /**< パスの番号ごと。 */
+
+		/** @brief 番号ごとに控えた前フレームのパス名。違う名前が来たら、その番号の履歴を捨てる。 */
+		char m_passNames[RenderStatistics::MAX_TIMED_PASS_COUNT][RenderPassGpuTime::MAX_NAME_LENGTH]{};
+#endif
 	};
 } // namespace fang::editor

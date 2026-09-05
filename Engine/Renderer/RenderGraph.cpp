@@ -8,6 +8,7 @@
 #include "Core/Job/JobSystem.h"
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
+#include <algorithm>
 
 
 namespace fang
@@ -21,6 +22,13 @@ namespace fang
 		RenderGraph::MAX_PASS_COUNT <= rhi::GraphicsDevice::MAX_COMMAND_LIST_COUNT,
 		"パスの数だけコマンドリストを借りられない"
 	);
+
+#if FANG_ENABLE_PROFILER
+	static_assert(
+		RenderGraph::MAX_PASS_COUNT * 2 <= rhi::GraphicsDevice::MAX_TIMESTAMP_SLOT_COUNT,
+		"パスごとに開始と終了のタイムスタンプを書く枠が足りない"
+	);
+#endif
 
 
 	void RenderGraph::Reset()
@@ -238,6 +246,60 @@ namespace fang
 	}
 
 
+#if FANG_ENABLE_PROFILER
+
+	uint32_t RenderGraph::ReadPassGpuTimes(
+		const rhi::GraphicsDevice&        device,
+		std::span<RenderGraphPassGpuTime> outPassTimes,
+		float*                            outFrameMilliseconds
+	) const
+	{
+		FANG_ASSERT(outFrameMilliseconds != nullptr, "GPU 合計の書き先が無い");
+
+		if (outFrameMilliseconds != nullptr)
+		{
+			*outFrameMilliseconds = 0.0f;
+		}
+
+		// 記録できなかったフレームは Resolve も積んでいないので、枠には前のフレームの値しか無い。
+		const std::span<const uint64_t> timestamps = device.GetCompletedTimestamps();
+		if (timestamps.empty() || m_commandListCount == 0)
+		{
+			return 0;
+		}
+
+		const uint64_t ticksPerSecond = device.GetTimestampFrequency();
+
+		const uint32_t writeCount = std::min(m_passCount, static_cast<uint32_t>(outPassTimes.size()));
+		for (uint32_t passIndex = 0; passIndex < writeCount; ++passIndex)
+		{
+			// 枠は「開始 = 2i、終了 = 2i + 1」。RecordPass が積む番号と揃えてある。
+			outPassTimes[passIndex] = RenderGraphPassGpuTime{
+				.name         = m_passes[passIndex].name,
+				.milliseconds = ConvertTimestampTicksToMilliseconds(
+					timestamps[passIndex * 2],
+					timestamps[passIndex * 2 + 1],
+					ticksPerSecond
+				),
+			};
+		}
+
+		// 合計はパスの和ではなく区間。本と本の間の隙間も 1 フレームの GPU 占有時間に入れるため。
+		if (outFrameMilliseconds != nullptr)
+		{
+			*outFrameMilliseconds = ConvertTimestampTicksToMilliseconds(
+				timestamps[0],
+				timestamps[(m_passCount - 1) * 2 + 1],
+				ticksPerSecond
+			);
+		}
+
+		return writeCount;
+	}
+
+#endif
+
+
 	void RenderGraph::RecordPassJob(void* arguments, uint32_t workerIndex)
 	{
 		FANG_UNUSED(workerIndex);
@@ -368,6 +430,11 @@ namespace fang
 
 		rhi::CommandList& commandList = *m_commandLists[passIndex];
 
+#if FANG_ENABLE_PROFILER
+		// バリアも含めて「このパスが GPU を占めた時間」にするため、本の先頭と末尾で挟む。
+		commandList.WriteTimestamp(passIndex * 2);
+#endif
+
 		for (uint32_t barrierIndex = 0; barrierIndex < compiled.beginBarrierCount; ++barrierIndex)
 		{
 			ApplyBarrier(commandList, compiled.beginBarriers[barrierIndex]);
@@ -414,6 +481,16 @@ namespace fang
 		{
 			ApplyBarrier(commandList, compiled.endBarriers[barrierIndex]);
 		}
+
+#if FANG_ENABLE_PROFILER
+		commandList.WriteTimestamp(passIndex * 2 + 1);
+
+		// 本は宣言順に GPU へ流れるので、最後の本の末尾で写せば全パスの書き込みが済んでいる。
+		if (passIndex == m_passCount - 1)
+		{
+			commandList.ResolveTimestamps(0, m_passCount * 2);
+		}
+#endif
 	}
 
 

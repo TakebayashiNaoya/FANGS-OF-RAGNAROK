@@ -151,6 +151,25 @@ namespace fang::rhi
 		 */
 		void DrawIndexed(uint32_t indexCount, uint32_t startIndex, int32_t baseVertex);
 
+#if FANG_ENABLE_PROFILER
+		/**
+		 * @brief GPU がここまで来た時刻を枠へ書く。
+		 * @details TransitionBackBuffer と同じ理由で、積むのは RenderGraph だけ。パスの記録関数からは呼ばない。
+		 *          タイムスタンプが取れない環境では何もしない。
+		 * @param slot 書き込む枠の番号。GraphicsDevice::MAX_TIMESTAMP_SLOT_COUNT 未満であること。
+		 * @threading 自分の本にだけ積み、枠はパスごとに別なので、記録ジョブから呼べる。
+		 */
+		void WriteTimestamp(uint32_t slot);
+
+		/**
+		 * @brief 枠の中身を読み出し先へ写す。フレームの最後の本の末尾に 1 回だけ積む。
+		 * @details 写し先は今の面の区画。フレームの途中で面は変わらないので、記録ジョブから積んでも競合しない。
+		 * @param firstSlot 写し始める枠の番号。
+		 * @param slotCount 写す枠の数。firstSlot と足して MAX_TIMESTAMP_SLOT_COUNT 以下であること。
+		 */
+		void ResolveTimestamps(uint32_t firstSlot, uint32_t slotCount);
+#endif
+
 
 	private:
 		friend class GraphicsDevice;
