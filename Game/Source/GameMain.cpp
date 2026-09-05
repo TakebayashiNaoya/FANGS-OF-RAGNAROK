@@ -7,9 +7,12 @@
 #include "Core/Math/MathConstants.h"
 #include "Core/Memory/Allocator.h"
 #include "Core/Memory/FrameAllocator.h"
+#include "Input/Gamepad.h"
 #include "RHI/GraphicsDevice.h"
 #include "Runtime/Application.h"
+#include "Scene/CharacterMovement.h"
 #include "Scene/Scene.h"
+#include "CameraFollowParams.h"
 #include "GameLog.h"
 #include "Wolf.h"
 #include "WolfBehavior.h"
@@ -56,10 +59,6 @@ namespace fang::game
 			Vector3{ 0.0f, 0.0f, 0.0f },
 			Vector3{ 0.0f, 0.0f, 1150.0f },
 		};
-
-		// カメラの追従（CameraFollowParams）が入るまでの間、移動の向きの基準は世界の +X に固定する
-		// （右スティックでの旋回はカメラができてから）。
-		constexpr float PLACEHOLDER_CAMERA_YAW_RADIANS = 0.0f;
 
 #if FANG_ENABLE_EDITOR
 
@@ -125,7 +124,7 @@ namespace fang::game
 					const bool    isControlled = index == CONTROLLED_WOLF_INDEX;
 					WolfBehavior* behavior     = nullptr;
 
-					(void)CreateWolfObject(
+					const GameObjectHandle handle = CreateWolfObject(
 						m_scene,
 						m_wolf,
 						m_wolfMovementParams,
@@ -140,6 +139,7 @@ namespace fang::game
 					if (isControlled)
 					{
 						m_controlledWolfBehavior = behavior;
+						m_controlledWolfHandle   = handle;
 					}
 				}
 
@@ -158,10 +158,39 @@ namespace fang::game
 					m_lightOrbitRadians -= 2.0f * PI;
 				}
 
+				// カメラの方位。パッドがあれば右スティック、無ければ時間で回す
+				// ➡ 起動して放置しスクリーンショットを撮る確認手順がそのまま使える。
+				if (context.gamepad.isConnected)
+				{
+					m_cameraOrbitRadians += GetRightStick(context.gamepad).x *
+											m_cameraFollowParams.yawSpeedRadiansPerSecond * context.deltaTimeSeconds;
+				}
+				else
+				{
+					m_cameraOrbitRadians +=
+						context.deltaTimeSeconds * (2.0f * PI / m_cameraFollowParams.orbitSecondsWhenDisconnected);
+				}
+
+				if (m_cameraOrbitRadians >= 2.0f * PI)
+				{
+					// 積みっぱなしにすると値が大きくなるほど角度の刻みが粗くなるので、1 周ごとに戻す。
+					m_cameraOrbitRadians -= 2.0f * PI;
+				}
+				else if (m_cameraOrbitRadians < 0.0f)
+				{
+					m_cameraOrbitRadians += 2.0f * PI;
+				}
+
+				// カメラは注視点から見て orbitOffset の位置にいる ➡ 前を向く向きはその逆。移動の基準にする
+				// （前後左右を画面に合わせるため）。
+				const float cameraYawRadians = GetYawFromDirection(
+					Vector3{ -std::sinf(m_cameraOrbitRadians), 0.0f, -std::cosf(m_cameraOrbitRadians) }
+				);
+
 				// ReadGamepadState はメインスレッドのみなので、周の頭でメインが読んだものを Runtime から受け取る。
 				if (m_controlledWolfBehavior != nullptr)
 				{
-					m_controlledWolfBehavior->SetFrameInput(context.gamepad, PLACEHOLDER_CAMERA_YAW_RADIANS);
+					m_controlledWolfBehavior->SetFrameInput(context.gamepad, cameraYawRadians);
 				}
 
 				m_scene.Update(context.deltaTimeSeconds);
@@ -185,6 +214,27 @@ namespace fang::game
 					std::sinf(m_lightOrbitRadians) * LIGHT_DIRECTION_HORIZONTAL,
 					LIGHT_DIRECTION_HEIGHT,
 					std::cosf(m_lightOrbitRadians) * LIGHT_DIRECTION_HORIZONTAL,
+				};
+
+				// 注視点は操作している狼のワールド位置（接地後の高さ）。Scene::Update の後なので今フレームの
+				// 移動が反映済み。カメラは俯角を付けた円錐面を周る。水平半径は距離 × cos(俯角)、高さは
+				// 距離 × sin(俯角)。水平のままだと周回の途中で丘に潜るので、俯角で視点を持ち上げてある。
+				const Matrix4x4 wolfWorld = m_scene.GetWorldMatrix(m_controlledWolfHandle);
+				const Vector3   wolfPosition{ wolfWorld.m[3][0], wolfWorld.m[3][1], wolfWorld.m[3][2] };
+				const Vector3   cameraTarget = wolfPosition + m_cameraFollowParams.targetOffset;
+
+				const float orbitRadius =
+					m_cameraFollowParams.distanceCentimeters * std::cosf(m_cameraFollowParams.pitchRadians);
+				const Vector3 orbitOffset{
+					std::sinf(m_cameraOrbitRadians) * orbitRadius,
+					m_cameraFollowParams.distanceCentimeters * std::sinf(m_cameraFollowParams.pitchRadians),
+					std::cosf(m_cameraOrbitRadians) * orbitRadius,
+				};
+
+				frameData->camera = CameraView{
+					.eyePosition         = cameraTarget + orbitOffset,
+					.targetPosition      = cameraTarget,
+					.fieldOfViewYRadians = m_cameraFollowParams.fieldOfViewYRadians,
 				};
 
 				frameData->renderItems     = m_scene.BuildRenderItems(context.frameAllocator);
@@ -220,13 +270,18 @@ namespace fang::game
 			Scene              m_scene;
 			WolfModel          m_wolf;
 			WolfMovementParams m_wolfMovementParams;
+			CameraFollowParams m_cameraFollowParams;
+
+			/** @brief カメラの水平回転角。右スティックが無ければ時間で回る。OnUpdate だけが触る。 */
+			float m_cameraOrbitRadians = 0.0f;
 
 			/** @brief 借用。EngineContext から受け取ったもので、Game は寿命を持たない。 */
 			CollisionWorld*         m_collisionWorld = nullptr;
 			const HeightmapTerrain* m_terrain        = nullptr;
 
 			/** @brief 操作する狼の振る舞い。寿命は m_scene が持つ。パッドの橋渡しに使う。 */
-			WolfBehavior* m_controlledWolfBehavior = nullptr;
+			WolfBehavior*    m_controlledWolfBehavior = nullptr;
+			GameObjectHandle m_controlledWolfHandle;
 		};
 	} // namespace
 

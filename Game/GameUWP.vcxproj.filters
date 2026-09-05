@@ -10,6 +10,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\CameraFollowParams.h">
+      <Filter>Source</Filter>
+    </ClInclude>
     <ClInclude Include="Source\GameLog.h">
       <Filter>Source</Filter>
     </ClInclude>
