@@ -211,6 +211,50 @@ TEST_CASE("更新のたびのヒープ確保が 0")
 }
 
 
+TEST_CASE("掃引と視線を 1000 回回してもヒープ確保が増えない")
+{
+	CountingAllocator allocator;
+
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(
+		allocator,
+		fang::CollisionWorldDesc{ .maxColliderCount = 64, .maxPairCount = 256, .maxContactCount = 256 }
+	));
+
+	std::vector<fang::ColliderProxy> proxies;
+	for (uint32_t index = 0; index < 32; ++index)
+	{
+		proxies.push_back(MakeSphereProxy(fang::Vector3{ static_cast<float>(index), 0.0f, 0.0f }, 1.5f, index));
+	}
+	world.Update(proxies);
+
+	const uint32_t allocationCountAfterUpdate = allocator.GetAllocationCount();
+
+	for (int iteration = 0; iteration < 1000; ++iteration)
+	{
+		fang::SweepHit sweepHits[8];
+		(void)world.SweepSphere(
+			fang::Sphere{ .center = fang::Vector3{ -100.0f, 0.0f, 0.0f }, .radius = 1.5f },
+			fang::Vector3{ 500.0f, 0.0f, 0.0f },
+			fang::QueryFilter{},
+			sweepHits
+		);
+
+		fang::RayHit blockingHit;
+		(void)world.HasLineOfSight(
+			fang::Vector3{ -100.0f, 0.0f, 0.0f },
+			fang::Vector3{ 400.0f, 0.0f, 0.0f },
+			fang::QueryFilter{},
+			&blockingHit
+		);
+	}
+
+	CHECK(allocator.GetAllocationCount() == allocationCountAfterUpdate);
+
+	world.Shutdown();
+}
+
+
 TEST_CASE("レイキャストが 3 つの形すべてに当たる")
 {
 	fang::CollisionWorld world;
