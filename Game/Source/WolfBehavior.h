@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include "Core/Math/Vector2.h"
 #include "Core/Math/Vector3.h"
 #include "Input/Gamepad.h"
 #include "Scene/MeleeSwing.h"
@@ -63,14 +64,13 @@ namespace fang::game
 		};
 
 		/**
-		 * @param isControlled       true ならパッドで動かす。false なら初期位置に立ったまま、
-		 *                           共有スキニング行列だけを毎フレーム書き直す。
-		 * @param swingParams        近接攻撃の時間割・間合い・攻撃力。isControlled が false なら使わない。
+		 * @param swingParams        近接攻撃の時間割・間合い・攻撃力。操作対象でない間は使わない。
 		 * @param initialPosition    足元のワールド座標。y は接地で決まるので 0 でよい。
 		 * @param initialFacingRadians 初期の向き。0 = +X。
+		 * @details 生成した時点では操作対象ではない（初期位置に立ったまま、共有スキニング行列だけを毎フレーム
+		 *          書き直す）。操作対象にするかどうかは WolfPack が SetControlled で決める。
 		 */
 		WolfBehavior(
-			bool                      isControlled,
 			const WolfMovementParams& params,
 			const MeleeSwingParams&   swingParams,
 			const Dependencies&       dependencies,
@@ -81,9 +81,17 @@ namespace fang::game
 		void Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene) override;
 
 		/**
+		 * @brief 操作対象にする / 外す。
+		 * @details 引き継いだ直後に、押しっぱなしのボタンで振り出さないようにする（押されている扱いから始める）
+		 *          ➡ 一度離して押し直すまで振らない。
+		 */
+		void SetControlled(bool isControlled);
+
+		/**
 		 * @brief 周の頭でメインスレッドが読んだパッドと、カメラの水平回転角を渡す。
 		 * @details ReadGamepadState はメインスレッドのみなので、更新ジョブの中からは呼べない。Game::OnUpdate が
-		 *          Scene::Update より前にこれを呼んで橋渡しする。isControlled が false なら呼ばなくてよい。
+		 *          Scene::Update より前にこれを呼んで橋渡しする。操作対象でなければ呼ばなくてよい。
+		 *          受け取った GamepadState のうち使う値（左スティック・X ボタン）だけを取り出して持つ。
 		 */
 		void SetFrameInput(const GamepadState& gamepad, float cameraYawRadians);
 
@@ -95,7 +103,7 @@ namespace fang::game
 
 
 	private:
-		bool               m_isControlled;
+		bool               m_isControlled = false;
 		WolfMovementParams m_params;
 		MeleeSwingParams   m_swingParams;
 		Dependencies       m_dependencies;
@@ -103,10 +111,11 @@ namespace fang::game
 		Vector3 m_position; /**< 足元のワールド座標。y は常に 0（接地は Update の中で足す）。 */
 		float   m_facingRadians = 0.0f;
 
-		GamepadState m_gamepad;
-		float        m_cameraYawRadians = 0.0f;
+		Vector2 m_moveStick; /**< GetLeftStick を通した後。 */
+		float   m_cameraYawRadians  = 0.0f;
+		bool    m_isAttackRequested = false; /**< X ボタン。 */
 
-		/** @brief 攻撃ボタン（X）の振り 1 本ぶんの状態。isControlled が false なら進まない。 */
+		/** @brief 攻撃ボタン（X）の振り 1 本ぶんの状態。操作対象でなければ進まない。 */
 		MeleeSwingState m_swingState;
 	};
 } // namespace fang::game

@@ -147,6 +147,12 @@
     <ClCompile Include="Source\VectorTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\WolfDefeatBudgetTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\WolfDefeatTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\WorkStealingDequeTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>

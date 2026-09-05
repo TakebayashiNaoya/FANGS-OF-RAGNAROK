@@ -76,21 +76,23 @@ namespace fang::game
 
 	/**
 	 * @brief 読み込み済みの WolfModel から、Scene 上のオブジェクトを 1 体作る。
-	 * @param isControlled     true ならパッドで動かす。false なら initialPosition に立ったまま。
-	 * @param swingParams      近接攻撃の時間割・間合い・攻撃力。isControlled が false なら使わない。
+	 * @param swingParams      近接攻撃の時間割・間合い・攻撃力。
+	 * @param healthComponent  湧いたときの HP と無敵時間。
 	 * @param initialPosition  ワールド XZ。Y は毎フレーム地表から決める。
 	 * @param outBehavior      作った振る舞いを受け取る。要らなければ nullptr でよい。
 	 *                         寿命は scene が持つので、呼び出し側は解放しない。
 	 * @return 上限に達している等で作れなければ無効なハンドル。
+	 * @details 作った時点では操作対象ではない。誰を操作するかは WolfPack が SetControlled で決める
+	 *          （生成時と実行中で決める場所が分かれていると、引き継いだ後に食い違うため）。
 	 */
 	[[nodiscard]] GameObjectHandle CreateWolfObject(
 		Scene&                    scene,
 		WolfModel&                model,
 		const WolfMovementParams& params,
 		const MeleeSwingParams&   swingParams,
+		const HealthComponent&    healthComponent,
 		CollisionWorld*           collisionWorld,
 		const HeightmapTerrain*   terrain,
-		bool                      isControlled,
 		const Vector3&            initialPosition,
 		float                     initialFacingRadians,
 		WolfBehavior**            outBehavior = nullptr

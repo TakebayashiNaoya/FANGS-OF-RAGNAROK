@@ -3,6 +3,7 @@
  * @brief PursuitStateMachine のテスト。待機・追跡・見失いの遷移と、間合いでの停止・重なりでの安定を確かめる。
  */
 #include "AI/AI.h"
+#include "Core/Math/MathConstants.h"
 #include "Core/Math/Vector3.h"
 #include <doctest.h>
 #include <cmath>
@@ -92,6 +93,32 @@ TEST_CASE("間合いまで詰めたら止まり、押し合いを続けない")
 
 		CHECK((1000.0f - position.x) >= params.stopDistanceCentimeters - 0.5f);
 	}
+}
+
+
+TEST_CASE("間合いで止まっていても、横へ回られると向きだけ追いかける")
+{
+	const fang::PursuitParams params{};
+
+	fang::AgentBlackboard blackboard{};
+	blackboard.isTargetVisible     = true;
+	blackboard.hasLastSeenPosition = true;
+
+	// 間合い(stopDistance)ちょうどの距離に静止 ➡ desiredDelta は 0 のまま、向きだけ変わるはず。
+	blackboard.lastSeenTargetPosition = fang::Vector3{ params.stopDistanceCentimeters, 0.0f, 0.0f };
+
+	fang::EnPursuitState   state       = fang::EnPursuitState::Chase;
+	const fang::MoveIntent frontIntent = fang::StepPursuit(params, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
+	CheckVector3(frontIntent.desiredDelta, fang::Vector3{});
+	CHECK(frontIntent.wantsToTurn);
+	CHECK(frontIntent.facingRadians == doctest::Approx(0.0f));
+
+	// 横へ回られた(Z方向)後も、動かないまま向きだけ追従する。
+	blackboard.lastSeenTargetPosition = fang::Vector3{ 0.0f, 0.0f, params.stopDistanceCentimeters };
+	const fang::MoveIntent sideIntent = fang::StepPursuit(params, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
+	CheckVector3(sideIntent.desiredDelta, fang::Vector3{});
+	CHECK(sideIntent.wantsToTurn);
+	CHECK(sideIntent.facingRadians == doctest::Approx(fang::PI * 0.5f));
 }
 
 

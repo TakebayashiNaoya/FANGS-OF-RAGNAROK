@@ -22,6 +22,9 @@
     <ClInclude Include="Source\GameMain.h">
       <Filter>Source</Filter>
     </ClInclude>
+    <ClInclude Include="Source\MeleeDamage.h">
+      <Filter>Source</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Minion.h">
       <Filter>Source</Filter>
     </ClInclude>
@@ -43,9 +46,15 @@
     <ClInclude Include="Source\WolfMovementParams.h">
       <Filter>Source</Filter>
     </ClInclude>
+    <ClInclude Include="Source\WolfPack.h">
+      <Filter>Source</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\GameMain.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\MeleeDamage.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\Minion.cpp">
@@ -64,6 +73,9 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\WolfBehavior.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\WolfPack.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\Windows\Main.cpp">

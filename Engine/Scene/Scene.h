@@ -97,8 +97,8 @@ namespace fang
 
 		/**
 		 * @brief 1 フレームぶんの更新を進める。
-		 * @details スキニング行列の破棄 ➡ 振る舞いの Update ➡ オブジェクトの破棄反映 ➡ ワールド行列の
-		 *          組み立て、の順に進む。
+		 * @details スキニング行列の破棄 ➡ 無敵時間の減算 ➡ 振る舞いの Update ➡ オブジェクトの破棄反映 ➡
+		 *          ワールド行列の組み立て、の順に進む。
 		 */
 		void Update(float deltaTimeSeconds);
 
@@ -340,4 +340,14 @@ namespace fang
 		uint32_t        m_behaviorRecordCount = 0;
 		uint32_t        m_maxBehaviorCount    = 0;
 	};
+
+	/**
+	 * @brief 並びの中で最初に生きているハンドルを返す。1 つも生きていなければ無効なハンドル。
+	 * @details 操作対象や標的のように「1 つを指し続ける」ものの付け替えに使う。破棄の通知を配らず、
+	 *          毎フレーム選び直す（ADR-036）。並びの順がそのまま引き継ぎの順になる。
+	 */
+	[[nodiscard]] GameObjectHandle FindFirstLiving(const Scene& scene, std::span<const GameObjectHandle> handles);
+
+	/** @brief 並びの中で生きているものの数。0 なら全滅。 */
+	[[nodiscard]] uint32_t CountLiving(const Scene& scene, std::span<const GameObjectHandle> handles);
 } // namespace fang

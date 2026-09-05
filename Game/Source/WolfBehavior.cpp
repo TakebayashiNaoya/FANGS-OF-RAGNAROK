@@ -11,20 +11,19 @@
 #include "Resource/HeightmapTerrain.h"
 #include "Scene/CharacterMovement.h"
 #include "CollisionLayers.h"
+#include "MeleeDamage.h"
 
 
 namespace fang::game
 {
 	WolfBehavior::WolfBehavior(
-		bool                      isControlled,
 		const WolfMovementParams& params,
 		const MeleeSwingParams&   swingParams,
 		const Dependencies&       dependencies,
 		const Vector3&            initialPosition,
 		float                     initialFacingRadians
 	)
-		: m_isControlled(isControlled)
-		, m_params(params)
+		: m_params(params)
 		, m_swingParams(swingParams)
 		, m_dependencies(dependencies)
 		, m_position(initialPosition)
@@ -33,10 +32,22 @@ namespace fang::game
 	}
 
 
+	void WolfBehavior::SetControlled(bool isControlled)
+	{
+		m_isControlled = isControlled;
+		if (isControlled)
+		{
+			// 引き継いだ直後、押しっぱなしのボタンで振り出さないよう「既に押されていた」ことにしておく。
+			m_swingState.wasAttackRequested = true;
+		}
+	}
+
+
 	void WolfBehavior::SetFrameInput(const GamepadState& gamepad, float cameraYawRadians)
 	{
-		m_gamepad          = gamepad;
-		m_cameraYawRadians = cameraYawRadians;
+		m_moveStick         = GetLeftStick(gamepad);
+		m_cameraYawRadians  = cameraYawRadians;
+		m_isAttackRequested = IsButtonDown(gamepad, EnGamepadButton::X);
 	}
 
 
@@ -47,11 +58,11 @@ namespace fang::game
 		if (m_isControlled && m_dependencies.collisionWorld != nullptr)
 		{
 			const MeleeSwingInput swingInput{
-				.selfPosition       = m_position,
-				.selfFacingRadians  = m_facingRadians,
-				.isAttackButtonDown = IsButtonDown(m_gamepad, EnGamepadButton::X),
-				.selfUserIndex      = self.index,
-				.targetLayerMask    = COLLISION_LAYER_ENEMY,
+				.selfPosition      = m_position,
+				.selfFacingRadians = m_facingRadians,
+				.isAttackRequested = m_isAttackRequested,
+				.selfUserIndex     = self.index,
+				.targetLayerMask   = COLLISION_LAYER_ENEMY,
 			};
 
 			SweepHit               hits[MAX_MELEE_SWING_HIT_COUNT];
@@ -64,25 +75,7 @@ namespace fang::game
 				hits
 			);
 
-			for (uint32_t hitIndex = 0; hitIndex < swingResult.newHitCount; ++hitIndex)
-			{
-				const GameObjectHandle target = scene.GetHandleFromIndex(hits[hitIndex].userIndex);
-				if (!target.IsValid() || scene.IsPendingDestroy(target))
-				{
-					continue;
-				}
-
-				HealthComponent* health = scene.GetHealthComponent(target);
-				if (health == nullptr)
-				{
-					continue;
-				}
-
-				if (ApplyDamage(health, m_swingParams.attackPower))
-				{
-					scene.DestroyObject(target);
-				}
-			}
+			ApplyMeleeHits(scene, std::span<const SweepHit>(hits, swingResult.newHitCount), m_swingParams.attackPower);
 		}
 
 		float appliedSpeed = 0.0f;
@@ -95,7 +88,7 @@ namespace fang::game
 														  : std::span<const Contact>{};
 
 			const Vector3 desiredDelta = MakeMoveDelta(
-				GetLeftStick(m_gamepad),
+				m_moveStick,
 				m_cameraYawRadians,
 				m_params.moveSpeedCentimetersPerSecond,
 				deltaTimeSeconds

@@ -335,7 +335,14 @@ namespace fang
 			m_skinningMatricesSpans[index] = std::span<const Matrix4x4>{};
 		}
 
-		// 2. 振る舞いを回す。回す本数は入口で固定し、破棄予約の立ったものは飛ばす
+		// 2. 無敵の残りを毎フレーム減らす。詰めた配列を 1 周するだけで持ち主が誰かも
+		//    振る舞いを持っているかも見ない ➡ 減らし忘れが起きない。
+		for (uint32_t denseIndex = 0; denseIndex < m_healthComponentCount; ++denseIndex)
+		{
+			TickInvincibility(&m_healthComponents[denseIndex], deltaTimeSeconds);
+		}
+
+		// 3. 振る舞いを回す。回す本数は入口で固定し、破棄予約の立ったものは飛ばす
 		//    ➡ 更新中に足したものは次の周から。壊したものはその周でもう回らない。
 		const uint32_t behaviorCountAtEntry = m_behaviorRecordCount;
 		for (uint32_t recordIndex = 0; recordIndex < behaviorCountAtEntry; ++recordIndex)
@@ -350,7 +357,7 @@ namespace fang
 			record.instance->Update(deltaTimeSeconds, ownerHandle, *this);
 		}
 
-		// 3. 破棄の予約を反映する（子リストから外し、コンポーネントと振る舞いを畳み、世代を進める）。
+		// 4. 破棄の予約を反映する（子リストから外し、コンポーネントと振る舞いを畳み、世代を進める）。
 		for (uint32_t pendingIndex = 0; pendingIndex < m_pendingDestroyCount; ++pendingIndex)
 		{
 			const uint32_t index = m_pendingDestroyIndices[pendingIndex];
@@ -376,7 +383,7 @@ namespace fang
 
 		m_pendingDestroyCount = 0;
 
-		// 4. 根から順にワールド行列を作る（明示スタック。再帰もヒープ確保もしない）。
+		// 5. 根から順にワールド行列を作る（明示スタック。再帰もヒープ確保もしない）。
 		uint32_t stackTop = 0;
 		for (uint32_t index = 0; index < m_maxObjectCount; ++index)
 		{
@@ -906,5 +913,34 @@ namespace fang
 		}
 
 		return std::span<const ColliderProxy>(proxies, writtenCount);
+	}
+
+
+	GameObjectHandle FindFirstLiving(const Scene& scene, std::span<const GameObjectHandle> handles)
+	{
+		for (const GameObjectHandle& handle : handles)
+		{
+			if (scene.IsValid(handle))
+			{
+				return handle;
+			}
+		}
+
+		return GameObjectHandle{};
+	}
+
+
+	uint32_t CountLiving(const Scene& scene, std::span<const GameObjectHandle> handles)
+	{
+		uint32_t livingCount = 0;
+		for (const GameObjectHandle& handle : handles)
+		{
+			if (scene.IsValid(handle))
+			{
+				++livingCount;
+			}
+		}
+
+		return livingCount;
 	}
 } // namespace fang

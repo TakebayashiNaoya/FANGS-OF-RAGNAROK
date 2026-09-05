@@ -7,6 +7,7 @@
 #include "Core/Math/Matrix4x4.h"
 #include "Resource/HeightmapTerrain.h"
 #include "Scene/CharacterMovement.h"
+#include "MeleeDamage.h"
 
 
 namespace fang::game
@@ -24,15 +25,15 @@ namespace fang::game
 		// 1. 相手の位置と生死を読む
 		//------------------------------------------------------------------------
 		Vector3    targetPosition;
-		const bool hasTarget = scene.IsValid(m_dependencies.targetHandle);
+		const bool hasTarget = m_dependencies.targetHandle != nullptr && scene.IsValid(*m_dependencies.targetHandle);
 		if (hasTarget)
 		{
-			const Matrix4x4 targetWorld = scene.GetWorldMatrix(m_dependencies.targetHandle);
+			const Matrix4x4 targetWorld = scene.GetWorldMatrix(*m_dependencies.targetHandle);
 			targetPosition              = Vector3{ targetWorld.m[3][0], targetWorld.m[3][1], targetWorld.m[3][2] };
 		}
 
 		//------------------------------------------------------------------------
-		// 2. センサー ➡ 3. ブラックボード
+		// 2. センサー ➡ ブラックボード
 		//------------------------------------------------------------------------
 		PerceptionResult perception;
 		if (hasTarget && m_dependencies.collisionWorld != nullptr)
@@ -42,7 +43,7 @@ namespace fang::game
 				.selfFacingRadians = m_facingRadians,
 				.targetPosition    = targetPosition,
 				.selfUserIndex     = self.index,
-				.targetUserIndex   = m_dependencies.targetHandle.index,
+				.targetUserIndex   = m_dependencies.targetHandle->index,
 			};
 			perception = Sense(*m_dependencies.collisionWorld, m_dependencies.params->perception, input);
 		}
@@ -50,13 +51,48 @@ namespace fang::game
 		WritePerception(perception, targetPosition, deltaTimeSeconds, &m_blackboard);
 
 		//------------------------------------------------------------------------
-		// 4. 意思決定
+		// 3. 振り。移動より前に置く（狼と同じ理由。m_position も掃引が見る登録も前フレームのもの、ADR-034）。
+		// 　合図は「見えていて、牙の間合いの内」。間合いに一度も入っていなければ掃引は 0 本のまま。
 		//------------------------------------------------------------------------
-		const MoveIntent intent =
-			StepPursuit(m_dependencies.params->pursuit, m_blackboard, m_position, deltaTimeSeconds, &m_state);
+		if (m_dependencies.collisionWorld != nullptr)
+		{
+			const MeleeSwingParams& swingParams = m_dependencies.params->swing;
+
+			const MeleeSwingInput swingInput{
+				.selfPosition      = m_position,
+				.selfFacingRadians = m_facingRadians,
+				.isAttackRequested = m_blackboard.isTargetVisible &&
+									 m_blackboard.distanceToTargetCentimeters <= swingParams.reachCentimeters,
+				.selfUserIndex     = self.index,
+				.targetLayerMask   = COLLISION_LAYER_WOLF,
+			};
+
+			SweepHit               hits[MAX_MELEE_SWING_HIT_COUNT];
+			const MeleeSwingResult swingResult = StepMeleeSwing(
+				*m_dependencies.collisionWorld,
+				swingParams,
+				swingInput,
+				deltaTimeSeconds,
+				&m_swingState,
+				hits
+			);
+
+			ApplyMeleeHits(scene, std::span<const SweepHit>(hits, swingResult.newHitCount), swingParams.attackPower);
+		}
 
 		//------------------------------------------------------------------------
-		// 5. エフェクター（移動・向き・接地）
+		// 4. 意思決定。振りの最中は答えを捨てる（進む量も向きも変えない。踏み込みの空振りを許す）。
+		//------------------------------------------------------------------------
+		MoveIntent intent =
+			StepPursuit(m_dependencies.params->pursuit, m_blackboard, m_position, deltaTimeSeconds, &m_state);
+
+		if (IsMeleeSwingInProgress(m_swingState))
+		{
+			intent = MoveIntent{};
+		}
+
+		//------------------------------------------------------------------------
+		// 5. エフェクター（移動・向き・接地）。押し出しは振りの最中も効かせる（自分から進む量だけ止める）。
 		//------------------------------------------------------------------------
 		const std::span<const Contact> contacts = (m_dependencies.collisionWorld != nullptr)
 													  ? m_dependencies.collisionWorld->GetContacts()

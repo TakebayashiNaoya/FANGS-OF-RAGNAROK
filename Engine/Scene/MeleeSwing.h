@@ -21,10 +21,18 @@ namespace fang
 	/** @brief 振りの進み具合。 */
 	enum class EnMeleeSwingPhase : uint8_t
 	{
-		Ready,    /**< 待機。ボタンの立ち上がりを待つ。 */
+		Ready,    /**< 待機。次の合図を待つ。 */
 		WindUp,   /**< 構え。判定は出ない。 */
 		Active,   /**< 判定が出ている区間。1 フレーム 1 掃引。 */
-		Recovery, /**< 戻り。判定は出ない。次の振りはまだ始まらない。 */
+		Recovery, /**< 戻り。判定は出ない。 */
+		Cooldown, /**< 次までの待ち。合図が出ていても始まらない。 */
+	};
+
+	/** @brief 振りが始まる合図の見かた。 */
+	enum class EnMeleeSwingTrigger : uint8_t
+	{
+		RisingEdge, /**< 合図の立ち上がりだけ。押しっぱなしでは 2 回目が始まらない（パッド向け）。 */
+		Continuous, /**< 合図が出ていれば始まる。連射を止めるのは cooldownSeconds（入力を持たない相手向け）。 */
 	};
 
 	/** @brief 1 振りで当てられる相手の上限。掃引の書き込み先と同じ数にして、捨てる件数の出どころを 1 つにする。 */
@@ -37,6 +45,7 @@ namespace fang
 		FANG_FIELD(windUpSeconds, "構えの秒数", Range(0.0f, 5.0f))
 		FANG_FIELD(activeSeconds, "判定区間の秒数", Range(0.0f, 5.0f))
 		FANG_FIELD(recoverySeconds, "戻りの秒数", Range(0.0f, 5.0f))
+		FANG_FIELD(cooldownSeconds, "次までの待ち", Range(0.0f, 10.0f))
 		FANG_FIELD(reachCentimeters, "間合い", Range(0.0f, 1000.0f))
 		FANG_FIELD(fangHeightCentimeters, "牙の高さ", Range(0.0f, 500.0f))
 		FANG_FIELD(fangRadiusCentimeters, "牙の太さ", Range(0.0f, 200.0f))
@@ -48,19 +57,24 @@ namespace fang
 		float activeSeconds   = 0.15f;
 		float recoverySeconds = 0.20f;
 
+		float cooldownSeconds = 0.0f; /**< 戻りのあと、次の振りを受け付けるまで。 */
+
 		float reachCentimeters      = 150.0f; /**< 体の中心から牙まで。体長 204cm より短い ➡ 壁越しに届かない。 */
 		float fangHeightCentimeters = 100.0f;
 		float fangRadiusCentimeters = 40.0f;
 
 		float arcRadians  = 2.0f;  /**< 判定区間で牙が描く弧。左から右へ薙ぐ。 */
 		float attackPower = 50.0f; /**< 1 回の当たりで減らす HP。 */
+
+		/** @brief 合図の見かた。調整つまみではないので FANG_FIELD には出さない。 */
+		EnMeleeSwingTrigger triggerMode = EnMeleeSwingTrigger::RisingEdge;
 	};
 
 	/** @brief 振り 1 本ぶんの状態。持ち主は呼び出し側。 */
 	struct MeleeSwingState
 	{
-		EnMeleeSwingPhase phase               = EnMeleeSwingPhase::Ready;
-		bool              wasAttackButtonDown = false; /**< 立ち上がりを見るための前フレームの値。 */
+		EnMeleeSwingPhase phase              = EnMeleeSwingPhase::Ready;
+		bool              wasAttackRequested = false; /**< 立ち上がりを見るための前フレームの値。 */
 
 		float elapsedSeconds = 0.0f; /**< 今の位相に入ってからの秒数。 */
 
@@ -78,7 +92,7 @@ namespace fang
 		Vector3 selfPosition;             /**< 足元のワールド座標。 */
 		float   selfFacingRadians = 0.0f; /**< 0 = +X。 */
 
-		bool isAttackButtonDown = false;
+		bool isAttackRequested = false;
 
 		uint32_t selfUserIndex   = 0;
 		uint32_t targetLayerMask = ALL_COLLISION_LAYERS; /**< 攻撃が当たる種別。意味は Game が決める。 */
@@ -96,6 +110,13 @@ namespace fang
 		/** @brief 掃引か記録の書き込み先が足りず、遠いほうを捨てた。 */
 		bool isTruncated = false;
 	};
+
+	/** @brief 振りが進んでいる最中か。構え・判定・戻りの間は true。待機と次までの待ちは false。 */
+	[[nodiscard]] inline bool IsMeleeSwingInProgress(const MeleeSwingState& state)
+	{
+		return state.phase == EnMeleeSwingPhase::WindUp || state.phase == EnMeleeSwingPhase::Active ||
+			   state.phase == EnMeleeSwingPhase::Recovery;
+	}
 
 	/**
 	 * @brief 振りを 1 フレーム進め、この振りで初めて当たった相手を近い順に書き出す。

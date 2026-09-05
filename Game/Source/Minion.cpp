@@ -19,7 +19,7 @@ namespace fang::game
 		const MinionParams&     params,
 		CollisionWorld*         collisionWorld,
 		const HeightmapTerrain* terrain,
-		GameObjectHandle        targetHandle,
+		const GameObjectHandle* targetHandle,
 		const Vector3&          initialPosition,
 		MinionBehavior**        outBehavior
 	)
