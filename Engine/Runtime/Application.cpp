@@ -368,6 +368,10 @@ namespace fang
 		/** @brief 描画の本体。RHI を触るのはここだけなので、メインスレッドの持ち物が全部そろっている。 */
 		void RenderFrame(void* userData, const FrameData* frameData, uint64_t frameIndex, float deltaTimeSeconds)
 		{
+			// 全構成で使われるとは限らない（ホットリロード・プロファイラ・エディタが軒並み無効な Release では
+			// 未使用になる）。#if で分岐して片方でだけ使わなくなる引数なので FANG_UNUSED で明示する。
+			FANG_UNUSED(deltaTimeSeconds);
+
 			auto& loopContext = *static_cast<FrameLoopContext*>(userData);
 
 			rhi::GraphicsDevice& device        = *loopContext.device;
