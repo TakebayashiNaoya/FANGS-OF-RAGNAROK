@@ -27,7 +27,6 @@
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
     <ClInclude Include="Application.h" />
-    <ClInclude Include="CharacterMovement.h" />
     <ClInclude Include="EngineContext.h" />
     <ClInclude Include="FrameContext.h" />
     <ClInclude Include="FramePipeline.h" />
@@ -37,7 +36,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
-    <ClCompile Include="CharacterMovement.cpp" />
     <ClCompile Include="FramePipeline.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>

@@ -31,9 +31,9 @@
 #include "Resource/GltfMesh.h"
 #include "Resource/GltfScene.h"
 #include "Resource/HeightmapTerrain.h"
-#include "Runtime/CharacterMovement.h"
 #include "Runtime/FramePipeline.h"
 #include "Runtime/RuntimeLog.h"
+#include "Scene/CharacterMovement.h"
 #include <algorithm>
 #include <array>
 #include <chrono>
