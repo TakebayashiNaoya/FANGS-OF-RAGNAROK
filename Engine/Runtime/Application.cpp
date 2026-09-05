@@ -6,11 +6,14 @@
 #include "Runtime/Application.h"
 #include "Animation/AnimationPlayback.h"
 #include "Animation/SkeletalAnimation.h"
+#include "Collision/CollisionDebugLines.h"
+#include "Collision/CollisionWorld.h"
 #include "Core/Job/JobSystem.h"
 #include "Core/Log/Assert.h"
 #include "Core/Math/Aabb.h"
 #include "Core/Math/MathConstants.h"
 #include "Core/Math/Matrix4x4.h"
+#include "Core/Memory/Allocator.h"
 #include "Core/Memory/FrameAllocator.h"
 #include "Core/Platform/AssetPath.h"
 #include "Core/Platform/Budget.h"
@@ -121,9 +124,22 @@ namespace fang
 			Vector3{ 0.0f, 0.0f, 1150.0f },
 		};
 
+		/**
+		 * @brief 当たり判定に登録できる数。
+		 * @details 今は狼 2 体 + 置き物 40 個だが、雑魚が湧くようになる分の余白を取ってある。
+		 *          Scene ができたらゲーム側が決める値になる。
+		 */
+		constexpr uint32_t MAX_COLLIDER_COUNT = 256;
+
 #if FANG_ENABLE_DEBUG_DRAW
 		/** @brief RenderItem の境界ボックスを表す線の色。緑系にして他の要素と見分けやすくする。 */
 		constexpr Vector3 DEBUG_DRAW_BOUNDS_COLOR{ 0.0f, 1.0f, 0.3f };
+
+		/** @brief どのコライダーにも触れていないコライダーのワイヤーの色。青系。 */
+		constexpr Vector3 DEBUG_DRAW_COLLIDER_COLOR{ 0.2f, 0.6f, 1.0f };
+
+		/** @brief 何かに触れているコライダーのワイヤーの色。赤系にして一目で分かるようにする。 */
+		constexpr Vector3 DEBUG_DRAW_TOUCHING_COLLIDER_COLOR{ 1.0f, 0.25f, 0.2f };
 
 		/** @brief シャドウの光の視錐台を表す線の色。黄系にして境界ボックスと見分けやすくする。 */
 		constexpr Vector3 DEBUG_DRAW_SHADOW_FRUSTUM_COLOR{ 1.0f, 0.85f, 0.0f };
@@ -390,6 +406,15 @@ namespace fang
 			MeshRenderer*    meshRenderer    = nullptr;
 			TerrainRenderer* terrainRenderer = nullptr;
 			WolfModel*       wolf            = nullptr;
+
+			/** @brief 当たり判定の入れ物。作れなかったときだけ nullptr ➡ 登録も可視化も飛ばす。 */
+			CollisionWorld* collisionWorld = nullptr;
+
+			/**
+			 * @brief 毎フレーム組み直すコライダーの列。ロード時に resize し切り、以後は要素数を変えない。
+			 * @details 中身を書くのは RenderFrame の区画 5 だけ。Scene ができたらゲーム側へ移る仮置き。
+			 */
+			std::vector<ColliderProxy> colliderProxies;
 
 			/** @brief 狼の足元の高さの問い合わせ先。地形を読めていなければ nullptr ➡ 接地せず y = 0 に立つ。 */
 			const HeightmapTerrain* terrain = nullptr;
@@ -1052,7 +1077,43 @@ namespace fang
 			const std::span<const RenderItem> submittedItems(renderItems);
 
 			//------------------------------------------------------------------------
-			// 5. シャドウ View とシーン View の登録・Submit
+			// 5. 当たり判定への登録(狼はカプセル・置き物は OBB)
+			// 　狼の world と MeshRenderer::GetLocalBounds がそろうのがここなので、登録もここで行う。
+			// 　メッシュを読めていない席(無効な箱)は飛ばす ➡ userIndex に renderItems の添字を入れておけば、
+			// 　飛ばした席があっても番号がずれない。Scene ができたらこの登録はゲーム側へ移る仮置き。
+			//------------------------------------------------------------------------
+			CollisionWorld* collisionWorld = loopContext.collisionWorld;
+			if (collisionWorld != nullptr)
+			{
+				const MeshRenderer& meshRenderer = *loopContext.meshRenderer;
+
+				uint32_t colliderCount = 0;
+				for (uint32_t itemIndex = 0; itemIndex < submittedItems.size(); ++itemIndex)
+				{
+					const RenderItem& item        = submittedItems[itemIndex];
+					const Aabb        localBounds = meshRenderer.GetLocalBounds(item.mesh);
+					if (!localBounds.IsValid())
+					{
+						continue;
+					}
+
+					// 狼は四つ足なので、体を包むカプセルのほうが箱より当たりが素直。置き物は箱のまま回す。
+					const bool          isWolf = itemIndex < DYNAMIC_RENDER_ITEM_COUNT;
+					const ColliderShape shape = isWolf ? MakeColliderShape(MakeCapsuleFromAabb(localBounds, item.world))
+													   : MakeColliderShape(MakeOBBFromAabb(localBounds, item.world));
+
+					loopContext.colliderProxies[colliderCount] =
+						ColliderProxy{ .shape = shape, .userIndex = itemIndex };
+					++colliderCount;
+				}
+
+				collisionWorld->Update(
+					std::span<const ColliderProxy>(loopContext.colliderProxies.data(), colliderCount)
+				);
+			}
+
+			//------------------------------------------------------------------------
+			// 6. シャドウ View とシーン View の登録・Submit
 			// 　castsShadow かつ bounds が有効な RenderItem を union してキャスタの箱を作り、AddShadowView を
 			// 　AddView より先に呼ぶ(シーン View の b1 に光の行列を焼き込む契約のため)。同じ RenderItem 列を
 			// 　両方の View へ Submit する(span の実体は上の items 配列で、Execute が戻るまで生きている)。
@@ -1082,7 +1143,7 @@ namespace fang
 			}
 
 			//------------------------------------------------------------------------
-			// 6. Unlit パスの宣言(クリアを持つ・三角形が先の理由は既存コメントにある)
+			// 7. Unlit パスの宣言(クリアを持つ・三角形が先の理由は既存コメントにある)
 			// 　三角形を描く UnlitPass を宣言する。バックバッファと深度、両方のクリアをこのパスが引き受ける。
 			//------------------------------------------------------------------------
 			// 三角形を先に描き、深度を持つ狼が上に乗る従来の前後関係を保つ。三角形は深度テストを持たないので、
@@ -1106,7 +1167,7 @@ namespace fang
 			graph.AddPass(unlitPassDesc);
 
 			//------------------------------------------------------------------------
-			// 7. ScenePass の宣言(Load)
+			// 8. ScenePass の宣言(Load)
 			// 　床と狼を描く ScenePass を View ごとに宣言する。
 			//------------------------------------------------------------------------
 			// 床と狼（1 体〜2 体）を描く ScenePass を View ごとに宣言する。三角形パスが画面をクリア済みなので、
@@ -1121,7 +1182,7 @@ namespace fang
 			);
 
 			//------------------------------------------------------------------------
-			// 8. TerrainPass の宣言(Load・シャドウマップ読み)
+			// 9. TerrainPass の宣言(Load・シャドウマップ読み)
 			// 　地形を描く TerrainPass を ScenePass の直後に宣言する。前後関係は深度テストが解決するので
 			// 　順序に意味は無いが、シャドウマップを読むリソースとして宣言することで ShadowPass との
 			// 　バリアを Compile に導かせる。b1 はシーン View の実体を借りる ➡ 光と影が建物と一致する。
@@ -1143,21 +1204,52 @@ namespace fang
 
 #if FANG_ENABLE_DEBUG_DRAW
 			//------------------------------------------------------------------------
-			// 9. デバッグ描画の積み込みと DebugLinePass の宣言(FANG_ENABLE_DEBUG_DRAW 内)
-			// 　Reset で前フレームの積み込みを捨ててから、狼(と床)の境界ボックス、シャドウの光の視錐台の順に
-			// 　ワイヤーを積み、DebugLinePass を宣言する。Release では FANG_ENABLE_DEBUG_DRAW が 0 になり、
-			// 　この区画ごとビルドから外れる。
+			// 10. デバッグ描画の積み込みと DebugLinePass の宣言(FANG_ENABLE_DEBUG_DRAW 内)
+			// 　Reset で前フレームの積み込みを捨ててから、コライダーのワイヤー(触れていれば赤)、シャドウの
+			// 　光の視錐台の順にワイヤーを積み、DebugLinePass を宣言する。Release では
+			// 　FANG_ENABLE_DEBUG_DRAW が 0 になり、この区画ごとビルドから外れる。
 			//------------------------------------------------------------------------
 			DebugDraw& debugDraw = *loopContext.debugDraw;
 
 			debugDraw.Reset();
 
-			// 要件は狼 2 体の AABB のみが成功条件なので、床を除く判定は入れず bounds が有効な全アイテムを積む。
-			for (const RenderItem& item : submittedItems)
+			if (collisionWorld != nullptr)
 			{
-				if (item.bounds.IsValid())
+				// コライダーの形は境界ボックスより情報が多い(狼はカプセル、置き物は回った箱)ので、
+				// 当たり判定を作れているときは境界ボックスの代わりにこちらを出す。両方出すと線が重なって読めない。
+				const std::span<const Contact> contacts = collisionWorld->GetContacts();
+
+				DebugLineSegment segments[MAX_SHAPE_LINE_COUNT];
+				for (uint32_t colliderIndex = 0; colliderIndex < collisionWorld->GetColliderCount(); ++colliderIndex)
 				{
-					debugDraw.AddWireBox(item.bounds, DEBUG_DRAW_BOUNDS_COLOR);
+					const ColliderProxy& proxy = loopContext.colliderProxies[colliderIndex];
+
+					// 接触は多くても数件なので、旗の配列を別に持たずその場で数える。
+					bool isTouching = false;
+					for (const Contact& contact : contacts)
+					{
+						isTouching = isTouching || contact.userIndexA == proxy.userIndex ||
+									 contact.userIndexB == proxy.userIndex;
+					}
+
+					const Vector3& color = isTouching ? DEBUG_DRAW_TOUCHING_COLLIDER_COLOR : DEBUG_DRAW_COLLIDER_COLOR;
+
+					const uint32_t lineCount = BuildShapeLines(proxy.shape, segments);
+					for (uint32_t lineIndex = 0; lineIndex < lineCount; ++lineIndex)
+					{
+						debugDraw.AddLine(segments[lineIndex].from, segments[lineIndex].to, color);
+					}
+				}
+			}
+			else
+			{
+				// 当たり判定を作れなかったときは、これまでどおり境界ボックスを出す。
+				for (const RenderItem& item : submittedItems)
+				{
+					if (item.bounds.IsValid())
+					{
+						debugDraw.AddWireBox(item.bounds, DEBUG_DRAW_BOUNDS_COLOR);
+					}
 				}
 			}
 
@@ -1173,7 +1265,7 @@ namespace fang
 
 #if FANG_ENABLE_EDITOR
 			//------------------------------------------------------------------------
-			// 10. エディタパスの宣言(FANG_ENABLE_EDITOR 内・Main 記録)
+			// 11. エディタパスの宣言(FANG_ENABLE_EDITOR 内・Main 記録)
 			// 　エディタパスを宣言する。Release ビルドでは FANG_ENABLE_EDITOR が 0 になり、この区画ごと
 			// 　ビルドから外れる。
 			//------------------------------------------------------------------------
@@ -1204,14 +1296,14 @@ namespace fang
 #endif
 
 			//------------------------------------------------------------------------
-			// 11. Compile と Execute
+			// 12. Compile と Execute
 			// 　宣言したパスから Compile でバリアとクリアの手順を導き、Execute でコマンドリストへ記録する。
 			//------------------------------------------------------------------------
 			graph.Compile();
 			graph.Execute(device, jobSystem);
 
 			//------------------------------------------------------------------------
-			// 12. レンダリング統計のスナップショット更新
+			// 13. レンダリング統計のスナップショット更新
 			// 　Execute の Wait が済んだこの地点でだけ、Submit 数・描いた数・パス数・コマンドリスト本数を
 			// 　安全に読める（ScenePass の記録がまだ書き込み中の可能性がある間は読めない）。ここで書いた値は
 			// 　次のフレームの EditorPass が読む、1 フレーム遅れのスナップショットになる。
@@ -1223,7 +1315,7 @@ namespace fang
 			loopContext.renderStatistics->commandListCount = static_cast<uint32_t>(graph.GetCommandLists().size());
 
 			//------------------------------------------------------------------------
-			// 13. コマンドリストを借りられなかったときの畳み
+			// 14. コマンドリストを借りられなかったときの畳み
 			// 　パスを宣言したのにコマンドリストが 1 本も返らなかった(主にデバイスロスト)ら、このフレームは
 			// 　EndFrame を呼ばずに畳む。
 			//------------------------------------------------------------------------
@@ -1240,7 +1332,7 @@ namespace fang
 			}
 
 			//------------------------------------------------------------------------
-			// 14. EndFrame
+			// 15. EndFrame
 			// 　積んだコマンドリストを渡して実行・Present・GPU の完了待ちをまとめて行う。
 			//------------------------------------------------------------------------
 #if FANG_ENABLE_PROFILER
@@ -1252,7 +1344,7 @@ namespace fang
 
 #if FANG_ENABLE_PROFILER
 			//------------------------------------------------------------------------
-			// 15. GPU 時間と EndFrame の内訳のスナップショット更新
+			// 16. GPU 時間と EndFrame の内訳のスナップショット更新
 			// 　どちらも EndFrame が GPU の完了を待った後でしか確定しないので、区画 12 とは別にここで書く。
 			// 　区画 13 で畳んだフレームは前の値が残るだけで、読み手に特別扱いは要らない。
 			//------------------------------------------------------------------------
@@ -1403,6 +1495,17 @@ namespace fang
 			FANG_LOG_ERROR(Runtime, "メッシュ描画の準備に失敗した。モデルの表示だけを飛ばす");
 		}
 
+		// 当たり判定も失敗を FANG_FATAL にしない。作れなければ判定と可視化だけを飛ばし、絵は今までどおり出る。
+		CollisionWorld collisionWorld;
+		const bool     hasCollisionWorld = collisionWorld.Initialize(
+			HeapAllocator::GetInstance(),
+			CollisionWorldDesc{ .maxColliderCount = MAX_COLLIDER_COUNT }
+		);
+		if (!hasCollisionWorld)
+		{
+			FANG_LOG_ERROR(Runtime, "当たり判定の準備に失敗した。判定と可視化だけを飛ばす");
+		}
+
 		// RenderGraph はフレームごとに Reset して組み直す入れ物なので、器そのものはここで 1 つだけ作る。
 		RenderGraph renderGraph;
 
@@ -1453,6 +1556,11 @@ namespace fang
 		loopContext.renderItems   = std::move(stage.renderItems);
 		loopContext.stageMeshes   = std::move(stage.meshes);
 		loopContext.stageTextures = std::move(stage.textures);
+
+		// コライダーの列は RenderItem と同じ数だけ確保し切る ➡ 毎フレームの伸長が起きない。
+		// 実際に登録するのはメッシュを読めている席だけなので、使うのは先頭から数個〜全部。
+		loopContext.collisionWorld = hasCollisionWorld ? &collisionWorld : nullptr;
+		loopContext.colliderProxies.resize(loopContext.renderItems.size());
 
 		FramePipeline framePipeline;
 		if (!framePipeline.Initialize(jobSystem, frameMemory, &loopContext, &UpdateFrame, &RenderFrame))
@@ -1519,6 +1627,7 @@ namespace fang
 		//------------------------------------------------------------------------
 		framePipeline.Shutdown();
 		application.OnShutdown(device);
+		collisionWorld.Shutdown();
 		unlitRenderer.Shutdown(device);
 #if FANG_ENABLE_DEBUG_DRAW
 		debugDraw.Shutdown(device);

@@ -21,6 +21,18 @@
     <ClCompile Include="Source\AssetPathTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\BroadphaseTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CollisionDebugLineTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CollisionShapeTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CollisionWorldTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\DdsImageTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
@@ -58,6 +70,9 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\MatrixOperationTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\NarrowphaseTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\PackTests.cpp">

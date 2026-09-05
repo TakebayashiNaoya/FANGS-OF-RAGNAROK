@@ -66,6 +66,36 @@ namespace fang
 		return left;
 	}
 
+	/**
+	 * @brief 成分を番号で読む。0 = x、1 = y、2 = z。
+	 * @details 3 軸を同じ式で回す計算（軸ごとの clamp、分離軸の投影）のためにある。範囲外は FANG_ASSERT。
+	 */
+	[[nodiscard]] FANG_FORCEINLINE float GetComponent(const Vector3& value, int index)
+	{
+		FANG_ASSERT(index >= 0 && index < 3, "成分の番号が範囲外");
+
+		return (index == 0) ? value.x : ((index == 1) ? value.y : value.z);
+	}
+
+	/** @brief 成分を番号で書く。0 = x、1 = y、2 = z。 */
+	FANG_FORCEINLINE void SetComponent(Vector3* target, int index, float value)
+	{
+		FANG_ASSERT(index >= 0 && index < 3, "成分の番号が範囲外");
+
+		if (index == 0)
+		{
+			target->x = value;
+		}
+		else if (index == 1)
+		{
+			target->y = value;
+		}
+		else
+		{
+			target->z = value;
+		}
+	}
+
 	/** @brief 内積。 */
 	[[nodiscard]] FANG_FORCEINLINE float Dot(const Vector3& left, const Vector3& right)
 	{

@@ -26,11 +26,23 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
+    <ClInclude Include="Broadphase.h" />
     <ClInclude Include="Collision.h" />
+    <ClInclude Include="CollisionDebugLines.h" />
+    <ClInclude Include="CollisionLog.h" />
+    <ClInclude Include="CollisionMath.h" />
+    <ClInclude Include="CollisionShapes.h" />
+    <ClInclude Include="CollisionWorld.h" />
+    <ClInclude Include="Narrowphase.h" />
     <ClInclude Include="Pch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Broadphase.cpp" />
     <ClCompile Include="Collision.cpp" />
+    <ClCompile Include="CollisionDebugLines.cpp" />
+    <ClCompile Include="CollisionShapes.cpp" />
+    <ClCompile Include="CollisionWorld.cpp" />
+    <ClCompile Include="Narrowphase.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
