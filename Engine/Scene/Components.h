@@ -69,6 +69,32 @@ namespace fang
 	};
 
 	/**
+	 * @brief 体力。
+	 * @details 誰の体力かは持たない ➡ 当てる側は相手が雑魚かボスか壊せる置き物かを知らなくてよい（ADR-035）。
+	 */
+	struct HealthComponent
+	{
+		FANG_REFLECT_BEGIN(HealthComponent)
+		FANG_FIELD(maximumHitPoints, "最大 HP", Range(0.0f, 1000000.0f))
+		FANG_FIELD(currentHitPoints, "今の HP", Range(0.0f, 1000000.0f))
+		FANG_REFLECT_END()
+
+		float maximumHitPoints = 100.0f;
+		float currentHitPoints = 100.0f;
+	};
+
+	/**
+	 * @brief 体力を減らす。
+	 * @return 減らした結果が 0 以下になれば true（撃破）。
+	 * @details 引く以外のことをしない。防御力・属性・レベル補正が入るのはこの関数の手前。
+	 */
+	[[nodiscard]] inline bool ApplyDamage(HealthComponent* health, float damage)
+	{
+		health->currentHitPoints -= damage;
+		return health->currentHitPoints <= 0.0f;
+	}
+
+	/**
 	 * @brief 振る舞い（Update を持つコンポーネント）の入口。
 	 * @details Scene::AddBehavior<T> が固定長ブロックのプールから配る。狼の移動・アニメなど、
 	 *          ゲーム固有の振る舞いはこれを継承して Game/Source/ に置く（01 アーキテクチャ 2）。

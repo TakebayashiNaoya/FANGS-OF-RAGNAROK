@@ -11,6 +11,7 @@
 #include "Core/Math/Vector3.h"
 #include "RHI/RHIHandles.h"
 #include "Renderer/MeshRenderer.h"
+#include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
 #include "WolfMovementParams.h"
 #include <vector>
@@ -76,6 +77,7 @@ namespace fang::game
 	/**
 	 * @brief 読み込み済みの WolfModel から、Scene 上のオブジェクトを 1 体作る。
 	 * @param isControlled     true ならパッドで動かす。false なら initialPosition に立ったまま。
+	 * @param swingParams      近接攻撃の時間割・間合い・攻撃力。isControlled が false なら使わない。
 	 * @param initialPosition  ワールド XZ。Y は毎フレーム地表から決める。
 	 * @param outBehavior      作った振る舞いを受け取る。要らなければ nullptr でよい。
 	 *                         寿命は scene が持つので、呼び出し側は解放しない。
@@ -85,6 +87,7 @@ namespace fang::game
 		Scene&                    scene,
 		WolfModel&                model,
 		const WolfMovementParams& params,
+		const MeleeSwingParams&   swingParams,
 		CollisionWorld*           collisionWorld,
 		const HeightmapTerrain*   terrain,
 		bool                      isControlled,

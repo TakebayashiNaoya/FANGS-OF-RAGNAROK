@@ -51,6 +51,12 @@
     <ClCompile Include="Source\DirectoryWatcherTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\EnemyDefeatBudgetTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\EnemyDefeatRefillTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\EnemyEncounterBudgetTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
@@ -90,6 +96,9 @@
     <ClCompile Include="Source\MatrixOperationTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\MeleeSwingTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\NarrowphaseTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
@@ -118,6 +127,9 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\SceneComponentTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\SceneHealthComponentTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\SceneHierarchyTests.cpp">

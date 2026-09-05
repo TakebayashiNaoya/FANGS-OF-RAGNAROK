@@ -58,7 +58,7 @@ namespace fang
 		 * @details AddBehavior<T> がこれを超える型を static_assert で弾く。型ごとのプール登録が要らない
 		 *          代わりに、全部の振る舞いがこの大きさの箱に収まる前提になる。
 		 */
-		static constexpr size_t BEHAVIOR_BLOCK_SIZE = 192;
+		static constexpr size_t BEHAVIOR_BLOCK_SIZE = 256;
 
 		Scene() = default;
 		~Scene();
@@ -157,6 +157,28 @@ namespace fang
 		[[nodiscard]] const ColliderComponent* GetColliderComponent(GameObjectHandle handle) const;
 
 		/**
+		 * @brief HealthComponent を足す。1 オブジェクトにつき 1 個まで。
+		 * @return handle が無効、または既に持っていれば false（何もしない）。
+		 */
+		[[nodiscard]] bool AddHealthComponent(GameObjectHandle handle, const HealthComponent& component);
+
+		/** @brief HealthComponent を読み書きする。持っていなければ nullptr。 */
+		[[nodiscard]] HealthComponent* GetHealthComponent(GameObjectHandle handle);
+
+		/** @brief 読み取り専用版。 */
+		[[nodiscard]] const HealthComponent* GetHealthComponent(GameObjectHandle handle) const;
+
+		/**
+		 * @brief クエリが返した席番号からハンドルを引く。
+		 * @return その席が生きていなければ無効なハンドル。
+		 * @details 掃引や接触が返すのは席番号だけで、世代が入っていない ➡ コンポーネントを引く前にここを通す。
+		 */
+		[[nodiscard]] GameObjectHandle GetHandleFromIndex(uint32_t index) const;
+
+		/** @brief 破棄を予約済みか。IsValid は予約済みでも true を返す（席が空くのは次の Update）。 */
+		[[nodiscard]] bool IsPendingDestroy(GameObjectHandle handle) const;
+
+		/**
 		 * @brief 振る舞い（IComponent）を 1 個足す。固定長ブロックのプールから配る。
 		 * @tparam T IComponent を継承した型。BEHAVIOR_BLOCK_SIZE に収まること。
 		 * @return handle が無効、または上限に達していれば nullptr（FANG_LOG_WARNING を 1 回出す）。
@@ -238,6 +260,9 @@ namespace fang
 		/** @brief index が ColliderComponent を持っていれば、詰めた配列から取り除く。 */
 		void RemoveColliderComponentIfPresent(uint32_t index);
 
+		/** @brief index が HealthComponent を持っていれば、詰めた配列から取り除く。 */
+		void RemoveHealthComponentIfPresent(uint32_t index);
+
 
 		IAllocator* m_allocator      = nullptr; /**< 借用。Shutdown で返すときにも同じものを使う。 */
 		uint32_t    m_maxObjectCount = 0;
@@ -289,6 +314,11 @@ namespace fang
 		uint32_t*          m_colliderComponentOwners        = nullptr;
 		uint32_t*          m_colliderComponentIndexByObject = nullptr;
 		uint32_t           m_colliderComponentCount         = 0;
+
+		HealthComponent* m_healthComponents             = nullptr;
+		uint32_t*        m_healthComponentOwners        = nullptr;
+		uint32_t*        m_healthComponentIndexByObject = nullptr;
+		uint32_t         m_healthComponentCount         = 0;
 
 		//------------------------------------------------------------------------
 		// 振る舞い（IComponent）。固定長ブロックのプールから配る。

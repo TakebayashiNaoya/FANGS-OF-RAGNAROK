@@ -49,15 +49,20 @@ namespace fang::game
 			};
 			(void)scene.AddMeshRendererComponent(handle, meshRendererComponent);
 
-			// 狼と同じく、四つ足の体を包むカプセルで当たりを取る。
+			// 狼と同じく、四つ足の体を包むカプセルで当たりを取る。ENEMY を足して攻撃の掃引に出す。
 			const ColliderComponent colliderComponent{
 				.shapeType   = EnShapeType::Capsule,
 				.localBounds = model.localBounds,
 				.isEnabled   = true,
-				.layerMask   = COLLISION_LAYER_CHARACTER,
+				.layerMask   = COLLISION_LAYER_CHARACTER | COLLISION_LAYER_ENEMY,
 			};
 			(void)scene.AddColliderComponent(handle, colliderComponent);
 		}
+
+		(void)scene.AddHealthComponent(
+			handle,
+			HealthComponent{ .maximumHitPoints = params.maximumHitPoints, .currentHitPoints = params.maximumHitPoints }
+		);
 
 		const MinionBehavior::Dependencies dependencies{
 			.params         = &params,

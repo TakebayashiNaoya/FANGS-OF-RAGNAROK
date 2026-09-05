@@ -25,6 +25,9 @@ namespace fang::game
 	{
 		PerceptionParams perception;
 		PursuitParams    pursuit;
+
+		/** @brief 湧いたときの HP。攻撃力 50 に対して 100 ➡ 2 回で倒れる。 */
+		float maximumHitPoints = 100.0f;
 	};
 
 	/**
