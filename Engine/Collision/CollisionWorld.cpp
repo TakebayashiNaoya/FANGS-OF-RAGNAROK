@@ -17,6 +17,13 @@ namespace fang
 	namespace
 	{
 		/**
+		 * @brief 視線が対象の手前で止まる余白。1 = 1cm なので 0.1mm。
+		 * @details 対象自身の登録がちょうど到達点にあっても、それを遮蔽として拾わないための余白。
+		 */
+		constexpr float LINE_OF_SIGHT_TARGET_MARGIN = 0.01f;
+
+
+		/**
 		 * @brief レイが箱と交わるか。形ごとの厳密判定の前に候補を落とすために使う。
 		 * @details スラブ法。向きが軸に平行な成分は 0 除算になるので、始点が範囲外かどうかだけで決める。
 		 */
@@ -713,5 +720,32 @@ namespace fang
 		}
 
 		return result;
+	}
+
+
+	bool CollisionWorld::HasLineOfSight(
+		const Vector3&     fromPosition,
+		const Vector3&     toPosition,
+		const QueryFilter& filter,
+		RayHit*            outBlockingHit
+	) const
+	{
+		FANG_ASSERT(outBlockingHit != nullptr, "遮蔽ヒットの書き込み先が null");
+
+		const Vector3 offset   = toPosition - fromPosition;
+		const float   distance = Length(offset);
+		if (distance <= DEGENERATE_MAGNITUDE)
+		{
+			return true;
+		}
+
+		// 対象の手前で止める。ちょうど到達点にある登録(対象自身)を遮蔽として拾わないため。
+		const float clippedDistance = distance - LINE_OF_SIGHT_TARGET_MARGIN;
+		if (clippedDistance <= 0.0f)
+		{
+			return true;
+		}
+
+		return !Raycast(fromPosition, offset * (1.0f / distance), clippedDistance, filter, outBlockingHit);
 	}
 } // namespace fang

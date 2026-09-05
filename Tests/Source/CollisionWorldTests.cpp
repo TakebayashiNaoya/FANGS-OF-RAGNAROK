@@ -600,3 +600,110 @@ TEST_CASE("layerMask で絞り込んだ掃引は対象外の登録を無視す�
 
 	world.Shutdown();
 }
+
+
+TEST_CASE("視線は間を遮る登録があれば false、無ければ true になる")
+{
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	std::vector<fang::ColliderProxy> proxies;
+	proxies.push_back(MakeSphereProxy(fang::Vector3{ 5.0f, 0.0f, 0.0f }, 1.0f, 1));
+	world.Update(proxies);
+
+	fang::RayHit blockingHit;
+
+	// 遮る登録がある。
+	CHECK_FALSE(
+		world.HasLineOfSight(fang::Vector3{}, fang::Vector3{ 10.0f, 0.0f, 0.0f }, fang::QueryFilter{}, &blockingHit)
+	);
+	CHECK(blockingHit.userIndex == 1);
+
+	// 手前で止まらない向きなら遮られない。
+	CHECK(world.HasLineOfSight(fang::Vector3{}, fang::Vector3{ 0.0f, 10.0f, 0.0f }, fang::QueryFilter{}, &blockingHit));
+
+	world.Shutdown();
+}
+
+
+TEST_CASE("視線は発信元と対象自身を除外すれば通る")
+{
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	// 発信元(番号 1)と対象(番号 2)の位置それぞれにも登録がある(狼自身・対象自身の当たり)。
+	std::vector<fang::ColliderProxy> proxies;
+	proxies.push_back(MakeSphereProxy(fang::Vector3{ 0.0f, 0.0f, 0.0f }, 1.0f, 1));
+	proxies.push_back(MakeSphereProxy(fang::Vector3{ 10.0f, 0.0f, 0.0f }, 1.0f, 2));
+	world.Update(proxies);
+
+	fang::RayHit blockingHit;
+
+	// 除外しなければ、発信元自身の登録に当たって遮られる。
+	CHECK_FALSE(
+		world.HasLineOfSight(fang::Vector3{}, fang::Vector3{ 10.0f, 0.0f, 0.0f }, fang::QueryFilter{}, &blockingHit)
+	);
+
+	// 発信元と対象を除外すれば、間に何も無いので通る。
+	const uint32_t excluded[] = { 1, 2 };
+	CHECK(world.HasLineOfSight(
+		fang::Vector3{},
+		fang::Vector3{ 10.0f, 0.0f, 0.0f },
+		fang::QueryFilter{ .excludedUserIndices = excluded },
+		&blockingHit
+	));
+
+	world.Shutdown();
+}
+
+
+TEST_CASE("視線を layerMask で壁だけに絞ると、キャラの層は遮らない")
+{
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	constexpr uint32_t WALL_LAYER      = 1u << 0;
+	constexpr uint32_t CHARACTER_LAYER = 1u << 1;
+
+	std::vector<fang::ColliderProxy> proxies;
+	proxies.push_back(
+		fang::ColliderProxy{
+			.shape     = fang::MakeColliderShape(fang::Sphere{ .center = { 5.0f, 0.0f, 0.0f }, .radius = 1.0f }),
+			.userIndex = 3,
+			.layerMask = CHARACTER_LAYER,
+		}
+	);
+	world.Update(proxies);
+
+	fang::RayHit blockingHit;
+
+	CHECK_FALSE(
+		world.HasLineOfSight(fang::Vector3{}, fang::Vector3{ 10.0f, 0.0f, 0.0f }, fang::QueryFilter{}, &blockingHit)
+	);
+
+	CHECK(world.HasLineOfSight(
+		fang::Vector3{},
+		fang::Vector3{ 10.0f, 0.0f, 0.0f },
+		fang::QueryFilter{ .layerMask = WALL_LAYER },
+		&blockingHit
+	));
+
+	world.Shutdown();
+}
+
+
+TEST_CASE("同じ位置への視線は常に見える扱いになる")
+{
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	fang::RayHit blockingHit;
+	CHECK(world.HasLineOfSight(
+		fang::Vector3{ 5.0f, 0.0f, 0.0f },
+		fang::Vector3{ 5.0f, 0.0f, 0.0f },
+		fang::QueryFilter{},
+		&blockingHit
+	));
+
+	world.Shutdown();
+}

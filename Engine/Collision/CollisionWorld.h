@@ -140,6 +140,21 @@ namespace fang
 			std::span<SweepHit> outHits
 		) const;
 
+		/**
+		 * @brief 2 点の間に遮るものが無いか。
+		 * @param outBlockingHit 遮られたときだけ書く。null は不可。
+		 * @return 遮るものが無ければ true。2 点が同じ位置なら常に true。
+		 * @details 距離と向きの用意、対象の手前で止めること、当たらなければ見えること——この定型をここに
+		 *          閉じる。視野角と索敵距離は答えない（AI の値）。発信元・対象自身の登録を数えないためには、
+		 *          呼び出し側が filter.excludedUserIndices にそれぞれの userIndex を渡すこと。
+		 */
+		[[nodiscard]] bool HasLineOfSight(
+			const Vector3&     fromPosition,
+			const Vector3&     toPosition,
+			const QueryFilter& filter,
+			RayHit*            outBlockingHit
+		) const;
+
 
 	private:
 		/**
