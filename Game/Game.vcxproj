@@ -19,7 +19,7 @@
 
   <PropertyGroup Label="FangModule">
     <!-- ソースは Game.Shared.vcxitems 側で拾う -->
-    <FangModuleDependencies>Core;RHI;Runtime</FangModuleDependencies>
+    <FangModuleDependencies>Core;RHI;Runtime;Scene;Renderer;Collision;Resource;Animation;Input</FangModuleDependencies>
     <!-- Release では Editor と imgui をリンクしない（02 3）-->
     <FangModuleDependencies Condition="'$(FangConfigurationBase)' != 'Release'">$(FangModuleDependencies);Editor</FangModuleDependencies>
   </PropertyGroup>

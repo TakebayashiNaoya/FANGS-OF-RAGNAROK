@@ -21,7 +21,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
 
   <PropertyGroup Label="FangModule">
-    <FangModuleDependencies>Core;RHI;Runtime</FangModuleDependencies>
+    <FangModuleDependencies>Core;RHI;Runtime;Scene;Renderer;Collision;Resource;Animation;Input</FangModuleDependencies>
     <FangModuleDependencies Condition="'$(FangConfigurationBase)' != 'Release'">$(FangModuleDependencies);Editor</FangModuleDependencies>
   </PropertyGroup>
 

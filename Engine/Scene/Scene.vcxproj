@@ -18,7 +18,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
 
   <PropertyGroup Label="FangModule">
-    <FangModuleDependencies>Core;Resource;Collision;Animation</FangModuleDependencies>
+    <FangModuleDependencies>Core;Resource;Collision;Animation;Renderer;RHI</FangModuleDependencies>
   </PropertyGroup>
 
   <Import Project="$(FangRoot)Build\Module.props" />
