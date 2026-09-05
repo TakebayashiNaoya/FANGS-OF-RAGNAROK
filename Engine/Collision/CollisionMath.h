@@ -90,4 +90,37 @@ namespace fang
 
 		return result;
 	}
+
+	/**
+	 * @brief 2 つの線分の最近点の組を求める。
+	 * @details 2 変数の 2 次関数の最小を解き、範囲外へ出た側を端で止めてもう一方を解き直す。平行で
+	 *          分母が 0 になる場合は A 側を始点に固定する（平行なら A のどこを採っても距離は同じ）。
+	 *          Narrowphase のカプセルどうしの判定と、掃引のカプセル・球の分離距離が共通で使う。
+	 */
+	void ClosestPointsBetweenSegments(
+		const Vector3& startA,
+		const Vector3& endA,
+		const Vector3& startB,
+		const Vector3& endB,
+		Vector3*       outOnA,
+		Vector3*       outOnB
+	);
+
+	/** @brief 芯の点（半径 0）と OBB の分離。 */
+	struct CoreBoxSeparation
+	{
+		Vector3 closestPoint; /**< 芯に最も近い、箱の面上の点。芯が箱の中ならいちばん浅い面の上の点。 */
+		Vector3 normal;       /**< 箱の外向き。芯が中にあればいちばん浅い面の外向き。 */
+
+		/** @brief 芯から面までの符号付き距離。外なら正、中なら負（めり込みの深さの符号を反転したもの）。 */
+		float distance = 0.0f;
+	};
+
+	/**
+	 * @brief 芯の点と OBB の分離距離を求める。
+	 * @details 芯が箱の外なら軸ごとの clamp で最近点が出る。中にあるときは最近点が芯そのものになって
+	 *          向きも距離も決まらないので、いちばん近い面へ抜く向きを法線にして、面までの距離を負で返す。
+	 *          Narrowphase の球・カプセルと OBB の判定と、掃引の OBB 相手の分離距離が共通で使う。
+	 */
+	[[nodiscard]] CoreBoxSeparation ComputeCoreToBoxSeparation(const Vector3& corePoint, const OBB& box);
 } // namespace fang

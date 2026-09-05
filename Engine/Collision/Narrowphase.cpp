@@ -21,83 +21,6 @@ namespace fang
 
 
 		/**
-		 * @brief 2 つの線分の最近点の組を求める。
-		 * @details 2 変数の 2 次関数の最小を解き、範囲外へ出た側を端で止めてもう一方を解き直す。平行で
-		 *          分母が 0 になる場合は A 側を始点に固定する（平行なら A のどこを採っても距離は同じ）。
-		 */
-		void ClosestPointsBetweenSegments(
-			const Vector3& startA,
-			const Vector3& endA,
-			const Vector3& startB,
-			const Vector3& endB,
-			Vector3*       outOnA,
-			Vector3*       outOnB
-		)
-		{
-			const Vector3 directionA = endA - startA;
-			const Vector3 directionB = endB - startB;
-			const Vector3 offset     = startA - startB;
-
-			const float lengthSquaredA = LengthSquared(directionA);
-			const float lengthSquaredB = LengthSquared(directionB);
-			const float projectionB    = Dot(directionB, offset);
-
-			float parameterA = 0.0f;
-			float parameterB = 0.0f;
-
-			if (lengthSquaredA <= DEGENERATE_LENGTH_SQUARED && lengthSquaredB <= DEGENERATE_LENGTH_SQUARED)
-			{
-				// 両方とも点。始点どうしがそのまま最近点。
-			}
-			else if (lengthSquaredA <= DEGENERATE_LENGTH_SQUARED)
-			{
-				parameterB = ClampFloat(projectionB / lengthSquaredB, 0.0f, 1.0f);
-			}
-			else
-			{
-				const float projectionA = Dot(directionA, offset);
-
-				if (lengthSquaredB <= DEGENERATE_LENGTH_SQUARED)
-				{
-					parameterA = ClampFloat(-projectionA / lengthSquaredA, 0.0f, 1.0f);
-				}
-				else
-				{
-					const float dotDirections = Dot(directionA, directionB);
-					const float denominator   = lengthSquaredA * lengthSquaredB - dotDirections * dotDirections;
-
-					parameterA = (denominator > DEGENERATE_LENGTH_SQUARED)
-									 ? ClampFloat(
-										   (dotDirections * projectionB - projectionA * lengthSquaredB) / denominator,
-										   0.0f,
-										   1.0f
-									   )
-									 : 0.0f;
-
-					const float numeratorB = dotDirections * parameterA + projectionB;
-					if (numeratorB < 0.0f)
-					{
-						parameterB = 0.0f;
-						parameterA = ClampFloat(-projectionA / lengthSquaredA, 0.0f, 1.0f);
-					}
-					else if (numeratorB > lengthSquaredB)
-					{
-						parameterB = 1.0f;
-						parameterA = ClampFloat((dotDirections - projectionA) / lengthSquaredA, 0.0f, 1.0f);
-					}
-					else
-					{
-						parameterB = numeratorB / lengthSquaredB;
-					}
-				}
-			}
-
-			*outOnA = startA + directionA * parameterA;
-			*outOnB = startB + directionB * parameterB;
-		}
-
-
-		/**
 		 * @brief 最近点の組から接触を組み立てる。
 		 * @param closestOnA A 側の最近点（半径を足す前の芯の位置）。
 		 * @param closestOnB B 側の最近点。
@@ -143,50 +66,26 @@ namespace fang
 
 		/**
 		 * @brief 芯の点 + 半径と OBB の接触。球と OBB、カプセルと OBB の共通の出口。
-		 * @details 芯が箱の外なら軸ごとの clamp で最近点が出る。中にあるときは最近点が芯そのものになって
-		 *          向きも深さも決まらないので、いちばん近い面へ抜く向きを法線にして、面までの距離を深さへ足す。
+		 * @details 分離距離と最近点は CollisionMath::ComputeCoreToBoxSeparation が持つ。ここでは半径との
+		 *          比較と、芯 ➡ 箱の外向きから「1 つ目 ➡ 2 つ目」の向きへの反転、箱の外なら半径ぶん
+		 *          割り引いた表面どうしの中間を接触点にする(2 つ目の半径 0 の MakeContactFromClosestPoints
+		 *          と同じ式)だけを行う。
 		 */
 		bool IntersectCoreWithBox(const Vector3& center, float radius, const OBB& box, Contact* outContact)
 		{
-			const Vector3 local   = ToBoxLocal(box, center);
-			const Vector3 clamped = ClampToHalfExtents(local, box.halfExtents);
-
-			const Vector3 difference = local - clamped;
-			if (LengthSquared(difference) > DEGENERATE_LENGTH_SQUARED)
+			const CoreBoxSeparation separation = ComputeCoreToBoxSeparation(center, box);
+			if (separation.distance > radius)
 			{
-				return MakeContactFromClosestPoints(
-					center,
-					FromBoxLocal(box, clamped),
-					radius,
-					0.0f,
-					FALLBACK_CONTACT_NORMAL,
-					outContact
-				);
+				return false;
 			}
 
-			int   shallowestAxisIndex = 0;
-			float shallowestDistance  = FLT_MAX;
-			float faceSign            = 1.0f;
-			for (int axisIndex = 0; axisIndex < 3; ++axisIndex)
-			{
-				const float coordinate     = GetComponent(local, axisIndex);
-				const float distanceToFace = GetComponent(box.halfExtents, axisIndex) - std::abs(coordinate);
+			outContact->normal = -separation.normal;
+			outContact->depth  = radius - separation.distance;
 
-				if (distanceToFace < shallowestDistance)
-				{
-					shallowestDistance  = distanceToFace;
-					shallowestAxisIndex = axisIndex;
-					faceSign            = (coordinate >= 0.0f) ? 1.0f : -1.0f;
-				}
-			}
-
-			// 面の外向き。芯はこの向きへ出れば最短で箱から抜ける。
-			const Vector3 faceNormal = box.axes[shallowestAxisIndex] * faceSign;
-
-			// 法線は「1 つ目の形から 2 つ目の形へ押し出す向き」➡ 芯を抜く向きの逆。
-			outContact->normal = -faceNormal;
-			outContact->depth  = radius + shallowestDistance;
-			outContact->point  = center + faceNormal * shallowestDistance;
+			// 箱の中(芯が clamp で動かなかった)なら最近点がそのまま接触点。外なら芯側の表面まで縮める。
+			outContact->point = (separation.distance > 0.0f)
+									? (center - separation.normal * radius + separation.closestPoint) * 0.5f
+									: separation.closestPoint;
 
 			return true;
 		}

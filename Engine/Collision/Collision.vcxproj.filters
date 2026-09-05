@@ -19,6 +19,7 @@
     <ClCompile Include="Broadphase.cpp" />
     <ClCompile Include="Collision.cpp" />
     <ClCompile Include="CollisionDebugLines.cpp" />
+    <ClCompile Include="CollisionMath.cpp" />
     <ClCompile Include="CollisionShapes.cpp" />
     <ClCompile Include="CollisionWorld.cpp" />
     <ClCompile Include="Narrowphase.cpp" />
