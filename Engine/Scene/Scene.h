@@ -5,6 +5,8 @@
 #pragma once
 
 #include "Core/CoreMacros.h"
+#include "Core/Math/Matrix4x4.h"
+#include "Core/Math/Vector3.h"
 #include "Scene/GameObjectHandle.h"
 #include <cstdint>
 
@@ -81,13 +83,47 @@ namespace fang
 
 		/**
 		 * @brief 1 フレームぶんの更新を進める。
-		 * @details 今回は破棄の反映だけを行う。階層のワールド行列（Scene 4）とコンポーネントの更新
-		 *          （Scene 5）は後続のタスクで積む。
+		 * @details 破棄の反映のあと、根から順にワールド行列を作り直す。コンポーネントの更新（Scene 5）は
+		 *          後続のタスクで積む。
 		 */
 		void Update(float deltaTimeSeconds);
 
+		/**
+		 * @brief ローカル行列を直接書く。
+		 * @return 無効なハンドルなら false（何もしない）。
+		 */
+		[[nodiscard]] bool SetLocalMatrix(GameObjectHandle handle, const Matrix4x4& localMatrix);
+
+		/**
+		 * @brief 位置と Y 軸回りの向きだけでローカル行列を組み立てて書く。
+		 * @details 置き物のように位置と向きだけで配置したいものに使う。
+		 * @return 無効なハンドルなら false（何もしない）。
+		 */
+		[[nodiscard]] bool SetLocalTransform(GameObjectHandle handle, const Vector3& position, float rotationYRadians);
+
+		/** @brief ローカル行列を読む。無効なハンドルなら単位行列。 */
+		[[nodiscard]] Matrix4x4 GetLocalMatrix(GameObjectHandle handle) const;
+
+		/** @brief 直近の Update が作ったワールド行列を読む。無効なハンドルなら単位行列。 */
+		[[nodiscard]] Matrix4x4 GetWorldMatrix(GameObjectHandle handle) const;
+
+		/**
+		 * @brief 親を付け替える。
+		 * @param parent 無効なハンドルを渡すと親なし（ルート）に戻す。
+		 * @return handle が無効、parent が（無効ハンドル以外で）生きていない、または parent が handle の
+		 *         子孫（輪ができる）なら false（何もしない）。
+		 */
+		[[nodiscard]] bool SetParent(GameObjectHandle handle, GameObjectHandle parent);
+
+		/** @brief 親を読む。無効なハンドル、または親を持たなければ無効なハンドル。 */
+		[[nodiscard]] GameObjectHandle GetParent(GameObjectHandle handle) const;
+
 
 	private:
+		/** @brief index を今の親の子リストから外す。親を持たなければ何もしない。 */
+		void RemoveFromParentChildList(uint32_t index);
+
+
 		IAllocator* m_allocator      = nullptr; /**< 借用。Shutdown で返すときにも同じものを使う。 */
 		uint32_t    m_maxObjectCount = 0;
 
@@ -104,5 +140,23 @@ namespace fang
 		/** @brief 破棄を予約されたスロット番号。Update の破棄反映で走査する分だけに絞るための列。 */
 		uint32_t* m_pendingDestroyIndices = nullptr;
 		uint32_t  m_pendingDestroyCount   = 0;
+
+		Matrix4x4* m_localMatrices = nullptr; /**< Transform の実体。ワールド行列は毎フレーム作り直す。 */
+		Matrix4x4* m_worldMatrices = nullptr; /**< 直近の Update が作った、根からの積算。 */
+
+		/** @brief 親のスロット番号。GameObjectHandle::INVALID_INDEX ならルート。 */
+		uint32_t* m_parentIndices = nullptr;
+
+		/** @brief 子リストの先頭。単方向リストで、兄弟は m_nextSiblingIndices をたどる。 */
+		uint32_t* m_firstChildIndices = nullptr;
+
+		uint32_t* m_nextSiblingIndices = nullptr;
+
+		/**
+		 * @brief 明示スタックの一時置き場（要素数は maxObjectCount）。再帰もヒープ確保もしない。
+		 * @details ワールド行列の組み立て（Update）と、破棄の子孫収集（DestroyObject）が使い回す。
+		 *          どちらも Scene を触れるのは更新ジョブ 1 本だけなので、同時に使われることはない。
+		 */
+		uint32_t* m_indexStack = nullptr;
 	};
 } // namespace fang
