@@ -19,6 +19,8 @@
 namespace fang
 {
 	class IAllocator;
+	class FrameAllocator;
+	struct ColliderProxy;
 
 	/**
 	 * @brief モジュール名を返す。
@@ -192,6 +194,25 @@ namespace fang
 
 		/** @brief SetSkinningMatrices で預けたもの。無効なハンドル、または未設定なら空の span。 */
 		[[nodiscard]] std::span<const Matrix4x4> GetSkinningMatrices(GameObjectHandle handle) const;
+
+		/**
+		 * @brief MeshRendererComponent を持つオブジェクトから RenderItem 列を組み立てる。
+		 * @param allocator このフレームの置き場。確保はここへ 1 回だけ行う。
+		 * @return isVisible なもの全部。確保できなければ空の span（FANG_LOG_ERROR を出す）。
+		 * @details コンポーネントを持たないオブジェクトは自然に舐められない（詰めた配列を走査するだけ）ので、
+		 *          混ざっていても崩れない。呼ぶのは Update の後（ワールド行列ができてから）にすること。
+		 */
+		[[nodiscard]] std::span<const RenderItem> BuildRenderItems(FrameAllocator& allocator) const;
+
+		/**
+		 * @brief ColliderComponent を持つオブジェクトから ColliderProxy 列を組み立てる。
+		 * @param allocator このフレームの置き場。確保はここへ 1 回だけ行う。
+		 * @return isEnabled かつ有効な localBounds を持つもの全部。userIndex にはオブジェクトの席番号が入る
+		 *         （接触から持ち主を引ける）。確保できなければ空の span（FANG_LOG_ERROR を出す）。
+		 * @details 実際の形は shapeType と localBounds・ワールド行列から毎フレーム作る。
+		 *          呼ぶのは Update の後（ワールド行列ができてから）にすること。
+		 */
+		[[nodiscard]] std::span<const ColliderProxy> BuildColliderProxies(FrameAllocator& allocator) const;
 
 
 	private:

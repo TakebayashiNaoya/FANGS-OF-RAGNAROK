@@ -4,8 +4,11 @@
  */
 #include "Pch.h"
 #include "Scene/Scene.h"
+#include "Collision/CollisionShapes.h"
+#include "Collision/CollisionWorld.h"
 #include "Core/Log/Assert.h"
 #include "Core/Memory/Allocator.h"
+#include "Core/Memory/FrameAllocator.h"
 #include "Scene/SceneLog.h"
 
 
@@ -14,6 +17,26 @@ FANG_DEFINE_LOG_CATEGORY(Scene);
 
 namespace fang
 {
+	namespace
+	{
+		/**
+		 * @brief モデル空間の箱と world 行列から、箱を包む外接球を作る。
+		 * @details MakeOBBFromAabb / MakeCapsuleFromAabb と対になる、Sphere 用の導出。半径は対角の半分
+		 *          （最も遠い頂点までの距離）なので、回転がどの向きでも箱をすべて包む。
+		 */
+		[[nodiscard]] Sphere MakeSphereFromAabb(const Aabb& localBounds, const Matrix4x4& world)
+		{
+			const Vector3 localCenter = (localBounds.min + localBounds.max) * 0.5f;
+			const Vector3 halfExtents = (localBounds.max - localBounds.min) * 0.5f;
+
+			return Sphere{
+				.center = TransformPoint(localCenter, world),
+				.radius = Length(halfExtents),
+			};
+		}
+	} // namespace
+
+
 	const char* GetSceneModuleName()
 	{
 		return "Scene";
@@ -685,5 +708,105 @@ namespace fang
 		}
 
 		return m_skinningMatricesSpans[handle.index];
+	}
+
+
+	std::span<const RenderItem> Scene::BuildRenderItems(FrameAllocator& allocator) const
+	{
+		if (m_meshRendererComponentCount == 0)
+		{
+			return {};
+		}
+
+		void* memory = allocator.Allocate(sizeof(RenderItem) * m_meshRendererComponentCount, alignof(RenderItem));
+		if (memory == nullptr)
+		{
+			FANG_LOG_ERROR(Scene, "RenderItem の確保に失敗した（{} 個ぶん）", m_meshRendererComponentCount);
+			return {};
+		}
+
+		RenderItem* items        = static_cast<RenderItem*>(memory);
+		uint32_t    writtenCount = 0;
+
+		for (uint32_t denseIndex = 0; denseIndex < m_meshRendererComponentCount; ++denseIndex)
+		{
+			const MeshRendererComponent& component = m_meshRendererComponents[denseIndex];
+			if (!component.isVisible)
+			{
+				continue;
+			}
+
+			const uint32_t   ownerIndex = m_meshRendererComponentOwners[denseIndex];
+			const Matrix4x4& world      = m_worldMatrices[ownerIndex];
+
+			::new (&items[writtenCount]) RenderItem{
+				.mesh   = component.mesh,
+				.world  = world,
+				.bounds = component.localBounds.IsValid() ? TransformAabb(component.localBounds, world) : Aabb{},
+				.skinningMatrices = m_skinningMatricesSpans[ownerIndex],
+				.baseColor        = component.baseColor,
+				.normalMap        = component.normalMap,
+				.metallicFactor   = component.materialParams.metallicFactor,
+				.roughnessFactor  = component.materialParams.roughnessFactor,
+				.normalScale      = component.materialParams.normalScale,
+				.castsShadow      = component.castsShadow,
+			};
+			++writtenCount;
+		}
+
+		return std::span<const RenderItem>(items, writtenCount);
+	}
+
+
+	std::span<const ColliderProxy> Scene::BuildColliderProxies(FrameAllocator& allocator) const
+	{
+		if (m_colliderComponentCount == 0)
+		{
+			return {};
+		}
+
+		void* memory = allocator.Allocate(sizeof(ColliderProxy) * m_colliderComponentCount, alignof(ColliderProxy));
+		if (memory == nullptr)
+		{
+			FANG_LOG_ERROR(Scene, "ColliderProxy の確保に失敗した（{} 個ぶん）", m_colliderComponentCount);
+			return {};
+		}
+
+		ColliderProxy* proxies      = static_cast<ColliderProxy*>(memory);
+		uint32_t       writtenCount = 0;
+
+		for (uint32_t denseIndex = 0; denseIndex < m_colliderComponentCount; ++denseIndex)
+		{
+			const ColliderComponent& component = m_colliderComponents[denseIndex];
+			if (!component.isEnabled || !component.localBounds.IsValid())
+			{
+				continue;
+			}
+
+			const uint32_t   ownerIndex = m_colliderComponentOwners[denseIndex];
+			const Matrix4x4& world      = m_worldMatrices[ownerIndex];
+
+			ColliderShape shape;
+			switch (component.shapeType)
+			{
+				case EnShapeType::Capsule:
+					shape = MakeColliderShape(MakeCapsuleFromAabb(component.localBounds, world));
+					break;
+
+				case EnShapeType::OBB: shape = MakeColliderShape(MakeOBBFromAabb(component.localBounds, world)); break;
+
+				case EnShapeType::Sphere:
+					shape = MakeColliderShape(MakeSphereFromAabb(component.localBounds, world));
+					break;
+			}
+
+			::new (&proxies[writtenCount]) ColliderProxy{
+				.shape     = shape,
+				.userIndex = ownerIndex,
+			};
+			++writtenCount;
+		}
+
+		return std::span<const ColliderProxy>(proxies, writtenCount);
 	}
 } // namespace fang

@@ -62,6 +62,7 @@
     <ClCompile Include="Source\PlatformBudgetTests.cpp" />
     <ClCompile Include="Source\ReflectionTests.cpp" />
     <ClCompile Include="Source\RenderGraphTests.cpp" />
+    <ClCompile Include="Source\SceneBuildTests.cpp" />
     <ClCompile Include="Source\SceneComponentTests.cpp" />
     <ClCompile Include="Source\SceneHierarchyTests.cpp" />
     <ClCompile Include="Source\SceneObjectTests.cpp" />
