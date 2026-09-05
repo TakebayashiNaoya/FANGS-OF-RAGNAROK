@@ -274,7 +274,7 @@ TEST_CASE("WolfDefeat: 振りの最中は位置も向きも変わらない")
 			.isAttackRequested = true,
 			.selfUserIndex     = ATTACKER_USER_INDEX,
 		};
-		fang::StepMeleeSwing(world, swingParams, swingInput, FRAME_SECONDS, &swingState, hits);
+		(void)fang::StepMeleeSwing(world, swingParams, swingInput, FRAME_SECONDS, &swingState, hits);
 
 		const bool isInProgress = fang::IsMeleeSwingInProgress(swingState);
 		sawSwingInProgress      = sawSwingInProgress || isInProgress;
