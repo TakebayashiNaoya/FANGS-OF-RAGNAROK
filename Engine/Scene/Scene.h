@@ -7,8 +7,13 @@
 #include "Core/CoreMacros.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Math/Vector3.h"
+#include "Scene/Components.h"
 #include "Scene/GameObjectHandle.h"
+#include <cstddef>
 #include <cstdint>
+#include <span>
+#include <type_traits>
+#include <utility>
 
 
 namespace fang
@@ -30,14 +35,14 @@ namespace fang
 	 */
 	struct SceneDesc
 	{
-		uint32_t maxObjectCount = 512; /**< 同時に存在できるオブジェクトの数。 */
+		uint32_t maxObjectCount   = 512; /**< 同時に存在できるオブジェクトの数。 */
+		uint32_t maxBehaviorCount = 64;  /**< 同時に存在できる振る舞い（IComponent）の数。1 体が複数持ってよい。 */
 	};
 
 	/**
 	 * @brief 実行中に生成・破棄できるオブジェクトの入れ物。
-	 * @details オブジェクト 1 つが必ず持つのは Transform だけで、あとは足したコンポーネント次第
-	 *          （階層は Scene 4、コンポーネントは Scene 5 で足す）。生成は即座に有効になり、破棄は
-	 *          Update の中で反映されるまで遅延する。
+	 * @details オブジェクト 1 つが必ず持つのは Transform だけで、あとは足したコンポーネント次第。
+	 *          生成は即座に有効になり、破棄は Update の中で反映されるまで遅延する。
 	 * @threading Initialize / Shutdown はメインスレッドのみ。生成・破棄・Update は更新ジョブ（1 本）だけ。
 	 */
 	class Scene
@@ -45,6 +50,13 @@ namespace fang
 	public:
 		FANG_NON_COPYABLE(Scene);
 		FANG_NON_MOVABLE(Scene);
+
+		/**
+		 * @brief 振る舞い 1 個ぶんのブロックサイズ（バイト）。
+		 * @details AddBehavior<T> がこれを超える型を static_assert で弾く。型ごとのプール登録が要らない
+		 *          代わりに、全部の振る舞いがこの大きさの箱に収まる前提になる。
+		 */
+		static constexpr size_t BEHAVIOR_BLOCK_SIZE = 192;
 
 		Scene() = default;
 		~Scene();
@@ -83,8 +95,8 @@ namespace fang
 
 		/**
 		 * @brief 1 フレームぶんの更新を進める。
-		 * @details 破棄の反映のあと、根から順にワールド行列を作り直す。コンポーネントの更新（Scene 5）は
-		 *          後続のタスクで積む。
+		 * @details スキニング行列の破棄 ➡ 振る舞いの Update ➡ オブジェクトの破棄反映 ➡ ワールド行列の
+		 *          組み立て、の順に進む。
 		 */
 		void Update(float deltaTimeSeconds);
 
@@ -118,10 +130,92 @@ namespace fang
 		/** @brief 親を読む。無効なハンドル、または親を持たなければ無効なハンドル。 */
 		[[nodiscard]] GameObjectHandle GetParent(GameObjectHandle handle) const;
 
+		/**
+		 * @brief MeshRendererComponent を足す。1 オブジェクトにつき 1 個まで。
+		 * @return handle が無効、または既に持っていれば false（何もしない）。
+		 */
+		[[nodiscard]] bool AddMeshRendererComponent(GameObjectHandle handle, const MeshRendererComponent& component);
+
+		/** @brief MeshRendererComponent を読み書きする。持っていなければ nullptr。 */
+		[[nodiscard]] MeshRendererComponent* GetMeshRendererComponent(GameObjectHandle handle);
+
+		/** @brief 読み取り専用版。 */
+		[[nodiscard]] const MeshRendererComponent* GetMeshRendererComponent(GameObjectHandle handle) const;
+
+		/**
+		 * @brief ColliderComponent を足す。1 オブジェクトにつき 1 個まで。
+		 * @return handle が無効、または既に持っていれば false（何もしない）。
+		 */
+		[[nodiscard]] bool AddColliderComponent(GameObjectHandle handle, const ColliderComponent& component);
+
+		/** @brief ColliderComponent を読み書きする。持っていなければ nullptr。 */
+		[[nodiscard]] ColliderComponent* GetColliderComponent(GameObjectHandle handle);
+
+		/** @brief 読み取り専用版。 */
+		[[nodiscard]] const ColliderComponent* GetColliderComponent(GameObjectHandle handle) const;
+
+		/**
+		 * @brief 振る舞い（IComponent）を 1 個足す。固定長ブロックのプールから配る。
+		 * @tparam T IComponent を継承した型。BEHAVIOR_BLOCK_SIZE に収まること。
+		 * @return handle が無効、または上限に達していれば nullptr（FANG_LOG_WARNING を 1 回出す）。
+		 * @details 戻したポインタの寿命は Scene が持つ。呼び出し側は解放しない
+		 *          （DestroyObject が反映されたときに Scene がデストラクタを呼ぶ）。
+		 */
+		template <typename T, typename... Args> [[nodiscard]] T* AddBehavior(GameObjectHandle handle, Args&&... args)
+		{
+			static_assert(std::is_base_of_v<IComponent, T>, "IComponent を継承していない");
+			static_assert(sizeof(T) <= BEHAVIOR_BLOCK_SIZE, "振る舞いのサイズが BEHAVIOR_BLOCK_SIZE を超えている");
+			static_assert(
+				alignof(T) <= alignof(std::max_align_t),
+				"振る舞いのアラインメントがブロックの前提を超えている"
+			);
+
+			uint32_t blockIndex = 0;
+			void*    block      = AllocateBehaviorBlock(handle, &blockIndex);
+			if (block == nullptr)
+			{
+				return nullptr;
+			}
+
+			T* behavior = ::new (block) T(std::forward<Args>(args)...);
+			RegisterBehavior(handle, behavior, blockIndex);
+			return behavior;
+		}
+
+		/**
+		 * @brief このフレームだけのスキニング行列を預ける。
+		 * @param matrices フレームメモリを指す span。このフレームの間だけ読まれる。
+		 * @return handle が無効なら false（何もしない）。
+		 * @details 書かなければ次の Update の入口で空になり、MeshRenderer がバインドポーズで描く。
+		 */
+		[[nodiscard]] bool SetSkinningMatrices(GameObjectHandle handle, std::span<const Matrix4x4> matrices);
+
+		/** @brief SetSkinningMatrices で預けたもの。無効なハンドル、または未設定なら空の span。 */
+		[[nodiscard]] std::span<const Matrix4x4> GetSkinningMatrices(GameObjectHandle handle) const;
+
 
 	private:
 		/** @brief index を今の親の子リストから外す。親を持たなければ何もしない。 */
 		void RemoveFromParentChildList(uint32_t index);
+
+		/**
+		 * @brief ブロックプールから 1 個借りる。
+		 * @param outBlockIndex 借りた番号。RegisterBehavior に渡す。
+		 * @return handle が無効、または空きがなければ nullptr。
+		 */
+		[[nodiscard]] void* AllocateBehaviorBlock(GameObjectHandle handle, uint32_t* outBlockIndex);
+
+		/** @brief 構築済みの振る舞いを記録に加える。AddBehavior の placement new の直後に呼ぶ。 */
+		void RegisterBehavior(GameObjectHandle handle, IComponent* instance, uint32_t blockIndex);
+
+		/** @brief index が持つ振る舞いを全部デストラクトし、ブロックを返す。 */
+		void RemoveBehaviorsOwnedBy(uint32_t index);
+
+		/** @brief index が MeshRendererComponent を持っていれば、詰めた配列から取り除く。 */
+		void RemoveMeshRendererComponentIfPresent(uint32_t index);
+
+		/** @brief index が ColliderComponent を持っていれば、詰めた配列から取り除く。 */
+		void RemoveColliderComponentIfPresent(uint32_t index);
 
 
 		IAllocator* m_allocator      = nullptr; /**< 借用。Shutdown で返すときにも同じものを使う。 */
@@ -158,5 +252,41 @@ namespace fang
 		 *          どちらも Scene を触れるのは更新ジョブ 1 本だけなので、同時に使われることはない。
 		 */
 		uint32_t* m_indexStack = nullptr;
+
+		/** @brief このフレームだけ有効なスキニング行列。フレームメモリを指すので、Update の入口で毎回捨てる。 */
+		std::span<const Matrix4x4>* m_skinningMatricesSpans = nullptr;
+
+		//------------------------------------------------------------------------
+		// 汎用コンポーネント（詰めた配列）。オブジェクト番号 ➡ 詰めた配列の添字の対応表を持つ。
+		//------------------------------------------------------------------------
+		MeshRendererComponent* m_meshRendererComponents             = nullptr; /**< 詰めた配列。 */
+		uint32_t*              m_meshRendererComponentOwners        = nullptr; /**< 添字 ➡ 持ち主のオブジェクト番号。 */
+		uint32_t*              m_meshRendererComponentIndexByObject = nullptr; /**< オブジェクト番号 ➡ 添字。 */
+		uint32_t               m_meshRendererComponentCount         = 0;
+
+		ColliderComponent* m_colliderComponents             = nullptr;
+		uint32_t*          m_colliderComponentOwners        = nullptr;
+		uint32_t*          m_colliderComponentIndexByObject = nullptr;
+		uint32_t           m_colliderComponentCount         = 0;
+
+		//------------------------------------------------------------------------
+		// 振る舞い（IComponent）。固定長ブロックのプールから配る。
+		//------------------------------------------------------------------------
+		/** @brief 振る舞い 1 個の記録。ownerIndex は破棄反映での一括デストラクトに使う。 */
+		struct BehaviorRecord
+		{
+			uint32_t    ownerIndex = GameObjectHandle::INVALID_INDEX;
+			IComponent* instance   = nullptr;
+			uint32_t    blockIndex = 0;
+		};
+
+		std::byte* m_behaviorBlocks = nullptr; /**< BEHAVIOR_BLOCK_SIZE * maxBehaviorCount バイトの生の置き場。 */
+
+		uint32_t* m_freeBehaviorBlockIndices = nullptr;
+		uint32_t  m_freeBehaviorBlockCount   = 0;
+
+		BehaviorRecord* m_behaviorRecords     = nullptr; /**< 詰めた配列。壊れたらスワップして詰め直す。 */
+		uint32_t        m_behaviorRecordCount = 0;
+		uint32_t        m_maxBehaviorCount    = 0;
 	};
 } // namespace fang

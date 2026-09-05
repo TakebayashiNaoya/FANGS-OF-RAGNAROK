@@ -4,6 +4,7 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Components.h" />
     <ClInclude Include="GameObjectHandle.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Scene.h" />

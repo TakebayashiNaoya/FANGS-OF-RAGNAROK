@@ -47,16 +47,48 @@ namespace fang
 		m_firstChildIndices     = NewArray<uint32_t>(allocator, desc.maxObjectCount);
 		m_nextSiblingIndices    = NewArray<uint32_t>(allocator, desc.maxObjectCount);
 		m_indexStack            = NewArray<uint32_t>(allocator, desc.maxObjectCount);
+		m_skinningMatricesSpans = NewArray<std::span<const Matrix4x4>>(allocator, desc.maxObjectCount);
 
-		const bool hasAllBuffers = m_generations != nullptr && m_isActive != nullptr && m_pendingDestroy != nullptr &&
-								   m_freeIndices != nullptr && m_pendingDestroyIndices != nullptr &&
-								   m_localMatrices != nullptr && m_worldMatrices != nullptr &&
-								   m_parentIndices != nullptr && m_firstChildIndices != nullptr &&
-								   m_nextSiblingIndices != nullptr && m_indexStack != nullptr;
+		m_meshRendererComponents             = NewArray<MeshRendererComponent>(allocator, desc.maxObjectCount);
+		m_meshRendererComponentOwners        = NewArray<uint32_t>(allocator, desc.maxObjectCount);
+		m_meshRendererComponentIndexByObject = NewArray<uint32_t>(allocator, desc.maxObjectCount);
+
+		m_colliderComponents             = NewArray<ColliderComponent>(allocator, desc.maxObjectCount);
+		m_colliderComponentOwners        = NewArray<uint32_t>(allocator, desc.maxObjectCount);
+		m_colliderComponentIndexByObject = NewArray<uint32_t>(allocator, desc.maxObjectCount);
+
+		const bool hasCapacityForBehaviors = desc.maxBehaviorCount > 0;
+		m_behaviorBlocks =
+			hasCapacityForBehaviors
+				? static_cast<std::byte*>(allocator.Allocate(BEHAVIOR_BLOCK_SIZE * desc.maxBehaviorCount))
+				: nullptr;
+		m_freeBehaviorBlockIndices = NewArray<uint32_t>(allocator, desc.maxBehaviorCount);
+		m_behaviorRecords          = NewArray<BehaviorRecord>(allocator, desc.maxBehaviorCount);
+
+		const bool hasAllBuffers =
+			m_generations != nullptr && m_isActive != nullptr && m_pendingDestroy != nullptr &&
+			m_freeIndices != nullptr && m_pendingDestroyIndices != nullptr && m_localMatrices != nullptr &&
+			m_worldMatrices != nullptr && m_parentIndices != nullptr && m_firstChildIndices != nullptr &&
+			m_nextSiblingIndices != nullptr && m_indexStack != nullptr && m_skinningMatricesSpans != nullptr &&
+			m_meshRendererComponents != nullptr && m_meshRendererComponentOwners != nullptr &&
+			m_meshRendererComponentIndexByObject != nullptr && m_colliderComponents != nullptr &&
+			m_colliderComponentOwners != nullptr && m_colliderComponentIndexByObject != nullptr &&
+			(!hasCapacityForBehaviors || m_behaviorBlocks != nullptr) && m_freeBehaviorBlockIndices != nullptr &&
+			m_behaviorRecords != nullptr;
 		if (!hasAllBuffers)
 		{
 			FANG_LOG_ERROR(Scene, "Scene の入れ物を確保できなかった");
 
+			DeleteArray(allocator, m_behaviorRecords, desc.maxBehaviorCount);
+			DeleteArray(allocator, m_freeBehaviorBlockIndices, desc.maxBehaviorCount);
+			allocator.Deallocate(m_behaviorBlocks);
+			DeleteArray(allocator, m_colliderComponentIndexByObject, desc.maxObjectCount);
+			DeleteArray(allocator, m_colliderComponentOwners, desc.maxObjectCount);
+			DeleteArray(allocator, m_colliderComponents, desc.maxObjectCount);
+			DeleteArray(allocator, m_meshRendererComponentIndexByObject, desc.maxObjectCount);
+			DeleteArray(allocator, m_meshRendererComponentOwners, desc.maxObjectCount);
+			DeleteArray(allocator, m_meshRendererComponents, desc.maxObjectCount);
+			DeleteArray(allocator, m_skinningMatricesSpans, desc.maxObjectCount);
 			DeleteArray(allocator, m_indexStack, desc.maxObjectCount);
 			DeleteArray(allocator, m_nextSiblingIndices, desc.maxObjectCount);
 			DeleteArray(allocator, m_firstChildIndices, desc.maxObjectCount);
@@ -69,36 +101,61 @@ namespace fang
 			DeleteArray(allocator, m_isActive, desc.maxObjectCount);
 			DeleteArray(allocator, m_generations, desc.maxObjectCount);
 
-			m_indexStack            = nullptr;
-			m_nextSiblingIndices    = nullptr;
-			m_firstChildIndices     = nullptr;
-			m_parentIndices         = nullptr;
-			m_worldMatrices         = nullptr;
-			m_localMatrices         = nullptr;
-			m_pendingDestroyIndices = nullptr;
-			m_freeIndices           = nullptr;
-			m_pendingDestroy        = nullptr;
-			m_isActive              = nullptr;
-			m_generations           = nullptr;
+			m_behaviorRecords                    = nullptr;
+			m_freeBehaviorBlockIndices           = nullptr;
+			m_behaviorBlocks                     = nullptr;
+			m_colliderComponentIndexByObject     = nullptr;
+			m_colliderComponentOwners            = nullptr;
+			m_colliderComponents                 = nullptr;
+			m_meshRendererComponentIndexByObject = nullptr;
+			m_meshRendererComponentOwners        = nullptr;
+			m_meshRendererComponents             = nullptr;
+			m_skinningMatricesSpans              = nullptr;
+			m_indexStack                         = nullptr;
+			m_nextSiblingIndices                 = nullptr;
+			m_firstChildIndices                  = nullptr;
+			m_parentIndices                      = nullptr;
+			m_worldMatrices                      = nullptr;
+			m_localMatrices                      = nullptr;
+			m_pendingDestroyIndices              = nullptr;
+			m_freeIndices                        = nullptr;
+			m_pendingDestroy                     = nullptr;
+			m_isActive                           = nullptr;
+			m_generations                        = nullptr;
 			return false;
 		}
 
-		m_allocator      = &allocator;
-		m_maxObjectCount = desc.maxObjectCount;
+		m_allocator        = &allocator;
+		m_maxObjectCount   = desc.maxObjectCount;
+		m_maxBehaviorCount = desc.maxBehaviorCount;
 
 		// 空き番号は末尾から積む ➡ 先頭（0 番）から順に配られる。
-		// 親子リストは「無し」を表す番号（INVALID_INDEX）で埋めておく。0 は有効なスロット番号なので、
+		// 「無し」を表す番号（INVALID_INDEX）で埋めておく列がいくつかある。0 は有効な添字なので、
 		// NewArray の既定値（0 埋め）のままにはできない。
 		for (uint32_t index = 0; index < m_maxObjectCount; ++index)
 		{
-			m_freeIndices[index]        = m_maxObjectCount - 1 - index;
-			m_parentIndices[index]      = GameObjectHandle::INVALID_INDEX;
-			m_firstChildIndices[index]  = GameObjectHandle::INVALID_INDEX;
-			m_nextSiblingIndices[index] = GameObjectHandle::INVALID_INDEX;
+			m_freeIndices[index]                        = m_maxObjectCount - 1 - index;
+			m_parentIndices[index]                      = GameObjectHandle::INVALID_INDEX;
+			m_firstChildIndices[index]                  = GameObjectHandle::INVALID_INDEX;
+			m_nextSiblingIndices[index]                 = GameObjectHandle::INVALID_INDEX;
+			m_meshRendererComponentIndexByObject[index] = GameObjectHandle::INVALID_INDEX;
+			m_colliderComponentIndexByObject[index]     = GameObjectHandle::INVALID_INDEX;
 		}
 		m_freeIndexCount = m_maxObjectCount;
 
-		FANG_LOG_INFO(Scene, "Scene を作った: オブジェクト上限 {}", m_maxObjectCount);
+		// 振る舞いのブロックも末尾から積む。
+		for (uint32_t blockIndex = 0; blockIndex < m_maxBehaviorCount; ++blockIndex)
+		{
+			m_freeBehaviorBlockIndices[blockIndex] = m_maxBehaviorCount - 1 - blockIndex;
+		}
+		m_freeBehaviorBlockCount = m_maxBehaviorCount;
+
+		FANG_LOG_INFO(
+			Scene,
+			"Scene を作った: オブジェクト上限 {} / 振る舞い上限 {}",
+			m_maxObjectCount,
+			m_maxBehaviorCount
+		);
 
 		return true;
 	}
@@ -111,6 +168,22 @@ namespace fang
 			return;
 		}
 
+		// 生き残っている振る舞いをデストラクトしてから、器そのものを返す。
+		for (uint32_t recordIndex = 0; recordIndex < m_behaviorRecordCount; ++recordIndex)
+		{
+			m_behaviorRecords[recordIndex].instance->~IComponent();
+		}
+
+		DeleteArray(*m_allocator, m_behaviorRecords, m_maxBehaviorCount);
+		DeleteArray(*m_allocator, m_freeBehaviorBlockIndices, m_maxBehaviorCount);
+		m_allocator->Deallocate(m_behaviorBlocks);
+		DeleteArray(*m_allocator, m_colliderComponentIndexByObject, m_maxObjectCount);
+		DeleteArray(*m_allocator, m_colliderComponentOwners, m_maxObjectCount);
+		DeleteArray(*m_allocator, m_colliderComponents, m_maxObjectCount);
+		DeleteArray(*m_allocator, m_meshRendererComponentIndexByObject, m_maxObjectCount);
+		DeleteArray(*m_allocator, m_meshRendererComponentOwners, m_maxObjectCount);
+		DeleteArray(*m_allocator, m_meshRendererComponents, m_maxObjectCount);
+		DeleteArray(*m_allocator, m_skinningMatricesSpans, m_maxObjectCount);
 		DeleteArray(*m_allocator, m_indexStack, m_maxObjectCount);
 		DeleteArray(*m_allocator, m_nextSiblingIndices, m_maxObjectCount);
 		DeleteArray(*m_allocator, m_firstChildIndices, m_maxObjectCount);
@@ -123,22 +196,37 @@ namespace fang
 		DeleteArray(*m_allocator, m_isActive, m_maxObjectCount);
 		DeleteArray(*m_allocator, m_generations, m_maxObjectCount);
 
-		m_indexStack            = nullptr;
-		m_nextSiblingIndices    = nullptr;
-		m_firstChildIndices     = nullptr;
-		m_parentIndices         = nullptr;
-		m_worldMatrices         = nullptr;
-		m_localMatrices         = nullptr;
-		m_pendingDestroyIndices = nullptr;
-		m_freeIndices           = nullptr;
-		m_pendingDestroy        = nullptr;
-		m_isActive              = nullptr;
-		m_generations           = nullptr;
+		m_behaviorRecords                    = nullptr;
+		m_freeBehaviorBlockIndices           = nullptr;
+		m_behaviorBlocks                     = nullptr;
+		m_colliderComponentIndexByObject     = nullptr;
+		m_colliderComponentOwners            = nullptr;
+		m_colliderComponents                 = nullptr;
+		m_meshRendererComponentIndexByObject = nullptr;
+		m_meshRendererComponentOwners        = nullptr;
+		m_meshRendererComponents             = nullptr;
+		m_skinningMatricesSpans              = nullptr;
+		m_indexStack                         = nullptr;
+		m_nextSiblingIndices                 = nullptr;
+		m_firstChildIndices                  = nullptr;
+		m_parentIndices                      = nullptr;
+		m_worldMatrices                      = nullptr;
+		m_localMatrices                      = nullptr;
+		m_pendingDestroyIndices              = nullptr;
+		m_freeIndices                        = nullptr;
+		m_pendingDestroy                     = nullptr;
+		m_isActive                           = nullptr;
+		m_generations                        = nullptr;
 
-		m_maxObjectCount      = 0;
-		m_freeIndexCount      = 0;
-		m_pendingDestroyCount = 0;
-		m_allocator           = nullptr;
+		m_maxObjectCount             = 0;
+		m_freeIndexCount             = 0;
+		m_pendingDestroyCount        = 0;
+		m_meshRendererComponentCount = 0;
+		m_colliderComponentCount     = 0;
+		m_freeBehaviorBlockCount     = 0;
+		m_behaviorRecordCount        = 0;
+		m_maxBehaviorCount           = 0;
+		m_allocator                  = nullptr;
 	}
 
 
@@ -199,14 +287,36 @@ namespace fang
 
 	void Scene::Update(float deltaTimeSeconds)
 	{
-		FANG_UNUSED(deltaTimeSeconds); // コンポーネントの更新は Scene 5 で積む。
+		// 1. 前フレームのスキニング行列の span を捨てる（フレームメモリを指しているため）。
+		for (uint32_t index = 0; index < m_maxObjectCount; ++index)
+		{
+			m_skinningMatricesSpans[index] = std::span<const Matrix4x4>{};
+		}
 
-		// 3. 破棄の予約を反映する（子リストから外し、席を詰め、世代を進める）。
+		// 2. 振る舞いを回す。回す本数は入口で固定し、破棄予約の立ったものは飛ばす
+		//    ➡ 更新中に足したものは次の周から。壊したものはその周でもう回らない。
+		const uint32_t behaviorCountAtEntry = m_behaviorRecordCount;
+		for (uint32_t recordIndex = 0; recordIndex < behaviorCountAtEntry; ++recordIndex)
+		{
+			const BehaviorRecord& record = m_behaviorRecords[recordIndex];
+			if (m_pendingDestroy[record.ownerIndex])
+			{
+				continue;
+			}
+
+			const GameObjectHandle ownerHandle{ record.ownerIndex, m_generations[record.ownerIndex] };
+			record.instance->Update(deltaTimeSeconds, ownerHandle, *this);
+		}
+
+		// 3. 破棄の予約を反映する（子リストから外し、コンポーネントと振る舞いを畳み、世代を進める）。
 		for (uint32_t pendingIndex = 0; pendingIndex < m_pendingDestroyCount; ++pendingIndex)
 		{
 			const uint32_t index = m_pendingDestroyIndices[pendingIndex];
 
 			RemoveFromParentChildList(index);
+			RemoveMeshRendererComponentIfPresent(index);
+			RemoveColliderComponentIfPresent(index);
+			RemoveBehaviorsOwnedBy(index);
 
 			m_isActive[index]       = false;
 			m_pendingDestroy[index] = false;
@@ -379,5 +489,201 @@ namespace fang
 
 			link = &m_nextSiblingIndices[*link];
 		}
+	}
+
+
+	bool Scene::AddMeshRendererComponent(GameObjectHandle handle, const MeshRendererComponent& component)
+	{
+		if (!IsValid(handle) || m_meshRendererComponentIndexByObject[handle.index] != GameObjectHandle::INVALID_INDEX)
+		{
+			return false;
+		}
+
+		const uint32_t denseIndex                          = m_meshRendererComponentCount;
+		m_meshRendererComponents[denseIndex]               = component;
+		m_meshRendererComponentOwners[denseIndex]          = handle.index;
+		m_meshRendererComponentIndexByObject[handle.index] = denseIndex;
+		++m_meshRendererComponentCount;
+
+		return true;
+	}
+
+
+	MeshRendererComponent* Scene::GetMeshRendererComponent(GameObjectHandle handle)
+	{
+		if (!IsValid(handle))
+		{
+			return nullptr;
+		}
+
+		const uint32_t denseIndex = m_meshRendererComponentIndexByObject[handle.index];
+		return (denseIndex == GameObjectHandle::INVALID_INDEX) ? nullptr : &m_meshRendererComponents[denseIndex];
+	}
+
+
+	const MeshRendererComponent* Scene::GetMeshRendererComponent(GameObjectHandle handle) const
+	{
+		if (!IsValid(handle))
+		{
+			return nullptr;
+		}
+
+		const uint32_t denseIndex = m_meshRendererComponentIndexByObject[handle.index];
+		return (denseIndex == GameObjectHandle::INVALID_INDEX) ? nullptr : &m_meshRendererComponents[denseIndex];
+	}
+
+
+	bool Scene::AddColliderComponent(GameObjectHandle handle, const ColliderComponent& component)
+	{
+		if (!IsValid(handle) || m_colliderComponentIndexByObject[handle.index] != GameObjectHandle::INVALID_INDEX)
+		{
+			return false;
+		}
+
+		const uint32_t denseIndex                      = m_colliderComponentCount;
+		m_colliderComponents[denseIndex]               = component;
+		m_colliderComponentOwners[denseIndex]          = handle.index;
+		m_colliderComponentIndexByObject[handle.index] = denseIndex;
+		++m_colliderComponentCount;
+
+		return true;
+	}
+
+
+	ColliderComponent* Scene::GetColliderComponent(GameObjectHandle handle)
+	{
+		if (!IsValid(handle))
+		{
+			return nullptr;
+		}
+
+		const uint32_t denseIndex = m_colliderComponentIndexByObject[handle.index];
+		return (denseIndex == GameObjectHandle::INVALID_INDEX) ? nullptr : &m_colliderComponents[denseIndex];
+	}
+
+
+	const ColliderComponent* Scene::GetColliderComponent(GameObjectHandle handle) const
+	{
+		if (!IsValid(handle))
+		{
+			return nullptr;
+		}
+
+		const uint32_t denseIndex = m_colliderComponentIndexByObject[handle.index];
+		return (denseIndex == GameObjectHandle::INVALID_INDEX) ? nullptr : &m_colliderComponents[denseIndex];
+	}
+
+
+	void* Scene::AllocateBehaviorBlock(GameObjectHandle handle, uint32_t* outBlockIndex)
+	{
+		if (!IsValid(handle))
+		{
+			return nullptr;
+		}
+
+		if (m_freeBehaviorBlockCount == 0)
+		{
+			FANG_LOG_WARNING(Scene, "振る舞いの上限（{}）に達したので作れなかった", m_maxBehaviorCount);
+			return nullptr;
+		}
+
+		const uint32_t blockIndex = m_freeBehaviorBlockIndices[--m_freeBehaviorBlockCount];
+		*outBlockIndex            = blockIndex;
+
+		return m_behaviorBlocks + blockIndex * BEHAVIOR_BLOCK_SIZE;
+	}
+
+
+	void Scene::RegisterBehavior(GameObjectHandle handle, IComponent* instance, uint32_t blockIndex)
+	{
+		m_behaviorRecords[m_behaviorRecordCount] = BehaviorRecord{
+			.ownerIndex = handle.index,
+			.instance   = instance,
+			.blockIndex = blockIndex,
+		};
+		++m_behaviorRecordCount;
+	}
+
+
+	void Scene::RemoveBehaviorsOwnedBy(uint32_t index)
+	{
+		for (uint32_t recordIndex = 0; recordIndex < m_behaviorRecordCount;)
+		{
+			BehaviorRecord& record = m_behaviorRecords[recordIndex];
+			if (record.ownerIndex != index)
+			{
+				++recordIndex;
+				continue;
+			}
+
+			record.instance->~IComponent();
+
+			m_freeBehaviorBlockIndices[m_freeBehaviorBlockCount] = record.blockIndex;
+			++m_freeBehaviorBlockCount;
+
+			--m_behaviorRecordCount;
+			record = m_behaviorRecords[m_behaviorRecordCount]; // スワップして詰める。recordIndex は進めない。
+		}
+	}
+
+
+	void Scene::RemoveMeshRendererComponentIfPresent(uint32_t index)
+	{
+		const uint32_t denseIndex = m_meshRendererComponentIndexByObject[index];
+		if (denseIndex == GameObjectHandle::INVALID_INDEX)
+		{
+			return;
+		}
+
+		const uint32_t lastIndex = m_meshRendererComponentCount - 1;
+
+		m_meshRendererComponents[denseIndex]      = m_meshRendererComponents[lastIndex];
+		m_meshRendererComponentOwners[denseIndex] = m_meshRendererComponentOwners[lastIndex];
+		m_meshRendererComponentIndexByObject[m_meshRendererComponentOwners[denseIndex]] = denseIndex;
+
+		m_meshRendererComponentIndexByObject[index] = GameObjectHandle::INVALID_INDEX;
+		--m_meshRendererComponentCount;
+	}
+
+
+	void Scene::RemoveColliderComponentIfPresent(uint32_t index)
+	{
+		const uint32_t denseIndex = m_colliderComponentIndexByObject[index];
+		if (denseIndex == GameObjectHandle::INVALID_INDEX)
+		{
+			return;
+		}
+
+		const uint32_t lastIndex = m_colliderComponentCount - 1;
+
+		m_colliderComponents[denseIndex]                                        = m_colliderComponents[lastIndex];
+		m_colliderComponentOwners[denseIndex]                                   = m_colliderComponentOwners[lastIndex];
+		m_colliderComponentIndexByObject[m_colliderComponentOwners[denseIndex]] = denseIndex;
+
+		m_colliderComponentIndexByObject[index] = GameObjectHandle::INVALID_INDEX;
+		--m_colliderComponentCount;
+	}
+
+
+	bool Scene::SetSkinningMatrices(GameObjectHandle handle, std::span<const Matrix4x4> matrices)
+	{
+		if (!IsValid(handle))
+		{
+			return false;
+		}
+
+		m_skinningMatricesSpans[handle.index] = matrices;
+		return true;
+	}
+
+
+	std::span<const Matrix4x4> Scene::GetSkinningMatrices(GameObjectHandle handle) const
+	{
+		if (!IsValid(handle))
+		{
+			return std::span<const Matrix4x4>{};
+		}
+
+		return m_skinningMatricesSpans[handle.index];
 	}
 } // namespace fang
