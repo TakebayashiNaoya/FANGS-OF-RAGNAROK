@@ -23,6 +23,15 @@
 
 namespace fang::rhi
 {
+#if FANG_ENABLE_PROFILER
+	/** @brief EndFrame の中の内訳。Present は ExecuteCommandLists と Present の合計。 */
+	struct EndFrameTiming
+	{
+		float presentMilliseconds = 0.0f; /**< 送って表裏を入れ替えるまで。vsync のフリップ待ちを含む。 */
+		float gpuWaitMilliseconds = 0.0f; /**< WaitForGPU で止まっていた時間。 */
+	};
+#endif
+
 	/**
 	 * @brief DirectX 12 のデバイス。
 	 * @details 部品（SwapChain / DepthBuffer / DescriptorHeap / GPUFence / 各台帳）を持ち、
@@ -37,6 +46,11 @@ namespace fang::rhi
 
 		/** @brief 1 フレームで貸せるコマンドリストの本数。並列記録の人数の上限でもある。 */
 		static constexpr uint32_t MAX_COMMAND_LIST_COUNT = 8;
+
+#if FANG_ENABLE_PROFILER
+		/** @brief タイムスタンプの枠の数。本 1 つにつき開始と終了の 2 つ。 */
+		static constexpr uint32_t MAX_TIMESTAMP_SLOT_COUNT = MAX_COMMAND_LIST_COUNT * 2;
+#endif
 
 		GraphicsDevice();
 		~GraphicsDevice();
@@ -182,12 +196,44 @@ namespace fang::rhi
 		 */
 		void EndFrame(std::span<CommandList* const> commandLists);
 
+#if FANG_ENABLE_PROFILER
+		/** @brief タイムスタンプが取れる環境か。false なら WriteTimestamp / ResolveTimestamps は何もしない。 */
+		[[nodiscard]] FANG_FORCEINLINE bool HasGpuTimestamps() const { return m_hasGpuTimestamps; }
+
+		/** @brief タイムスタンプ 1 秒あたりの tick 数。機種ごとに違う。取れない環境は 0。 */
+		[[nodiscard]] FANG_FORCEINLINE uint64_t GetTimestampFrequency() const { return m_timestampFrequency; }
+
+		/**
+		 * @brief 直前の EndFrame で GPU が書き終えていたタイムスタンプ。枠番号がそのまま添字。
+		 * @details EndFrame の後にメインスレッドで読む。Resolve していない枠には前のフレームの値が残る。
+		 * @return 取れない環境は空。
+		 */
+		[[nodiscard]] std::span<const uint64_t> GetCompletedTimestamps() const;
+
+		/** @brief 直前の EndFrame の内訳。EndFrame の後にメインスレッドで読む。 */
+		[[nodiscard]] FANG_FORCEINLINE const EndFrameTiming& GetLastEndFrameTiming() const
+		{
+			return m_lastEndFrameTiming;
+		}
+#endif
+
 
 	private:
 		friend class CommandList;
 
 		/** @brief デバイス削除（ロスト）の理由をログに残す。記録の準備が失敗したときの診断用。 */
 		void LogDeviceRemovedReason() const;
+
+#if FANG_ENABLE_PROFILER
+		/**
+		 * @brief クエリヒープ・読み出し先・周波数を用意する。
+		 * @return 失敗したら false。起動は止めず、タイムスタンプ無しで続ける。
+		 */
+		[[nodiscard]] bool InitializeGpuTimestamps();
+
+		/** @brief 今の面の読み出し先を m_completedTimestamps へ写す。GPU の完了を待った後に呼ぶ。 */
+		void ReadCompletedTimestamps();
+#endif
 
 		ComPtr<IDXGIFactory6>      m_factory;      /**< アダプタ列挙とスワップチェーン生成の入口。 */
 		ComPtr<ID3D12Device>       m_device;       /**< D3D12 の本体。全リソースの生成元。 */
@@ -227,5 +273,21 @@ namespace fang::rhi
 
 		/** @brief このフレームの記録メモリを巻き戻せたか。倒れていると AcquireCommandList が貸さない。 */
 		bool m_isFrameRecordable = false;
+
+#if FANG_ENABLE_PROFILER
+		ComPtr<ID3D12QueryHeap> m_timestampQueryHeap; /**< GPU がタイムスタンプを書く枠。 */
+
+		/** @brief 枠の中身を CPU が読める場所へ写す先。アロケータと同じ理由で、面ごとに区画を分ける。 */
+		ComPtr<ID3D12Resource> m_timestampReadbackBuffer;
+
+		uint64_t m_timestampFrequency = 0; /**< 1 秒あたりの tick 数。 */
+
+		/** @brief 直前の EndFrame で読めたタイムスタンプ。Map したままにしないので CPU 側へ写しておく。 */
+		uint64_t m_completedTimestamps[MAX_TIMESTAMP_SLOT_COUNT]{};
+
+		EndFrameTiming m_lastEndFrameTiming;
+
+		bool m_hasGpuTimestamps = false; /**< クエリヒープ・読み出し先・周波数が全部そろったら true。 */
+#endif
 	};
 } // namespace fang::rhi

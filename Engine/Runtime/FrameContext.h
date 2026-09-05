@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Core/Math/Vector3.h"
+#include <cstddef>
 #include <cstdint>
 
 
@@ -43,6 +44,20 @@ namespace fang
 		DirectionalLight light; /**< このフレームの平行光。将来は昼夜サイクルがここへ書く。 */
 	};
 
+#if FANG_ENABLE_PROFILER
+	/**
+	 * @brief パス 1 つの GPU 時間。
+	 * @details 名前は RenderGraph の宣言から写す。宣言の string_view は Execute までしか生きていないため。
+	 */
+	struct RenderPassGpuTime
+	{
+		static constexpr size_t MAX_NAME_LENGTH = 32;
+
+		char  name[MAX_NAME_LENGTH] = {}; /**< 終端付き。長い名前は切る。 */
+		float milliseconds          = 0.0f;
+	};
+#endif
+
 	/** @brief 直近に完了した Execute の統計。RenderStatisticsPanel が読む。1 フレーム遅れの値。 */
 	struct RenderStatistics
 	{
@@ -51,6 +66,20 @@ namespace fang
 		uint32_t drawnTerrainChunkCount = 0; /**< 地形で実際に描いたチャンクの数（カリング後）。 */
 		uint32_t passCount              = 0; /**< RenderGraph に宣言されたパスの数。 */
 		uint32_t commandListCount       = 0; /**< Execute が記録したコマンドリストの本数。 */
+
+#if FANG_ENABLE_PROFILER
+		/** @brief 時間を出せるパスの数。RenderGraph::MAX_PASS_COUNT と揃える（Application.cpp が確かめる）。 */
+		static constexpr uint32_t MAX_TIMED_PASS_COUNT = 8;
+
+		RenderPassGpuTime passGpuTimes[MAX_TIMED_PASS_COUNT]; /**< パス順。timedPassCount まで有効。 */
+		uint32_t          timedPassCount       = 0;
+		float             gpuFrameMilliseconds = 0.0f;  /**< 先頭パスの開始から末尾パスの終了まで。 */
+		bool              hasGpuTimestamps     = false; /**< false ならパネルは「なし」と出す。 */
+
+		float recordMilliseconds  = 0.0f; /**< RenderFrame の入口から EndFrame を呼ぶ手前まで。 */
+		float presentMilliseconds = 0.0f; /**< ExecuteCommandLists と Present。 */
+		float gpuWaitMilliseconds = 0.0f; /**< WaitForGPU。 */
+#endif
 	};
 
 	/**

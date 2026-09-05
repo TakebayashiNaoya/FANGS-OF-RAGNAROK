@@ -327,4 +327,55 @@ namespace fang::rhi
 
 		commandList->DrawIndexedInstanced(indexCount, 1, startIndex, baseVertex, 0);
 	}
+
+
+#if FANG_ENABLE_PROFILER
+
+	void CommandList::WriteTimestamp(uint32_t slot)
+	{
+		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
+		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
+		FANG_ASSERT(slot < GraphicsDevice::MAX_TIMESTAMP_SLOT_COUNT, "タイムスタンプの枠の外に書こうとしている");
+
+		if (!m_device->m_hasGpuTimestamps || slot >= GraphicsDevice::MAX_TIMESTAMP_SLOT_COUNT)
+		{
+			return;
+		}
+
+		// タイムスタンプは Begin の無い問い合わせなので、End だけ積む。
+		commandList->EndQuery(m_device->m_timestampQueryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, slot);
+	}
+
+
+	void CommandList::ResolveTimestamps(uint32_t firstSlot, uint32_t slotCount)
+	{
+		ID3D12GraphicsCommandList* commandList = static_cast<ID3D12GraphicsCommandList*>(m_nativeCommandList);
+		FANG_ASSERT(commandList != nullptr, "フレームの外でコマンドを積んでいる");
+		FANG_ASSERT(
+			firstSlot + slotCount <= GraphicsDevice::MAX_TIMESTAMP_SLOT_COUNT,
+			"タイムスタンプの枠の外を写そうとしている"
+		);
+
+		if (!m_device->m_hasGpuTimestamps || slotCount == 0 ||
+			firstSlot + slotCount > GraphicsDevice::MAX_TIMESTAMP_SLOT_COUNT)
+		{
+			return;
+		}
+
+		// 写し先は今の面の区画の、firstSlot 番目から。読む側(ReadCompletedTimestamps)も同じ並びで読む。
+		const uint64_t slotIndexInBuffer =
+			static_cast<uint64_t>(m_device->m_swapChain.GetFrameIndex()) * GraphicsDevice::MAX_TIMESTAMP_SLOT_COUNT +
+			firstSlot;
+
+		commandList->ResolveQueryData(
+			m_device->m_timestampQueryHeap.Get(),
+			D3D12_QUERY_TYPE_TIMESTAMP,
+			firstSlot,
+			slotCount,
+			m_device->m_timestampReadbackBuffer.Get(),
+			slotIndexInBuffer * sizeof(uint64_t)
+		);
+	}
+
+#endif
 } // namespace fang::rhi

@@ -194,3 +194,19 @@ TEST_CASE("シャドウマップは読まれるシーンパスの前後で Depth
 	CHECK(compiledScenePass.endBarriers[1].before == fang::rhi::EnResourceState::PixelShaderResource);
 	CHECK(compiledScenePass.endBarriers[1].after == fang::rhi::EnResourceState::DepthWrite);
 }
+
+
+TEST_CASE("タイムスタンプの差は周波数で割ってミリ秒になり、読めない枠は 0 になる")
+{
+	// 1 秒 = 1000 tick なら 1 tick = 1 ms。
+	CHECK(fang::ConvertTimestampTicksToMilliseconds(100, 116, 1000) == doctest::Approx(16.0f));
+
+	// 10 MHz(Xbox が返す値と同じ桁)で 16.7 ms ぶんの tick。
+	CHECK(fang::ConvertTimestampTicksToMilliseconds(0, 166'667, 10'000'000) == doctest::Approx(16.6667f));
+
+	// 終了が開始より前なのは、まだ GPU が書いていない枠を読んだとき。0 にして見せない。
+	CHECK(fang::ConvertTimestampTicksToMilliseconds(200, 100, 1000) == 0.0f);
+
+	// 周波数を取れなかった環境はゼロ除算せず 0。
+	CHECK(fang::ConvertTimestampTicksToMilliseconds(0, 100, 0) == 0.0f);
+}
