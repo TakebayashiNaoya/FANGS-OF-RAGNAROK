@@ -24,7 +24,13 @@
     <ClCompile Include="Source\BroadphaseTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\CollisionDebugLineTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\CollisionShapeTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CollisionWorldTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\DdsImageTests.cpp">

@@ -4,6 +4,7 @@
  */
 #include "Pch.h"
 #include "Collision/Narrowphase.h"
+#include "Collision/CollisionMath.h"
 #include <cfloat>
 #include <cmath>
 
@@ -12,46 +13,11 @@ namespace fang
 {
 	namespace
 	{
-		/**
-		 * @brief 長さの 2 乗をこれ以下とみなすと向きが決められない、という境目。
-		 * @details 位置の単位は 1 = 1cm なので、1e-6 は 1 マイクロメートルの 2 乗の桁。形の大きさに対して
-		 *          十分小さく、float の丸めより十分大きい。
-		 */
-		constexpr float DEGENERATE_LENGTH_SQUARED = 1.0e-6f;
-
 		/** @brief 最近点が重なって向きを決められないときに使う押し出し方向。 */
 		constexpr Vector3 FALLBACK_CONTACT_NORMAL{ 0.0f, 1.0f, 0.0f };
 
 		/** @brief カプセルと OBB の最近点を詰める回数。浅いめり込みなら 2〜3 回で収まる。 */
 		constexpr int CLOSEST_POINT_ITERATION_COUNT = 4;
-
-
-		/** @brief 値を範囲へ収める。 */
-		float Clamp(float value, float minimum, float maximum)
-		{
-			return (value < minimum) ? minimum : ((value > maximum) ? maximum : value);
-		}
-
-
-		/** @brief 線分 pointA〜pointB のうち target に最も近い位置を 0〜1 で返す。線分が潰れていれば 0。 */
-		float ClosestParameterOnSegment(const Vector3& pointA, const Vector3& pointB, const Vector3& target)
-		{
-			const Vector3 segment       = pointB - pointA;
-			const float   lengthSquared = LengthSquared(segment);
-			if (lengthSquared <= DEGENERATE_LENGTH_SQUARED)
-			{
-				return 0.0f;
-			}
-
-			return Clamp(Dot(target - pointA, segment) / lengthSquared, 0.0f, 1.0f);
-		}
-
-
-		/** @brief 線分 pointA〜pointB のうち target に最も近い点。 */
-		Vector3 ClosestPointOnSegment(const Vector3& pointA, const Vector3& pointB, const Vector3& target)
-		{
-			return pointA + (pointB - pointA) * ClosestParameterOnSegment(pointA, pointB, target);
-		}
 
 
 		/**
@@ -85,7 +51,7 @@ namespace fang
 			}
 			else if (lengthSquaredA <= DEGENERATE_LENGTH_SQUARED)
 			{
-				parameterB = Clamp(projectionB / lengthSquaredB, 0.0f, 1.0f);
+				parameterB = ClampFloat(projectionB / lengthSquaredB, 0.0f, 1.0f);
 			}
 			else
 			{
@@ -93,7 +59,7 @@ namespace fang
 
 				if (lengthSquaredB <= DEGENERATE_LENGTH_SQUARED)
 				{
-					parameterA = Clamp(-projectionA / lengthSquaredA, 0.0f, 1.0f);
+					parameterA = ClampFloat(-projectionA / lengthSquaredA, 0.0f, 1.0f);
 				}
 				else
 				{
@@ -101,7 +67,7 @@ namespace fang
 					const float denominator   = lengthSquaredA * lengthSquaredB - dotDirections * dotDirections;
 
 					parameterA = (denominator > DEGENERATE_LENGTH_SQUARED)
-									 ? Clamp(
+									 ? ClampFloat(
 										   (dotDirections * projectionB - projectionA * lengthSquaredB) / denominator,
 										   0.0f,
 										   1.0f
@@ -112,12 +78,12 @@ namespace fang
 					if (numeratorB < 0.0f)
 					{
 						parameterB = 0.0f;
-						parameterA = Clamp(-projectionA / lengthSquaredA, 0.0f, 1.0f);
+						parameterA = ClampFloat(-projectionA / lengthSquaredA, 0.0f, 1.0f);
 					}
 					else if (numeratorB > lengthSquaredB)
 					{
 						parameterB = 1.0f;
-						parameterA = Clamp((dotDirections - projectionA) / lengthSquaredA, 0.0f, 1.0f);
+						parameterA = ClampFloat((dotDirections - projectionA) / lengthSquaredA, 0.0f, 1.0f);
 					}
 					else
 					{
@@ -128,36 +94,6 @@ namespace fang
 
 			*outOnA = startA + directionA * parameterA;
 			*outOnB = startB + directionB * parameterB;
-		}
-
-
-		/** @brief ワールドの点を OBB の軸に沿った座標へ移す。 */
-		Vector3 ToBoxLocal(const OBB& box, const Vector3& worldPoint)
-		{
-			const Vector3 offset = worldPoint - box.center;
-
-			return Vector3{ Dot(offset, box.axes[0]), Dot(offset, box.axes[1]), Dot(offset, box.axes[2]) };
-		}
-
-
-		/** @brief OBB の軸に沿った座標をワールドへ戻す。 */
-		Vector3 FromBoxLocal(const OBB& box, const Vector3& localPoint)
-		{
-			return box.center + box.axes[0] * localPoint.x + box.axes[1] * localPoint.y + box.axes[2] * localPoint.z;
-		}
-
-
-		/** @brief 軸に沿った座標を箱の中へ収める。 */
-		Vector3 ClampToHalfExtents(const Vector3& localPoint, const Vector3& halfExtents)
-		{
-			Vector3 result;
-			for (int axisIndex = 0; axisIndex < 3; ++axisIndex)
-			{
-				const float halfExtent = GetComponent(halfExtents, axisIndex);
-				SetComponent(&result, axisIndex, Clamp(GetComponent(localPoint, axisIndex), -halfExtent, halfExtent));
-			}
-
-			return result;
 		}
 
 

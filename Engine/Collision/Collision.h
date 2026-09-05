@@ -7,7 +7,9 @@
 #pragma once
 
 #include "Collision/Broadphase.h"
+#include "Collision/CollisionDebugLines.h"
 #include "Collision/CollisionShapes.h"
+#include "Collision/CollisionWorld.h"
 #include "Collision/Narrowphase.h"
 
 
