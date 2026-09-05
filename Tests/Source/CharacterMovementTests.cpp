@@ -6,7 +6,7 @@
 #include "Core/Math/MathConstants.h"
 #include "Core/Math/Vector3.h"
 #include "Core/Memory/Allocator.h"
-#include "Runtime/CharacterMovement.h"
+#include "Scene/CharacterMovement.h"
 #include <doctest.h>
 #include <cmath>
 #include <vector>

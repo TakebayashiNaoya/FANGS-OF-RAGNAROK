@@ -19,7 +19,7 @@
 
   <PropertyGroup Label="FangModule">
     <!-- ソースは Game.Shared.vcxitems 側で拾う -->
-    <FangModuleDependencies>Core;RHI;Runtime</FangModuleDependencies>
+    <FangModuleDependencies>Core;RHI;Runtime;Scene;Renderer;Collision;Resource;Animation;Input</FangModuleDependencies>
     <!-- Release では Editor と imgui をリンクしない（02 3）-->
     <FangModuleDependencies Condition="'$(FangConfigurationBase)' != 'Release'">$(FangModuleDependencies);Editor</FangModuleDependencies>
   </PropertyGroup>
@@ -37,10 +37,19 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
+    <ClInclude Include="Source\CameraFollowParams.h" />
+    <ClInclude Include="Source\GameLog.h" />
     <ClInclude Include="Source\GameMain.h" />
+    <ClInclude Include="Source\Stage.h" />
+    <ClInclude Include="Source\Wolf.h" />
+    <ClInclude Include="Source\WolfBehavior.h" />
+    <ClInclude Include="Source\WolfMovementParams.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\GameMain.cpp" />
+    <ClCompile Include="Source\Stage.cpp" />
+    <ClCompile Include="Source\Wolf.cpp" />
+    <ClCompile Include="Source\WolfBehavior.cpp" />
     <ClCompile Include="Source\Windows\Main.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->

@@ -23,6 +23,7 @@
 #include "Core/Platform/SystemFont.h"
 #include "Core/Platform/Thread.h"
 #include "Core/Platform/Window.h"
+#include "Core/Reflection/Reflection.h"
 
 
 namespace fang

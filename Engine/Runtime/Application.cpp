@@ -4,8 +4,6 @@
  */
 #include "Pch.h"
 #include "Runtime/Application.h"
-#include "Animation/AnimationPlayback.h"
-#include "Animation/SkeletalAnimation.h"
 #include "Collision/CollisionDebugLines.h"
 #include "Collision/CollisionWorld.h"
 #include "Core/Job/JobSystem.h"
@@ -28,20 +26,14 @@
 #include "Renderer/TerrainRenderer.h"
 #include "Renderer/UnlitRenderer.h"
 #include "Resource/DdsImage.h"
-#include "Resource/GltfMesh.h"
-#include "Resource/GltfScene.h"
 #include "Resource/HeightmapTerrain.h"
-#include "Runtime/CharacterMovement.h"
 #include "Runtime/FramePipeline.h"
 #include "Runtime/RuntimeLog.h"
 #include <algorithm>
-#include <array>
 #include <chrono>
-#include <cmath>
 #include <cstring>
 #include <span>
 #include <string>
-#include <utility>
 #include <vector>
 
 
@@ -62,88 +54,30 @@ namespace fang
 	{
 		constexpr rhi::ClearColor BACKGROUND_COLOR{ 0.05f, 0.06f, 0.09f, 1.0f };
 
-		/** @brief 狼の glTF。アセットの根っこからの相対パス。 */
-		constexpr const char* WOLF_MODEL_RELATIVE_PATH = "Models\\Wolf.gltf";
-
-		// 骨とクリップは gltf2ozz が Wolf.gltf から出したもの。歩き（直進）はルートモーションを持たないので、
-		// その場で脚だけが動く ➡ 移動処理がまだ無くても再生の正しさが確かめられる。
-		constexpr const char* WOLF_SKELETON_RELATIVE_PATH = "Models\\WolfSkeleton.ozz";
-		constexpr const char* WOLF_CLIP_RELATIVE_PATH     = "Models\\A_WalkSlow_F.ozz";
-
-		/** @brief ステージの glTF。アセットの根っこからの相対パス。 */
-		constexpr const char* STAGE_MODEL_RELATIVE_PATH = "Models\\Stage.gltf";
-
-		/** @brief 狼とステージ、どちらの glTF も置く場所。テクスチャの相対パスの組み立てに使う。 */
-		constexpr const char* MODEL_FOLDER_RELATIVE_PATH = "Models\\";
-
-		/** @brief 恒久の RenderItem 配列のうち、毎フレーム書き換える動く席の数（狼 2 体）。 */
-		constexpr size_t DYNAMIC_RENDER_ITEM_COUNT = 2;
-
-		/**
-		 * @brief ステージの配置数の上限。
-		 * @details 恒久配列は MeshRenderer::MAX_ITEM_COUNT ぶん確保する（1 フレームに描ける数と揃えないと、
-		 *          ステージだけで b0 の置き場を使い切って狼が描けなくなる）。そのうち動く 2 席を
-		 *          引いた残りがステージの取り分。
-		 */
-		constexpr size_t MAX_STAGE_INSTANCE_COUNT = MeshRenderer::MAX_ITEM_COUNT - DYNAMIC_RENDER_ITEM_COUNT;
-
-		// 狼の頂点の実測範囲は X[-92.6, 111.4]（体長 204）、Y[-0.39, 106.6]（高さ 107）、Z[±18.2]（幅 36）。
-		// 単位は 1 = 1cm。狼は X 軸に沿って立っているので、真横に当たる Z 方向から見るのが素直。
-		// 注視点は 2 体の中点（接地後の高さ）へ毎フレーム足す ➡ 狼が上下しても画の中でずれない。
-		constexpr Vector3 CAMERA_TARGET_OFFSET{ 9.4f, 53.0f, 0.0f };
 		constexpr Vector3 CAMERA_UP{ 0.0f, 1.0f, 0.0f };
 
-		/** @brief 垂直画角。ラジアン。 */
+		/** @brief 垂直画角の既定値。ラジアン。Game が FrameData::camera を書いていなければこれを使う。 */
 		constexpr float CAMERA_FIELD_OF_VIEW_Y_RADIANS = 60.0f * PI / 180.0f;
 
-		// 注視点からカメラまでの距離。カメラは一周するので、どの角度でも 2 体とも収まる距離が要る。
-		// 2 体は Z 方向へ 1150 離れていて体の張り出しは片側 111 ➡ 収めたい半径は 1150 / 2 + 111 = 686。
-		// 16:9 なので tan(横半角) = (16/9) * tan(30 度) = 1.026 ➡ 横半角 45.7 度。686 / sin(45.7 度) = 959。
-		// これに少し余白を足した値にする。
-		constexpr float CAMERA_DISTANCE = 1000.0f;
-
-		// カメラの俯角。水平のままだと視点の高さが 98 で、周回する円（水平半径 940）上の地表 195 に潜る。
-		// 20 度なら視点が 440 まで上がり、地表との間に 245 の余裕が残る。
-		constexpr float CAMERA_PITCH_RADIANS = 20.0f * PI / 180.0f;
-
-		// 近平面・遠平面。狼が 100〜200 単位なので、0.1 のような近さに置くと深度の精度を捨てることになる。
-		// 手前の面が奥を隠しているかを見るのが目的なので、手前の狼までの距離より内側にあれば足りる。
-		// 遠平面は、視点が原点から最大 1600 離れるのに対し地形が原点から対角 5792 まで広がる ➡ 端まで映る値。
+		// 近平面・遠平面はゲームの尺度に依らない汎用の値。近すぎると深度の精度を捨て、遠すぎると地形の
+		// 対角(8192cm 四方なら 5792cm)より手前で切れてしまう。
 		constexpr float CAMERA_NEAR_Z = 10.0f;
 		constexpr float CAMERA_FAR_Z  = 8000.0f;
 
-		/** @brief カメラが狼の周りを 1 周する秒数。パッドが繋がっていないときだけ使う。 */
-		constexpr float CAMERA_ORBIT_SECONDS = 20.0f;
-
-		/** @brief 右スティックを倒し切ったときにカメラが回る速さ（ラジアン / 秒）。 */
-		constexpr float CAMERA_YAW_SPEED_RADIANS_PER_SECOND = 2.5f;
-
-		// 狼の移動。体長 204 cm に対して 400 cm/秒 は「小走り」くらいで、8192 cm の地形を 20 秒で横断する。
-		// 向きは 8 ラジアン/秒（1 周 0.8 秒）で、真後ろへ倒しても 0.4 秒で振り向く。
-		/** @brief 左スティックを倒し切ったときの狼の速さ（cm / 秒）。 */
-		constexpr float WOLF_MOVE_SPEED_CENTIMETERS_PER_SECOND = 400.0f;
-
-		/** @brief 狼が向きを変える速さ（ラジアン / 秒）。 */
-		constexpr float WOLF_TURN_SPEED_RADIANS_PER_SECOND = 8.0f;
-
-		// 狼 2 体のワールド XZ。Y は毎フレーム地表から決めるので持たない。
-		// 1 体目はクリアリング（半径 800 の平地、地表 12.0）の中心。2 体目はその外へ出して、高さの違う
-		// 2 点で正しく載ることが 1 枚の画で見えるようにする（地表 78.3 ➡ 1 体目より 66.3 高い）。
-		// (0, 1150) は体の前後（X 方向 -92.6〜+111）で地表差が 0.1、左右（Z 方向 ±18.2）でも 11.5 しか
-		// 無いので、脚 IK がまだ無くても 4 本の脚が地表から ±6 に収まる。
-		/** @brief 操作する狼の席。GameRules 2 のとおり 1 匹だけを動かし、残りは置いたままにする。 */
-		constexpr size_t CONTROLLED_WOLF_INDEX = 0;
-
-		/** @brief 狼 2 体を置くワールド XZ。要素数を動く席の数に縛ってある。 */
-		constexpr std::array<Vector3, DYNAMIC_RENDER_ITEM_COUNT> WOLF_POSITIONS{
-			Vector3{ 0.0f, 0.0f, 0.0f },
-			Vector3{ 0.0f, 0.0f, 1150.0f },
+		/**
+		 * @brief Game がまだ FrameData::camera を書いていないときの既定視点。
+		 * @details 起動直後の 1 フレーム目や OnUpdate が失敗したフレームでも、原点付近を見下ろす絵になる
+		 *          （eye と target が重ならないようにする ➡ MakeLookAtMatrix の契約を満たす）。
+		 */
+		constexpr CameraView DEFAULT_CAMERA{
+			.eyePosition         = { 0.0f, 800.0f, -1200.0f },
+			.targetPosition      = { 0.0f, 0.0f, 0.0f },
+			.fieldOfViewYRadians = CAMERA_FIELD_OF_VIEW_Y_RADIANS,
 		};
 
 		/**
 		 * @brief 当たり判定に登録できる数。
 		 * @details 今は狼 2 体 + 置き物 40 個だが、雑魚が湧くようになる分の余白を取ってある。
-		 *          Scene ができたらゲーム側が決める値になる。
 		 */
 		constexpr uint32_t MAX_COLLIDER_COUNT = 256;
 
@@ -151,11 +85,8 @@ namespace fang
 		/** @brief RenderItem の境界ボックスを表す線の色。緑系にして他の要素と見分けやすくする。 */
 		constexpr Vector3 DEBUG_DRAW_BOUNDS_COLOR{ 0.0f, 1.0f, 0.3f };
 
-		/** @brief どのコライダーにも触れていないコライダーのワイヤーの色。青系。 */
+		/** @brief コライダーのワイヤーの色。青系。 */
 		constexpr Vector3 DEBUG_DRAW_COLLIDER_COLOR{ 0.2f, 0.6f, 1.0f };
-
-		/** @brief 何かに触れているコライダーのワイヤーの色。赤系にして一目で分かるようにする。 */
-		constexpr Vector3 DEBUG_DRAW_TOUCHING_COLLIDER_COLOR{ 1.0f, 0.25f, 0.2f };
 
 		/** @brief シャドウの光の視錐台を表す線の色。黄系にして境界ボックスと見分けやすくする。 */
 		constexpr Vector3 DEBUG_DRAW_SHADOW_FRUSTUM_COLOR{ 1.0f, 0.85f, 0.0f };
@@ -192,45 +123,8 @@ namespace fang
 		constexpr float TERRAIN_LAYER_ROUGHNESS[3] = { 0.9f, 0.75f, 0.95f };
 
 		/**
-		 * @brief 狼 1 体ぶんの持ち物。
-		 * @details Scene ができたらゲーム側のオブジェクトへ移る。今はフレームループが直接抱えている。
-		 */
-		struct WolfModel
-		{
-			/** @brief GPU に載ったメッシュ。読み込みに失敗すると無効なままで、そのときは描画を飛ばす。 */
-			MeshId mesh;
-
-			/** @brief 骨を持つメッシュとして読めたか。false なら静的メッシュとして描く。 */
-			bool isSkinned = false;
-
-			SkeletalAnimation animation;
-			AnimationPlayback playback;
-
-			/** @brief ベースカラー。読めなかったら無効なままで、レンダラがダミー（単色）を差す。 */
-			rhi::TextureHandle baseColor;
-
-			/** @brief 法線マップ。読めなかったら無効なままで、レンダラが平坦なダミーを差す。 */
-			rhi::TextureHandle normalMap;
-
-			// マテリアルの係数。読み込みのときに glTF から写す。狼は metallic 0（非金属）・roughness 1（粗い面）。
-			float metallicFactor  = 0.0f;
-			float roughnessFactor = 1.0f;
-			float normalScale     = 1.0f;
-
-			/** @brief バインドポーズを打ち消す行列。glTF の関節の並び。読み込みのときだけ確保する。 */
-			std::vector<Matrix4x4> inverseBindMatrices;
-
-			/**
-			 * @brief 毎フレーム作り直すスキニング行列。
-			 * @details 単位行列で初期化してあるので、クリップを読めていなくてもバインドポーズで描ける。
-			 *          置き場は読み込みのときに取り切る ➡ 毎フレームのヒープ確保は 0。
-			 */
-			std::vector<Matrix4x4> skinningMatrices;
-		};
-
-		/**
 		 * @brief 地形 1 式の持ち物。
-		 * @details HeightmapTerrain は高さの問い合わせ(狼の接地に使う予定)のため、GPU 化が済んでも持ち続ける。
+		 * @details HeightmapTerrain は高さの問い合わせ(接地に使う)のため、GPU 化が済んでも持ち続ける。
 		 */
 		struct TerrainModel
 		{
@@ -287,7 +181,7 @@ namespace fang
 		/**
 		 * @brief 地形を読んで GPU へ載せる。
 		 * @details 失敗しても落とさない。isLoaded が false のままになり、地形なしで起動が続く
-		 *          (狼・エディタは今までどおり)。理由は各段階がログに出す。
+		 *          (エディタは今までどおり)。理由は各段階がログに出す。
 		 */
 		void LoadTerrain(rhi::GraphicsDevice& device, TerrainRenderer& terrainRenderer, TerrainModel* outTerrain)
 		{
@@ -393,19 +287,6 @@ namespace fang
 		}
 
 
-		/**
-		 * @brief ステージ 1 つぶんの持ち物。
-		 * @details renderItems は先頭 DYNAMIC_RENDER_ITEM_COUNT 個を狼の動く席として空けたまま返す
-		 *          （中身は既定の無効な RenderItem。RenderFrame が毎フレーム上書きする）。3 番目以降は
-		 *          LoadStage が書いたきり動かない。meshes と textures は終了処理での解放にだけ使う。
-		 */
-		struct StageResources
-		{
-			std::vector<RenderItem>         renderItems;
-			std::vector<MeshId>             meshes;
-			std::vector<rhi::TextureHandle> textures;
-		};
-
 		/** @brief FramePipeline へ渡す、フレームループの持ち物。 */
 		struct FrameLoopContext
 		{
@@ -419,453 +300,15 @@ namespace fang
 #if FANG_ENABLE_DEBUG_DRAW
 			DebugDraw* debugDraw = nullptr;
 #endif
-			MeshRenderer*    meshRenderer    = nullptr;
 			TerrainRenderer* terrainRenderer = nullptr;
-			WolfModel*       wolf            = nullptr;
-
-			/** @brief 当たり判定の入れ物。作れなかったときだけ nullptr ➡ 登録も可視化も飛ばす。 */
-			CollisionWorld* collisionWorld = nullptr;
-
-			/**
-			 * @brief 毎フレーム組み直すコライダーの列。ロード時に resize し切り、以後は要素数を変えない。
-			 * @details 中身を書くのは RenderFrame の区画 5 だけ。Scene ができたらゲーム側へ移る仮置き。
-			 */
-			std::vector<ColliderProxy> colliderProxies;
-
-			/** @brief 狼の足元の高さの問い合わせ先。地形を読めていなければ nullptr ➡ 接地せず y = 0 に立つ。 */
-			const HeightmapTerrain* terrain = nullptr;
 
 			/** @brief RunApplication が持つ入れ物。graph.Execute の戻り値の後に 4 値を書く。 */
 			RenderStatistics* renderStatistics = nullptr;
-
-			/**
-			 * @brief 恒久の RenderItem 配列。ロード時に resize し切り、以後は要素数を変えない。
-			 * @details 先頭 DYNAMIC_RENDER_ITEM_COUNT 個（狼 2 体）は毎フレーム書き換える動く席。
-			 *          3 番目以降はステージの配置で、ロード時に書いたきり動かない。Submit はこの配列
-			 *          全体を指す span 1 本で済ませる ➡ 毎フレームのヒープ確保・vector 伸長は無い。
-			 */
-			std::vector<RenderItem> renderItems;
-
-			/** @brief ステージのメッシュ番号。終了処理では使わない（MeshRenderer::Shutdown がまとめて解放する）。 */
-			std::vector<MeshId> stageMeshes;
-
-			/** @brief ステージのベースカラー。終了処理でまとめて DestroyTexture するために持つ。 */
-			std::vector<rhi::TextureHandle> stageTextures;
-
-			/** @brief カメラの水平回転角（ラジアン）。パッドがあれば右スティック、無ければ時間で回る。 */
-			float cameraOrbitRadians = 0.0f;
-
-			/**
-			 * @brief 操作している狼（先頭の席）の位置と向き。
-			 * @details 2 体目は WOLF_POSITIONS[1] に立ったまま。Scene ができたらゲーム側へ移る仮置き。
-			 */
-			CharacterMovementState wolfMovement;
-
-			/** @brief このフレームのパッド。区画 3 で読み、カメラと移動が見る。 */
-			GamepadState gamepad;
 
 			/** @brief バックバッファを取れなかったフレームで立つ。ループを抜ける合図。 */
 			bool hasDeviceError = false;
 		};
 
-
-		/**
-		 * @brief glTF が指す画像パスから、実際に読む .dds の絶対パスを作る。
-		 * @details 画像は texconv でオフライン変換してある ➡ glTF は .png を指したままなので、
-		 *          拡張子をここで差し替える。区切りの / も \ へ直す。folder はアセットの根っこからの
-		 *          相対パス（例: MODEL_FOLDER_RELATIVE_PATH）で、狼とステージのどちらも同じ手順を通す。
-		 */
-		[[nodiscard]] std::string MakeModelTexturePath(
-			std::string_view modelFolderRelativePath,
-			std::string_view imagePath
-		)
-		{
-			std::string relativePath(modelFolderRelativePath);
-			relativePath += imagePath;
-
-			for (char& character : relativePath)
-			{
-				if (character == '/')
-				{
-					character = '\\';
-				}
-			}
-
-			const size_t dotIndex = relativePath.rfind('.');
-			if (dotIndex != std::string::npos)
-			{
-				relativePath.resize(dotIndex);
-			}
-			relativePath += ".dds";
-
-			return MakeAssetPath(relativePath.c_str());
-		}
-
-		/**
-		 * @brief 狼のマテリアルが指す画像を 1 枚読んで GPU へ載せる。
-		 * @param imagePath glTF からの相対パス。空なら何もせず無効なハンドルを返す。
-		 * @param usageName ログに出す用途の名前（「ベースカラー」など）。
-		 * @details 失敗しても落とさない。無効なハンドルのままなら、レンダラがダミーを差す。
-		 */
-		[[nodiscard]] rhi::TextureHandle LoadWolfTexture(
-			rhi::GraphicsDevice& device,
-			std::string_view     imagePath,
-			const char*          usageName
-		)
-		{
-			if (imagePath.empty())
-			{
-				return rhi::TextureHandle{};
-			}
-
-			// DdsImage は転送が済めば用済み。5MB の中身をこの関数を抜けるところで手放す。
-			const std::string filePath = MakeModelTexturePath(MODEL_FOLDER_RELATIVE_PATH, imagePath);
-
-			DdsImage image;
-			if (!image.Load(filePath.c_str()))
-			{
-				FANG_LOG_ERROR(Runtime, "狼の{}を読めなかった。ダミーで描く: {}", usageName, filePath);
-				return rhi::TextureHandle{};
-			}
-
-			const rhi::TextureSource source{
-				.mipLevels = image.GetMipLevels(),
-				.format    = image.GetFormat(),
-			};
-
-			// 失敗したときの理由は RHI 側がログに出す。
-			return device.CreateTexture2D(source);
-		}
-
-		/**
-		 * @brief 骨とクリップを読み、姿勢を作れる状態にする。
-		 * @details 失敗しても落とさない。IsReady() が false のままになり、狼はバインドポーズで立つ。
-		 */
-		void LoadWolfAnimation(const GltfMesh& model, WolfModel* outWolf)
-		{
-			const std::string skeletonPath = MakeAssetPath(WOLF_SKELETON_RELATIVE_PATH);
-			if (!outWolf->animation.LoadSkeleton(skeletonPath.c_str()))
-			{
-				FANG_LOG_ERROR(Runtime, "狼のスケルトンを読めなかった。バインドポーズで描く: {}", skeletonPath);
-				return;
-			}
-
-			const std::string clipPath = MakeAssetPath(WOLF_CLIP_RELATIVE_PATH);
-			if (!outWolf->animation.LoadClip(clipPath.c_str()))
-			{
-				FANG_LOG_ERROR(Runtime, "狼のクリップを読めなかった。バインドポーズで描く: {}", clipPath);
-				return;
-			}
-
-			// gltf2ozz は関節を並べ替える。名前で対応表を作らないと、骨の対応がずれた姿勢が描かれる。
-			if (!outWolf->animation.BuildJointRemap(model.GetJointNames()))
-			{
-				FANG_LOG_ERROR(Runtime, "狼の関節の対応表を作れなかった。バインドポーズで描く");
-				return;
-			}
-
-			outWolf->playback.SetDurationSeconds(outWolf->animation.GetClipDurationSeconds());
-
-			FANG_LOG_INFO(Runtime, "狼のアニメーションを読んだ: {:.3f} 秒", outWolf->playback.GetDurationSeconds());
-		}
-
-		/**
-		 * @brief 狼のモデルを読んで GPU へ載せる。骨を持っていればアニメーションも読む。
-		 * @details 失敗しても落とさない。モデルが出なくても三角形とエディタは動き、ゲームの本質でもないため。
-		 */
-		void LoadWolf(rhi::GraphicsDevice& device, MeshRenderer& meshRenderer, WolfModel* outWolf)
-		{
-			//------------------------------------------------------------------------
-			// 1. glTF の読み込み
-			// 　頂点・骨・マテリアル・画像パスの入れ物である glTF ファイルを 1 つ読み込む。読めなければ
-			// 　ここで引き返し、モデルは出さない。
-			//------------------------------------------------------------------------
-			// GltfMesh は CreateMesh が済めば用済み。15MB の .bin 由来の配列を抱え続けないよう、
-			// この関数を抜けるところで手放す。逆バインド行列と関節名だけは写しを残す。
-			GltfMesh model;
-
-			const std::string filePath = MakeAssetPath(WOLF_MODEL_RELATIVE_PATH);
-			if (!model.Load(filePath.c_str()))
-			{
-				FANG_LOG_ERROR(Runtime, "狼のモデルを読めなかった: {}", filePath);
-				return;
-			}
-
-			//------------------------------------------------------------------------
-			// 2. 頂点・骨・テクスチャの取り出しと GPU リソース化
-			// 　ベースカラーのテクスチャとマテリアル係数を取り出したあと、骨の有無で分岐する。骨が無ければ
-			// 　頂点(位置・法線・UV)だけを取り出して CreateMesh で静的メッシュとして GPU へ載せる。骨が
-			// 　あれば関節番号・重みも合わせて取り出してスキンメッシュとして載せ、続けて逆バインド行列を
-			// 　写し、LoadWolfAnimation でスケルトンとクリップを読む。
-			//------------------------------------------------------------------------
-			outWolf->baseColor = LoadWolfTexture(device, model.GetBaseColorImagePath(), "ベースカラー");
-			outWolf->normalMap = LoadWolfTexture(device, model.GetNormalImagePath(), "法線マップ");
-
-			outWolf->metallicFactor  = model.GetMetallicFactor();
-			outWolf->roughnessFactor = model.GetRoughnessFactor();
-			outWolf->normalScale     = model.GetNormalScale();
-
-			if (!model.HasSkin())
-			{
-				// 骨を持たない glTF なら静的メッシュとして描く。失敗の理由は CreateMesh 側がログに出す。
-				const MeshSource source{
-					.positions = model.GetPositions(),
-					.normals   = model.GetNormals(),
-					.texCoords = model.GetTexCoords(),
-					.indices   = model.GetIndices(),
-					.tangents  = model.GetTangents(),
-				};
-
-				outWolf->mesh = meshRenderer.CreateMesh(device, source);
-				return;
-			}
-
-			const SkinnedMeshSource source{
-				.positions    = model.GetPositions(),
-				.normals      = model.GetNormals(),
-				.texCoords    = model.GetTexCoords(),
-				.indices      = model.GetIndices(),
-				.jointIndices = model.GetJointIndices(),
-				.jointWeights = model.GetJointWeights(),
-				.tangents     = model.GetTangents(),
-			};
-
-			outWolf->mesh = meshRenderer.CreateMesh(device, source);
-			if (!outWolf->mesh.IsValid())
-			{
-				return;
-			}
-
-			outWolf->isSkinned = true;
-
-			const std::span<const Matrix4x4> inverseBindMatrices = model.GetInverseBindMatrices();
-			outWolf->inverseBindMatrices.assign(inverseBindMatrices.begin(), inverseBindMatrices.end());
-
-			// 単位行列のまま置いておく ➡ クリップを読めなくてもバインドポーズが出る。
-			outWolf->skinningMatrices.resize(inverseBindMatrices.size());
-
-			LoadWolfAnimation(model, outWolf);
-		}
-
-		/**
-		 * @brief ステージを読み、メッシュを GPU へ載せ、地表へ接地させた恒久の RenderItem 配列を作り切る。
-		 * @details 失敗しても FANG_FATAL にしない。読めなければ舞台なしで起動を続ける（ログだけ出す）。
-		 *          先頭 DYNAMIC_RENDER_ITEM_COUNT 個は狼の動く席として空けたまま返す ➡ 呼び出し側
-		 *          （RunApplication）は成否によらずこの関数を抜けた時点で renderItems を Submit に使える。
-		 * @param terrain 接地に使う地形。読めていなければ nullptr を渡す ➡ 配置は glTF のまま y = 0 に置く。
-		 */
-		void LoadStage(
-			rhi::GraphicsDevice&    device,
-			MeshRenderer&           meshRenderer,
-			const HeightmapTerrain* terrain,
-			StageResources*         outStage
-		)
-		{
-			GltfScene scene;
-
-			const std::string filePath = MakeAssetPath(STAGE_MODEL_RELATIVE_PATH);
-			if (!scene.Load(filePath.c_str()))
-			{
-				FANG_LOG_ERROR(Runtime, "ステージを読めなかった。舞台なしで続ける: {}", filePath);
-				return;
-			}
-
-			const std::span<const GltfSceneMesh>     meshes    = scene.GetMeshes();
-			const std::span<const GltfSceneInstance> instances = scene.GetInstances();
-
-			//------------------------------------------------------------------------
-			// 1. メッシュごとに GPU へ載せる
-			// 　失敗した番号は無効なまま outStage->meshes へ残す ➡ MeshRenderer::Draw / DrawDepth が
-			// 　黙って飛ばすので、ここで詰め直す必要が無い。
-			//------------------------------------------------------------------------
-			outStage->meshes.reserve(meshes.size());
-			for (const GltfSceneMesh& mesh : meshes)
-			{
-				const MeshSource source{
-					.positions = mesh.positions,
-					.normals   = mesh.normals,
-					.texCoords = mesh.texCoords,
-					.indices   = mesh.indices,
-					.tangents  = mesh.tangents,
-				};
-				outStage->meshes.push_back(meshRenderer.CreateMesh(device, source));
-			}
-
-			//------------------------------------------------------------------------
-			// 2. 画像パスごとにテクスチャを読む
-			// 　同じパスを指すメッシュが並ぶので、パスごとに 1 回だけ読む対応表を挟む。数十件なので
-			// 　線形探索で足りる(二分探索や辞書を持ち出すほどの件数ではない)。
-			//------------------------------------------------------------------------
-			std::vector<std::pair<std::string, rhi::TextureHandle>> pathToTexture;
-
-			auto findOrLoadTexture = [&](std::string_view imagePath) -> rhi::TextureHandle {
-				if (imagePath.empty())
-				{
-					return rhi::TextureHandle{};
-				}
-
-				for (const auto& entry : pathToTexture)
-				{
-					if (entry.first == imagePath)
-					{
-						return entry.second;
-					}
-				}
-
-				const std::string imageFilePath = MakeModelTexturePath(MODEL_FOLDER_RELATIVE_PATH, imagePath);
-
-				rhi::TextureHandle handle;
-				DdsImage           image;
-				if (image.Load(imageFilePath.c_str()))
-				{
-					const rhi::TextureSource textureSource{
-						.mipLevels = image.GetMipLevels(),
-						.format    = image.GetFormat(),
-					};
-
-					handle = device.CreateTexture2D(textureSource);
-					if (handle.IsValid())
-					{
-						outStage->textures.push_back(handle);
-					}
-				}
-				else
-				{
-					FANG_LOG_ERROR(Runtime, "ステージのテクスチャを読めなかった。ダミーで描く: {}", imageFilePath);
-				}
-
-				// 失敗した画像パスも登録しておく（無効なハンドルのまま）。同じ壊れたパスを指す次のメッシュで
-				// また読みに行って同じ理由のログを重ねて出す、ということを避けるため。
-				pathToTexture.emplace_back(std::string(imagePath), handle);
-				return handle;
-			};
-
-			//------------------------------------------------------------------------
-			// 3. 配置ごとに地表へ載せ、RenderItem を恒久配列(3 番目以降)へ積む
-			// 　上限(MAX_STAGE_INSTANCE_COUNT)を超えたぶんは警告して捨てる。castsShadow は常に false
-			// 　(ステージは受け専用。光の箱はキャスタの AABB の和なので、含めると光源から見える範囲が
-			// 　無駄に広がり、シャドウマップ 1 テクセルが表す実寸が粗くなって狼の影が読めなくなる)。
-			//------------------------------------------------------------------------
-			const size_t loadedInstanceCount = std::min(instances.size(), MAX_STAGE_INSTANCE_COUNT);
-			outStage->renderItems.resize(DYNAMIC_RENDER_ITEM_COUNT + loadedInstanceCount);
-
-			size_t      groundedInstanceCount = 0;
-			size_t      outsideInstanceCount  = 0;
-			std::string firstOutsideName;
-
-			for (size_t index = 0; index < loadedInstanceCount; ++index)
-			{
-				const GltfSceneInstance& instance = instances[index];
-				const GltfSceneMesh&     meshData = meshes[instance.meshIndex];
-				const MeshId             meshId   = outStage->meshes[instance.meshIndex];
-
-				// ステージの glTF はどの組み立ても最下段の底面がローカル y = 0 にそろえてある
-				// ➡ 原点 XZ の地表の高さを Y へ「足す」だけで底が地表に付く(代入すると、原点が底面でない
-				// 　井戸のようなメッシュがめり込む)。回転・スケールには触らない。
-				Matrix4x4 world = instance.world;
-				if (terrain != nullptr)
-				{
-					float groundHeight = 0.0f;
-					if (terrain->TryGetHeightAt(world.m[3][0], world.m[3][2], &groundHeight))
-					{
-						world.m[3][1] += groundHeight;
-						++groundedInstanceCount;
-					}
-					else
-					{
-						// 地形の外。端の高さへ寄せると崖に貼り付いて見えるので、そのまま動かさない。
-						if (outsideInstanceCount == 0)
-						{
-							firstOutsideName = instance.name;
-						}
-						++outsideInstanceCount;
-					}
-				}
-
-				RenderItem item{};
-				item.mesh            = meshId;
-				item.world           = world;
-				item.baseColor       = findOrLoadTexture(meshData.baseColorImagePath);
-				item.normalMap       = findOrLoadTexture(meshData.normalImagePath);
-				item.metallicFactor  = meshData.metallicFactor;
-				item.roughnessFactor = meshData.roughnessFactor;
-				item.normalScale     = meshData.normalScale;
-				item.castsShadow     = false;
-
-				// bounds は無効な mesh では作れない（TransformAabb は有効な箱を要求する）。無効なままにする
-				// と「常に描く」扱いになるが、mesh 自体を MeshRenderer が飛ばすので実害は無い。
-				// 接地後の world から作る ➡ カリングと影の箱がずれたまま残らない。
-				if (meshId.IsValid())
-				{
-					item.bounds = TransformAabb(meshRenderer.GetLocalBounds(meshId), world);
-				}
-
-				outStage->renderItems[DYNAMIC_RENDER_ITEM_COUNT + index] = item;
-			}
-
-			const size_t discardedInstanceCount = instances.size() - loadedInstanceCount;
-			if (discardedInstanceCount > 0)
-			{
-				FANG_LOG_WARNING(
-					Runtime,
-					"ステージの配置が上限（{}）を超えた。{} 個を捨てた",
-					MAX_STAGE_INSTANCE_COUNT,
-					discardedInstanceCount
-				);
-			}
-
-			FANG_LOG_INFO(
-				Runtime,
-				"ステージを読んだ: メッシュ {} 個 / 配置 {} 個 / テクスチャ {} 枚",
-				outStage->meshes.size(),
-				loadedInstanceCount,
-				outStage->textures.size()
-			);
-
-			// 接地の結果は必ず 1 行残す。浮いている・沈んでいるように見えたとき、理由をログで切り分けられる。
-			if (terrain == nullptr)
-			{
-				FANG_LOG_WARNING(Runtime, "地形が無いので接地しない。ステージは y=0 のまま");
-			}
-			else
-			{
-				FANG_LOG_INFO(Runtime, "接地 {} 個 / 範囲外 {} 個", groundedInstanceCount, outsideInstanceCount);
-
-				if (outsideInstanceCount > 0)
-				{
-					FANG_LOG_WARNING(
-						Runtime,
-						"地形の範囲外の配置は接地しない: {} 個（最初は {}）",
-						outsideInstanceCount,
-						firstOutsideName
-					);
-				}
-			}
-		}
-
-		/**
-		 * @brief 再生位置を進め、そのフレームのスキニング行列を作る。
-		 * @param speedRatio 歩行アニメを進める速さ。0 で姿勢が止まる。
-		 * @details 姿勢を作れないときは行列を触らない ➡ 単位行列のままバインドポーズで描かれる。
-		 *          2 体は骨行列を共有しているので、操作している狼が止まればもう 1 匹も止まる
-		 *          （姿勢を別に持つのは Scene の仕事）。
-		 */
-		void UpdateWolfPose(WolfModel* wolf, float deltaTimeSeconds, float speedRatio)
-		{
-			if (!wolf->animation.IsReady())
-			{
-				return;
-			}
-
-			wolf->playback.SetPlaybackSpeed(speedRatio);
-			wolf->playback.Advance(deltaTimeSeconds);
-
-			FANG_VERIFY(wolf->animation.ComputeSkinningMatrices(
-				wolf->playback.GetTimeRatio(),
-				wolf->inverseBindMatrices,
-				wolf->skinningMatrices
-			));
-		}
 
 		/** @brief 更新の本体。ワーカースレッドで走るので、渡された束の外へは手を伸ばさない。 */
 		FrameData* UpdateFrame(void* userData, const FrameUpdateContext& context)
@@ -925,6 +368,10 @@ namespace fang
 		/** @brief 描画の本体。RHI を触るのはここだけなので、メインスレッドの持ち物が全部そろっている。 */
 		void RenderFrame(void* userData, const FrameData* frameData, uint64_t frameIndex, float deltaTimeSeconds)
 		{
+			// 全構成で使われるとは限らない（ホットリロード・プロファイラ・エディタが軒並み無効な Release では
+			// 未使用になる）。#if で分岐して片方でだけ使わなくなる引数なので FANG_UNUSED で明示する。
+			FANG_UNUSED(deltaTimeSeconds);
+
 			auto& loopContext = *static_cast<FrameLoopContext*>(userData);
 
 			rhi::GraphicsDevice& device        = *loopContext.device;
@@ -976,150 +423,36 @@ namespace fang
 			);
 
 			//------------------------------------------------------------------------
-			// 3. パッドの読み取りと狼の移動(押し出し ➡ 進入方向の削り ➡ 移動 ➡ 接地)
-			// 　押し出しに使うのは 1 つ前のフレームが作った接触(GetContacts は次の Update まで前フレームの
-			// 　結果を返す)。押し出しただけだと次のフレームで同じだけ食い込んで振動するので、押し出した向きへ
-			// 　進ませないよう移動ベクトルから食い込む成分を削るのと必ず対にする。
-			// 　Scene ができたらこの区画はまるごとゲーム側へ移る仮置き。
-			//------------------------------------------------------------------------
-			// 区画 3 の押し出しと区画 6 の登録の両方で使うので、ここで 1 度だけ取り出す。
-			CollisionWorld* collisionWorld = loopContext.collisionWorld;
-
-			loopContext.gamepad = ReadGamepadState();
-
-			CharacterMovementState& wolfMovement = loopContext.wolfMovement;
-
-			// 前フレームの接触から、自分を外へ出す向きと深さを集める。当たり判定が無ければ空のまま。
-			PenetrationSample penetrations[MAX_PENETRATION_SAMPLE_COUNT]{};
-			uint32_t          penetrationCount = 0;
-			if (collisionWorld != nullptr)
-			{
-				penetrationCount =
-					CollectPenetrations(collisionWorld->GetContacts(), CONTROLLED_WOLF_INDEX, penetrations);
-			}
-
-			const std::span<const PenetrationSample> touchingWalls(penetrations, penetrationCount);
-
-			wolfMovement.position += ResolvePenetration(touchingWalls);
-
-			// カメラの方位。パッドがあれば右スティック、無ければこれまでどおり時間で回す
-			// ➡ 起動して放置しスクリーンショットを撮る確認手順がそのまま使える。
-			if (loopContext.gamepad.isConnected)
-			{
-				loopContext.cameraOrbitRadians +=
-					GetRightStick(loopContext.gamepad).x * CAMERA_YAW_SPEED_RADIANS_PER_SECOND * deltaTimeSeconds;
-			}
-			else
-			{
-				loopContext.cameraOrbitRadians += deltaTimeSeconds * (2.0f * PI / CAMERA_ORBIT_SECONDS);
-			}
-
-			if (loopContext.cameraOrbitRadians >= 2.0f * PI)
-			{
-				// 積みっぱなしにすると値が大きくなるほど角度の刻みが粗くなるので、1 周ごとに戻す。
-				loopContext.cameraOrbitRadians -= 2.0f * PI;
-			}
-			else if (loopContext.cameraOrbitRadians < 0.0f)
-			{
-				loopContext.cameraOrbitRadians += 2.0f * PI;
-			}
-
-			// カメラは注視点から見て orbitOffset の位置にいる ➡ 前を向く向きはその逆。角度を控えておいて
-			// 移動の基準にする（前後左右を画面に合わせるため）。
-			const float cameraYawRadians = GetYawFromDirection(
-				Vector3{ -std::sinf(loopContext.cameraOrbitRadians), 0.0f, -std::cosf(loopContext.cameraOrbitRadians) }
-			);
-
-			// 進みたい量から、触れている壁へ食い込む成分を削ってから足す。
-			const Vector3 desiredDelta = MakeMoveDelta(
-				GetLeftStick(loopContext.gamepad),
-				cameraYawRadians,
-				WOLF_MOVE_SPEED_CENTIMETERS_PER_SECOND,
-				deltaTimeSeconds
-			);
-			const Vector3 appliedDelta = SlideAlongNormals(desiredDelta, touchingWalls);
-
-			wolfMovement.position += appliedDelta;
-
-			// 進んだ向きへ体を回す。止まっているフレームは今の向きを保つ。
-			const float appliedSpeed = Length(appliedDelta) / (deltaTimeSeconds > 0.0f ? deltaTimeSeconds : 1.0f);
-			if (LengthSquared(appliedDelta) > 0.0f)
-			{
-				wolfMovement.facingRadians = TurnTowards(
-					wolfMovement.facingRadians,
-					GetYawFromDirection(appliedDelta),
-					WOLF_TURN_SPEED_RADIANS_PER_SECOND * deltaTimeSeconds
-				);
-			}
-
-			//------------------------------------------------------------------------
-			// 4. 狼の足元の高さと View の組み立て(狼を追うカメラ)
-			// 　SceneRenderer::Reset で前フレームの View を捨ててから、カメラ位置と視射影行列を計算して View を
-			// 　組み立てる。登録(AddShadowView / AddView)はキャスタの箱がそろう次の区画でまとめて行う。
-			// 　地表の高さは注視点にも狼の world にも要る ➡ 区画 5 より先にここで引いて、両方で使い回す。
+			// 3. View の組み立て
+			// 　光とカメラは 1 つ前のフレームの更新が FrameData へ書いたもの。まだ何も書かれていなければ
+			// 　既定値で描く（Game が 1 フレーム目にまだ書けていなくても真っ黒・原点直視にはならない）。
 			//------------------------------------------------------------------------
 			sceneRenderer.Reset();
 
-			// 狼 2 体の水平位置。先頭は区画 3 が動かしたもの、2 体目は置いたまま。
-			Vector3 wolfPositions[DYNAMIC_RENDER_ITEM_COUNT];
-			wolfPositions[CONTROLLED_WOLF_INDEX] = wolfMovement.position;
-			for (size_t index = 0; index < DYNAMIC_RENDER_ITEM_COUNT; ++index)
-			{
-				if (index != CONTROLLED_WOLF_INDEX)
-				{
-					wolfPositions[index] = WOLF_POSITIONS[index];
-				}
-			}
+			const DirectionalLight  defaultLight{};
+			const DirectionalLight& light = frameData != nullptr ? frameData->light : defaultLight;
 
-			// 狼 2 体の足元の地表の高さ。地形を読めていなければ 0 のままで、狼もカメラも y = 0 基準に戻る。
-			// GetHeightAt は範囲外を端の高さへクランプする ➡ 狼が地形の外へ出ても高さが未定義にならない。
-			float groundHeights[DYNAMIC_RENDER_ITEM_COUNT]{};
-			for (size_t index = 0; index < DYNAMIC_RENDER_ITEM_COUNT; ++index)
-			{
-				if (loopContext.terrain != nullptr)
-				{
-					groundHeights[index] =
-						loopContext.terrain->GetHeightAt(wolfPositions[index].x, wolfPositions[index].z);
-				}
-			}
-
-			// 注視点は操作している狼（接地後の高さ）。2 体の中点だと、動かした狼が画面の端へ流れていく。
-			const Vector3 cameraTarget =
-				Vector3{ wolfPositions[CONTROLLED_WOLF_INDEX].x,
-						 wolfPositions[CONTROLLED_WOLF_INDEX].y + groundHeights[CONTROLLED_WOLF_INDEX],
-						 wolfPositions[CONTROLLED_WOLF_INDEX].z } +
-				CAMERA_TARGET_OFFSET;
-
-			// カメラは俯角を付けた円錐面を周る。水平半径は距離 × cos(俯角)、高さは距離 × sin(俯角)。
-			// 水平のままだと周回の途中で丘に潜るので、俯角で視点を持ち上げてある。
-			const float   orbitRadius = CAMERA_DISTANCE * std::cosf(CAMERA_PITCH_RADIANS);
-			const Vector3 orbitOffset{
-				std::sinf(loopContext.cameraOrbitRadians) * orbitRadius,
-				CAMERA_DISTANCE * std::sinf(CAMERA_PITCH_RADIANS),
-				std::cosf(loopContext.cameraOrbitRadians) * orbitRadius,
-			};
-			const Vector3 eye = cameraTarget + orbitOffset;
+			// fieldOfViewYRadians が 0 のままなら Game がまだ camera を書いていない印。その場合は eye /
+			// target も含めて丸ごと既定値に差し替える（eye と target だけ既定に戻すと、書きかけの片方だけ
+			// 汎用の値になって組み合わせが化ける）。
+			const bool        hasCameraFromGame = frameData != nullptr && frameData->camera.fieldOfViewYRadians > 0.0f;
+			const CameraView& camera            = hasCameraFromGame ? frameData->camera : DEFAULT_CAMERA;
 
 			// 最小化すると幅も高さも 0 で来る。ゼロ除算と MakePerspectiveMatrix のアサートを避けて 1 で止める。
 			const float viewportWidth  = static_cast<float>(window.GetWidth() > 0 ? window.GetWidth() : 1);
 			const float viewportHeight = static_cast<float>(window.GetHeight() > 0 ? window.GetHeight() : 1);
 
-			// 光は 1 つ前のフレームの更新が書いたもの。まだ何も書かれていなければ既定の光で描く
-			// ➡ Game が光を書かなくても真っ黒にはならない。
-			const DirectionalLight  defaultLight{};
-			const DirectionalLight& light = frameData != nullptr ? frameData->light : defaultLight;
-
 			const View view{
 				.viewProjection = Multiply(
-					MakeLookAtMatrix(eye, cameraTarget, CAMERA_UP),
+					MakeLookAtMatrix(camera.eyePosition, camera.targetPosition, CAMERA_UP),
 					MakePerspectiveMatrix(
-						CAMERA_FIELD_OF_VIEW_Y_RADIANS,
+						camera.fieldOfViewYRadians,
 						viewportWidth / viewportHeight,
 						CAMERA_NEAR_Z,
 						CAMERA_FAR_Z
 					)
 				),
-				.cameraPosition   = eye,
+				.cameraPosition   = camera.eyePosition,
 				.directionToLight = light.directionToLight,
 				.lightColor       = light.color,
 				.lightIntensity   = light.intensity,
@@ -1127,106 +460,14 @@ namespace fang
 			};
 
 			//------------------------------------------------------------------------
-			// 5. RenderItem 列の先頭 2 スロットの書き換え(狼 2 体)
-			// 　loopContext.renderItems は起動時に resize し切った恒久配列。3 番目以降(ステージ)は
-			// 　ロード時に書いたきりなのでここでは触らない。先頭 2 つだけ、読めていれば毎フレーム
-			// 　world / bounds / skinningMatrices を書き直す(読めていなければ既定の無効な RenderItem
-			// 　に戻す ➡ MeshRenderer が黙って飛ばすので、詰め直しの分岐が要らない)。
-			//------------------------------------------------------------------------
-			// loopContext は RenderFrame の外（RunApplication）が持つので、graph.Execute が戻るまで
-			// 生きている。Submit はこの配列を指す span を控えるだけでコピーしない。
-			std::vector<RenderItem>& renderItems = loopContext.renderItems;
-
-			// 狼を描く。読めていなければメッシュの描画だけを飛ばし、ほかは今までどおり続ける。
-			for (RenderItem& dynamicItem : std::span(renderItems).first(DYNAMIC_RENDER_ITEM_COUNT))
-			{
-				dynamicItem = RenderItem{};
-			}
-
-			WolfModel& wolf = *loopContext.wolf;
-			if (wolf.mesh.IsValid())
-			{
-				if (wolf.isSkinned)
-				{
-					// 再生位置を進めるのはここ。カメラの回転と同じ場所に置いてある
-					// ➡ Scene ができたらカメラごとゲーム側の更新へ移る。
-					// 速さに合わせて進める ➡ 止まれば姿勢も止まり、ゆっくり倒せばゆっくり歩く。
-					UpdateWolfPose(&wolf, deltaTimeSeconds, appliedSpeed / WOLF_MOVE_SPEED_CENTIMETERS_PER_SECOND);
-				}
-
-				const Aabb localBounds = loopContext.meshRenderer->GetLocalBounds(wolf.mesh);
-
-				// 2 体とも同じ骨行列（span を共有）で描くので、同じポーズで歩いて見える。
-				for (size_t index = 0; index < DYNAMIC_RENDER_ITEM_COUNT; ++index)
-				{
-					// 狼の足裏はローカル y = 0 ➡ 地表の高さを Y へ足すだけで接地する（ステージの glTF と
-					// 同じ規約）。bounds は接地後の world から作るので、箱が地面に取り残されない。
-					const Vector3& wolfPosition = wolfPositions[index];
-
-					// 操作している狼だけ体の向きを持つ。モデルは +X を向いているので、向き 0 が素の姿勢。
-					Matrix4x4 world = (index == CONTROLLED_WOLF_INDEX) ? MakeRotationYMatrix(wolfMovement.facingRadians)
-																	   : Matrix4x4{};
-					world.m[3][0]   = wolfPosition.x;
-					world.m[3][1]   = wolfPosition.y + groundHeights[index];
-					world.m[3][2]   = wolfPosition.z;
-
-					renderItems[index] = RenderItem{
-						.mesh             = wolf.mesh,
-						.world            = world,
-						.bounds           = TransformAabb(localBounds, world),
-						.skinningMatrices = wolf.skinningMatrices,
-						.baseColor        = wolf.baseColor,
-						.normalMap        = wolf.normalMap,
-						.metallicFactor   = wolf.metallicFactor,
-						.roughnessFactor  = wolf.roughnessFactor,
-						.normalScale      = wolf.normalScale,
-					};
-				}
-			}
-
-			const std::span<const RenderItem> submittedItems(renderItems);
-
-			//------------------------------------------------------------------------
-			// 6. 当たり判定への登録(狼はカプセル・置き物は OBB)
-			// 　狼の world と MeshRenderer::GetLocalBounds がそろうのがここなので、登録もここで行う。
-			// 　メッシュを読めていない席(無効な箱)は飛ばす ➡ userIndex に renderItems の添字を入れておけば、
-			// 　飛ばした席があっても番号がずれない。Scene ができたらこの登録はゲーム側へ移る仮置き。
-			//------------------------------------------------------------------------
-			if (collisionWorld != nullptr)
-			{
-				const MeshRenderer& meshRenderer = *loopContext.meshRenderer;
-
-				uint32_t colliderCount = 0;
-				for (uint32_t itemIndex = 0; itemIndex < submittedItems.size(); ++itemIndex)
-				{
-					const RenderItem& item        = submittedItems[itemIndex];
-					const Aabb        localBounds = meshRenderer.GetLocalBounds(item.mesh);
-					if (!localBounds.IsValid())
-					{
-						continue;
-					}
-
-					// 狼は四つ足なので、体を包むカプセルのほうが箱より当たりが素直。置き物は箱のまま回す。
-					const bool          isWolf = itemIndex < DYNAMIC_RENDER_ITEM_COUNT;
-					const ColliderShape shape = isWolf ? MakeColliderShape(MakeCapsuleFromAabb(localBounds, item.world))
-													   : MakeColliderShape(MakeOBBFromAabb(localBounds, item.world));
-
-					loopContext.colliderProxies[colliderCount] =
-						ColliderProxy{ .shape = shape, .userIndex = itemIndex };
-					++colliderCount;
-				}
-
-				collisionWorld->Update(
-					std::span<const ColliderProxy>(loopContext.colliderProxies.data(), colliderCount)
-				);
-			}
-
-			//------------------------------------------------------------------------
-			// 7. シャドウ View とシーン View の登録・Submit
+			// 4. シャドウ View とシーン View の登録・Submit
 			// 　castsShadow かつ bounds が有効な RenderItem を union してキャスタの箱を作り、AddShadowView を
-			// 　AddView より先に呼ぶ(シーン View の b1 に光の行列を焼き込む契約のため)。同じ RenderItem 列を
-			// 　両方の View へ Submit する(span の実体は上の items 配列で、Execute が戻るまで生きている)。
+			// 　AddView より先に呼ぶ(シーン View の b1 に光の行列を焼き込む契約のため)。RenderItem 列は
+			// 　Game の更新ジョブが Scene::BuildRenderItems でフレームメモリへ組み立てたもの。
 			//------------------------------------------------------------------------
+			const std::span<const RenderItem> submittedItems =
+				frameData != nullptr ? frameData->renderItems : std::span<const RenderItem>{};
+
 			// ヒープ確保をしない Aabb::Expand の積み重ねで箱を作る。キャスタが 1 つも無ければ無効な箱の
 			// ままで、AddShadowView が無効な ViewId を返す。
 			Aabb castersBounds;
@@ -1252,11 +493,11 @@ namespace fang
 			}
 
 			//------------------------------------------------------------------------
-			// 8. Unlit パスの宣言(クリアを持つ・三角形が先の理由は既存コメントにある)
-			// 　三角形を描く UnlitPass を宣言する。バックバッファと深度、両方のクリアをこのパスが引き受ける。
+			// 5. Unlit パスの宣言(クリアを持つ・三角形が先の理由は既存コメントにある)
+			// 　三角形を積む UnlitPass を宣言する。バックバッファと深度、両方のクリアをこのパスが引き受ける。
 			//------------------------------------------------------------------------
-			// 三角形を先に描き、深度を持つ狼が上に乗る従来の前後関係を保つ。三角形は深度テストを持たないので、
-			// 狼より後に描くと三角形が常に上書きしてしまう ➡ 画面のクリアもこのパスが引き受ける。
+			// 三角形を先に描き、深度を持つものが上に乗る前後関係を保つ。三角形は深度テストを持たないので、
+			// 後に描くと常に上書きしてしまう ➡ 画面のクリアもこのパスが引き受ける。
 			UnlitPassRecordArguments unlitArguments{
 				.unlitRenderer = loopContext.unlitRenderer,
 				.device        = &device,
@@ -1276,11 +517,10 @@ namespace fang
 			graph.AddPass(unlitPassDesc);
 
 			//------------------------------------------------------------------------
-			// 9. ScenePass の宣言(Load)
-			// 　床と狼を描く ScenePass を View ごとに宣言する。
+			// 6. ScenePass の宣言(Load)
+			// 　RenderItem を描く ScenePass を View ごとに宣言する。
 			//------------------------------------------------------------------------
-			// 床と狼（1 体〜2 体）を描く ScenePass を View ごとに宣言する。三角形パスが画面をクリア済みなので、
-			// 最初の View も Load（前のパスが描いた画の上に重ねる）。
+			// 三角形パスが画面をクリア済みなので、最初の View も Load（前のパスが描いた画の上に重ねる）。
 			sceneRenderer.AddPasses(
 				graph,
 				backBufferResource,
@@ -1291,7 +531,7 @@ namespace fang
 			);
 
 			//------------------------------------------------------------------------
-			// 10. TerrainPass の宣言(Load・シャドウマップ読み)
+			// 7. TerrainPass の宣言(Load・シャドウマップ読み)
 			// 　地形を描く TerrainPass を ScenePass の直後に宣言する。前後関係は深度テストが解決するので
 			// 　順序に意味は無いが、シャドウマップを読むリソースとして宣言することで ShadowPass との
 			// 　バリアを Compile に導かせる。b1 はシーン View の実体を借りる ➡ 光と影が建物と一致する。
@@ -1313,46 +553,34 @@ namespace fang
 
 #if FANG_ENABLE_DEBUG_DRAW
 			//------------------------------------------------------------------------
-			// 11. デバッグ描画の積み込みと DebugLinePass の宣言(FANG_ENABLE_DEBUG_DRAW 内)
-			// 　Reset で前フレームの積み込みを捨ててから、コライダーのワイヤー(触れていれば赤)、シャドウの
-			// 　光の視錐台の順にワイヤーを積み、DebugLinePass を宣言する。Release では
-			// 　FANG_ENABLE_DEBUG_DRAW が 0 になり、この区画ごとビルドから外れる。
+			// 8. デバッグ描画の積み込みと DebugLinePass の宣言(FANG_ENABLE_DEBUG_DRAW 内)
+			// 　コライダーの形は Game の更新ジョブが Scene::BuildColliderProxies で組み立てたもの。
+			// 　CollisionWorld::Update / Query は更新ジョブだけの持ち物になったので、メインスレッドの
+			// 　ここから触れない ➡ 接触の有無での色分けは行わず、コライダーは 1 色で出す。
+			// 　Release では FANG_ENABLE_DEBUG_DRAW が 0 になり、この区画ごとビルドから外れる。
 			//------------------------------------------------------------------------
 			DebugDraw& debugDraw = *loopContext.debugDraw;
 
 			debugDraw.Reset();
 
-			if (collisionWorld != nullptr)
+			const std::span<const ColliderProxy> colliderProxies =
+				frameData != nullptr ? frameData->colliderProxies : std::span<const ColliderProxy>{};
+
+			if (!colliderProxies.empty())
 			{
-				// コライダーの形は境界ボックスより情報が多い(狼はカプセル、置き物は回った箱)ので、
-				// 当たり判定を作れているときは境界ボックスの代わりにこちらを出す。両方出すと線が重なって読めない。
-				const std::span<const Contact> contacts = collisionWorld->GetContacts();
-
 				DebugLineSegment segments[MAX_SHAPE_LINE_COUNT];
-				for (uint32_t colliderIndex = 0; colliderIndex < collisionWorld->GetColliderCount(); ++colliderIndex)
+				for (const ColliderProxy& proxy : colliderProxies)
 				{
-					const ColliderProxy& proxy = loopContext.colliderProxies[colliderIndex];
-
-					// 接触は多くても数件なので、旗の配列を別に持たずその場で数える。
-					bool isTouching = false;
-					for (const Contact& contact : contacts)
-					{
-						isTouching = isTouching || contact.userIndexA == proxy.userIndex ||
-									 contact.userIndexB == proxy.userIndex;
-					}
-
-					const Vector3& color = isTouching ? DEBUG_DRAW_TOUCHING_COLLIDER_COLOR : DEBUG_DRAW_COLLIDER_COLOR;
-
 					const uint32_t lineCount = BuildShapeLines(proxy.shape, segments);
 					for (uint32_t lineIndex = 0; lineIndex < lineCount; ++lineIndex)
 					{
-						debugDraw.AddLine(segments[lineIndex].from, segments[lineIndex].to, color);
+						debugDraw.AddLine(segments[lineIndex].from, segments[lineIndex].to, DEBUG_DRAW_COLLIDER_COLOR);
 					}
 				}
 			}
 			else
 			{
-				// 当たり判定を作れなかったときは、これまでどおり境界ボックスを出す。
+				// 当たり判定が無い（Game がまだ登録していない）ときは、境界ボックスを出す。
 				for (const RenderItem& item : submittedItems)
 				{
 					if (item.bounds.IsValid())
@@ -1374,7 +602,7 @@ namespace fang
 
 #if FANG_ENABLE_EDITOR
 			//------------------------------------------------------------------------
-			// 12. エディタパスの宣言(FANG_ENABLE_EDITOR 内・Main 記録)
+			// 9. エディタパスの宣言(FANG_ENABLE_EDITOR 内・Main 記録)
 			// 　エディタパスを宣言する。Release ビルドでは FANG_ENABLE_EDITOR が 0 になり、この区画ごと
 			// 　ビルドから外れる。
 			//------------------------------------------------------------------------
@@ -1405,14 +633,14 @@ namespace fang
 #endif
 
 			//------------------------------------------------------------------------
-			// 13. Compile と Execute
+			// 10. Compile と Execute
 			// 　宣言したパスから Compile でバリアとクリアの手順を導き、Execute でコマンドリストへ記録する。
 			//------------------------------------------------------------------------
 			graph.Compile();
 			graph.Execute(device, jobSystem);
 
 			//------------------------------------------------------------------------
-			// 14. レンダリング統計のスナップショット更新
+			// 11. レンダリング統計のスナップショット更新
 			// 　Execute の Wait が済んだこの地点でだけ、Submit 数・描いた数・パス数・コマンドリスト本数を
 			// 　安全に読める（ScenePass の記録がまだ書き込み中の可能性がある間は読めない）。ここで書いた値は
 			// 　次のフレームの EditorPass が読む、1 フレーム遅れのスナップショットになる。
@@ -1424,7 +652,7 @@ namespace fang
 			loopContext.renderStatistics->commandListCount = static_cast<uint32_t>(graph.GetCommandLists().size());
 
 			//------------------------------------------------------------------------
-			// 15. コマンドリストを借りられなかったときの畳み
+			// 12. コマンドリストを借りられなかったときの畳み
 			// 　パスを宣言したのにコマンドリストが 1 本も返らなかった(主にデバイスロスト)ら、このフレームは
 			// 　EndFrame を呼ばずに畳む。
 			//------------------------------------------------------------------------
@@ -1441,7 +669,7 @@ namespace fang
 			}
 
 			//------------------------------------------------------------------------
-			// 16. EndFrame
+			// 13. EndFrame
 			// 　積んだコマンドリストを渡して実行・Present・GPU の完了待ちをまとめて行う。
 			//------------------------------------------------------------------------
 #if FANG_ENABLE_PROFILER
@@ -1453,9 +681,9 @@ namespace fang
 
 #if FANG_ENABLE_PROFILER
 			//------------------------------------------------------------------------
-			// 17. GPU 時間と EndFrame の内訳のスナップショット更新
-			// 　どちらも EndFrame が GPU の完了を待った後でしか確定しないので、区画 12 とは別にここで書く。
-			// 　区画 13 で畳んだフレームは前の値が残るだけで、読み手に特別扱いは要らない。
+			// 14. GPU 時間と EndFrame の内訳のスナップショット更新
+			// 　どちらも EndFrame が GPU の完了を待った後でしか確定しないので、区画 11 とは別にここで書く。
+			// 　区画 12 で畳んだフレームは前の値が残るだけで、読み手に特別扱いは要らない。
 			//------------------------------------------------------------------------
 			RenderStatistics& statistics = *loopContext.renderStatistics;
 
@@ -1550,9 +778,9 @@ namespace fang
 		}
 
 		//------------------------------------------------------------------------
-		// 5. レンダラ一式と狼モデル・ステージ
-		// 　Unlit(頂点色の三角形)、MeshRenderer(狼・床・ステージ)、RenderGraph(パスとバリアの管理)、
-		// 　SceneRenderer(View とカリング)を順に用意する。
+		// 5. レンダラ一式
+		// 　Unlit(頂点色の三角形)、地形、MeshRenderer(Game が読み込む狼・置き物の器)、当たり判定の器、
+		// 　RenderGraph(パスとバリアの管理)、SceneRenderer(View とカリング)を順に用意する。
 		//------------------------------------------------------------------------
 		UnlitRenderer unlitRenderer;
 		if (!unlitRenderer.Initialize(device))
@@ -1569,8 +797,7 @@ namespace fang
 		}
 #endif
 
-		// 地形は失敗を FANG_FATAL にしない。読めなければ地形なしで起動が続き、狼・エディタは今までどおり。
-		// ステージの接地に地表の高さが要るので、ステージより先に読む。
+		// 地形は失敗を FANG_FATAL にしない。読めなければ地形なしで起動が続く。
 		TerrainRenderer terrainRenderer;
 		TerrainModel    terrain;
 		if (terrainRenderer.Initialize(device))
@@ -1582,24 +809,10 @@ namespace fang
 			FANG_LOG_ERROR(Runtime, "地形描画の準備に失敗した。地形の表示だけを飛ばす");
 		}
 
-		// メッシュ側は失敗しても FANG_FATAL にしない。モデルが出ないだけならゲームは続けられるし、
-		// 起動できないほうが困るため。三角形とエディタは今までどおり動く。
+		// メッシュの読み込みは Game の仕事。ここでは器を用意するだけ。失敗しても FANG_FATAL にしない
+		// （モデルが出ないだけならゲームは続けられるし、起動できないほうが困るため。三角形とエディタは動く）。
 		MeshRenderer meshRenderer;
-		WolfModel    wolf;
-
-		// 動く 2 席（狼 2 体）は読み込みの成否によらず存在させる ➡ RenderFrame が毎フレーム
-		// renderItems[0]〜[1] へ添字で書ける（詰め直しの分岐が要らない）。
-		StageResources stage;
-		stage.renderItems.resize(DYNAMIC_RENDER_ITEM_COUNT);
-
-		if (meshRenderer.Initialize(device))
-		{
-			LoadWolf(device, meshRenderer, &wolf);
-
-			// 地形を読めていないときだけ nullptr。ステージは接地せず glTF のまま y = 0 に置かれる。
-			LoadStage(device, meshRenderer, terrain.isLoaded ? &terrain.heightmap : nullptr, &stage);
-		}
-		else
+		if (!meshRenderer.Initialize(device))
 		{
 			FANG_LOG_ERROR(Runtime, "メッシュ描画の準備に失敗した。モデルの表示だけを飛ばす");
 		}
@@ -1648,31 +861,7 @@ namespace fang
 #if FANG_ENABLE_DEBUG_DRAW
 		loopContext.debugDraw = &debugDraw;
 #endif
-		loopContext.meshRenderer    = &meshRenderer;
 		loopContext.terrainRenderer = &terrainRenderer;
-		loopContext.wolf            = &wolf;
-
-		// 地形を読めていないときだけ nullptr。狼は接地せず y = 0 に立ち、同じく y = 0 のステージと足並みが
-		// そろう。理由はここで 1 行だけ出す（毎フレームの経路にログを置かない）。
-		loopContext.terrain = terrain.isLoaded ? &terrain.heightmap : nullptr;
-		if (loopContext.terrain == nullptr)
-		{
-			FANG_LOG_WARNING(Runtime, "地形が無いので狼を接地しない。狼は y = 0 のまま");
-		}
-
-		// stage はここで用済み。renderItems / meshes / textures の実体を loopContext へ移す
-		// （resize 済みの vector をコピーせずそのまま使い回す）。
-		loopContext.renderItems   = std::move(stage.renderItems);
-		loopContext.stageMeshes   = std::move(stage.meshes);
-		loopContext.stageTextures = std::move(stage.textures);
-
-		// コライダーの列は RenderItem と同じ数だけ確保し切る ➡ 毎フレームの伸長が起きない。
-		// 実際に登録するのはメッシュを読めている席だけなので、使うのは先頭から数個〜全部。
-		// 操作する狼の初期位置。以後は区画 3 が動かすので、定数を見るのはここだけ。
-		loopContext.wolfMovement.position = WOLF_POSITIONS[CONTROLLED_WOLF_INDEX];
-
-		loopContext.collisionWorld = hasCollisionWorld ? &collisionWorld : nullptr;
-		loopContext.colliderProxies.resize(loopContext.renderItems.size());
 
 		FramePipeline framePipeline;
 		if (!framePipeline.Initialize(jobSystem, frameMemory, &loopContext, &UpdateFrame, &RenderFrame))
@@ -1687,15 +876,25 @@ namespace fang
 		// 予算はフレームループが毎周更新し、エディタが読み書きする。context より長く生きる必要がある。
 		PlatformBudget platformBudget;
 
+		// 地形を読めていないときだけ nullptr。理由はここで 1 行だけ出す（毎フレームの経路にログを置かない）。
+		const HeightmapTerrain* terrainForContext = terrain.isLoaded ? &terrain.heightmap : nullptr;
+		if (terrainForContext == nullptr)
+		{
+			FANG_LOG_WARNING(Runtime, "地形が無い。接地は行われない");
+		}
+
 		// 全部の初期化が終わってから束ねる。上の層はここで受けた参照を持ち続ける。
 #if FANG_ENABLE_HOT_RELOAD
-		const EngineContext context{ jobSystem,
-									 frameMemory,
-									 framePipeline,
-									 platformBudget,
-									 &device.GetShaderReloadStatus() };
+		const EngineContext context{ jobSystem,         frameMemory,
+									 framePipeline,     platformBudget,
+									 meshRenderer,      hasCollisionWorld ? &collisionWorld : nullptr,
+									 terrainForContext, &device.GetShaderReloadStatus() };
 #else
-		const EngineContext context{ jobSystem, frameMemory, framePipeline, platformBudget };
+		const EngineContext context{
+			jobSystem,         frameMemory,  framePipeline,
+			platformBudget,    meshRenderer, hasCollisionWorld ? &collisionWorld : nullptr,
+			terrainForContext,
+		};
 #endif
 		if (!application.OnInitialize(context, device, window))
 		{
@@ -1722,7 +921,10 @@ namespace fang
 			const float deltaTimeSeconds = std::chrono::duration<float>(currentTime - previousTime).count();
 			previousTime                 = currentTime;
 
-			framePipeline.RunFrame(deltaTimeSeconds);
+			// ReadGamepadState はメインスレッドのみなので、更新ジョブへ投げる前にここで読む。
+			const GamepadState gamepad = ReadGamepadState();
+
+			framePipeline.RunFrame(deltaTimeSeconds, gamepad);
 
 			// 予算の判定と、制限が入っているときの待ちはここで行う。
 			// 待った分は次の周の deltaTimeSeconds に乗るので、実処理の時間だけを渡す。
@@ -1745,10 +947,8 @@ namespace fang
 		debugDraw.Shutdown(device);
 #endif
 		sceneRenderer.Shutdown(device);
-		meshRenderer.Shutdown(device); // 狼とステージのメッシュはまとめてここで解放される。
+		meshRenderer.Shutdown(device); // Game が読み込んだメッシュもまとめてここで解放される。
 		terrainRenderer.Shutdown(device);
-		device.DestroyTexture(wolf.normalMap);
-		device.DestroyTexture(wolf.baseColor);
 
 		// 地形のテクスチャは TerrainRenderer にとって借用なので、持ち主のここが返す。
 		device.DestroyTexture(terrain.splatmap);
@@ -1760,12 +960,6 @@ namespace fang
 		for (rhi::TextureHandle& layerNormal : terrain.layerNormals)
 		{
 			device.DestroyTexture(layerNormal);
-		}
-
-		// ステージのテクスチャも同じ理由でここが返す。
-		for (const rhi::TextureHandle& textureHandle : loopContext.stageTextures)
-		{
-			device.DestroyTexture(textureHandle);
 		}
 
 		device.Shutdown();

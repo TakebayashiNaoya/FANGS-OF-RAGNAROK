@@ -73,11 +73,15 @@ namespace fang
 		/** @brief 控えたものを手放す。二重に呼んでも安全。 */
 		void Shutdown();
 
-		/** @brief 助走。フレーム 0 の更新だけを同期で走らせ、描く相手を作る。 */
+		/** @brief 助走。フレーム 0 の更新だけを同期で走らせ、描く相手を作る。パッドはまだ未接続として扱う。 */
 		void Prime();
 
-		/** @brief 1 周。面の切り替え ➡ 更新 N を投げる ➡ 描画 N−1 ➡ 更新の完了待ち。 */
-		void RunFrame(float deltaTimeSeconds);
+		/**
+		 * @brief 1 周。面の切り替え ➡ 更新 N を投げる ➡ 描画 N−1 ➡ 更新の完了待ち。
+		 * @param gamepad このフレームのパッド。ReadGamepadState はメインスレッドのみなので、呼ぶ側が
+		 *                周の頭で読んで渡す。
+		 */
+		void RunFrame(float deltaTimeSeconds, const GamepadState& gamepad);
 
 
 	private:
@@ -93,7 +97,12 @@ namespace fang
 		}
 
 		/** @brief 更新を 1 回走らせ、成果物と所要時間をそのフレームの面へ置く。 */
-		void RunUpdate(FrameAllocator& frameAllocator, uint64_t frameIndex, float deltaTimeSeconds);
+		void RunUpdate(
+			FrameAllocator&     frameAllocator,
+			uint64_t            frameIndex,
+			float               deltaTimeSeconds,
+			const GamepadState& gamepad
+		);
 
 		JobSystem*   m_jobSystem   = nullptr;
 		FrameMemory* m_frameMemory = nullptr;

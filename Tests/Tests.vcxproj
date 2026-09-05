@@ -60,7 +60,12 @@
     <ClCompile Include="Source\PackTests.cpp" />
     <ClCompile Include="Source\ParallelForTests.cpp" />
     <ClCompile Include="Source\PlatformBudgetTests.cpp" />
+    <ClCompile Include="Source\ReflectionTests.cpp" />
     <ClCompile Include="Source\RenderGraphTests.cpp" />
+    <ClCompile Include="Source\SceneBuildTests.cpp" />
+    <ClCompile Include="Source\SceneComponentTests.cpp" />
+    <ClCompile Include="Source\SceneHierarchyTests.cpp" />
+    <ClCompile Include="Source\SceneObjectTests.cpp" />
     <ClCompile Include="Source\TangentGenerationTests.cpp" />
     <ClCompile Include="Source\VectorTests.cpp" />
     <ClCompile Include="Source\WorkStealingDequeTests.cpp" />

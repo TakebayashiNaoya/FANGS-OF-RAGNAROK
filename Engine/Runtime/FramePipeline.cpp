@@ -6,6 +6,7 @@
 #include "Runtime/FramePipeline.h"
 #include "Core/Job/JobSystem.h"
 #include "Core/Memory/FrameAllocator.h"
+#include "Input/Gamepad.h"
 #include <chrono>
 
 
@@ -23,6 +24,7 @@ namespace fang
 			FrameAllocator* frameAllocator   = nullptr;
 			uint64_t        frameIndex       = 0;
 			float           deltaTimeSeconds = 0.0f;
+			GamepadState    gamepad;
 		};
 
 		static_assert(
@@ -96,14 +98,14 @@ namespace fang
 		// まだ描く相手がいないので、フレーム 0 の更新だけはジョブにせずここで済ませる。
 		// ➡ ループの中に「初回だけ」の分岐が 1 つも要らなくなる。
 		m_frameMemory->BeginFrame();
-		RunUpdate(m_frameMemory->GetCurrent(), 0, 0.0f);
+		RunUpdate(m_frameMemory->GetCurrent(), 0, 0.0f, GamepadState{});
 
 		m_frameIndex = 0;
 		m_isPrimed   = true;
 	}
 
 
-	void FramePipeline::RunFrame(float deltaTimeSeconds)
+	void FramePipeline::RunFrame(float deltaTimeSeconds, const GamepadState& gamepad)
 	{
 		FANG_ASSERT(m_isPrimed, "助走を走らせないまま 1 周を回そうとしている");
 
@@ -124,6 +126,7 @@ namespace fang
 		arguments.frameAllocator   = &m_frameMemory->GetCurrent();
 		arguments.frameIndex       = m_frameIndex;
 		arguments.deltaTimeSeconds = deltaTimeSeconds;
+		arguments.gamepad          = gamepad;
 
 		JobDesc desc{};
 		desc.function     = &FramePipeline::RunUpdateJob;
@@ -166,13 +169,23 @@ namespace fang
 		const auto&    jobArguments = *static_cast<const UpdateJobArguments*>(arguments);
 		FramePipeline& pipeline     = *jobArguments.pipeline;
 
-		pipeline.RunUpdate(*jobArguments.frameAllocator, jobArguments.frameIndex, jobArguments.deltaTimeSeconds);
+		pipeline.RunUpdate(
+			*jobArguments.frameAllocator,
+			jobArguments.frameIndex,
+			jobArguments.deltaTimeSeconds,
+			jobArguments.gamepad
+		);
 	}
 
 
-	void FramePipeline::RunUpdate(FrameAllocator& frameAllocator, uint64_t frameIndex, float deltaTimeSeconds)
+	void FramePipeline::RunUpdate(
+		FrameAllocator&     frameAllocator,
+		uint64_t            frameIndex,
+		float               deltaTimeSeconds,
+		const GamepadState& gamepad
+	)
 	{
-		const FrameUpdateContext context{ frameAllocator, frameIndex, deltaTimeSeconds };
+		const FrameUpdateContext context{ frameAllocator, frameIndex, deltaTimeSeconds, gamepad };
 
 #if FANG_ENABLE_PROFILER
 		const auto updateBeginTime = std::chrono::steady_clock::now();

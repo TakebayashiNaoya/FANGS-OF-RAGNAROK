@@ -161,7 +161,7 @@ namespace
 			framePipeline.Prime();
 			for (uint32_t i = 0; i < FRAME_COUNT; ++i)
 			{
-				framePipeline.RunFrame(TEST_DELTA_TIME_SECONDS);
+				framePipeline.RunFrame(TEST_DELTA_TIME_SECONDS, fang::GamepadState{});
 			}
 
 			recorder.isUpdateComplete = framePipeline.IsUpdateComplete();

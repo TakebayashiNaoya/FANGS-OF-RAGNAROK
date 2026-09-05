@@ -5,14 +5,18 @@
 #pragma once
 
 #include "Core/Math/Vector3.h"
+#include "Input/Gamepad.h"
 #include <cstddef>
 #include <cstdint>
+#include <span>
 
 
 namespace fang
 {
 	class FrameAllocator;
 	class Window;
+	struct ColliderProxy;
+	struct RenderItem;
 } // namespace fang
 
 
@@ -38,10 +42,33 @@ namespace fang
 		Vector3 ambientColor     = { 0.2f, 0.2f, 0.22f }; /**< 環境項。光の裏側の形を読ませる役。 */
 	};
 
+	/**
+	 * @brief カメラ 1 台の視点。
+	 * @details Game が CameraFollowParams から毎フレーム計算して FrameData へ書く。縦横比は Runtime が
+	 *          ウィンドウの大きさから足す（Game はウィンドウを知らないため）。
+	 */
+	struct CameraView
+	{
+		Vector3 eyePosition;
+		Vector3 targetPosition;
+		float   fieldOfViewYRadians = 0.0f; /**< 0 のままなら、書かれていない印として Runtime が既定値を使う。 */
+	};
+
 	/** @brief 更新が作り、次のフレームの描画が読むデータ。 */
 	struct FrameData
 	{
-		DirectionalLight light; /**< このフレームの平行光。将来は昼夜サイクルがここへ書く。 */
+		DirectionalLight light;  /**< このフレームの平行光。将来は昼夜サイクルがここへ書く。 */
+		CameraView       camera; /**< このフレームのカメラ。書かれていなければ既定のカメラで描く。 */
+
+		/** @brief このフレームに描くもの。Scene::BuildRenderItems がフレームメモリへ組み立てたもの。 */
+		std::span<const RenderItem> renderItems;
+
+		/**
+		 * @brief このフレームの当たり判定の可視化用。Scene::BuildColliderProxies が組み立てたもの。
+		 * @details 当たり判定そのものは Game が別途 CollisionWorld::Update へ渡す。ここにあるのは
+		 *          デバッグ描画がワイヤーを起こすための写し。
+		 */
+		std::span<const ColliderProxy> colliderProxies;
 	};
 
 #if FANG_ENABLE_PROFILER
@@ -91,6 +118,12 @@ namespace fang
 		FrameAllocator& frameAllocator; /**< 今のフレームの置き場。書いてよいのはここだけ。 */
 		uint64_t        frameIndex       = 0;
 		float           deltaTimeSeconds = 0.0f; /**< 1 周の実時間。更新と描画へ同じ値を渡す。 */
+
+		/**
+		 * @brief このフレームのパッド。
+		 * @details ReadGamepadState はメインスレッドのみなので、周の頭でメインが読んでここへ書く。
+		 */
+		GamepadState gamepad;
 	};
 
 	/** @brief 描画の側へ渡す、このフレームだけのもの。メインスレッドで読む。 */

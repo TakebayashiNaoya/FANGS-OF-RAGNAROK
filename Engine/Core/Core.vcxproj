@@ -58,6 +58,10 @@
     <ClInclude Include="Platform\Thread.h" />
     <ClInclude Include="Platform\UWPApplication.h" />
     <ClInclude Include="Platform\Window.h" />
+    <ClInclude Include="Reflection\FieldInfo.h" />
+    <ClInclude Include="Reflection\FieldValue.h" />
+    <ClInclude Include="Reflection\Reflection.h" />
+    <ClInclude Include="Reflection\TypeInfo.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Core.cpp" />
@@ -73,6 +77,7 @@
     <ClCompile Include="Memory\Allocator.cpp" />
     <ClCompile Include="Memory\FrameAllocator.cpp" />
     <ClCompile Include="Platform\Budget.cpp" />
+    <ClCompile Include="Reflection\TypeInfo.cpp" />
     <ClCompile Include="Windows\AssetPath.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Windows\DirectoryWatcher.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Windows\FileSystem.cpp" Condition="'$(FangIsXbox)' != 'true'" />

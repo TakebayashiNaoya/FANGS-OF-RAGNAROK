@@ -4,10 +4,15 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CharacterMovement.h" />
+    <ClInclude Include="Components.h" />
+    <ClInclude Include="GameObjectHandle.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="SceneLog.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="CharacterMovement.cpp" />
     <ClCompile Include="Pch.cpp" />
     <ClCompile Include="Scene.cpp" />
   </ItemGroup>
