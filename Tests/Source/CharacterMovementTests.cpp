@@ -2,8 +2,10 @@
  * @file CharacterMovementTests.cpp
  * @brief 移動と押し戻しのテスト。移動量・向きの詰め・押し出しの解決・壁沿いの滑りを確かめる。
  */
+#include "Collision/Collision.h"
 #include "Core/Math/MathConstants.h"
 #include "Core/Math/Vector3.h"
+#include "Core/Memory/Allocator.h"
 #include "Runtime/CharacterMovement.h"
 #include <doctest.h>
 #include <cmath>
@@ -246,4 +248,86 @@ TEST_CASE("押し出しと削りを対にすると壁際で振動しない")
 
 	// 壁を越えていない。重なりは余白ぶんまでに収まっている。
 	CHECK(position.x <= WALL_X + fang::PENETRATION_SKIN_CENTIMETERS + 0.001f);
+}
+
+
+TEST_CASE("当たり判定と組み合わせても壁を抜けず、壁沿いに滑る")
+{
+	// Application.cpp の区画 3 と同じ並びを、実物の CollisionWorld で回す。
+	// 「押し出す ➡ 進入方向を削る ➡ 進む ➡ その位置で登録し直す」の順。
+	constexpr uint32_t WOLF_INDEX = 0;
+	constexpr uint32_t WALL_INDEX = 1;
+
+	constexpr float WALL_X      = 300.0f;
+	constexpr float WALL_HALF   = 100.0f;
+	constexpr float WOLF_RADIUS = 20.0f;
+	constexpr float DELTA_TIME  = 1.0f / 60.0f;
+	constexpr float MOVE_SPEED  = 400.0f;
+
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	// 壁は動かない大きな箱。狼は立った姿勢のカプセル。
+	const fang::ColliderProxy wall{
+		.shape = fang::MakeColliderShape(
+			fang::OBB{ .center = { WALL_X + WALL_HALF, 50.0f, 0.0f }, .halfExtents = { WALL_HALF, 50.0f, 400.0f } }
+		),
+		.userIndex = WALL_INDEX,
+	};
+
+	fang::CharacterMovementState wolf;
+
+	auto RunFrame = [&](const fang::Vector2& stick) {
+		fang::PenetrationSample penetrations[fang::MAX_PENETRATION_SAMPLE_COUNT]{};
+		const uint32_t penetrationCount = fang::CollectPenetrations(world.GetContacts(), WOLF_INDEX, penetrations);
+		const std::span<const fang::PenetrationSample> touching(penetrations, penetrationCount);
+
+		wolf.position += fang::ResolvePenetration(touching);
+		wolf.position += fang::SlideAlongNormals(fang::MakeMoveDelta(stick, 0.0f, MOVE_SPEED, DELTA_TIME), touching);
+
+		const fang::ColliderProxy wolfProxy{
+			.shape = fang::MakeColliderShape(
+				fang::Capsule{
+					.pointA = { wolf.position.x, wolf.position.y + WOLF_RADIUS, wolf.position.z },
+					.pointB = { wolf.position.x, wolf.position.y + 80.0f, wolf.position.z },
+					.radius = WOLF_RADIUS,
+				}
+			),
+			.userIndex = WOLF_INDEX,
+		};
+
+		const fang::ColliderProxy proxies[] = { wolfProxy, wall };
+		world.Update(proxies);
+	};
+
+	// まっすぐ壁へ 120 フレーム歩く。何もしなければ 800 cm 進むので、壁を通り抜けるには十分な量。
+	for (int frame = 0; frame < 120; ++frame)
+	{
+		RunFrame(fang::Vector2{ 0.0f, 1.0f });
+	}
+
+	// 壁の手前で止まっている。カプセルの半径ぶん手前が接触面。
+	CHECK(wolf.position.x <= WALL_X - WOLF_RADIUS + fang::PENETRATION_SKIN_CENTIMETERS + 0.5f);
+	CHECK(wolf.position.x > WALL_X - WOLF_RADIUS - 5.0f);
+
+	// 壁に貼り付いた状態で、最後の 20 フレームは動いていない（振動していない）。
+	float previousX = wolf.position.x;
+	for (int frame = 0; frame < 20; ++frame)
+	{
+		RunFrame(fang::Vector2{ 0.0f, 1.0f });
+		CHECK(wolf.position.x == doctest::Approx(previousX));
+		previousX = wolf.position.x;
+	}
+
+	// 斜めに押し当てると、壁に沿って横へ進む（引っかかって止まらない）。
+	const float startZ = wolf.position.z;
+	for (int frame = 0; frame < 60; ++frame)
+	{
+		RunFrame(fang::Vector2{ 1.0f, 1.0f });
+	}
+
+	CHECK(wolf.position.z < startZ - 100.0f);
+	CHECK(wolf.position.x <= WALL_X - WOLF_RADIUS + fang::PENETRATION_SKIN_CENTIMETERS + 0.5f);
+
+	world.Shutdown();
 }

@@ -9,6 +9,9 @@
 #include <Xinput.h>
 #include <chrono>
 
+// 静的ライブラリの Link 設定は exe へ伝わらないので、RHI が d3d12.lib を引くのと同じ作法でここに書く。
+#pragma comment(lib, "xinput.lib")
+
 
 namespace fang
 {

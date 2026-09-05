@@ -42,13 +42,6 @@
   </ItemGroup>
   <!-- FANG_FILES_END -->
 
-  <!-- Windows 版は XInput を叩く。Xbox 構成では Windows.Gaming.Input を使うのでリンクしない -->
-  <ItemDefinitionGroup Condition="'$(FangIsXbox)' != 'true'">
-    <Link>
-      <AdditionalDependencies>xinput.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-  </ItemDefinitionGroup>
-
   <!-- C++/WinRT を使う TU だけ例外を有効にする（例外は全構成オフの方針で、WinRT の境界だけ許す）。生成ツールの対象外なので手で書く。
        PCH は例外オフでコンパイルされているので使わない（Pch.h は普通の include として読まれる）-->
   <ItemGroup Condition="'$(FangIsXbox)' == 'true'">

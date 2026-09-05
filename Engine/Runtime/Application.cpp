@@ -18,6 +18,7 @@
 #include "Core/Platform/AssetPath.h"
 #include "Core/Platform/Budget.h"
 #include "Core/Platform/Window.h"
+#include "Input/Input.h"
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
 #include "Renderer/DebugDraw.h"
@@ -30,6 +31,7 @@
 #include "Resource/GltfMesh.h"
 #include "Resource/GltfScene.h"
 #include "Resource/HeightmapTerrain.h"
+#include "Runtime/CharacterMovement.h"
 #include "Runtime/FramePipeline.h"
 #include "Runtime/RuntimeLog.h"
 #include <algorithm>
@@ -110,14 +112,28 @@ namespace fang
 		constexpr float CAMERA_NEAR_Z = 10.0f;
 		constexpr float CAMERA_FAR_Z  = 8000.0f;
 
-		/** @brief カメラが狼の周りを 1 周する秒数。 */
+		/** @brief カメラが狼の周りを 1 周する秒数。パッドが繋がっていないときだけ使う。 */
 		constexpr float CAMERA_ORBIT_SECONDS = 20.0f;
+
+		/** @brief 右スティックを倒し切ったときにカメラが回る速さ（ラジアン / 秒）。 */
+		constexpr float CAMERA_YAW_SPEED_RADIANS_PER_SECOND = 2.5f;
+
+		// 狼の移動。体長 204 cm に対して 400 cm/秒 は「小走り」くらいで、8192 cm の地形を 20 秒で横断する。
+		// 向きは 8 ラジアン/秒（1 周 0.8 秒）で、真後ろへ倒しても 0.4 秒で振り向く。
+		/** @brief 左スティックを倒し切ったときの狼の速さ（cm / 秒）。 */
+		constexpr float WOLF_MOVE_SPEED_CENTIMETERS_PER_SECOND = 400.0f;
+
+		/** @brief 狼が向きを変える速さ（ラジアン / 秒）。 */
+		constexpr float WOLF_TURN_SPEED_RADIANS_PER_SECOND = 8.0f;
 
 		// 狼 2 体のワールド XZ。Y は毎フレーム地表から決めるので持たない。
 		// 1 体目はクリアリング（半径 800 の平地、地表 12.0）の中心。2 体目はその外へ出して、高さの違う
 		// 2 点で正しく載ることが 1 枚の画で見えるようにする（地表 78.3 ➡ 1 体目より 66.3 高い）。
 		// (0, 1150) は体の前後（X 方向 -92.6〜+111）で地表差が 0.1、左右（Z 方向 ±18.2）でも 11.5 しか
 		// 無いので、脚 IK がまだ無くても 4 本の脚が地表から ±6 に収まる。
+		/** @brief 操作する狼の席。GameRules 2 のとおり 1 匹だけを動かし、残りは置いたままにする。 */
+		constexpr size_t CONTROLLED_WOLF_INDEX = 0;
+
 		/** @brief 狼 2 体を置くワールド XZ。要素数を動く席の数に縛ってある。 */
 		constexpr std::array<Vector3, DYNAMIC_RENDER_ITEM_COUNT> WOLF_POSITIONS{
 			Vector3{ 0.0f, 0.0f, 0.0f },
@@ -436,8 +452,17 @@ namespace fang
 			/** @brief ステージのベースカラー。終了処理でまとめて DestroyTexture するために持つ。 */
 			std::vector<rhi::TextureHandle> stageTextures;
 
-			/** @brief カメラの水平回転角（ラジアン）。入力の仕組みがまだ無いので時間で回す。 */
+			/** @brief カメラの水平回転角（ラジアン）。パッドがあれば右スティック、無ければ時間で回る。 */
 			float cameraOrbitRadians = 0.0f;
+
+			/**
+			 * @brief 操作している狼（先頭の席）の位置と向き。
+			 * @details 2 体目は WOLF_POSITIONS[1] に立ったまま。Scene ができたらゲーム側へ移る仮置き。
+			 */
+			CharacterMovementState wolfMovement;
+
+			/** @brief このフレームのパッド。区画 3 で読み、カメラと移動が見る。 */
+			GamepadState gamepad;
 
 			/** @brief バックバッファを取れなかったフレームで立つ。ループを抜ける合図。 */
 			bool hasDeviceError = false;
@@ -820,15 +845,19 @@ namespace fang
 
 		/**
 		 * @brief 再生位置を進め、そのフレームのスキニング行列を作る。
+		 * @param speedRatio 歩行アニメを進める速さ。0 で姿勢が止まる。
 		 * @details 姿勢を作れないときは行列を触らない ➡ 単位行列のままバインドポーズで描かれる。
+		 *          2 体は骨行列を共有しているので、操作している狼が止まればもう 1 匹も止まる
+		 *          （姿勢を別に持つのは Scene の仕事）。
 		 */
-		void UpdateWolfPose(WolfModel* wolf, float deltaTimeSeconds)
+		void UpdateWolfPose(WolfModel* wolf, float deltaTimeSeconds, float speedRatio)
 		{
 			if (!wolf->animation.IsReady())
 			{
 				return;
 			}
 
+			wolf->playback.SetPlaybackSpeed(speedRatio);
 			wolf->playback.Advance(deltaTimeSeconds);
 
 			FANG_VERIFY(wolf->animation.ComputeSkinningMatrices(
@@ -947,41 +976,119 @@ namespace fang
 			);
 
 			//------------------------------------------------------------------------
-			// 3. 狼の足元の高さと View の組み立て(時間で回るカメラ)
-			// 　SceneRenderer::Reset で前フレームの View を捨ててから、カメラ位置と視射影行列を計算して View を
-			// 　組み立てる。登録(AddShadowView / AddView)はキャスタの箱がそろう次の区画でまとめて行う。
-			// 　入力の仕組みがまだ無いので、経過時間だけでカメラを狼の周りに回す。
-			// 　地表の高さは注視点にも狼の world にも要る ➡ 区画 4 より先にここで引いて、両方で使い回す。
+			// 3. パッドの読み取りと狼の移動(押し出し ➡ 進入方向の削り ➡ 移動 ➡ 接地)
+			// 　押し出しに使うのは 1 つ前のフレームが作った接触(GetContacts は次の Update まで前フレームの
+			// 　結果を返す)。押し出しただけだと次のフレームで同じだけ食い込んで振動するので、押し出した向きへ
+			// 　進ませないよう移動ベクトルから食い込む成分を削るのと必ず対にする。
+			// 　Scene ができたらこの区画はまるごとゲーム側へ移る仮置き。
 			//------------------------------------------------------------------------
-			sceneRenderer.Reset();
+			// 区画 3 の押し出しと区画 6 の登録の両方で使うので、ここで 1 度だけ取り出す。
+			CollisionWorld* collisionWorld = loopContext.collisionWorld;
 
-			// 入力の仕組みがまだ無いので、時間でカメラを回して全方向から形と前後関係を確かめられるようにする。
-			// 狼を読めているかによらず視点は要る（View が無いと ScenePass が画面をクリアできない）。
-			loopContext.cameraOrbitRadians += deltaTimeSeconds * (2.0f * PI / CAMERA_ORBIT_SECONDS);
+			loopContext.gamepad = ReadGamepadState();
+
+			CharacterMovementState& wolfMovement = loopContext.wolfMovement;
+
+			// 前フレームの接触から、自分を外へ出す向きと深さを集める。当たり判定が無ければ空のまま。
+			PenetrationSample penetrations[MAX_PENETRATION_SAMPLE_COUNT]{};
+			uint32_t          penetrationCount = 0;
+			if (collisionWorld != nullptr)
+			{
+				penetrationCount =
+					CollectPenetrations(collisionWorld->GetContacts(), CONTROLLED_WOLF_INDEX, penetrations);
+			}
+
+			const std::span<const PenetrationSample> touchingWalls(penetrations, penetrationCount);
+
+			wolfMovement.position += ResolvePenetration(touchingWalls);
+
+			// カメラの方位。パッドがあれば右スティック、無ければこれまでどおり時間で回す
+			// ➡ 起動して放置しスクリーンショットを撮る確認手順がそのまま使える。
+			if (loopContext.gamepad.isConnected)
+			{
+				loopContext.cameraOrbitRadians +=
+					GetRightStick(loopContext.gamepad).x * CAMERA_YAW_SPEED_RADIANS_PER_SECOND * deltaTimeSeconds;
+			}
+			else
+			{
+				loopContext.cameraOrbitRadians += deltaTimeSeconds * (2.0f * PI / CAMERA_ORBIT_SECONDS);
+			}
+
 			if (loopContext.cameraOrbitRadians >= 2.0f * PI)
 			{
 				// 積みっぱなしにすると値が大きくなるほど角度の刻みが粗くなるので、1 周ごとに戻す。
 				loopContext.cameraOrbitRadians -= 2.0f * PI;
 			}
+			else if (loopContext.cameraOrbitRadians < 0.0f)
+			{
+				loopContext.cameraOrbitRadians += 2.0f * PI;
+			}
+
+			// カメラは注視点から見て orbitOffset の位置にいる ➡ 前を向く向きはその逆。角度を控えておいて
+			// 移動の基準にする（前後左右を画面に合わせるため）。
+			const float cameraYawRadians = GetYawFromDirection(
+				Vector3{ -std::sinf(loopContext.cameraOrbitRadians), 0.0f, -std::cosf(loopContext.cameraOrbitRadians) }
+			);
+
+			// 進みたい量から、触れている壁へ食い込む成分を削ってから足す。
+			const Vector3 desiredDelta = MakeMoveDelta(
+				GetLeftStick(loopContext.gamepad),
+				cameraYawRadians,
+				WOLF_MOVE_SPEED_CENTIMETERS_PER_SECOND,
+				deltaTimeSeconds
+			);
+			const Vector3 appliedDelta = SlideAlongNormals(desiredDelta, touchingWalls);
+
+			wolfMovement.position += appliedDelta;
+
+			// 進んだ向きへ体を回す。止まっているフレームは今の向きを保つ。
+			const float appliedSpeed = Length(appliedDelta) / (deltaTimeSeconds > 0.0f ? deltaTimeSeconds : 1.0f);
+			if (LengthSquared(appliedDelta) > 0.0f)
+			{
+				wolfMovement.facingRadians = TurnTowards(
+					wolfMovement.facingRadians,
+					GetYawFromDirection(appliedDelta),
+					WOLF_TURN_SPEED_RADIANS_PER_SECOND * deltaTimeSeconds
+				);
+			}
+
+			//------------------------------------------------------------------------
+			// 4. 狼の足元の高さと View の組み立て(狼を追うカメラ)
+			// 　SceneRenderer::Reset で前フレームの View を捨ててから、カメラ位置と視射影行列を計算して View を
+			// 　組み立てる。登録(AddShadowView / AddView)はキャスタの箱がそろう次の区画でまとめて行う。
+			// 　地表の高さは注視点にも狼の world にも要る ➡ 区画 5 より先にここで引いて、両方で使い回す。
+			//------------------------------------------------------------------------
+			sceneRenderer.Reset();
+
+			// 狼 2 体の水平位置。先頭は区画 3 が動かしたもの、2 体目は置いたまま。
+			Vector3 wolfPositions[DYNAMIC_RENDER_ITEM_COUNT];
+			wolfPositions[CONTROLLED_WOLF_INDEX] = wolfMovement.position;
+			for (size_t index = 0; index < DYNAMIC_RENDER_ITEM_COUNT; ++index)
+			{
+				if (index != CONTROLLED_WOLF_INDEX)
+				{
+					wolfPositions[index] = WOLF_POSITIONS[index];
+				}
+			}
 
 			// 狼 2 体の足元の地表の高さ。地形を読めていなければ 0 のままで、狼もカメラも y = 0 基準に戻る。
 			// GetHeightAt は範囲外を端の高さへクランプする ➡ 狼が地形の外へ出ても高さが未定義にならない。
-			float   groundHeights[DYNAMIC_RENDER_ITEM_COUNT]{};
-			Vector3 groundedCenter{};
+			float groundHeights[DYNAMIC_RENDER_ITEM_COUNT]{};
 			for (size_t index = 0; index < DYNAMIC_RENDER_ITEM_COUNT; ++index)
 			{
-				const Vector3& wolfPosition = WOLF_POSITIONS[index];
 				if (loopContext.terrain != nullptr)
 				{
-					groundHeights[index] = loopContext.terrain->GetHeightAt(wolfPosition.x, wolfPosition.z);
+					groundHeights[index] =
+						loopContext.terrain->GetHeightAt(wolfPositions[index].x, wolfPositions[index].z);
 				}
-
-				groundedCenter += Vector3{ wolfPosition.x, wolfPosition.y + groundHeights[index], wolfPosition.z };
 			}
 
-			// 注視点は 2 体の中点（接地後の高さ）。狼が上下しても画の中でずれない。
+			// 注視点は操作している狼（接地後の高さ）。2 体の中点だと、動かした狼が画面の端へ流れていく。
 			const Vector3 cameraTarget =
-				groundedCenter * (1.0f / static_cast<float>(DYNAMIC_RENDER_ITEM_COUNT)) + CAMERA_TARGET_OFFSET;
+				Vector3{ wolfPositions[CONTROLLED_WOLF_INDEX].x,
+						 wolfPositions[CONTROLLED_WOLF_INDEX].y + groundHeights[CONTROLLED_WOLF_INDEX],
+						 wolfPositions[CONTROLLED_WOLF_INDEX].z } +
+				CAMERA_TARGET_OFFSET;
 
 			// カメラは俯角を付けた円錐面を周る。水平半径は距離 × cos(俯角)、高さは距離 × sin(俯角)。
 			// 水平のままだと周回の途中で丘に潜るので、俯角で視点を持ち上げてある。
@@ -1020,7 +1127,7 @@ namespace fang
 			};
 
 			//------------------------------------------------------------------------
-			// 4. RenderItem 列の先頭 2 スロットの書き換え(狼 2 体)
+			// 5. RenderItem 列の先頭 2 スロットの書き換え(狼 2 体)
 			// 　loopContext.renderItems は起動時に resize し切った恒久配列。3 番目以降(ステージ)は
 			// 　ロード時に書いたきりなのでここでは触らない。先頭 2 つだけ、読めていれば毎フレーム
 			// 　world / bounds / skinningMatrices を書き直す(読めていなければ既定の無効な RenderItem
@@ -1043,7 +1150,8 @@ namespace fang
 				{
 					// 再生位置を進めるのはここ。カメラの回転と同じ場所に置いてある
 					// ➡ Scene ができたらカメラごとゲーム側の更新へ移る。
-					UpdateWolfPose(&wolf, deltaTimeSeconds);
+					// 速さに合わせて進める ➡ 止まれば姿勢も止まり、ゆっくり倒せばゆっくり歩く。
+					UpdateWolfPose(&wolf, deltaTimeSeconds, appliedSpeed / WOLF_MOVE_SPEED_CENTIMETERS_PER_SECOND);
 				}
 
 				const Aabb localBounds = loopContext.meshRenderer->GetLocalBounds(wolf.mesh);
@@ -1053,12 +1161,14 @@ namespace fang
 				{
 					// 狼の足裏はローカル y = 0 ➡ 地表の高さを Y へ足すだけで接地する（ステージの glTF と
 					// 同じ規約）。bounds は接地後の world から作るので、箱が地面に取り残されない。
-					const Vector3& wolfPosition = WOLF_POSITIONS[index];
+					const Vector3& wolfPosition = wolfPositions[index];
 
-					Matrix4x4 world{};
-					world.m[3][0] = wolfPosition.x;
-					world.m[3][1] = wolfPosition.y + groundHeights[index];
-					world.m[3][2] = wolfPosition.z;
+					// 操作している狼だけ体の向きを持つ。モデルは +X を向いているので、向き 0 が素の姿勢。
+					Matrix4x4 world = (index == CONTROLLED_WOLF_INDEX) ? MakeRotationYMatrix(wolfMovement.facingRadians)
+																	   : Matrix4x4{};
+					world.m[3][0]   = wolfPosition.x;
+					world.m[3][1]   = wolfPosition.y + groundHeights[index];
+					world.m[3][2]   = wolfPosition.z;
 
 					renderItems[index] = RenderItem{
 						.mesh             = wolf.mesh,
@@ -1077,12 +1187,11 @@ namespace fang
 			const std::span<const RenderItem> submittedItems(renderItems);
 
 			//------------------------------------------------------------------------
-			// 5. 当たり判定への登録(狼はカプセル・置き物は OBB)
+			// 6. 当たり判定への登録(狼はカプセル・置き物は OBB)
 			// 　狼の world と MeshRenderer::GetLocalBounds がそろうのがここなので、登録もここで行う。
 			// 　メッシュを読めていない席(無効な箱)は飛ばす ➡ userIndex に renderItems の添字を入れておけば、
 			// 　飛ばした席があっても番号がずれない。Scene ができたらこの登録はゲーム側へ移る仮置き。
 			//------------------------------------------------------------------------
-			CollisionWorld* collisionWorld = loopContext.collisionWorld;
 			if (collisionWorld != nullptr)
 			{
 				const MeshRenderer& meshRenderer = *loopContext.meshRenderer;
@@ -1113,7 +1222,7 @@ namespace fang
 			}
 
 			//------------------------------------------------------------------------
-			// 6. シャドウ View とシーン View の登録・Submit
+			// 7. シャドウ View とシーン View の登録・Submit
 			// 　castsShadow かつ bounds が有効な RenderItem を union してキャスタの箱を作り、AddShadowView を
 			// 　AddView より先に呼ぶ(シーン View の b1 に光の行列を焼き込む契約のため)。同じ RenderItem 列を
 			// 　両方の View へ Submit する(span の実体は上の items 配列で、Execute が戻るまで生きている)。
@@ -1143,7 +1252,7 @@ namespace fang
 			}
 
 			//------------------------------------------------------------------------
-			// 7. Unlit パスの宣言(クリアを持つ・三角形が先の理由は既存コメントにある)
+			// 8. Unlit パスの宣言(クリアを持つ・三角形が先の理由は既存コメントにある)
 			// 　三角形を描く UnlitPass を宣言する。バックバッファと深度、両方のクリアをこのパスが引き受ける。
 			//------------------------------------------------------------------------
 			// 三角形を先に描き、深度を持つ狼が上に乗る従来の前後関係を保つ。三角形は深度テストを持たないので、
@@ -1167,7 +1276,7 @@ namespace fang
 			graph.AddPass(unlitPassDesc);
 
 			//------------------------------------------------------------------------
-			// 8. ScenePass の宣言(Load)
+			// 9. ScenePass の宣言(Load)
 			// 　床と狼を描く ScenePass を View ごとに宣言する。
 			//------------------------------------------------------------------------
 			// 床と狼（1 体〜2 体）を描く ScenePass を View ごとに宣言する。三角形パスが画面をクリア済みなので、
@@ -1182,7 +1291,7 @@ namespace fang
 			);
 
 			//------------------------------------------------------------------------
-			// 9. TerrainPass の宣言(Load・シャドウマップ読み)
+			// 10. TerrainPass の宣言(Load・シャドウマップ読み)
 			// 　地形を描く TerrainPass を ScenePass の直後に宣言する。前後関係は深度テストが解決するので
 			// 　順序に意味は無いが、シャドウマップを読むリソースとして宣言することで ShadowPass との
 			// 　バリアを Compile に導かせる。b1 はシーン View の実体を借りる ➡ 光と影が建物と一致する。
@@ -1204,7 +1313,7 @@ namespace fang
 
 #if FANG_ENABLE_DEBUG_DRAW
 			//------------------------------------------------------------------------
-			// 10. デバッグ描画の積み込みと DebugLinePass の宣言(FANG_ENABLE_DEBUG_DRAW 内)
+			// 11. デバッグ描画の積み込みと DebugLinePass の宣言(FANG_ENABLE_DEBUG_DRAW 内)
 			// 　Reset で前フレームの積み込みを捨ててから、コライダーのワイヤー(触れていれば赤)、シャドウの
 			// 　光の視錐台の順にワイヤーを積み、DebugLinePass を宣言する。Release では
 			// 　FANG_ENABLE_DEBUG_DRAW が 0 になり、この区画ごとビルドから外れる。
@@ -1265,7 +1374,7 @@ namespace fang
 
 #if FANG_ENABLE_EDITOR
 			//------------------------------------------------------------------------
-			// 11. エディタパスの宣言(FANG_ENABLE_EDITOR 内・Main 記録)
+			// 12. エディタパスの宣言(FANG_ENABLE_EDITOR 内・Main 記録)
 			// 　エディタパスを宣言する。Release ビルドでは FANG_ENABLE_EDITOR が 0 になり、この区画ごと
 			// 　ビルドから外れる。
 			//------------------------------------------------------------------------
@@ -1296,14 +1405,14 @@ namespace fang
 #endif
 
 			//------------------------------------------------------------------------
-			// 12. Compile と Execute
+			// 13. Compile と Execute
 			// 　宣言したパスから Compile でバリアとクリアの手順を導き、Execute でコマンドリストへ記録する。
 			//------------------------------------------------------------------------
 			graph.Compile();
 			graph.Execute(device, jobSystem);
 
 			//------------------------------------------------------------------------
-			// 13. レンダリング統計のスナップショット更新
+			// 14. レンダリング統計のスナップショット更新
 			// 　Execute の Wait が済んだこの地点でだけ、Submit 数・描いた数・パス数・コマンドリスト本数を
 			// 　安全に読める（ScenePass の記録がまだ書き込み中の可能性がある間は読めない）。ここで書いた値は
 			// 　次のフレームの EditorPass が読む、1 フレーム遅れのスナップショットになる。
@@ -1315,7 +1424,7 @@ namespace fang
 			loopContext.renderStatistics->commandListCount = static_cast<uint32_t>(graph.GetCommandLists().size());
 
 			//------------------------------------------------------------------------
-			// 14. コマンドリストを借りられなかったときの畳み
+			// 15. コマンドリストを借りられなかったときの畳み
 			// 　パスを宣言したのにコマンドリストが 1 本も返らなかった(主にデバイスロスト)ら、このフレームは
 			// 　EndFrame を呼ばずに畳む。
 			//------------------------------------------------------------------------
@@ -1332,7 +1441,7 @@ namespace fang
 			}
 
 			//------------------------------------------------------------------------
-			// 15. EndFrame
+			// 16. EndFrame
 			// 　積んだコマンドリストを渡して実行・Present・GPU の完了待ちをまとめて行う。
 			//------------------------------------------------------------------------
 #if FANG_ENABLE_PROFILER
@@ -1344,7 +1453,7 @@ namespace fang
 
 #if FANG_ENABLE_PROFILER
 			//------------------------------------------------------------------------
-			// 16. GPU 時間と EndFrame の内訳のスナップショット更新
+			// 17. GPU 時間と EndFrame の内訳のスナップショット更新
 			// 　どちらも EndFrame が GPU の完了を待った後でしか確定しないので、区画 12 とは別にここで書く。
 			// 　区画 13 で畳んだフレームは前の値が残るだけで、読み手に特別扱いは要らない。
 			//------------------------------------------------------------------------
@@ -1559,6 +1668,9 @@ namespace fang
 
 		// コライダーの列は RenderItem と同じ数だけ確保し切る ➡ 毎フレームの伸長が起きない。
 		// 実際に登録するのはメッシュを読めている席だけなので、使うのは先頭から数個〜全部。
+		// 操作する狼の初期位置。以後は区画 3 が動かすので、定数を見るのはここだけ。
+		loopContext.wolfMovement.position = WOLF_POSITIONS[CONTROLLED_WOLF_INDEX];
+
 		loopContext.collisionWorld = hasCollisionWorld ? &collisionWorld : nullptr;
 		loopContext.colliderProxies.resize(loopContext.renderItems.size());
 
