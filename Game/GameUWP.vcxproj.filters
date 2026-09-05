@@ -10,12 +10,30 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\GameLog.h">
+      <Filter>Source</Filter>
+    </ClInclude>
     <ClInclude Include="Source\GameMain.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Wolf.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\WolfBehavior.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\WolfMovementParams.h">
       <Filter>Source</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\GameMain.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Wolf.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\WolfBehavior.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\UWP\MainUWP.cpp">
