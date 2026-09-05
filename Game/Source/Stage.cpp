@@ -9,6 +9,7 @@
 #include "Resource/DdsImage.h"
 #include "Resource/GltfScene.h"
 #include "Resource/HeightmapTerrain.h"
+#include "CollisionLayers.h"
 #include "GameLog.h"
 #include <string>
 #include <utility>
@@ -226,6 +227,7 @@ namespace fang::game
 					.shapeType   = EnShapeType::OBB,
 					.localBounds = localBounds,
 					.isEnabled   = true,
+					.layerMask   = COLLISION_LAYER_PROP,
 				};
 				(void)scene.AddColliderComponent(handle, colliderComponent);
 			}
