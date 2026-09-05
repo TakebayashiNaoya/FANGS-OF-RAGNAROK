@@ -4,8 +4,10 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="GameObjectHandle.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="SceneLog.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Pch.cpp" />
