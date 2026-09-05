@@ -7,6 +7,7 @@
 #include "Pch.h"
 #include "Core/Math/Matrix4x4.h"
 #include <DirectXMath.h>
+#include <cmath>
 #include <cstring>
 
 
@@ -81,6 +82,24 @@ namespace fang
 		FANG_ASSERT(farZ > nearZ, "遠平面が近平面より手前にある");
 
 		return ToMatrix4x4(DirectX::XMMatrixOrthographicOffCenterLH(left, right, bottom, top, nearZ, farZ));
+	}
+
+
+	Matrix4x4 MakeRotationYMatrix(float radians)
+	{
+		const float cosine = std::cos(radians);
+		const float sine   = std::sin(radians);
+
+		// 行ベクトル規約（p * M）なので、行 0 が回した後の X 軸、行 2 が回した後の Z 軸になる。
+		// 向きの正は「+X から +Z へ」と決める ➡ 行 0 = (cos, 0, sin)。atan2(z, x) が返す角と同じ規約になり、
+		// 向きを角度にして戻す往復が一致する。DirectXMath の XMMatrixRotationY は逆向きなので使わない。
+		Matrix4x4 result;
+		result.m[0][0] = cosine;
+		result.m[0][2] = sine;
+		result.m[2][0] = -sine;
+		result.m[2][2] = cosine;
+
+		return result;
 	}
 
 

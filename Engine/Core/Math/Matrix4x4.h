@@ -67,6 +67,14 @@ namespace fang
 	);
 
 	/**
+	 * @brief Y 軸まわりに回す行列を作る。
+	 * @param radians 上から見て +X から +Z へ向かう向きを正とする角。
+	 * @return 行ベクトル規約（p * M）の回転行列。平行移動は入っていないので、必要なら m[3][0..2] に足す。
+	 * @details 左手系 Y-up なので、これが水平の向きを表す唯一の回転になる。
+	 */
+	[[nodiscard]] Matrix4x4 MakeRotationYMatrix(float radians);
+
+	/**
 	 * @brief 2 つの行列を掛ける。
 	 * @param left  先に効かせる変換。
 	 * @param right 後に効かせる変換。
