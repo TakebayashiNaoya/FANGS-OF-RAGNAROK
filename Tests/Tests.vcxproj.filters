@@ -27,6 +27,9 @@
     <ClCompile Include="Source\CharacterMovementTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\CollisionBudgetTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\CollisionDebugLineTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
