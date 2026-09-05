@@ -40,12 +40,14 @@
     <ClInclude Include="Source\CameraFollowParams.h" />
     <ClInclude Include="Source\GameLog.h" />
     <ClInclude Include="Source\GameMain.h" />
+    <ClInclude Include="Source\Stage.h" />
     <ClInclude Include="Source\Wolf.h" />
     <ClInclude Include="Source\WolfBehavior.h" />
     <ClInclude Include="Source\WolfMovementParams.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\GameMain.cpp" />
+    <ClCompile Include="Source\Stage.cpp" />
     <ClCompile Include="Source\Wolf.cpp" />
     <ClCompile Include="Source\WolfBehavior.cpp" />
     <ClCompile Include="Source\Windows\Main.cpp" />

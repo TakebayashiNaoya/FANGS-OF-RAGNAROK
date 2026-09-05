@@ -14,6 +14,7 @@
 #include "Scene/Scene.h"
 #include "CameraFollowParams.h"
 #include "GameLog.h"
+#include "Stage.h"
 #include "Wolf.h"
 #include "WolfBehavior.h"
 #include "WolfMovementParams.h"
@@ -40,8 +41,8 @@ namespace fang::game
 		constexpr float LIGHT_DIRECTION_HORIZONTAL = 0.692f;
 		constexpr float LIGHT_DIRECTION_HEIGHT     = 0.722f;
 
-		/** @brief 同時に存在できるオブジェクトの数。狼 2 体 + 置き物 40 個ぶんの余白を持たせてある。 */
-		constexpr uint32_t MAX_OBJECT_COUNT = 64;
+		/** @brief 同時に存在できるオブジェクトの数。狼 2 体 + 置き物 40 個あまりに、余白を足してある。 */
+		constexpr uint32_t MAX_OBJECT_COUNT = 128;
 
 		/** @brief 同時に存在できる振る舞いの数。今は狼 2 体ぶんだけ使う。 */
 		constexpr uint32_t MAX_BEHAVIOR_COUNT = 8;
@@ -142,6 +143,9 @@ namespace fang::game
 						m_controlledWolfHandle   = handle;
 					}
 				}
+
+				// 置き物も同じく失敗しても続ける。読めなければ置き物なしで動く。
+				LoadAndCreateStageObjects(device, context.meshRenderer, m_scene, m_terrain, &m_stage);
 
 				return true;
 			}
@@ -256,9 +260,13 @@ namespace fang::game
 
 				m_scene.Shutdown();
 
-				// 狼のテクスチャは MeshRenderer::Shutdown の対象外（メッシュではないため）。持ち主のここが返す。
+				// テクスチャは MeshRenderer::Shutdown の対象外（メッシュではないため）。持ち主のここが返す。
 				device.DestroyTexture(m_wolf.normalMap);
 				device.DestroyTexture(m_wolf.baseColor);
+				for (const rhi::TextureHandle& textureHandle : m_stage.textures)
+				{
+					device.DestroyTexture(textureHandle);
+				}
 			}
 
 
@@ -269,6 +277,7 @@ namespace fang::game
 
 			Scene              m_scene;
 			WolfModel          m_wolf;
+			StageModel         m_stage;
 			WolfMovementParams m_wolfMovementParams;
 			CameraFollowParams m_cameraFollowParams;
 

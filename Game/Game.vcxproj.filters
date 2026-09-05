@@ -19,6 +19,9 @@
     <ClInclude Include="Source\GameMain.h">
       <Filter>Source</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Stage.h">
+      <Filter>Source</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Wolf.h">
       <Filter>Source</Filter>
     </ClInclude>
@@ -31,6 +34,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\GameMain.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Stage.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\Wolf.cpp">
