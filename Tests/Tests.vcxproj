@@ -51,6 +51,7 @@
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Matrix4x4Tests.cpp" />
     <ClCompile Include="Source\MatrixOperationTests.cpp" />
+    <ClCompile Include="Source\NarrowphaseTests.cpp" />
     <ClCompile Include="Source\PackTests.cpp" />
     <ClCompile Include="Source\ParallelForTests.cpp" />
     <ClCompile Include="Source\PlatformBudgetTests.cpp" />

@@ -7,11 +7,13 @@
     <ClInclude Include="Collision.h" />
     <ClInclude Include="CollisionLog.h" />
     <ClInclude Include="CollisionShapes.h" />
+    <ClInclude Include="Narrowphase.h" />
     <ClInclude Include="Pch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Collision.cpp" />
     <ClCompile Include="CollisionShapes.cpp" />
+    <ClCompile Include="Narrowphase.cpp" />
     <ClCompile Include="Pch.cpp" />
   </ItemGroup>
 </Project>

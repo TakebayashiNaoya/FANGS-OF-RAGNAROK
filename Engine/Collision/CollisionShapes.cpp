@@ -13,35 +13,6 @@ namespace fang
 {
 	namespace
 	{
-		/** @brief 成分を番号で読む。0 = x、1 = y、2 = z。 */
-		float GetComponent(const Vector3& value, int index)
-		{
-			FANG_ASSERT(index >= 0 && index < 3, "成分の番号が範囲外");
-
-			return (index == 0) ? value.x : ((index == 1) ? value.y : value.z);
-		}
-
-
-		/** @brief 成分を番号で書く。0 = x、1 = y、2 = z。 */
-		void SetComponent(Vector3* target, int index, float value)
-		{
-			FANG_ASSERT(index >= 0 && index < 3, "成分の番号が範囲外");
-
-			if (index == 0)
-			{
-				target->x = value;
-			}
-			else if (index == 1)
-			{
-				target->y = value;
-			}
-			else
-			{
-				target->z = value;
-			}
-		}
-
-
 		/**
 		 * @brief OBB を包む軸平行の箱の、中心から各面までの距離。
 		 * @details 3 軸を絶対値で足し合わせる。向きによらず必ず包む長さになるので、8 頂点を回して

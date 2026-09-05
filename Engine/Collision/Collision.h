@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Collision/CollisionShapes.h"
+#include "Collision/Narrowphase.h"
 
 
 namespace fang
