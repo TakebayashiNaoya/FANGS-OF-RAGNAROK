@@ -90,4 +90,50 @@ namespace fang
 		object->~T();
 		allocator.Deallocate(object);
 	}
+
+	/**
+	 * @brief 配列を一括で確保して既定値で構築する。
+	 * @param allocator 置き場。DeleteArray まで生きていること。
+	 * @param count     要素数。
+	 * @return 作った配列の先頭。確保に失敗したら nullptr（1 つも構築しない）。
+	 * @details 起動時に確保し切る固定長の入れ物のためにある。毎フレームの確保に使わない。
+	 */
+	template <typename T> [[nodiscard]] inline T* NewArray(IAllocator& allocator, size_t count)
+	{
+		void* memory = allocator.Allocate(sizeof(T) * count, alignof(T));
+		if (memory == nullptr)
+		{
+			return nullptr;
+		}
+
+		T* elements = static_cast<T*>(memory);
+		for (size_t index = 0; index < count; ++index)
+		{
+			::new (&elements[index]) T();
+		}
+
+		return elements;
+	}
+
+	/**
+	 * @brief NewArray で作った配列を壊して返す。
+	 * @param allocator NewArray のときと同じアロケータであること。
+	 * @param elements  nullptr を渡してよい（何もしない）。
+	 * @param count     NewArray に渡したのと同じ要素数。
+	 * @details 作った順の逆に壊す。
+	 */
+	template <typename T> inline void DeleteArray(IAllocator& allocator, T* elements, size_t count)
+	{
+		if (elements == nullptr)
+		{
+			return;
+		}
+
+		for (size_t index = count; index > 0; --index)
+		{
+			elements[index - 1].~T();
+		}
+
+		allocator.Deallocate(elements);
+	}
 } // namespace fang

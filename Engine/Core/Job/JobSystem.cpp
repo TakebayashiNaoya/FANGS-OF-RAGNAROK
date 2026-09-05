@@ -38,45 +38,6 @@ namespace fang
 		{
 			return static_cast<uint32_t>(head >> 32);
 		}
-
-
-		/**
-		 * @brief 配列を一括で確保して構築する。
-		 * @details Core の New は 1 個ずつしか作れない。ワーカーは std::thread を持っていて自明な型ではないので、
-		 *          確保はアロケータに任せたまま構築だけその場で行う。
-		 */
-		template <typename T> [[nodiscard]] T* NewArray(IAllocator& allocator, size_t count)
-		{
-			void* memory = allocator.Allocate(sizeof(T) * count, alignof(T));
-			if (memory == nullptr)
-			{
-				return nullptr;
-			}
-
-			T* array = static_cast<T*>(memory);
-			for (size_t i = 0; i < count; ++i)
-			{
-				::new (&array[i]) T();
-			}
-
-			return array;
-		}
-
-
-		template <typename T> void DeleteArray(IAllocator& allocator, T* array, size_t count)
-		{
-			if (array == nullptr)
-			{
-				return;
-			}
-
-			for (size_t i = count; i > 0; --i)
-			{
-				array[i - 1].~T();
-			}
-
-			allocator.Deallocate(array);
-		}
 	} // namespace
 
 
