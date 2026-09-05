@@ -22,6 +22,15 @@
     <ClInclude Include="Source\GameMain.h">
       <Filter>Source</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Minion.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\MinionBehavior.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\MinionSpawner.h">
+      <Filter>Source</Filter>
+    </ClInclude>
     <ClInclude Include="Source\Stage.h">
       <Filter>Source</Filter>
     </ClInclude>
@@ -37,6 +46,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\GameMain.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Minion.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\MinionBehavior.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\MinionSpawner.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\Stage.cpp">

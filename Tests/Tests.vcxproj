@@ -15,7 +15,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
 
   <PropertyGroup Label="FangModule">
-    <FangModuleDependencies>Core;RHI;Renderer;Collision;Animation;Scene;Resource;Runtime;Input</FangModuleDependencies>
+    <FangModuleDependencies>Core;RHI;Renderer;Collision;Animation;Scene;Resource;Runtime;Input;AI</FangModuleDependencies>
   </PropertyGroup>
 
   <Import Project="$(FangRoot)Build\Program.props" />
@@ -47,6 +47,7 @@
     <ClCompile Include="Source\CollisionWorldTests.cpp" />
     <ClCompile Include="Source\DdsImageTests.cpp" />
     <ClCompile Include="Source\DirectoryWatcherTests.cpp" />
+    <ClCompile Include="Source\EnemyEncounterBudgetTests.cpp" />
     <ClCompile Include="Source\FrameAllocatorTests.cpp" />
     <ClCompile Include="Source\FramePipelineTests.cpp" />
     <ClCompile Include="Source\FrustumTests.cpp" />
@@ -62,13 +63,16 @@
     <ClCompile Include="Source\NarrowphaseTests.cpp" />
     <ClCompile Include="Source\PackTests.cpp" />
     <ClCompile Include="Source\ParallelForTests.cpp" />
+    <ClCompile Include="Source\PerceptionTests.cpp" />
     <ClCompile Include="Source\PlatformBudgetTests.cpp" />
+    <ClCompile Include="Source\PursuitStateMachineTests.cpp" />
     <ClCompile Include="Source\ReflectionTests.cpp" />
     <ClCompile Include="Source\RenderGraphTests.cpp" />
     <ClCompile Include="Source\SceneBuildTests.cpp" />
     <ClCompile Include="Source\SceneComponentTests.cpp" />
     <ClCompile Include="Source\SceneHierarchyTests.cpp" />
     <ClCompile Include="Source\SceneObjectTests.cpp" />
+    <ClCompile Include="Source\SpawnSchedulerTests.cpp" />
     <ClCompile Include="Source\TangentGenerationTests.cpp" />
     <ClCompile Include="Source\VectorTests.cpp" />
     <ClCompile Include="Source\WorkStealingDequeTests.cpp" />
