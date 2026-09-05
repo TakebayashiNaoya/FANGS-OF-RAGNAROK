@@ -1,0 +1,41 @@
+﻿/**
+ * @file Minion.h
+ * @brief 雑魚 1 体の Scene オブジェクトとしての生成。狼のモデルを流用する。
+ */
+#pragma once
+
+#include "Core/Math/Vector3.h"
+#include "Scene/Scene.h"
+
+
+namespace fang
+{
+	class CollisionWorld;
+	class HeightmapTerrain;
+} // namespace fang
+
+
+namespace fang::game
+{
+	class MinionBehavior;
+	struct MinionParams;
+	struct WolfModel;
+
+	/**
+	 * @brief 読み込み済みの WolfModel を流用して、雑魚 1 体の Scene オブジェクトを作る。
+	 * @param model        狼と共有するメッシュ・テクスチャ・スキニング行列の置き場。
+	 * @param targetHandle 追いかける相手（操作している狼）。
+	 * @param outBehavior  作った振る舞いを受け取る。要らなければ nullptr でよい。寿命は scene が持つ。
+	 * @return 上限に達している等で作れなければ無効なハンドル。
+	 */
+	[[nodiscard]] GameObjectHandle CreateMinionObject(
+		Scene&                  scene,
+		WolfModel&              model,
+		const MinionParams&     params,
+		CollisionWorld*         collisionWorld,
+		const HeightmapTerrain* terrain,
+		GameObjectHandle        targetHandle,
+		const Vector3&          initialPosition,
+		MinionBehavior**        outBehavior = nullptr
+	);
+} // namespace fang::game
