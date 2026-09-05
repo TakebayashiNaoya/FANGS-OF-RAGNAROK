@@ -26,6 +26,7 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
+    <ClInclude Include="Broadphase.h" />
     <ClInclude Include="Collision.h" />
     <ClInclude Include="CollisionLog.h" />
     <ClInclude Include="CollisionShapes.h" />
@@ -33,6 +34,7 @@
     <ClInclude Include="Pch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Broadphase.cpp" />
     <ClCompile Include="Collision.cpp" />
     <ClCompile Include="CollisionShapes.cpp" />
     <ClCompile Include="Narrowphase.cpp" />

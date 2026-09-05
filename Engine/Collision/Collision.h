@@ -6,6 +6,7 @@
  */
 #pragma once
 
+#include "Collision/Broadphase.h"
 #include "Collision/CollisionShapes.h"
 #include "Collision/Narrowphase.h"
 

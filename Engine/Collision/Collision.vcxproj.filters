@@ -4,6 +4,7 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Broadphase.h" />
     <ClInclude Include="Collision.h" />
     <ClInclude Include="CollisionLog.h" />
     <ClInclude Include="CollisionShapes.h" />
@@ -11,6 +12,7 @@
     <ClInclude Include="Pch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Broadphase.cpp" />
     <ClCompile Include="Collision.cpp" />
     <ClCompile Include="CollisionShapes.cpp" />
     <ClCompile Include="Narrowphase.cpp" />
