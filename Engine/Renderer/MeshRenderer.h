@@ -162,12 +162,13 @@ namespace fang
 
 		/**
 		 * @brief 1 フレームに描けるスキンメッシュの数（b2 が持つ本数）。
-		 * @details b2 を使うのはスキンメッシュだけなので MAX_ITEM_COUNT と別に持つ。512 に巻き込むと
-		 *          4096 バイト × 512 × 2 プールで 4MB に膨らむため、4 のまま据え置く
-		 *          （4096 バイト × 4 × 2 プール = 32KB）。超えたスキンメッシュはそのアイテムだけ飛ばし、
-		 *          静的メッシュの描画は続ける。
+		 * @details b2 を使うのはスキンメッシュだけなので MAX_ITEM_COUNT と別に持つ。狼 2 体 + 雑魚 32 体で
+		 *          34 体が同時に画面へ出うる（Game::MAX_BEHAVIOR_COUNT と同じ数え方）。余白を足して 64 にする
+		 *          （4096 バイト × 64 × 2 プール = 512KB。4 だったときの 32KB から 480KB 増える）。
+		 *          512 に巻き込むと 4096 バイト × 512 × 2 プールで 4MB に膨らむので、別枠のまま据え置く。
+		 *          超えたスキンメッシュはそのアイテムだけ飛ばし、静的メッシュの描画は続ける。
 		 */
-		static constexpr uint32_t MAX_SKINNED_ITEM_COUNT = 4;
+		static constexpr uint32_t MAX_SKINNED_ITEM_COUNT = 64;
 
 		MeshRenderer() = default;
 
