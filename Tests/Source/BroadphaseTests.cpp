@@ -244,3 +244,82 @@ TEST_CASE("上限 0 の Broadphase は初期化に失敗する")
 	fang::SweepAndPruneBroadphase broadphase;
 	CHECK_FALSE(broadphase.Initialize(fang::HeapAllocator::GetInstance(), 0));
 }
+
+
+TEST_CASE("領域クエリが総当たりと一致する")
+{
+	const std::vector<fang::Aabb> bounds = MakeScatteredBounds(200);
+
+	fang::SweepAndPruneBroadphase broadphase;
+	CHECK(broadphase.Initialize(fang::HeapAllocator::GetInstance(), 256));
+	broadphase.Build(bounds);
+
+	const fang::Aabb queryBounds = MakeAabb(fang::Vector3{ 0.0f, 0.0f, 0.0f }, fang::Vector3{ 30.0f, 30.0f, 30.0f });
+
+	std::vector<uint32_t> expectedIndices;
+	for (uint32_t index = 0; index < bounds.size(); ++index)
+	{
+		if (OverlapsOnAllAxes(bounds[index], queryBounds))
+		{
+			expectedIndices.push_back(index);
+		}
+	}
+
+	// 重なりが 1 つも無いと、漏れがあっても気付けない。
+	CHECK(expectedIndices.size() > 0);
+
+	std::vector<uint32_t> actualIndices(256);
+	const uint32_t        actualCount = broadphase.QueryAabb(queryBounds, actualIndices);
+	actualIndices.resize(actualCount);
+
+	std::sort(actualIndices.begin(), actualIndices.end());
+	std::sort(expectedIndices.begin(), expectedIndices.end());
+	CHECK(actualIndices == expectedIndices);
+
+	broadphase.Shutdown();
+}
+
+
+TEST_CASE("領域クエリは書き込み先が足りないぶんを打ち切る")
+{
+	fang::SweepAndPruneBroadphase broadphase;
+	CHECK(broadphase.Initialize(fang::HeapAllocator::GetInstance(), 8));
+
+	const fang::Vector3     halfExtents{ 1.0f, 1.0f, 1.0f };
+	std::vector<fang::Aabb> bounds;
+	for (int index = 0; index < 4; ++index)
+	{
+		bounds.push_back(MakeAabb(fang::Vector3{ static_cast<float>(index), 0.0f, 0.0f }, halfExtents));
+	}
+	broadphase.Build(bounds);
+
+	const fang::Aabb queryBounds = MakeAabb(fang::Vector3{ 1.5f, 0.0f, 0.0f }, fang::Vector3{ 10.0f, 10.0f, 10.0f });
+
+	std::vector<uint32_t> fullIndices(8);
+	CHECK(broadphase.QueryAabb(queryBounds, fullIndices) == 4);
+
+	std::vector<uint32_t> smallIndices(2);
+	CHECK(broadphase.QueryAabb(queryBounds, smallIndices) == 2);
+
+	broadphase.Shutdown();
+}
+
+
+TEST_CASE("重なりの無い領域クエリは 0 件を返す")
+{
+	fang::SweepAndPruneBroadphase broadphase;
+	CHECK(broadphase.Initialize(fang::HeapAllocator::GetInstance(), 8));
+
+	const std::vector<fang::Aabb> bounds{
+		MakeAabb(fang::Vector3{ 0.0f, 0.0f, 0.0f }, fang::Vector3{ 1.0f, 1.0f, 1.0f })
+	};
+	broadphase.Build(bounds);
+
+	std::vector<uint32_t> indices(8);
+	CHECK(
+		broadphase
+			.QueryAabb(MakeAabb(fang::Vector3{ 100.0f, 0.0f, 0.0f }, fang::Vector3{ 1.0f, 1.0f, 1.0f }), indices) == 0
+	);
+
+	broadphase.Shutdown();
+}

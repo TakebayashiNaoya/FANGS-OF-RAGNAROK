@@ -171,4 +171,48 @@ namespace fang
 
 		return pairCount;
 	}
+
+
+	uint32_t SweepAndPruneBroadphase::QueryAabb(const Aabb& bounds, std::span<uint32_t> outIndices) const
+	{
+		// min.x が bounds.max.x を越える最初の位置を二分探索する。それより後ろは全部離れている。
+		uint32_t low  = 0;
+		uint32_t high = m_colliderCount;
+		while (low < high)
+		{
+			const uint32_t mid = low + (high - low) / 2;
+			if (m_bounds[m_order[mid]].min.x > bounds.max.x)
+			{
+				high = mid;
+			}
+			else
+			{
+				low = mid + 1;
+			}
+		}
+
+		uint32_t writtenCount = 0;
+		for (uint32_t sweepIndex = 0; sweepIndex < low; ++sweepIndex)
+		{
+			const uint32_t index     = m_order[sweepIndex];
+			const Aabb&    candidate = m_bounds[index];
+
+			// 後ろ側は二分探索で落としたが、手前側はここで見るまで分からない。
+			if (candidate.max.x < bounds.min.x || !OverlapsOnYAndZ(candidate, bounds))
+			{
+				continue;
+			}
+
+			if (writtenCount >= outIndices.size())
+			{
+				FANG_LOG_WARNING(Collision, "領域クエリの書き込み先が足りず打ち切った: {} 件", writtenCount);
+				return writtenCount;
+			}
+
+			outIndices[writtenCount] = index;
+			++writtenCount;
+		}
+
+		return writtenCount;
+	}
 } // namespace fang

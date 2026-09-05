@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Collision/Broadphase.h"
+#include "Collision/CollisionQuery.h"
 #include "Collision/CollisionShapes.h"
 #include "Collision/Narrowphase.h"
 #include "Core/CoreMacros.h"
@@ -27,6 +28,9 @@ namespace fang
 
 		/** @brief 呼び出し側の番号。返す接触・ヒット・重なりにそのまま入れて返す。 */
 		uint32_t userIndex = 0;
+
+		/** @brief 種別のビット。既定は全ビットなので、値を入れていない登録は今までどおり全クエリに出る。 */
+		uint32_t layerMask = ALL_COLLISION_LAYERS;
 	};
 
 	/**
@@ -40,24 +44,13 @@ namespace fang
 		uint32_t maxContactCount  = 4096; /**< 1 フレームに返せる接触の数。 */
 	};
 
-	/** @brief レイキャストの結果。 */
-	struct RayHit
-	{
-		uint32_t userIndex = 0; /**< 当たったコライダーの呼び出し側の番号。 */
-
-		Vector3 point;  /**< ワールド空間の交点。 */
-		Vector3 normal; /**< 当たった面の外向き。始点が形の中なら -direction。 */
-
-		float distance = 0.0f; /**< 始点から交点までの距離。始点が形の中なら 0。 */
-	};
-
 	/**
 	 * @brief コライダーの入れ物。毎フレーム丸ごと受け取り直して接触を作る。
 	 * @details オブジェクトを知らず、渡された配列だけを見る ➡ オブジェクトモデルが GameObject でも ECS でも
 	 *          この中は変わらない。押し戻しやダメージは返さない。返すのは接触情報だけ。
-	 * @threading Initialize / Shutdown / Update はメインスレッドのみ。Update が戻った後の GetContacts /
-	 *            Raycast / OverlapSphere は複数のジョブから同時に呼んでよい（内部状態を書かない）。
-	 *            Update の最中に読まないこと。
+	 * @threading Initialize / Shutdown はメインスレッドのみ。Update と全クエリ（GetContacts /
+	 *            Raycast / OverlapSphere / Sweep* / HasLineOfSight）は更新ジョブ 1 本から呼ぶ。
+	 *            クエリは const で内部状態を書かないので、同じジョブ木の中から同時に呼んでよい。
 	 */
 	class CollisionWorld
 	{

@@ -63,6 +63,12 @@ namespace fang
 		 * @return 書いた組の数。outPairs を使い切ったらそこで打ち切り、警告を出す。
 		 */
 		[[nodiscard]] virtual uint32_t CollectPairs(std::span<ColliderPair> outPairs) const = 0;
+
+		/**
+		 * @brief 箱に重なった登録の番号を書き出す。クエリが全登録を舐めないための入口。
+		 * @return 書いた数。outIndices を使い切ったら打ち切って警告を出す。
+		 */
+		[[nodiscard]] virtual uint32_t QueryAabb(const Aabb& bounds, std::span<uint32_t> outIndices) const = 0;
 	};
 
 	/**
@@ -95,6 +101,7 @@ namespace fang
 		void               Build(std::span<const Aabb> bounds) override;
 
 		[[nodiscard]] uint32_t CollectPairs(std::span<ColliderPair> outPairs) const override;
+		[[nodiscard]] uint32_t QueryAabb(const Aabb& bounds, std::span<uint32_t> outIndices) const override;
 
 
 	private:
