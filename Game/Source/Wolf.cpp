@@ -9,6 +9,7 @@
 #include "RHI/GraphicsDevice.h"
 #include "Resource/DdsImage.h"
 #include "Resource/GltfMesh.h"
+#include "CollisionLayers.h"
 #include "GameLog.h"
 #include "WolfBehavior.h"
 #include <span>
@@ -250,6 +251,7 @@ namespace fang::game
 				.shapeType   = EnShapeType::Capsule,
 				.localBounds = model.localBounds,
 				.isEnabled   = true,
+				.layerMask   = COLLISION_LAYER_CHARACTER,
 			};
 			(void)scene.AddColliderComponent(handle, colliderComponent);
 		}

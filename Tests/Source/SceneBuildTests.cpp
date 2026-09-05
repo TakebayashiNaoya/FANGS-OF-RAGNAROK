@@ -97,6 +97,46 @@ TEST_CASE("SceneBuild: コンポーネントを持たないオブジェクトが
 	CHECK(colliderProxies.size() == 1);
 	CHECK(colliderProxies[0].userIndex == withCollider.index);
 
+	// 値を入れていない登録は既定の全ビット ➡ 既存の押し出しが黙って効かなくなることはない。
+	CHECK(colliderProxies[0].layerMask == fang::ALL_COLLISION_LAYERS);
+
+	frameAllocator.Shutdown();
+	scene.Shutdown();
+}
+
+
+TEST_CASE("ColliderComponent の layerMask が ColliderProxy にそのまま写る")
+{
+	fang::Scene scene;
+	if (!scene.Initialize(fang::HeapAllocator::GetInstance(), fang::SceneDesc{ .maxObjectCount = 4 }))
+	{
+		CHECK_MESSAGE(false, "Scene を初期化できなかった");
+		return;
+	}
+
+	constexpr uint32_t CUSTOM_LAYER = 1u << 3;
+
+	const fang::GameObjectHandle object = scene.CreateObject();
+
+	fang::ColliderComponent colliderComponent{};
+	colliderComponent.shapeType   = fang::EnShapeType::OBB;
+	colliderComponent.localBounds = MakeAabb({ -1.0f, -1.0f, -1.0f }, { 1.0f, 1.0f, 1.0f });
+	colliderComponent.layerMask   = CUSTOM_LAYER;
+	CHECK(scene.AddColliderComponent(object, colliderComponent));
+
+	scene.Update(0.0f);
+
+	fang::FrameAllocator frameAllocator;
+	if (!frameAllocator.Initialize(fang::HeapAllocator::GetInstance(), 64 * 1024, "Test"))
+	{
+		CHECK_MESSAGE(false, "フレームアロケータを初期化できなかった");
+		return;
+	}
+
+	const std::span<const fang::ColliderProxy> colliderProxies = scene.BuildColliderProxies(frameAllocator);
+	CHECK(colliderProxies.size() == 1);
+	CHECK(colliderProxies[0].layerMask == CUSTOM_LAYER);
+
 	frameAllocator.Shutdown();
 	scene.Shutdown();
 }

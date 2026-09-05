@@ -803,6 +803,7 @@ namespace fang
 			::new (&proxies[writtenCount]) ColliderProxy{
 				.shape     = shape,
 				.userIndex = ownerIndex,
+				.layerMask = component.layerMask,
 			};
 			++writtenCount;
 		}

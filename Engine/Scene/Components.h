@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include "Collision/CollisionQuery.h"
 #include "Collision/CollisionShapes.h"
 #include "Core/Math/Aabb.h"
 #include "Core/Reflection/Reflection.h"
@@ -62,6 +63,9 @@ namespace fang
 		EnShapeType shapeType = EnShapeType::OBB;
 		Aabb        localBounds;
 		bool        isEnabled = true; /**< false なら配列の組み立てから外す。 */
+
+		/** @brief 種別のビット。既定は全ビットなので、値を入れていない登録は今までどおり全クエリに出る。 */
+		uint32_t layerMask = ALL_COLLISION_LAYERS;
 	};
 
 	/**

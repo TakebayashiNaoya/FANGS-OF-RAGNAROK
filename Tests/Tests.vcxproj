@@ -39,8 +39,11 @@
     <ClCompile Include="Source\AssetPathTests.cpp" />
     <ClCompile Include="Source\BroadphaseTests.cpp" />
     <ClCompile Include="Source\CharacterMovementTests.cpp" />
+    <ClCompile Include="Source\CollisionBudgetTests.cpp" />
     <ClCompile Include="Source\CollisionDebugLineTests.cpp" />
+    <ClCompile Include="Source\CollisionMathTests.cpp" />
     <ClCompile Include="Source\CollisionShapeTests.cpp" />
+    <ClCompile Include="Source\CollisionSweepTests.cpp" />
     <ClCompile Include="Source\CollisionWorldTests.cpp" />
     <ClCompile Include="Source\DdsImageTests.cpp" />
     <ClCompile Include="Source\DirectoryWatcherTests.cpp" />

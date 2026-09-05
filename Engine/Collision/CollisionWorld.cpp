@@ -6,6 +6,7 @@
 #include "Collision/CollisionWorld.h"
 #include "Collision/CollisionLog.h"
 #include "Collision/CollisionMath.h"
+#include "Collision/CollisionSweep.h"
 #include "Core/Memory/Allocator.h"
 #include <cfloat>
 #include <cmath>
@@ -15,6 +16,13 @@ namespace fang
 {
 	namespace
 	{
+		/**
+		 * @brief 視線が対象の手前で止まる余白。1 = 1cm なので 0.1mm。
+		 * @details 対象自身の登録がちょうど到達点にあっても、それを遮蔽として拾わないための余白。
+		 */
+		constexpr float LINE_OF_SIGHT_TARGET_MARGIN = 0.01f;
+
+
 		/**
 		 * @brief レイが箱と交わるか。形ごとの厳密判定の前に候補を落とすために使う。
 		 * @details スラブ法。向きが軸に平行な成分は 0 除算になるので、始点が範囲外かどうかだけで決める。
@@ -302,6 +310,26 @@ namespace fang
 		}
 
 
+		/** @brief 登録がクエリの絞り込みを通るか。 */
+		bool PassesFilter(const ColliderProxy& proxy, const QueryFilter& filter)
+		{
+			if ((proxy.layerMask & filter.layerMask) == 0)
+			{
+				return false;
+			}
+
+			for (const uint32_t excludedUserIndex : filter.excludedUserIndices)
+			{
+				if (excludedUserIndex == proxy.userIndex)
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+
 		/** @brief 形の種類で振り分けるレイキャスト。 */
 		bool RaycastShape(
 			const ColliderShape& shape,
@@ -323,6 +351,42 @@ namespace fang
 			}
 
 			return false;
+		}
+
+
+		/**
+		 * @brief 掃引の結果を近い順に挿入する。満杯なら遠いほうを比べ、押し出せなければ捨てる。
+		 * @details どちらの経路でも、書き込めなかったら isTruncated を立てる。
+		 */
+		void InsertSweepHitByDistance(const SweepHit& hit, std::span<SweepHit> outHits, SweepResult* result)
+		{
+			if (result->hitCount < outHits.size())
+			{
+				uint32_t insertPosition = result->hitCount;
+				while (insertPosition > 0 && outHits[insertPosition - 1].timeRatio > hit.timeRatio)
+				{
+					outHits[insertPosition] = outHits[insertPosition - 1];
+					--insertPosition;
+				}
+
+				outHits[insertPosition] = hit;
+				++result->hitCount;
+				return;
+			}
+
+			if (!outHits.empty() && hit.timeRatio < outHits.back().timeRatio)
+			{
+				uint32_t insertPosition = static_cast<uint32_t>(outHits.size()) - 1;
+				while (insertPosition > 0 && outHits[insertPosition - 1].timeRatio > hit.timeRatio)
+				{
+					outHits[insertPosition] = outHits[insertPosition - 1];
+					--insertPosition;
+				}
+
+				outHits[insertPosition] = hit;
+			}
+
+			result->isTruncated = true;
 		}
 	} // namespace
 
@@ -484,23 +548,37 @@ namespace fang
 
 
 	bool CollisionWorld::Raycast(
-		const Vector3& origin,
-		const Vector3& direction,
-		float          maxDistance,
-		RayHit*        outHit
+		const Vector3&     origin,
+		const Vector3&     direction,
+		float              maxDistance,
+		const QueryFilter& filter,
+		RayHit*            outHit
 	) const
 	{
 		FANG_ASSERT(outHit != nullptr, "ヒットの書き込み先が null");
 		FANG_ASSERT(maxDistance > 0.0f, "レイの長さが 0 以下");
+
+		Aabb rayBounds;
+		rayBounds.Expand(origin);
+		rayBounds.Expand(origin + direction * maxDistance);
+
+		uint32_t       candidateIndices[MAX_QUERY_CANDIDATE_COUNT];
+		const uint32_t candidateCount = GetBroadphase().QueryAabb(rayBounds, candidateIndices);
 
 		float    nearestDistance = maxDistance;
 		Vector3  nearestNormal;
 		bool     hasHit           = false;
 		uint32_t nearestUserIndex = 0;
 
-		for (uint32_t index = 0; index < m_colliderCount; ++index)
+		for (uint32_t candidateIndex = 0; candidateIndex < candidateCount; ++candidateIndex)
 		{
-			// 箱で落としてから形の式に進む。42 個の規模では、並べ替えを使った枝刈りより素直で速い。
+			const uint32_t index = candidateIndices[candidateIndex];
+			if (!PassesFilter(m_proxies[index], filter))
+			{
+				continue;
+			}
+
+			// 箱で落としてから形の式に進む。
 			if (!IntersectsRayWithAabb(m_bounds[index], origin, direction, nearestDistance))
 			{
 				continue;
@@ -538,20 +616,23 @@ namespace fang
 	}
 
 
-	uint32_t CollisionWorld::OverlapSphere(const Sphere& sphere, std::span<uint32_t> outUserIndices) const
+	uint32_t CollisionWorld::OverlapSphere(
+		const Sphere&       sphere,
+		const QueryFilter&  filter,
+		std::span<uint32_t> outUserIndices
+	) const
 	{
 		const ColliderShape probe       = MakeColliderShape(sphere);
 		const Aabb          probeBounds = ComputeBounds(probe);
 
-		uint32_t writtenCount = 0;
-		for (uint32_t index = 0; index < m_colliderCount; ++index)
-		{
-			const Aabb& bounds = m_bounds[index];
+		uint32_t       candidateIndices[MAX_QUERY_CANDIDATE_COUNT];
+		const uint32_t candidateCount = GetBroadphase().QueryAabb(probeBounds, candidateIndices);
 
-			const bool overlapsBounds = probeBounds.min.x <= bounds.max.x && bounds.min.x <= probeBounds.max.x &&
-										probeBounds.min.y <= bounds.max.y && bounds.min.y <= probeBounds.max.y &&
-										probeBounds.min.z <= bounds.max.z && bounds.min.z <= probeBounds.max.z;
-			if (!overlapsBounds)
+		uint32_t writtenCount = 0;
+		for (uint32_t candidateIndex = 0; candidateIndex < candidateCount; ++candidateIndex)
+		{
+			const uint32_t index = candidateIndices[candidateIndex];
+			if (!PassesFilter(m_proxies[index], filter))
 			{
 				continue;
 			}
@@ -573,5 +654,98 @@ namespace fang
 		}
 
 		return writtenCount;
+	}
+
+
+	SweepResult CollisionWorld::SweepSphere(
+		const Sphere&       sphere,
+		const Vector3&      motion,
+		const QueryFilter&  filter,
+		std::span<SweepHit> outHits
+	) const
+	{
+		// 球は潰れたカプセルとして同じ経路を通る。
+		return SweepCapsule(
+			Capsule{ .pointA = sphere.center, .pointB = sphere.center, .radius = sphere.radius },
+			motion,
+			filter,
+			outHits
+		);
+	}
+
+
+	SweepResult CollisionWorld::SweepCapsule(
+		const Capsule&      capsule,
+		const Vector3&      motion,
+		const QueryFilter&  filter,
+		std::span<SweepHit> outHits
+	) const
+	{
+		const Capsule capsuleAtEnd{
+			.pointA = capsule.pointA + motion,
+			.pointB = capsule.pointB + motion,
+			.radius = capsule.radius,
+		};
+
+		const Aabb boundsAtStart = ComputeBounds(MakeColliderShape(capsule));
+		const Aabb boundsAtEnd   = ComputeBounds(MakeColliderShape(capsuleAtEnd));
+
+		Aabb sweptBounds;
+		sweptBounds.Expand(boundsAtStart.min);
+		sweptBounds.Expand(boundsAtStart.max);
+		sweptBounds.Expand(boundsAtEnd.min);
+		sweptBounds.Expand(boundsAtEnd.max);
+
+		uint32_t       candidateIndices[MAX_QUERY_CANDIDATE_COUNT];
+		const uint32_t candidateCount = GetBroadphase().QueryAabb(sweptBounds, candidateIndices);
+
+		SweepResult result;
+
+		for (uint32_t candidateIndex = 0; candidateIndex < candidateCount; ++candidateIndex)
+		{
+			const uint32_t index = candidateIndices[candidateIndex];
+			if (!PassesFilter(m_proxies[index], filter))
+			{
+				continue;
+			}
+
+			SweepHit hit;
+			if (!SweepAgainstShape(capsule, motion, m_proxies[index].shape, &hit))
+			{
+				continue;
+			}
+
+			hit.userIndex = m_proxies[index].userIndex;
+			InsertSweepHitByDistance(hit, outHits, &result);
+		}
+
+		return result;
+	}
+
+
+	bool CollisionWorld::HasLineOfSight(
+		const Vector3&     fromPosition,
+		const Vector3&     toPosition,
+		const QueryFilter& filter,
+		RayHit*            outBlockingHit
+	) const
+	{
+		FANG_ASSERT(outBlockingHit != nullptr, "遮蔽ヒットの書き込み先が null");
+
+		const Vector3 offset   = toPosition - fromPosition;
+		const float   distance = Length(offset);
+		if (distance <= DEGENERATE_MAGNITUDE)
+		{
+			return true;
+		}
+
+		// 対象の手前で止める。ちょうど到達点にある登録(対象自身)を遮蔽として拾わないため。
+		const float clippedDistance = distance - LINE_OF_SIGHT_TARGET_MARGIN;
+		if (clippedDistance <= 0.0f)
+		{
+			return true;
+		}
+
+		return !Raycast(fromPosition, offset * (1.0f / distance), clippedDistance, filter, outBlockingHit);
 	}
 } // namespace fang

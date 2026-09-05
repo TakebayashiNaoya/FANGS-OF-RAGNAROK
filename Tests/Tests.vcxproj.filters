@@ -27,10 +27,19 @@
     <ClCompile Include="Source\CharacterMovementTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\CollisionBudgetTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\CollisionDebugLineTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\CollisionMathTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\CollisionShapeTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\CollisionSweepTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\CollisionWorldTests.cpp">
