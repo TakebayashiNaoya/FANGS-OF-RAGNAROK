@@ -1689,13 +1689,15 @@ namespace fang
 
 		// 全部の初期化が終わってから束ねる。上の層はここで受けた参照を持ち続ける。
 #if FANG_ENABLE_HOT_RELOAD
-		const EngineContext context{ jobSystem,
-									 frameMemory,
-									 framePipeline,
-									 platformBudget,
-									 &device.GetShaderReloadStatus() };
+		const EngineContext context{ jobSystem,           frameMemory,
+									 framePipeline,       platformBudget,
+									 meshRenderer,        loopContext.collisionWorld,
+									 loopContext.terrain, &device.GetShaderReloadStatus() };
 #else
-		const EngineContext context{ jobSystem, frameMemory, framePipeline, platformBudget };
+		const EngineContext context{
+			jobSystem,           frameMemory, framePipeline, platformBudget, meshRenderer, loopContext.collisionWorld,
+			loopContext.terrain,
+		};
 #endif
 		if (!application.OnInitialize(context, device, window))
 		{
@@ -1722,7 +1724,10 @@ namespace fang
 			const float deltaTimeSeconds = std::chrono::duration<float>(currentTime - previousTime).count();
 			previousTime                 = currentTime;
 
-			framePipeline.RunFrame(deltaTimeSeconds);
+			// ReadGamepadState はメインスレッドのみなので、更新ジョブへ投げる前にここで読む。
+			const GamepadState gamepad = ReadGamepadState();
+
+			framePipeline.RunFrame(deltaTimeSeconds, gamepad);
 
 			// 予算の判定と、制限が入っているときの待ちはここで行う。
 			// 待った分は次の周の deltaTimeSeconds に乗るので、実処理の時間だけを渡す。
