@@ -13,13 +13,6 @@ namespace fang
 {
 	namespace
 	{
-		/** @brief 最近点が重なって向きを決められないときに使う押し出し方向。 */
-		constexpr Vector3 FALLBACK_CONTACT_NORMAL{ 0.0f, 1.0f, 0.0f };
-
-		/** @brief カプセルと OBB の最近点を詰める回数。浅いめり込みなら 2〜3 回で収まる。 */
-		constexpr int CLOSEST_POINT_ITERATION_COUNT = 4;
-
-
 		/**
 		 * @brief 最近点の組から接触を組み立てる。
 		 * @param closestOnA A 側の最近点（半径を足す前の芯の位置）。
@@ -227,20 +220,9 @@ namespace fang
 	{
 		FANG_ASSERT(outContact != nullptr, "接触の書き込み先が null");
 
-		// 線分を箱の軸に沿った座標へ移し、「箱へ clamp ➡ 線分へ投影し直す」で最近点を詰める。
-		const Vector3 localStart = ToBoxLocal(b, a.pointA);
-		const Vector3 localEnd   = ToBoxLocal(b, a.pointB);
-
-		float parameter = 0.5f;
-		for (int iteration = 0; iteration < CLOSEST_POINT_ITERATION_COUNT; ++iteration)
-		{
-			const Vector3 pointOnSegment = localStart + (localEnd - localStart) * parameter;
-			parameter =
-				ClosestParameterOnSegment(localStart, localEnd, ClampToHalfExtents(pointOnSegment, b.halfExtents));
-		}
-
 		// 芯が決まったら、あとは球と OBB と同じ経路で深さと法線を出す。
-		return IntersectCoreWithBox(a.pointA + (a.pointB - a.pointA) * parameter, a.radius, b, outContact);
+		const Vector3 corePoint = ClosestPointOnSegmentToBox(a.pointA, a.pointB, b);
+		return IntersectCoreWithBox(corePoint, a.radius, b, outContact);
 	}
 
 

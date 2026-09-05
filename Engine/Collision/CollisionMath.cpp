@@ -126,4 +126,21 @@ namespace fang
 			.distance     = -shallowestDistance,
 		};
 	}
+
+
+	Vector3 ClosestPointOnSegmentToBox(const Vector3& segmentStart, const Vector3& segmentEnd, const OBB& box)
+	{
+		const Vector3 localStart = ToBoxLocal(box, segmentStart);
+		const Vector3 localEnd   = ToBoxLocal(box, segmentEnd);
+
+		float parameter = 0.5f;
+		for (int iteration = 0; iteration < SEGMENT_TO_BOX_ITERATION_COUNT; ++iteration)
+		{
+			const Vector3 pointOnSegment = localStart + (localEnd - localStart) * parameter;
+			parameter =
+				ClosestParameterOnSegment(localStart, localEnd, ClampToHalfExtents(pointOnSegment, box.halfExtents));
+		}
+
+		return segmentStart + (segmentEnd - segmentStart) * parameter;
+	}
 } // namespace fang

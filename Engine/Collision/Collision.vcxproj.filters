@@ -11,6 +11,7 @@
     <ClInclude Include="CollisionMath.h" />
     <ClInclude Include="CollisionQuery.h" />
     <ClInclude Include="CollisionShapes.h" />
+    <ClInclude Include="CollisionSweep.h" />
     <ClInclude Include="CollisionWorld.h" />
     <ClInclude Include="Narrowphase.h" />
     <ClInclude Include="Pch.h" />
@@ -21,6 +22,7 @@
     <ClCompile Include="CollisionDebugLines.cpp" />
     <ClCompile Include="CollisionMath.cpp" />
     <ClCompile Include="CollisionShapes.cpp" />
+    <ClCompile Include="CollisionSweep.cpp" />
     <ClCompile Include="CollisionWorld.cpp" />
     <ClCompile Include="Narrowphase.cpp" />
     <ClCompile Include="Pch.cpp" />

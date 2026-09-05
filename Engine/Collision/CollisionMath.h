@@ -23,6 +23,12 @@ namespace fang
 	/** @brief 長さでない量（向きの成分、2 次方程式の係数）をこれ以下なら 0 とみなす、という境目。 */
 	inline constexpr float DEGENERATE_MAGNITUDE = 1.0e-6f;
 
+	/** @brief 最近点が重なって向きを決められないときに使う押し出し方向。Narrowphase と掃引が共通で使う。 */
+	inline constexpr Vector3 FALLBACK_CONTACT_NORMAL{ 0.0f, 1.0f, 0.0f };
+
+	/** @brief 線分と OBB の最近点を詰める反復回数。浅いめり込みなら 2〜3 回で収まる。 */
+	inline constexpr int SEGMENT_TO_BOX_ITERATION_COUNT = 4;
+
 	/** @brief 値を範囲へ収める。 */
 	[[nodiscard]] FANG_FORCEINLINE float ClampFloat(float value, float minimum, float maximum)
 	{
@@ -123,4 +129,15 @@ namespace fang
 	 *          Narrowphase の球・カプセルと OBB の判定と、掃引の OBB 相手の分離距離が共通で使う。
 	 */
 	[[nodiscard]] CoreBoxSeparation ComputeCoreToBoxSeparation(const Vector3& corePoint, const OBB& box);
+
+	/**
+	 * @brief 線分と OBB の最近点（芯）をワールド座標で返す。
+	 * @details 「箱へ clamp ➡ 線分へ投影し直す」を SEGMENT_TO_BOX_ITERATION_COUNT 回繰り返す。
+	 *          Narrowphase のカプセルと OBB の判定と、掃引の OBB 相手の分離距離が共通で使う。
+	 */
+	[[nodiscard]] Vector3 ClosestPointOnSegmentToBox(
+		const Vector3& segmentStart,
+		const Vector3& segmentEnd,
+		const OBB&     box
+	);
 } // namespace fang
