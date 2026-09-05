@@ -5,8 +5,11 @@
 #include "Pch.h"
 #include "Input/Gamepad.h"
 #include "Input/InputLog.h"
+// clang-format off
+// Xinput.h は windows.h が定義する型を使うので、この 2 本だけ並べ替えさせない。
 #include <windows.h>
 #include <Xinput.h>
+// clang-format on
 #include <chrono>
 
 // 静的ライブラリの Link 設定は exe へ伝わらないので、RHI が d3d12.lib を引くのと同じ作法でここに書く。

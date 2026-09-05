@@ -146,7 +146,7 @@ namespace fang
 			{
 				if (!s_hasLoggedMissing)
 				{
-					FANG_LOG_WARNING(Input, "パッドが見つからない。UWP ではパッドでしか操作できない");
+					FANG_LOG_INFO(Input, "パッドが見つからない。繋がるまで 1 秒おきに探す");
 					s_hasLoggedMissing = true;
 				}
 
