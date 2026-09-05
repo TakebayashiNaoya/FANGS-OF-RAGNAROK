@@ -11,6 +11,7 @@
 #include "RHI/GraphicsDevice.h"
 #include "Runtime/Application.h"
 #include "Scene/CharacterMovement.h"
+#include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
 #include "CameraFollowParams.h"
 #include "GameLog.h"
@@ -130,6 +131,7 @@ namespace fang::game
 						m_scene,
 						m_wolf,
 						m_wolfMovementParams,
+						m_wolfSwingParams,
 						m_collisionWorld,
 						m_terrain,
 						isControlled,
@@ -299,6 +301,7 @@ namespace fang::game
 			WolfModel          m_wolf;
 			StageModel         m_stage;
 			WolfMovementParams m_wolfMovementParams;
+			MeleeSwingParams   m_wolfSwingParams;
 			CameraFollowParams m_cameraFollowParams;
 			MinionSpawner      m_minionSpawner;
 

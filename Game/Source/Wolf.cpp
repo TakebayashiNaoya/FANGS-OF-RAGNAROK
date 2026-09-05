@@ -213,6 +213,7 @@ namespace fang::game
 		Scene&                    scene,
 		WolfModel&                model,
 		const WolfMovementParams& params,
+		const MeleeSwingParams&   swingParams,
 		CollisionWorld*           collisionWorld,
 		const HeightmapTerrain*   terrain,
 		bool                      isControlled,
@@ -271,6 +272,7 @@ namespace fang::game
 			handle,
 			isControlled,
 			params,
+			swingParams,
 			dependencies,
 			initialPosition,
 			initialFacingRadians

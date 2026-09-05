@@ -6,6 +6,7 @@
 
 #include "Core/Math/Vector3.h"
 #include "Input/Gamepad.h"
+#include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
 #include "WolfMovementParams.h"
 #include <span>
@@ -64,12 +65,14 @@ namespace fang::game
 		/**
 		 * @param isControlled       true ならパッドで動かす。false なら初期位置に立ったまま、
 		 *                           共有スキニング行列だけを毎フレーム書き直す。
+		 * @param swingParams        近接攻撃の時間割・間合い・攻撃力。isControlled が false なら使わない。
 		 * @param initialPosition    足元のワールド座標。y は接地で決まるので 0 でよい。
 		 * @param initialFacingRadians 初期の向き。0 = +X。
 		 */
 		WolfBehavior(
 			bool                      isControlled,
 			const WolfMovementParams& params,
+			const MeleeSwingParams&   swingParams,
 			const Dependencies&       dependencies,
 			const Vector3&            initialPosition,
 			float                     initialFacingRadians
@@ -94,6 +97,7 @@ namespace fang::game
 	private:
 		bool               m_isControlled;
 		WolfMovementParams m_params;
+		MeleeSwingParams   m_swingParams;
 		Dependencies       m_dependencies;
 
 		Vector3 m_position; /**< 足元のワールド座標。y は常に 0（接地は Update の中で足す）。 */
@@ -101,5 +105,8 @@ namespace fang::game
 
 		GamepadState m_gamepad;
 		float        m_cameraYawRadians = 0.0f;
+
+		/** @brief 攻撃ボタン（X）の振り 1 本ぶんの状態。isControlled が false なら進まない。 */
+		MeleeSwingState m_swingState;
 	};
 } // namespace fang::game

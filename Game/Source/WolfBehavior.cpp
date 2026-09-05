@@ -10,6 +10,7 @@
 #include "Core/Math/Matrix4x4.h"
 #include "Resource/HeightmapTerrain.h"
 #include "Scene/CharacterMovement.h"
+#include "CollisionLayers.h"
 
 
 namespace fang::game
@@ -17,12 +18,14 @@ namespace fang::game
 	WolfBehavior::WolfBehavior(
 		bool                      isControlled,
 		const WolfMovementParams& params,
+		const MeleeSwingParams&   swingParams,
 		const Dependencies&       dependencies,
 		const Vector3&            initialPosition,
 		float                     initialFacingRadians
 	)
 		: m_isControlled(isControlled)
 		, m_params(params)
+		, m_swingParams(swingParams)
 		, m_dependencies(dependencies)
 		, m_position(initialPosition)
 		, m_facingRadians(initialFacingRadians)
@@ -39,6 +42,49 @@ namespace fang::game
 
 	void WolfBehavior::Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene)
 	{
+		// 1. 振り(操作する狼のみ)。移動より前に置く ➡ m_position はまだ前フレームに SetLocalTransform で
+		//    書いた位置のまま。掃引が見る登録も前フレームのもの(ADR-034) ➡ 牙と相手が同じ瞬間の世界で揃う。
+		if (m_isControlled && m_dependencies.collisionWorld != nullptr)
+		{
+			const MeleeSwingInput swingInput{
+				.selfPosition       = m_position,
+				.selfFacingRadians  = m_facingRadians,
+				.isAttackButtonDown = IsButtonDown(m_gamepad, EnGamepadButton::X),
+				.selfUserIndex      = self.index,
+				.targetLayerMask    = COLLISION_LAYER_ENEMY,
+			};
+
+			SweepHit               hits[MAX_MELEE_SWING_HIT_COUNT];
+			const MeleeSwingResult swingResult = StepMeleeSwing(
+				*m_dependencies.collisionWorld,
+				m_swingParams,
+				swingInput,
+				deltaTimeSeconds,
+				&m_swingState,
+				hits
+			);
+
+			for (uint32_t hitIndex = 0; hitIndex < swingResult.newHitCount; ++hitIndex)
+			{
+				const GameObjectHandle target = scene.GetHandleFromIndex(hits[hitIndex].userIndex);
+				if (!target.IsValid() || scene.IsPendingDestroy(target))
+				{
+					continue;
+				}
+
+				HealthComponent* health = scene.GetHealthComponent(target);
+				if (health == nullptr)
+				{
+					continue;
+				}
+
+				if (ApplyDamage(health, m_swingParams.attackPower))
+				{
+					scene.DestroyObject(target);
+				}
+			}
+		}
+
 		float appliedSpeed = 0.0f;
 
 		if (m_isControlled)

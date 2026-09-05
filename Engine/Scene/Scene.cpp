@@ -80,6 +80,10 @@ namespace fang
 		m_colliderComponentOwners        = NewArray<uint32_t>(allocator, desc.maxObjectCount);
 		m_colliderComponentIndexByObject = NewArray<uint32_t>(allocator, desc.maxObjectCount);
 
+		m_healthComponents             = NewArray<HealthComponent>(allocator, desc.maxObjectCount);
+		m_healthComponentOwners        = NewArray<uint32_t>(allocator, desc.maxObjectCount);
+		m_healthComponentIndexByObject = NewArray<uint32_t>(allocator, desc.maxObjectCount);
+
 		const bool hasCapacityForBehaviors = desc.maxBehaviorCount > 0;
 		m_behaviorBlocks =
 			hasCapacityForBehaviors
@@ -96,8 +100,9 @@ namespace fang
 			m_meshRendererComponents != nullptr && m_meshRendererComponentOwners != nullptr &&
 			m_meshRendererComponentIndexByObject != nullptr && m_colliderComponents != nullptr &&
 			m_colliderComponentOwners != nullptr && m_colliderComponentIndexByObject != nullptr &&
-			(!hasCapacityForBehaviors || m_behaviorBlocks != nullptr) && m_freeBehaviorBlockIndices != nullptr &&
-			m_behaviorRecords != nullptr;
+			m_healthComponents != nullptr && m_healthComponentOwners != nullptr &&
+			m_healthComponentIndexByObject != nullptr && (!hasCapacityForBehaviors || m_behaviorBlocks != nullptr) &&
+			m_freeBehaviorBlockIndices != nullptr && m_behaviorRecords != nullptr;
 		if (!hasAllBuffers)
 		{
 			FANG_LOG_ERROR(Scene, "Scene の入れ物を確保できなかった");
@@ -105,6 +110,9 @@ namespace fang
 			DeleteArray(allocator, m_behaviorRecords, desc.maxBehaviorCount);
 			DeleteArray(allocator, m_freeBehaviorBlockIndices, desc.maxBehaviorCount);
 			allocator.Deallocate(m_behaviorBlocks);
+			DeleteArray(allocator, m_healthComponentIndexByObject, desc.maxObjectCount);
+			DeleteArray(allocator, m_healthComponentOwners, desc.maxObjectCount);
+			DeleteArray(allocator, m_healthComponents, desc.maxObjectCount);
 			DeleteArray(allocator, m_colliderComponentIndexByObject, desc.maxObjectCount);
 			DeleteArray(allocator, m_colliderComponentOwners, desc.maxObjectCount);
 			DeleteArray(allocator, m_colliderComponents, desc.maxObjectCount);
@@ -127,6 +135,9 @@ namespace fang
 			m_behaviorRecords                    = nullptr;
 			m_freeBehaviorBlockIndices           = nullptr;
 			m_behaviorBlocks                     = nullptr;
+			m_healthComponentIndexByObject       = nullptr;
+			m_healthComponentOwners              = nullptr;
+			m_healthComponents                   = nullptr;
 			m_colliderComponentIndexByObject     = nullptr;
 			m_colliderComponentOwners            = nullptr;
 			m_colliderComponents                 = nullptr;
@@ -163,6 +174,7 @@ namespace fang
 			m_nextSiblingIndices[index]                 = GameObjectHandle::INVALID_INDEX;
 			m_meshRendererComponentIndexByObject[index] = GameObjectHandle::INVALID_INDEX;
 			m_colliderComponentIndexByObject[index]     = GameObjectHandle::INVALID_INDEX;
+			m_healthComponentIndexByObject[index]       = GameObjectHandle::INVALID_INDEX;
 		}
 		m_freeIndexCount = m_maxObjectCount;
 
@@ -200,6 +212,9 @@ namespace fang
 		DeleteArray(*m_allocator, m_behaviorRecords, m_maxBehaviorCount);
 		DeleteArray(*m_allocator, m_freeBehaviorBlockIndices, m_maxBehaviorCount);
 		m_allocator->Deallocate(m_behaviorBlocks);
+		DeleteArray(*m_allocator, m_healthComponentIndexByObject, m_maxObjectCount);
+		DeleteArray(*m_allocator, m_healthComponentOwners, m_maxObjectCount);
+		DeleteArray(*m_allocator, m_healthComponents, m_maxObjectCount);
 		DeleteArray(*m_allocator, m_colliderComponentIndexByObject, m_maxObjectCount);
 		DeleteArray(*m_allocator, m_colliderComponentOwners, m_maxObjectCount);
 		DeleteArray(*m_allocator, m_colliderComponents, m_maxObjectCount);
@@ -222,6 +237,9 @@ namespace fang
 		m_behaviorRecords                    = nullptr;
 		m_freeBehaviorBlockIndices           = nullptr;
 		m_behaviorBlocks                     = nullptr;
+		m_healthComponentIndexByObject       = nullptr;
+		m_healthComponentOwners              = nullptr;
+		m_healthComponents                   = nullptr;
 		m_colliderComponentIndexByObject     = nullptr;
 		m_colliderComponentOwners            = nullptr;
 		m_colliderComponents                 = nullptr;
@@ -246,6 +264,7 @@ namespace fang
 		m_pendingDestroyCount        = 0;
 		m_meshRendererComponentCount = 0;
 		m_colliderComponentCount     = 0;
+		m_healthComponentCount       = 0;
 		m_freeBehaviorBlockCount     = 0;
 		m_behaviorRecordCount        = 0;
 		m_maxBehaviorCount           = 0;
@@ -339,6 +358,7 @@ namespace fang
 			RemoveFromParentChildList(index);
 			RemoveMeshRendererComponentIfPresent(index);
 			RemoveColliderComponentIfPresent(index);
+			RemoveHealthComponentIfPresent(index);
 			RemoveBehaviorsOwnedBy(index);
 
 			m_isActive[index]       = false;
@@ -597,6 +617,64 @@ namespace fang
 	}
 
 
+	bool Scene::AddHealthComponent(GameObjectHandle handle, const HealthComponent& component)
+	{
+		if (!IsValid(handle) || m_healthComponentIndexByObject[handle.index] != GameObjectHandle::INVALID_INDEX)
+		{
+			return false;
+		}
+
+		const uint32_t denseIndex                    = m_healthComponentCount;
+		m_healthComponents[denseIndex]               = component;
+		m_healthComponentOwners[denseIndex]          = handle.index;
+		m_healthComponentIndexByObject[handle.index] = denseIndex;
+		++m_healthComponentCount;
+
+		return true;
+	}
+
+
+	HealthComponent* Scene::GetHealthComponent(GameObjectHandle handle)
+	{
+		if (!IsValid(handle))
+		{
+			return nullptr;
+		}
+
+		const uint32_t denseIndex = m_healthComponentIndexByObject[handle.index];
+		return (denseIndex == GameObjectHandle::INVALID_INDEX) ? nullptr : &m_healthComponents[denseIndex];
+	}
+
+
+	const HealthComponent* Scene::GetHealthComponent(GameObjectHandle handle) const
+	{
+		if (!IsValid(handle))
+		{
+			return nullptr;
+		}
+
+		const uint32_t denseIndex = m_healthComponentIndexByObject[handle.index];
+		return (denseIndex == GameObjectHandle::INVALID_INDEX) ? nullptr : &m_healthComponents[denseIndex];
+	}
+
+
+	GameObjectHandle Scene::GetHandleFromIndex(uint32_t index) const
+	{
+		if (index >= m_maxObjectCount || !m_isActive[index])
+		{
+			return GameObjectHandle{};
+		}
+
+		return GameObjectHandle{ index, m_generations[index] };
+	}
+
+
+	bool Scene::IsPendingDestroy(GameObjectHandle handle) const
+	{
+		return IsValid(handle) && m_pendingDestroy[handle.index];
+	}
+
+
 	void* Scene::AllocateBehaviorBlock(GameObjectHandle handle, uint32_t* outBlockIndex)
 	{
 		if (!IsValid(handle))
@@ -685,6 +763,25 @@ namespace fang
 
 		m_colliderComponentIndexByObject[index] = GameObjectHandle::INVALID_INDEX;
 		--m_colliderComponentCount;
+	}
+
+
+	void Scene::RemoveHealthComponentIfPresent(uint32_t index)
+	{
+		const uint32_t denseIndex = m_healthComponentIndexByObject[index];
+		if (denseIndex == GameObjectHandle::INVALID_INDEX)
+		{
+			return;
+		}
+
+		const uint32_t lastIndex = m_healthComponentCount - 1;
+
+		m_healthComponents[denseIndex]                                      = m_healthComponents[lastIndex];
+		m_healthComponentOwners[denseIndex]                                 = m_healthComponentOwners[lastIndex];
+		m_healthComponentIndexByObject[m_healthComponentOwners[denseIndex]] = denseIndex;
+
+		m_healthComponentIndexByObject[index] = GameObjectHandle::INVALID_INDEX;
+		--m_healthComponentCount;
 	}
 
 

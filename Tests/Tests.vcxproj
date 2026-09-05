@@ -47,6 +47,8 @@
     <ClCompile Include="Source\CollisionWorldTests.cpp" />
     <ClCompile Include="Source\DdsImageTests.cpp" />
     <ClCompile Include="Source\DirectoryWatcherTests.cpp" />
+    <ClCompile Include="Source\EnemyDefeatBudgetTests.cpp" />
+    <ClCompile Include="Source\EnemyDefeatRefillTests.cpp" />
     <ClCompile Include="Source\EnemyEncounterBudgetTests.cpp" />
     <ClCompile Include="Source\FrameAllocatorTests.cpp" />
     <ClCompile Include="Source\FramePipelineTests.cpp" />
@@ -60,6 +62,7 @@
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Matrix4x4Tests.cpp" />
     <ClCompile Include="Source\MatrixOperationTests.cpp" />
+    <ClCompile Include="Source\MeleeSwingTests.cpp" />
     <ClCompile Include="Source\NarrowphaseTests.cpp" />
     <ClCompile Include="Source\PackTests.cpp" />
     <ClCompile Include="Source\ParallelForTests.cpp" />
@@ -70,6 +73,7 @@
     <ClCompile Include="Source\RenderGraphTests.cpp" />
     <ClCompile Include="Source\SceneBuildTests.cpp" />
     <ClCompile Include="Source\SceneComponentTests.cpp" />
+    <ClCompile Include="Source\SceneHealthComponentTests.cpp" />
     <ClCompile Include="Source\SceneHierarchyTests.cpp" />
     <ClCompile Include="Source\SceneObjectTests.cpp" />
     <ClCompile Include="Source\SpawnSchedulerTests.cpp" />

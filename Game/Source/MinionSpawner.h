@@ -7,6 +7,7 @@
 #include "AI/AI.h"
 #include "Core/Math/Vector3.h"
 #include "MinionBehavior.h"
+#include <array>
 
 
 namespace fang
@@ -30,6 +31,9 @@ namespace fang::game
 	class MinionSpawner
 	{
 	public:
+		/** @brief 同時に追える雑魚の上限。SpawnParams::maximumAliveCount はこれを超えられない。 */
+		static constexpr uint32_t MAX_TRACKED_MINION_COUNT = 32;
+
 		MinionSpawner();
 
 		/** @brief Game 側が持ち続ける資源への借用。 */
@@ -47,7 +51,7 @@ namespace fang::game
 		/** @brief 1 フレームぶん進める。湧く条件が揃えば MinionBehavior を 1 体作る。 */
 		void Update(float deltaTimeSeconds, const Vector3& targetPosition, const Dependencies& dependencies);
 
-		/** @brief 今まで実際に作れた数。上限判定に使う。 */
+		/** @brief 今 Scene に生きている数。直近の Update が数え直したもの。上限判定に使う。 */
 		[[nodiscard]] uint32_t GetAliveCount() const { return m_aliveCount; }
 
 
@@ -56,6 +60,8 @@ namespace fang::game
 		SpawnParams    m_spawnParams;
 		MinionParams   m_minionParams;
 
-		uint32_t m_aliveCount = 0;
+		/** @brief 湧かせた雑魚。毎フレーム Scene::IsValid で数え直し、消えたものを詰める(ADR-036)。 */
+		std::array<GameObjectHandle, MAX_TRACKED_MINION_COUNT> m_spawnedHandles;
+		uint32_t                                               m_aliveCount = 0;
 	};
 } // namespace fang::game
