@@ -5,10 +5,17 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AI.h" />
+    <ClInclude Include="AgentBlackboard.h" />
     <ClInclude Include="Pch.h" />
+    <ClInclude Include="Perception.h" />
+    <ClInclude Include="PursuitStateMachine.h" />
+    <ClInclude Include="SpawnScheduler.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AI.cpp" />
     <ClCompile Include="Pch.cpp" />
+    <ClCompile Include="Perception.cpp" />
+    <ClCompile Include="PursuitStateMachine.cpp" />
+    <ClCompile Include="SpawnScheduler.cpp" />
   </ItemGroup>
 </Project>
