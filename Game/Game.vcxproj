@@ -41,6 +41,7 @@
     <ClInclude Include="Source\CollisionLayers.h" />
     <ClInclude Include="Source\GameLog.h" />
     <ClInclude Include="Source\GameMain.h" />
+    <ClInclude Include="Source\MeleeDamage.h" />
     <ClInclude Include="Source\Minion.h" />
     <ClInclude Include="Source\MinionBehavior.h" />
     <ClInclude Include="Source\MinionSpawner.h" />
@@ -48,15 +49,18 @@
     <ClInclude Include="Source\Wolf.h" />
     <ClInclude Include="Source\WolfBehavior.h" />
     <ClInclude Include="Source\WolfMovementParams.h" />
+    <ClInclude Include="Source\WolfPack.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\GameMain.cpp" />
+    <ClCompile Include="Source\MeleeDamage.cpp" />
     <ClCompile Include="Source\Minion.cpp" />
     <ClCompile Include="Source\MinionBehavior.cpp" />
     <ClCompile Include="Source\MinionSpawner.cpp" />
     <ClCompile Include="Source\Stage.cpp" />
     <ClCompile Include="Source\Wolf.cpp" />
     <ClCompile Include="Source\WolfBehavior.cpp" />
+    <ClCompile Include="Source\WolfPack.cpp" />
     <ClCompile Include="Source\Windows\Main.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->

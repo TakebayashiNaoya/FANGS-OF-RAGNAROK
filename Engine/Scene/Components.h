@@ -71,28 +71,45 @@ namespace fang
 	/**
 	 * @brief 体力。
 	 * @details 誰の体力かは持たない ➡ 当てる側は相手が雑魚かボスか壊せる置き物かを知らなくてよい（ADR-035）。
+	 *          無敵の残り秒数も HP と同じ寿命・同じ持ち主なのでここに置く。
 	 */
 	struct HealthComponent
 	{
 		FANG_REFLECT_BEGIN(HealthComponent)
 		FANG_FIELD(maximumHitPoints, "最大 HP", Range(0.0f, 1000000.0f))
 		FANG_FIELD(currentHitPoints, "今の HP", Range(0.0f, 1000000.0f))
+		FANG_FIELD(invincibleSeconds, "無敵時間", Range(0.0f, 60.0f))
 		FANG_REFLECT_END()
 
 		float maximumHitPoints = 100.0f;
 		float currentHitPoints = 100.0f;
+
+		/** @brief 1 回食らってから次に食らえるようになるまで。0 なら当たるたびに毎回入る。 */
+		float invincibleSeconds = 0.0f;
+
+		/** @brief 無敵の残り。Scene::Update が毎フレーム減らす。 */
+		float invincibleSecondsRemaining = 0.0f;
+	};
+
+	/** @brief ダメージが入ったかどうか。 */
+	struct DamageResult
+	{
+		bool wasApplied  = false; /**< 無敵時間で弾かれずに減らせた。 */
+		bool wasDefeated = false; /**< 減らした結果が 0 以下になった。 */
 	};
 
 	/**
 	 * @brief 体力を減らす。
-	 * @return 減らした結果が 0 以下になれば true（撃破）。
-	 * @details 引く以外のことをしない。防御力・属性・レベル補正が入るのはこの関数の手前。
+	 * @details 無敵の残りがあれば何もしない。減らせたときは残りを invincibleSeconds へ入れ直す。
+	 *          引く以外のことをしないのは変わらない（防御力・属性・レベル補正はこの関数の手前）。
 	 */
-	[[nodiscard]] inline bool ApplyDamage(HealthComponent* health, float damage)
-	{
-		health->currentHitPoints -= damage;
-		return health->currentHitPoints <= 0.0f;
-	}
+	[[nodiscard]] DamageResult ApplyDamage(HealthComponent* health, float damage);
+
+	/**
+	 * @brief 無敵の残りを 1 フレームぶん減らす。
+	 * @details 引き算の丸め残りで境目が 1 フレームずれないよう、ごく小さい残りは 0 へ落とす。
+	 */
+	void TickInvincibility(HealthComponent* health, float deltaTimeSeconds);
 
 	/**
 	 * @brief 振る舞い（Update を持つコンポーネント）の入口。

@@ -214,9 +214,9 @@ namespace fang::game
 		WolfModel&                model,
 		const WolfMovementParams& params,
 		const MeleeSwingParams&   swingParams,
+		const HealthComponent&    healthComponent,
 		CollisionWorld*           collisionWorld,
 		const HeightmapTerrain*   terrain,
-		bool                      isControlled,
 		const Vector3&            initialPosition,
 		float                     initialFacingRadians,
 		WolfBehavior**            outBehavior
@@ -247,15 +247,17 @@ namespace fang::game
 			};
 			(void)scene.AddMeshRendererComponent(handle, meshRendererComponent);
 
-			// 狼は四つ足なので、体を包むカプセルのほうが箱より当たりが素直。
+			// 狼は四つ足なので、体を包むカプセルのほうが箱より当たりが素直。WOLF を足して雑魚の攻撃の掃引に出す。
 			const ColliderComponent colliderComponent{
 				.shapeType   = EnShapeType::Capsule,
 				.localBounds = model.localBounds,
 				.isEnabled   = true,
-				.layerMask   = COLLISION_LAYER_CHARACTER,
+				.layerMask   = COLLISION_LAYER_CHARACTER | COLLISION_LAYER_WOLF,
 			};
 			(void)scene.AddColliderComponent(handle, colliderComponent);
 		}
+
+		(void)scene.AddHealthComponent(handle, healthComponent);
 
 		const WolfBehavior::Dependencies dependencies{
 			.collisionWorld      = collisionWorld,
@@ -270,7 +272,6 @@ namespace fang::game
 
 		WolfBehavior* behavior = scene.AddBehavior<WolfBehavior>(
 			handle,
-			isControlled,
 			params,
 			swingParams,
 			dependencies,

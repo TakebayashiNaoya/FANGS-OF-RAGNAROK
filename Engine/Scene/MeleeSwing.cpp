@@ -13,10 +13,10 @@ namespace fang
 {
 	namespace
 	{
-		/** @brief 位相の繰り上がりを頭打ちにする回数。位相の数（Ready を除く 3 つ）と同じにしておけば十分。 */
-		constexpr int MAX_PHASE_ADVANCE_COUNT = 3;
+		/** @brief 位相の繰り上がりを頭打ちにする回数。位相の数（Ready を除く 4 つ）と同じにしておけば十分。 */
+		constexpr int MAX_PHASE_ADVANCE_COUNT = 4;
 
-		/** @brief 位相ごとの持ち時間。Ready は時間で進まない（ボタン待ち）ので 0。 */
+		/** @brief 位相ごとの持ち時間。Ready は時間で進まない（合図待ち）ので 0。 */
 		[[nodiscard]] float GetPhaseDurationSeconds(const MeleeSwingParams& params, EnMeleeSwingPhase phase)
 		{
 			switch (phase)
@@ -24,6 +24,7 @@ namespace fang
 				case EnMeleeSwingPhase::WindUp: return params.windUpSeconds;
 				case EnMeleeSwingPhase::Active: return params.activeSeconds;
 				case EnMeleeSwingPhase::Recovery: return params.recoverySeconds;
+				case EnMeleeSwingPhase::Cooldown: return params.cooldownSeconds;
 				default: return 0.0f;
 			}
 		}
@@ -41,7 +42,9 @@ namespace fang
 
 				case EnMeleeSwingPhase::Active: state->phase = EnMeleeSwingPhase::Recovery; break;
 
-				case EnMeleeSwingPhase::Recovery: state->phase = EnMeleeSwingPhase::Ready; break;
+				case EnMeleeSwingPhase::Recovery: state->phase = EnMeleeSwingPhase::Cooldown; break;
+
+				case EnMeleeSwingPhase::Cooldown: state->phase = EnMeleeSwingPhase::Ready; break;
 
 				default: break;
 			}
@@ -92,12 +95,14 @@ namespace fang
 	{
 		MeleeSwingResult result;
 
-		const bool isRisingEdge    = input.isAttackButtonDown && !state->wasAttackButtonDown;
-		state->wasAttackButtonDown = input.isAttackButtonDown;
+		const bool canStart       = (params.triggerMode == EnMeleeSwingTrigger::Continuous)
+										? input.isAttackRequested
+										: (input.isAttackRequested && !state->wasAttackRequested);
+		state->wasAttackRequested = input.isAttackRequested;
 
 		if (state->phase == EnMeleeSwingPhase::Ready)
 		{
-			if (!isRisingEdge)
+			if (!canStart)
 			{
 				return result;
 			}

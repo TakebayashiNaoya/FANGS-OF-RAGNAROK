@@ -79,6 +79,8 @@
     <ClCompile Include="Source\SpawnSchedulerTests.cpp" />
     <ClCompile Include="Source\TangentGenerationTests.cpp" />
     <ClCompile Include="Source\VectorTests.cpp" />
+    <ClCompile Include="Source\WolfDefeatBudgetTests.cpp" />
+    <ClCompile Include="Source\WolfDefeatTests.cpp" />
     <ClCompile Include="Source\WorkStealingDequeTests.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->

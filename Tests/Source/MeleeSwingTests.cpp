@@ -23,16 +23,16 @@ namespace
 
 	/** @brief 立ち位置は原点、向きは +X 固定。振りの発生源を毎回書かずに済むための既定入力。 */
 	[[nodiscard]] fang::MeleeSwingInput MakeInput(
-		bool     attackButtonDown,
+		bool     isAttackRequested,
 		uint32_t targetLayerMask = fang::ALL_COLLISION_LAYERS
 	)
 	{
 		return fang::MeleeSwingInput{
-			.selfPosition       = fang::Vector3{},
-			.selfFacingRadians  = 0.0f,
-			.isAttackButtonDown = attackButtonDown,
-			.selfUserIndex      = SELF_USER_INDEX,
-			.targetLayerMask    = targetLayerMask,
+			.selfPosition      = fang::Vector3{},
+			.selfFacingRadians = 0.0f,
+			.isAttackRequested = isAttackRequested,
+			.selfUserIndex     = SELF_USER_INDEX,
+			.targetLayerMask   = targetLayerMask,
 		};
 	}
 
@@ -431,7 +431,7 @@ TEST_CASE("MeleeSwing: 判定区間0秒でも落ちず、掃引0本でRecovery�
 }
 
 
-TEST_CASE("MeleeSwing: 3区間すべて0秒でも無限ループせず1フレームでReadyへ抜ける")
+TEST_CASE("MeleeSwing: 4区間すべて0秒でも無限ループせず1フレームでReadyへ抜ける")
 {
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
@@ -440,6 +440,7 @@ TEST_CASE("MeleeSwing: 3区間すべて0秒でも無限ループせず1フレー
 	params.windUpSeconds   = 0.0f;
 	params.activeSeconds   = 0.0f;
 	params.recoverySeconds = 0.0f;
+	params.cooldownSeconds = 0.0f;
 
 	fang::MeleeSwingState state{};
 	fang::SweepHit        hits[fang::MAX_MELEE_SWING_HIT_COUNT];
@@ -449,6 +450,95 @@ TEST_CASE("MeleeSwing: 3区間すべて0秒でも無限ループせず1フレー
 
 	CHECK_FALSE(result.didSweep);
 	CHECK(state.phase == fang::EnMeleeSwingPhase::Ready);
+
+	world.Shutdown();
+}
+
+
+TEST_CASE("IsMeleeSwingInProgress: 構え・判定・戻りはtrue、待機と次までの待ちはfalse")
+{
+	fang::MeleeSwingState state{};
+
+	state.phase = fang::EnMeleeSwingPhase::Ready;
+	CHECK_FALSE(fang::IsMeleeSwingInProgress(state));
+
+	state.phase = fang::EnMeleeSwingPhase::WindUp;
+	CHECK(fang::IsMeleeSwingInProgress(state));
+
+	state.phase = fang::EnMeleeSwingPhase::Active;
+	CHECK(fang::IsMeleeSwingInProgress(state));
+
+	state.phase = fang::EnMeleeSwingPhase::Recovery;
+	CHECK(fang::IsMeleeSwingInProgress(state));
+
+	state.phase = fang::EnMeleeSwingPhase::Cooldown;
+	CHECK_FALSE(fang::IsMeleeSwingInProgress(state));
+}
+
+
+TEST_CASE("MeleeSwing: Continuousは次までの待ちを抜けるたびに合図だけで振り直す")
+{
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	fang::MeleeSwingParams params{};
+	params.windUpSeconds   = 0.20f;
+	params.activeSeconds   = 0.30f;
+	params.recoverySeconds = 0.20f;
+	params.cooldownSeconds = 0.30f; // 1周 1.00 秒。
+	params.triggerMode     = fang::EnMeleeSwingTrigger::Continuous;
+
+	fang::MeleeSwingState state{};
+	uint32_t              startCount = 0;
+
+	constexpr int FRAME_COUNT_FOR_10_SECONDS = 600;
+	for (int frame = 0; frame < FRAME_COUNT_FOR_10_SECONDS; ++frame)
+	{
+		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
+		const fang::MeleeSwingResult result =
+			fang::StepMeleeSwing(world, params, MakeInput(true), FRAME_SECONDS, &state, hits);
+
+		if (result.didStartSwing)
+		{
+			++startCount;
+		}
+	}
+
+	CHECK(startCount == 10);
+
+	world.Shutdown();
+}
+
+
+TEST_CASE("MeleeSwing: 待ちを倍にして1周を2.00秒にすると、同じ10秒での回数が半分になる")
+{
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	fang::MeleeSwingParams params{};
+	params.windUpSeconds   = 0.20f;
+	params.activeSeconds   = 0.30f;
+	params.recoverySeconds = 0.20f;
+	params.cooldownSeconds = 1.30f; // 1周 2.00 秒(待ちだけを倍の0.60ではなく、周を倍にする)。
+	params.triggerMode     = fang::EnMeleeSwingTrigger::Continuous;
+
+	fang::MeleeSwingState state{};
+	uint32_t              startCount = 0;
+
+	constexpr int FRAME_COUNT_FOR_10_SECONDS = 600;
+	for (int frame = 0; frame < FRAME_COUNT_FOR_10_SECONDS; ++frame)
+	{
+		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
+		const fang::MeleeSwingResult result =
+			fang::StepMeleeSwing(world, params, MakeInput(true), FRAME_SECONDS, &state, hits);
+
+		if (result.didStartSwing)
+		{
+			++startCount;
+		}
+	}
+
+	CHECK(startCount == 5);
 
 	world.Shutdown();
 }

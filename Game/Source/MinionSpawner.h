@@ -34,8 +34,6 @@ namespace fang::game
 		/** @brief 同時に追える雑魚の上限。SpawnParams::maximumAliveCount はこれを超えられない。 */
 		static constexpr uint32_t MAX_TRACKED_MINION_COUNT = 32;
 
-		MinionSpawner();
-
 		/** @brief Game 側が持ち続ける資源への借用。 */
 		struct Dependencies
 		{
@@ -44,8 +42,8 @@ namespace fang::game
 			CollisionWorld*         collisionWorld = nullptr;
 			const HeightmapTerrain* terrain        = nullptr;
 
-			/** @brief 追いかける相手（操作している狼）。 */
-			GameObjectHandle targetHandle;
+			/** @brief 追いかける相手（今の操作対象）。Game が持ち替えるので、寿命は呼び出し側が持つ。 */
+			const GameObjectHandle* targetHandle = nullptr;
 		};
 
 		/** @brief 1 フレームぶん進める。湧く条件が揃えば MinionBehavior を 1 体作る。 */

@@ -4,19 +4,11 @@
  */
 #include "MinionSpawner.h"
 #include "Resource/HeightmapTerrain.h"
-#include "CollisionLayers.h"
 #include "Minion.h"
 
 
 namespace fang::game
 {
-	MinionSpawner::MinionSpawner()
-	{
-		// 置き物だけを遮蔽と数える(ADR-031)。雑魚どうしが遮り合うと密集した後列が永久に見失う。
-		m_minionParams.perception.blockerLayerMask = COLLISION_LAYER_PROP;
-	}
-
-
 	void MinionSpawner::Update(float deltaTimeSeconds, const Vector3& targetPosition, const Dependencies& dependencies)
 	{
 		// 生きている数を毎フレーム数え直す。撃破された分の空きはここで自然に戻る（ADR-036）。

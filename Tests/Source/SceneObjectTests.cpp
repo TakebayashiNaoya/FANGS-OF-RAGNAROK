@@ -128,3 +128,59 @@ TEST_CASE("Scene: 全部壊しても落ちない")
 
 	scene.Shutdown();
 }
+
+
+TEST_CASE("FindFirstLiving: 先頭を壊した後は2番目を返す")
+{
+	fang::Scene scene;
+	if (!scene.Initialize(fang::HeapAllocator::GetInstance(), fang::SceneDesc{ .maxObjectCount = 4 }))
+	{
+		CHECK_MESSAGE(false, "Scene を初期化できなかった");
+		return;
+	}
+
+	const fang::GameObjectHandle first  = scene.CreateObject();
+	const fang::GameObjectHandle second = scene.CreateObject();
+	const fang::GameObjectHandle handles[]{ first, second };
+
+	CHECK(fang::FindFirstLiving(scene, handles) == first);
+
+	scene.DestroyObject(first);
+	scene.Update(0.0f);
+
+	CHECK(fang::FindFirstLiving(scene, handles) == second);
+
+	scene.DestroyObject(second);
+	scene.Update(0.0f);
+
+	CHECK_FALSE(fang::FindFirstLiving(scene, handles).IsValid());
+
+	scene.Shutdown();
+}
+
+
+TEST_CASE("CountLiving: 生きているものの数を数え、全滅で0になる")
+{
+	fang::Scene scene;
+	if (!scene.Initialize(fang::HeapAllocator::GetInstance(), fang::SceneDesc{ .maxObjectCount = 4 }))
+	{
+		CHECK_MESSAGE(false, "Scene を初期化できなかった");
+		return;
+	}
+
+	const fang::GameObjectHandle first  = scene.CreateObject();
+	const fang::GameObjectHandle second = scene.CreateObject();
+	const fang::GameObjectHandle handles[]{ first, second };
+
+	CHECK(fang::CountLiving(scene, handles) == 2);
+
+	scene.DestroyObject(first);
+	scene.Update(0.0f);
+	CHECK(fang::CountLiving(scene, handles) == 1);
+
+	scene.DestroyObject(second);
+	scene.Update(0.0f);
+	CHECK(fang::CountLiving(scene, handles) == 0);
+
+	scene.Shutdown();
+}
