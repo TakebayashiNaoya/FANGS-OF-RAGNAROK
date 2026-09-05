@@ -3,12 +3,10 @@
  * @brief Windows.Gaming.Input からパッドを 1 台読む実装（Xbox / UWP）。
  */
 #include "Pch.h"
-#include "Editor/Xbox/GamepadReader.h"
-#include "Editor/EditorLog.h"
+#include "Input/Gamepad.h"
+#include "Input/InputLog.h"
 
 // C++/WinRT（例外前提）を使ってよいのはこの Xbox ディレクトリの TU だけ。例外は外に出さない。
-// この TU は imgui のヘッダを 1 本も include しない。プリプロセッサ定義を丸ごと上書きしている都合で
-// IMGUI_DISABLE_OBSOLETE_FUNCTIONS が落ちるため、読むと ImGuiIO の大きさが他の TU とずれる。
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Gaming.Input.h>
@@ -16,7 +14,7 @@
 #include <chrono>
 
 
-namespace fang::editor
+namespace fang
 {
 	namespace
 	{
@@ -148,7 +146,7 @@ namespace fang::editor
 			{
 				if (!s_hasLoggedMissing)
 				{
-					FANG_LOG_WARNING(Editor, "パッドが見つからない。UWP ではパッドでしか操作できない");
+					FANG_LOG_INFO(Input, "パッドが見つからない。繋がるまで 1 秒おきに探す");
 					s_hasLoggedMissing = true;
 				}
 
@@ -160,7 +158,7 @@ namespace fang::editor
 
 			if (!s_hasLoggedAcquired)
 			{
-				FANG_LOG_INFO(Editor, "パッドを掴んだ ({} 台つながっている)", gamepads.Size());
+				FANG_LOG_INFO(Input, "パッドを掴んだ ({} 台つながっている)", gamepads.Size());
 				s_hasLoggedAcquired = true;
 			}
 
@@ -217,7 +215,7 @@ namespace fang::editor
 			if (!s_hasLoggedReadError)
 			{
 				FANG_LOG_WARNING(
-					Editor,
+					Input,
 					"パッドの読み取りに失敗した (HRESULT=0x{:08X})",
 					static_cast<uint32_t>(error.code().value)
 				);
@@ -232,9 +230,4 @@ namespace fang::editor
 		}
 	}
 
-
-	bool IsButtonDown(const GamepadState& state, EnGamepadButton button)
-	{
-		return (state.buttons & static_cast<uint32_t>(button)) != 0;
-	}
-} // namespace fang::editor
+} // namespace fang

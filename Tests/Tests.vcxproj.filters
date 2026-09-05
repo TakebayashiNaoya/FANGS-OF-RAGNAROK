@@ -24,6 +24,9 @@
     <ClCompile Include="Source\BroadphaseTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\CharacterMovementTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\CollisionDebugLineTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
@@ -46,6 +49,9 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\FrustumTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\GamepadTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\GltfMeshTests.cpp">

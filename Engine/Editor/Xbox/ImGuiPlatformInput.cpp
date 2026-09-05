@@ -5,7 +5,7 @@
 #include "Pch.h"
 #include "Editor/ImGuiPlatformInput.h"
 #include "Core/CoreMacros.h"
-#include "Editor/Xbox/GamepadReader.h"
+#include "Input/Gamepad.h"
 #include <imgui.h>
 
 
