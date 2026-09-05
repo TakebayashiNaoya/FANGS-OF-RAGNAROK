@@ -302,6 +302,26 @@ namespace fang
 		}
 
 
+		/** @brief 登録がクエリの絞り込みを通るか。 */
+		bool PassesFilter(const ColliderProxy& proxy, const QueryFilter& filter)
+		{
+			if ((proxy.layerMask & filter.layerMask) == 0)
+			{
+				return false;
+			}
+
+			for (const uint32_t excludedUserIndex : filter.excludedUserIndices)
+			{
+				if (excludedUserIndex == proxy.userIndex)
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+
 		/** @brief 形の種類で振り分けるレイキャスト。 */
 		bool RaycastShape(
 			const ColliderShape& shape,
@@ -484,23 +504,37 @@ namespace fang
 
 
 	bool CollisionWorld::Raycast(
-		const Vector3& origin,
-		const Vector3& direction,
-		float          maxDistance,
-		RayHit*        outHit
+		const Vector3&     origin,
+		const Vector3&     direction,
+		float              maxDistance,
+		const QueryFilter& filter,
+		RayHit*            outHit
 	) const
 	{
 		FANG_ASSERT(outHit != nullptr, "ヒットの書き込み先が null");
 		FANG_ASSERT(maxDistance > 0.0f, "レイの長さが 0 以下");
+
+		Aabb rayBounds;
+		rayBounds.Expand(origin);
+		rayBounds.Expand(origin + direction * maxDistance);
+
+		uint32_t       candidateIndices[MAX_QUERY_CANDIDATE_COUNT];
+		const uint32_t candidateCount = GetBroadphase().QueryAabb(rayBounds, candidateIndices);
 
 		float    nearestDistance = maxDistance;
 		Vector3  nearestNormal;
 		bool     hasHit           = false;
 		uint32_t nearestUserIndex = 0;
 
-		for (uint32_t index = 0; index < m_colliderCount; ++index)
+		for (uint32_t candidateIndex = 0; candidateIndex < candidateCount; ++candidateIndex)
 		{
-			// 箱で落としてから形の式に進む。42 個の規模では、並べ替えを使った枝刈りより素直で速い。
+			const uint32_t index = candidateIndices[candidateIndex];
+			if (!PassesFilter(m_proxies[index], filter))
+			{
+				continue;
+			}
+
+			// 箱で落としてから形の式に進む。
 			if (!IntersectsRayWithAabb(m_bounds[index], origin, direction, nearestDistance))
 			{
 				continue;
@@ -538,20 +572,23 @@ namespace fang
 	}
 
 
-	uint32_t CollisionWorld::OverlapSphere(const Sphere& sphere, std::span<uint32_t> outUserIndices) const
+	uint32_t CollisionWorld::OverlapSphere(
+		const Sphere&       sphere,
+		const QueryFilter&  filter,
+		std::span<uint32_t> outUserIndices
+	) const
 	{
 		const ColliderShape probe       = MakeColliderShape(sphere);
 		const Aabb          probeBounds = ComputeBounds(probe);
 
-		uint32_t writtenCount = 0;
-		for (uint32_t index = 0; index < m_colliderCount; ++index)
-		{
-			const Aabb& bounds = m_bounds[index];
+		uint32_t       candidateIndices[MAX_QUERY_CANDIDATE_COUNT];
+		const uint32_t candidateCount = GetBroadphase().QueryAabb(probeBounds, candidateIndices);
 
-			const bool overlapsBounds = probeBounds.min.x <= bounds.max.x && bounds.min.x <= probeBounds.max.x &&
-										probeBounds.min.y <= bounds.max.y && bounds.min.y <= probeBounds.max.y &&
-										probeBounds.min.z <= bounds.max.z && bounds.min.z <= probeBounds.max.z;
-			if (!overlapsBounds)
+		uint32_t writtenCount = 0;
+		for (uint32_t candidateIndex = 0; candidateIndex < candidateCount; ++candidateIndex)
+		{
+			const uint32_t index = candidateIndices[candidateIndex];
+			if (!PassesFilter(m_proxies[index], filter))
 			{
 				continue;
 			}

@@ -95,23 +95,30 @@ namespace fang
 		 * @param origin      始点。
 		 * @param direction   正規化した向き。
 		 * @param maxDistance 見る距離。0 より大きいこと。
+		 * @param filter      見る相手の絞り込み。既定（QueryFilter{}）なら絞り込み前と同じ結果になる。
 		 * @param outHit      当たったときだけ書く。null は不可。
 		 * @return 当たらなければ false。
 		 */
 		[[nodiscard]] bool Raycast(
-			const Vector3& origin,
-			const Vector3& direction,
-			float          maxDistance,
-			RayHit*        outHit
+			const Vector3&     origin,
+			const Vector3&     direction,
+			float              maxDistance,
+			const QueryFilter& filter,
+			RayHit*            outHit
 		) const;
 
 		/**
 		 * @brief 球に重なったコライダーの userIndex を書き出す。
 		 * @param sphere         調べる範囲。
+		 * @param filter         見る相手の絞り込み。
 		 * @param outUserIndices 書き込み先。
 		 * @return 書いた数。outUserIndices を使い切ったらそこで打ち切る。
 		 */
-		[[nodiscard]] uint32_t OverlapSphere(const Sphere& sphere, std::span<uint32_t> outUserIndices) const;
+		[[nodiscard]] uint32_t OverlapSphere(
+			const Sphere&       sphere,
+			const QueryFilter&  filter,
+			std::span<uint32_t> outUserIndices
+		) const;
 
 
 	private:
@@ -120,6 +127,9 @@ namespace fang
 		 * @details 実装を差し替えるときは下のメンバの型を変えるだけで、Update の中は変わらない。
 		 */
 		[[nodiscard]] FANG_FORCEINLINE IBroadphase& GetBroadphase() { return m_sweepAndPruneBroadphase; }
+
+		/** @brief const なクエリ(Raycast / OverlapSphere / Sweep* / HasLineOfSight)から使う版。 */
+		[[nodiscard]] FANG_FORCEINLINE const IBroadphase& GetBroadphase() const { return m_sweepAndPruneBroadphase; }
 
 		IAllocator* m_allocator = nullptr; /**< 借用。Shutdown で返すときにも同じものを使う。 */
 
