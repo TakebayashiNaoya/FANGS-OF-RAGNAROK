@@ -26,16 +26,38 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
+    <ClInclude Include="Gamepad.h" />
     <ClInclude Include="Input.h" />
+    <ClInclude Include="InputLog.h" />
     <ClInclude Include="Pch.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Gamepad.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Windows\GamepadReader.cpp" Condition="'$(FangIsXbox)' != 'true'" />
+    <ClCompile Include="Xbox\GamepadReader.cpp" Condition="'$(FangIsXbox)' == 'true'" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
+
+  <!-- Windows 版は XInput を叩く。Xbox 構成では Windows.Gaming.Input を使うのでリンクしない -->
+  <ItemDefinitionGroup Condition="'$(FangIsXbox)' != 'true'">
+    <Link>
+      <AdditionalDependencies>xinput.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- C++/WinRT を使う TU だけ例外を有効にする（例外は全構成オフの方針で、WinRT の境界だけ許す）。生成ツールの対象外なので手で書く。
+       PCH は例外オフでコンパイルされているので使わない（Pch.h は普通の include として読まれる）-->
+  <ItemGroup Condition="'$(FangIsXbox)' == 'true'">
+    <ClCompile Update="Xbox\GamepadReader.cpp">
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PreprocessorDefinitions>$(FangFeatureDefines);$(FangPlatformDefines);_HAS_EXCEPTIONS=1</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

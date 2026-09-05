@@ -15,7 +15,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
 
   <PropertyGroup Label="FangModule">
-    <FangModuleDependencies>Core;RHI;Renderer;Collision;Animation;Scene;Resource;Runtime</FangModuleDependencies>
+    <FangModuleDependencies>Core;RHI;Renderer;Collision;Animation;Scene;Resource;Runtime;Input</FangModuleDependencies>
   </PropertyGroup>
 
   <Import Project="$(FangRoot)Build\Program.props" />
@@ -38,6 +38,7 @@
     <ClCompile Include="Source\AnimationPlaybackTests.cpp" />
     <ClCompile Include="Source\AssetPathTests.cpp" />
     <ClCompile Include="Source\BroadphaseTests.cpp" />
+    <ClCompile Include="Source\CharacterMovementTests.cpp" />
     <ClCompile Include="Source\CollisionDebugLineTests.cpp" />
     <ClCompile Include="Source\CollisionShapeTests.cpp" />
     <ClCompile Include="Source\CollisionWorldTests.cpp" />
@@ -46,6 +47,7 @@
     <ClCompile Include="Source\FrameAllocatorTests.cpp" />
     <ClCompile Include="Source\FramePipelineTests.cpp" />
     <ClCompile Include="Source\FrustumTests.cpp" />
+    <ClCompile Include="Source\GamepadTests.cpp" />
     <ClCompile Include="Source\GltfMeshTests.cpp" />
     <ClCompile Include="Source\GltfSceneTests.cpp" />
     <ClCompile Include="Source\HeightmapTerrainTests.cpp" />
