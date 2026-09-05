@@ -6,6 +6,7 @@
 #include "Collision/CollisionWorld.h"
 #include "Collision/CollisionLog.h"
 #include "Collision/CollisionMath.h"
+#include "Collision/CollisionSweep.h"
 #include "Core/Memory/Allocator.h"
 #include <cfloat>
 #include <cmath>
@@ -344,6 +345,42 @@ namespace fang
 
 			return false;
 		}
+
+
+		/**
+		 * @brief 掃引の結果を近い順に挿入する。満杯なら遠いほうを比べ、押し出せなければ捨てる。
+		 * @details どちらの経路でも、書き込めなかったら isTruncated を立てる。
+		 */
+		void InsertSweepHitByDistance(const SweepHit& hit, std::span<SweepHit> outHits, SweepResult* result)
+		{
+			if (result->hitCount < outHits.size())
+			{
+				uint32_t insertPosition = result->hitCount;
+				while (insertPosition > 0 && outHits[insertPosition - 1].timeRatio > hit.timeRatio)
+				{
+					outHits[insertPosition] = outHits[insertPosition - 1];
+					--insertPosition;
+				}
+
+				outHits[insertPosition] = hit;
+				++result->hitCount;
+				return;
+			}
+
+			if (!outHits.empty() && hit.timeRatio < outHits.back().timeRatio)
+			{
+				uint32_t insertPosition = static_cast<uint32_t>(outHits.size()) - 1;
+				while (insertPosition > 0 && outHits[insertPosition - 1].timeRatio > hit.timeRatio)
+				{
+					outHits[insertPosition] = outHits[insertPosition - 1];
+					--insertPosition;
+				}
+
+				outHits[insertPosition] = hit;
+			}
+
+			result->isTruncated = true;
+		}
 	} // namespace
 
 
@@ -610,5 +647,71 @@ namespace fang
 		}
 
 		return writtenCount;
+	}
+
+
+	SweepResult CollisionWorld::SweepSphere(
+		const Sphere&       sphere,
+		const Vector3&      motion,
+		const QueryFilter&  filter,
+		std::span<SweepHit> outHits
+	) const
+	{
+		// 球は潰れたカプセルとして同じ経路を通る。
+		return SweepCapsule(
+			Capsule{ .pointA = sphere.center, .pointB = sphere.center, .radius = sphere.radius },
+			motion,
+			filter,
+			outHits
+		);
+	}
+
+
+	SweepResult CollisionWorld::SweepCapsule(
+		const Capsule&      capsule,
+		const Vector3&      motion,
+		const QueryFilter&  filter,
+		std::span<SweepHit> outHits
+	) const
+	{
+		const Capsule capsuleAtEnd{
+			.pointA = capsule.pointA + motion,
+			.pointB = capsule.pointB + motion,
+			.radius = capsule.radius,
+		};
+
+		const Aabb boundsAtStart = ComputeBounds(MakeColliderShape(capsule));
+		const Aabb boundsAtEnd   = ComputeBounds(MakeColliderShape(capsuleAtEnd));
+
+		Aabb sweptBounds;
+		sweptBounds.Expand(boundsAtStart.min);
+		sweptBounds.Expand(boundsAtStart.max);
+		sweptBounds.Expand(boundsAtEnd.min);
+		sweptBounds.Expand(boundsAtEnd.max);
+
+		uint32_t       candidateIndices[MAX_QUERY_CANDIDATE_COUNT];
+		const uint32_t candidateCount = GetBroadphase().QueryAabb(sweptBounds, candidateIndices);
+
+		SweepResult result;
+
+		for (uint32_t candidateIndex = 0; candidateIndex < candidateCount; ++candidateIndex)
+		{
+			const uint32_t index = candidateIndices[candidateIndex];
+			if (!PassesFilter(m_proxies[index], filter))
+			{
+				continue;
+			}
+
+			SweepHit hit;
+			if (!SweepAgainstShape(capsule, motion, m_proxies[index].shape, &hit))
+			{
+				continue;
+			}
+
+			hit.userIndex = m_proxies[index].userIndex;
+			InsertSweepHitByDistance(hit, outHits, &result);
+		}
+
+		return result;
 	}
 } // namespace fang

@@ -120,6 +120,26 @@ namespace fang
 			std::span<uint32_t> outUserIndices
 		) const;
 
+		/**
+		 * @brief 球を motion のぶん動かし、途中で触れた登録を近い順に書き出す。
+		 * @param motion  平行移動の量。0 なら始点での重なりを答える。
+		 * @param outHits 書き込み先。足りなければ近いほうから埋め、遠いぶんを捨てる。
+		 */
+		[[nodiscard]] SweepResult SweepSphere(
+			const Sphere&       sphere,
+			const Vector3&      motion,
+			const QueryFilter&  filter,
+			std::span<SweepHit> outHits
+		) const;
+
+		/** @brief カプセル版。中心線が潰れていれば SweepSphere と同じ結果になる。 */
+		[[nodiscard]] SweepResult SweepCapsule(
+			const Capsule&      capsule,
+			const Vector3&      motion,
+			const QueryFilter&  filter,
+			std::span<SweepHit> outHits
+		) const;
+
 
 	private:
 		/**

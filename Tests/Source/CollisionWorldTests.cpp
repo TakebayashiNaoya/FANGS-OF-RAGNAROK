@@ -499,3 +499,104 @@ TEST_CASE("excludedUserIndices で除外した番号は球の重なりに出な�
 
 	world.Shutdown();
 }
+
+
+TEST_CASE("球の掃引が近い順に並んで返る")
+{
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	// 登録の順と距離の順をわざと食い違わせる。
+	std::vector<fang::ColliderProxy> proxies;
+	proxies.push_back(MakeSphereProxy(fang::Vector3{ 30.0f, 0.0f, 0.0f }, 1.0f, 30));
+	proxies.push_back(MakeSphereProxy(fang::Vector3{ 10.0f, 0.0f, 0.0f }, 1.0f, 10));
+	proxies.push_back(MakeSphereProxy(fang::Vector3{ 20.0f, 0.0f, 0.0f }, 1.0f, 20));
+	world.Update(proxies);
+
+	std::vector<fang::SweepHit> hits(8);
+	const fang::SweepResult     result = world.SweepSphere(
+		fang::Sphere{ .center = fang::Vector3{}, .radius = 1.0f },
+		fang::Vector3{ 100.0f, 0.0f, 0.0f },
+		fang::QueryFilter{},
+		hits
+	);
+
+	CHECK(result.hitCount == 3);
+	CHECK_FALSE(result.isTruncated);
+	CHECK(hits[0].userIndex == 10);
+	CHECK(hits[1].userIndex == 20);
+	CHECK(hits[2].userIndex == 30);
+	CHECK(hits[0].timeRatio < hits[1].timeRatio);
+	CHECK(hits[1].timeRatio < hits[2].timeRatio);
+
+	world.Shutdown();
+}
+
+
+TEST_CASE("掃引の書き込み先が足りないぶんは遠いほうから捨てる")
+{
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	std::vector<fang::ColliderProxy> proxies;
+	proxies.push_back(MakeSphereProxy(fang::Vector3{ 30.0f, 0.0f, 0.0f }, 1.0f, 30));
+	proxies.push_back(MakeSphereProxy(fang::Vector3{ 10.0f, 0.0f, 0.0f }, 1.0f, 10));
+	proxies.push_back(MakeSphereProxy(fang::Vector3{ 20.0f, 0.0f, 0.0f }, 1.0f, 20));
+	world.Update(proxies);
+
+	std::vector<fang::SweepHit> hits(2);
+	const fang::SweepResult     result = world.SweepSphere(
+		fang::Sphere{ .center = fang::Vector3{}, .radius = 1.0f },
+		fang::Vector3{ 100.0f, 0.0f, 0.0f },
+		fang::QueryFilter{},
+		hits
+	);
+
+	CHECK(result.hitCount == 2);
+	CHECK(result.isTruncated);
+	CHECK(hits[0].userIndex == 10);
+	CHECK(hits[1].userIndex == 20);
+
+	world.Shutdown();
+}
+
+
+TEST_CASE("layerMask で絞り込んだ掃引は対象外の登録を無視する")
+{
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	constexpr uint32_t WALL_LAYER      = 1u << 0;
+	constexpr uint32_t CHARACTER_LAYER = 1u << 1;
+
+	std::vector<fang::ColliderProxy> proxies;
+	proxies.push_back(
+		fang::ColliderProxy{
+			.shape     = fang::MakeColliderShape(fang::Sphere{ .center = { 10.0f, 0.0f, 0.0f }, .radius = 1.0f }),
+			.userIndex = 1,
+			.layerMask = CHARACTER_LAYER,
+		}
+	);
+	world.Update(proxies);
+
+	std::vector<fang::SweepHit> hits(4);
+
+	fang::SweepResult wallResult = world.SweepSphere(
+		fang::Sphere{ .center = fang::Vector3{}, .radius = 1.0f },
+		fang::Vector3{ 100.0f, 0.0f, 0.0f },
+		fang::QueryFilter{ .layerMask = WALL_LAYER },
+		hits
+	);
+	CHECK(wallResult.hitCount == 0);
+
+	fang::SweepResult characterResult = world.SweepSphere(
+		fang::Sphere{ .center = fang::Vector3{}, .radius = 1.0f },
+		fang::Vector3{ 100.0f, 0.0f, 0.0f },
+		fang::QueryFilter{ .layerMask = CHARACTER_LAYER },
+		hits
+	);
+	CHECK(characterResult.hitCount == 1);
+	CHECK(hits[0].userIndex == 1);
+
+	world.Shutdown();
+}
