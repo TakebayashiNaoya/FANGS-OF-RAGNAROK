@@ -17,6 +17,9 @@
     <Filter Include="Platform">
       <UniqueIdentifier>{1AF1CC7D-074F-0F72-515B-765610B2536A}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Reflection">
+      <UniqueIdentifier>{87433A36-6F21-FDEA-C50D-3FDE2B8721C4}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Windows">
       <UniqueIdentifier>{19C5FCE6-0536-1AA4-7EBB-59879FAD8342}</UniqueIdentifier>
     </Filter>
@@ -113,6 +116,18 @@
     <ClInclude Include="Platform\Window.h">
       <Filter>Platform</Filter>
     </ClInclude>
+    <ClInclude Include="Reflection\FieldInfo.h">
+      <Filter>Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Reflection\FieldValue.h">
+      <Filter>Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Reflection\Reflection.h">
+      <Filter>Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Reflection\TypeInfo.h">
+      <Filter>Reflection</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Core.cpp" />
@@ -143,6 +158,9 @@
     </ClCompile>
     <ClCompile Include="Platform\Budget.cpp">
       <Filter>Platform</Filter>
+    </ClCompile>
+    <ClCompile Include="Reflection\TypeInfo.cpp">
+      <Filter>Reflection</Filter>
     </ClCompile>
     <ClCompile Include="Windows\AssetPath.cpp">
       <Filter>Windows</Filter>
