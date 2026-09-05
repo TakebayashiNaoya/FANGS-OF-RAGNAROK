@@ -43,36 +43,27 @@ namespace fang::game
 
 		if (m_isControlled)
 		{
-			// 前フレームの接触から、自分を外へ出す向きと深さを集める。当たり判定が無ければ空のまま。
-			PenetrationSample penetrations[MAX_PENETRATION_SAMPLE_COUNT]{};
-			uint32_t          penetrationCount = 0;
-			if (m_dependencies.collisionWorld != nullptr)
-			{
-				penetrationCount =
-					CollectPenetrations(m_dependencies.collisionWorld->GetContacts(), self.index, penetrations);
-			}
+			// 前フレームの接触から押し出しつつ、進みたい量を壁に沿わせて足す。当たり判定が無ければ接触なし。
+			const std::span<const Contact> contacts = (m_dependencies.collisionWorld != nullptr)
+														  ? m_dependencies.collisionWorld->GetContacts()
+														  : std::span<const Contact>{};
 
-			const std::span<const PenetrationSample> touchingWalls(penetrations, penetrationCount);
-
-			m_position += ResolvePenetration(touchingWalls);
-
-			// 進みたい量から、触れている壁へ食い込む成分を削ってから足す。
 			const Vector3 desiredDelta = MakeMoveDelta(
 				GetLeftStick(m_gamepad),
 				m_cameraYawRadians,
 				m_params.moveSpeedCentimetersPerSecond,
 				deltaTimeSeconds
 			);
-			const Vector3 appliedDelta = SlideAlongNormals(desiredDelta, touchingWalls);
 
-			m_position += appliedDelta;
+			const ContactMoveResult moveResult = MoveWithContacts(m_position, desiredDelta, contacts, self.index);
+			m_position                         = moveResult.position;
 
-			appliedSpeed = Length(appliedDelta) / (deltaTimeSeconds > 0.0f ? deltaTimeSeconds : 1.0f);
-			if (LengthSquared(appliedDelta) > 0.0f)
+			appliedSpeed = Length(moveResult.appliedDelta) / (deltaTimeSeconds > 0.0f ? deltaTimeSeconds : 1.0f);
+			if (LengthSquared(moveResult.appliedDelta) > 0.0f)
 			{
 				m_facingRadians = TurnTowards(
 					m_facingRadians,
-					GetYawFromDirection(appliedDelta),
+					GetYawFromDirection(moveResult.appliedDelta),
 					m_params.turnSpeedRadiansPerSecond * deltaTimeSeconds
 				);
 			}

@@ -251,6 +251,87 @@ TEST_CASE("押し出しと削りを対にすると壁際で振動しない")
 }
 
 
+TEST_CASE("MoveWithContacts が既存の3本の組み合わせと同じ答えになる")
+{
+	const fang::Vector3 position{ 10.0f, 0.0f, 0.0f };
+	const fang::Vector3 desiredDelta{ 5.0f, 0.0f, 3.0f };
+
+	const fang::Contact contacts[] = {
+		MakeContact(0, 1, fang::Vector3{ -1.0f, 0.0f, 0.0f }, 2.0f),
+		MakeContact(2, 0, fang::Vector3{ 0.0f, 0.0f, 1.0f }, 1.0f),
+	};
+
+	constexpr uint32_t SELF_USER_INDEX = 0;
+
+	// 既存の 3 本を手で並べた場合。
+	fang::PenetrationSample samples[fang::MAX_PENETRATION_SAMPLE_COUNT]{};
+	const uint32_t          sampleCount = fang::CollectPenetrations(contacts, SELF_USER_INDEX, samples);
+	const std::span<const fang::PenetrationSample> touching(samples, sampleCount);
+
+	const fang::Vector3 expectedPosition     = position + fang::ResolvePenetration(touching);
+	const fang::Vector3 expectedAppliedDelta = fang::SlideAlongNormals(desiredDelta, touching);
+
+	const fang::ContactMoveResult result = fang::MoveWithContacts(position, desiredDelta, contacts, SELF_USER_INDEX);
+
+	CheckVector3(result.appliedDelta, expectedAppliedDelta);
+	CheckVector3(result.position, expectedPosition + expectedAppliedDelta);
+}
+
+
+TEST_CASE("MoveWithContacts が実物の CollisionWorld でも壁の手前で止まる")
+{
+	constexpr uint32_t WOLF_INDEX = 0;
+	constexpr uint32_t WALL_INDEX = 1;
+
+	constexpr float WALL_X      = 300.0f;
+	constexpr float WALL_HALF   = 100.0f;
+	constexpr float WOLF_RADIUS = 20.0f;
+	constexpr float DELTA_TIME  = 1.0f / 60.0f;
+	constexpr float MOVE_SPEED  = 400.0f;
+
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	const fang::ColliderProxy wall{
+		.shape = fang::MakeColliderShape(
+			fang::OBB{ .center = { WALL_X + WALL_HALF, 50.0f, 0.0f }, .halfExtents = { WALL_HALF, 50.0f, 400.0f } }
+		),
+		.userIndex = WALL_INDEX,
+	};
+
+	fang::Vector3 position;
+
+	for (int frame = 0; frame < 120; ++frame)
+	{
+		const fang::Vector3 desiredDelta =
+			fang::MakeMoveDelta(fang::Vector2{ 0.0f, 1.0f }, 0.0f, MOVE_SPEED, DELTA_TIME);
+
+		const fang::ContactMoveResult result =
+			fang::MoveWithContacts(position, desiredDelta, world.GetContacts(), WOLF_INDEX);
+		position = result.position;
+
+		const fang::ColliderProxy wolfProxy{
+			.shape = fang::MakeColliderShape(
+				fang::Capsule{
+					.pointA = { position.x, position.y + WOLF_RADIUS, position.z },
+					.pointB = { position.x, position.y + 80.0f, position.z },
+					.radius = WOLF_RADIUS,
+				}
+			),
+			.userIndex = WOLF_INDEX,
+		};
+
+		const fang::ColliderProxy proxies[] = { wolfProxy, wall };
+		world.Update(proxies);
+	}
+
+	CHECK(position.x <= WALL_X - WOLF_RADIUS + fang::PENETRATION_SKIN_CENTIMETERS + 0.5f);
+	CHECK(position.x > WALL_X - WOLF_RADIUS - 5.0f);
+
+	world.Shutdown();
+}
+
+
 TEST_CASE("当たり判定と組み合わせても壁を抜けず、壁沿いに滑る")
 {
 	// Application.cpp の区画 3 と同じ並びを、実物の CollisionWorld で回す。

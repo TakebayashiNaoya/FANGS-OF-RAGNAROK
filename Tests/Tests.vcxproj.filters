@@ -51,6 +51,9 @@
     <ClCompile Include="Source\DirectoryWatcherTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\EnemyEncounterBudgetTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\FrameAllocatorTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
@@ -96,7 +99,13 @@
     <ClCompile Include="Source\ParallelForTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\PerceptionTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\PlatformBudgetTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\PursuitStateMachineTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\ReflectionTests.cpp">
@@ -115,6 +124,9 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\SceneObjectTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\SpawnSchedulerTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\TangentGenerationTests.cpp">

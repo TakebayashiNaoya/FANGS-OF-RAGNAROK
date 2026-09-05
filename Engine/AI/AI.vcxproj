@@ -27,13 +27,20 @@
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
     <ClInclude Include="AI.h" />
+    <ClInclude Include="AgentBlackboard.h" />
     <ClInclude Include="Pch.h" />
+    <ClInclude Include="Perception.h" />
+    <ClInclude Include="PursuitStateMachine.h" />
+    <ClInclude Include="SpawnScheduler.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="AI.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Perception.cpp" />
+    <ClCompile Include="PursuitStateMachine.cpp" />
+    <ClCompile Include="SpawnScheduler.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 

@@ -14,6 +14,7 @@
 #include "Scene/Scene.h"
 #include "CameraFollowParams.h"
 #include "GameLog.h"
+#include "MinionSpawner.h"
 #include "Stage.h"
 #include "Wolf.h"
 #include "WolfBehavior.h"
@@ -41,11 +42,11 @@ namespace fang::game
 		constexpr float LIGHT_DIRECTION_HORIZONTAL = 0.692f;
 		constexpr float LIGHT_DIRECTION_HEIGHT     = 0.722f;
 
-		/** @brief 同時に存在できるオブジェクトの数。狼 2 体 + 置き物 40 個あまりに、余白を足してある。 */
+		/** @brief 同時に存在できるオブジェクトの数。狼 2 体 + 置き物 40 個 + 雑魚 32 体で 74。余白を足してある。 */
 		constexpr uint32_t MAX_OBJECT_COUNT = 128;
 
-		/** @brief 同時に存在できる振る舞いの数。今は狼 2 体ぶんだけ使う。 */
-		constexpr uint32_t MAX_BEHAVIOR_COUNT = 8;
+		/** @brief 同時に存在できる振る舞いの数。狼 2 体 + 雑魚 32 体で 34。 */
+		constexpr uint32_t MAX_BEHAVIOR_COUNT = 64;
 
 		/** @brief 狼の数。GameRules のとおり、動かすのは 1 匹だけで残りは置いたまま。 */
 		constexpr size_t WOLF_COUNT = 2;
@@ -197,6 +198,25 @@ namespace fang::game
 					m_controlledWolfBehavior->SetFrameInput(context.gamepad, cameraYawRadians);
 				}
 
+				// 湧きは前フレームのワールド行列を見る（当たり判定と同じ 1 フレーム遅れ、ADR-034）。
+				const Matrix4x4 controlledWolfWorld = m_scene.GetWorldMatrix(m_controlledWolfHandle);
+				const Vector3   controlledWolfPosition{
+					controlledWolfWorld.m[3][0],
+					controlledWolfWorld.m[3][1],
+					controlledWolfWorld.m[3][2],
+				};
+				m_minionSpawner.Update(
+					context.deltaTimeSeconds,
+					controlledWolfPosition,
+					MinionSpawner::Dependencies{
+						.scene          = &m_scene,
+						.sharedModel    = &m_wolf,
+						.collisionWorld = m_collisionWorld,
+						.terrain        = m_terrain,
+						.targetHandle   = m_controlledWolfHandle,
+					}
+				);
+
 				m_scene.Update(context.deltaTimeSeconds);
 
 				// 当たり判定の登録と更新。Update / GetContacts は更新ジョブだけの持ち物なので、ここで完結させる。
@@ -280,6 +300,7 @@ namespace fang::game
 			StageModel         m_stage;
 			WolfMovementParams m_wolfMovementParams;
 			CameraFollowParams m_cameraFollowParams;
+			MinionSpawner      m_minionSpawner;
 
 			/** @brief カメラの水平回転角。右スティックが無ければ時間で回る。OnUpdate だけが触る。 */
 			float m_cameraOrbitRadians = 0.0f;

@@ -1,0 +1,61 @@
+﻿/**
+ * @file MinionSpawner.h
+ * @brief 一定の間隔で雑魚を湧かせ、地表に立たせて Scene オブジェクトへ実体化する。
+ */
+#pragma once
+
+#include "AI/AI.h"
+#include "Core/Math/Vector3.h"
+#include "MinionBehavior.h"
+
+
+namespace fang
+{
+	class CollisionWorld;
+	class HeightmapTerrain;
+} // namespace fang
+
+
+namespace fang::game
+{
+	struct WolfModel;
+
+	/**
+	 * @brief 間隔・上限・地表の高さを見て、雑魚を実際に湧かせる係。
+	 * @details 「いつ・何体まで・どこに」の判断は AI::SpawnScheduler に任せ、ここは地表の高さを見て
+	 *          実体化するかどうかだけを決める。地形の高さが取れない位置はそのフレームは見送る
+	 *          （次の間隔で別の方位が出るので詰まらない）。
+	 * @threading 更新ジョブ 1 本から。
+	 */
+	class MinionSpawner
+	{
+	public:
+		MinionSpawner();
+
+		/** @brief Game 側が持ち続ける資源への借用。 */
+		struct Dependencies
+		{
+			Scene*                  scene          = nullptr;
+			WolfModel*              sharedModel    = nullptr; /**< 狼と共有するメッシュ・スキニング行列。 */
+			CollisionWorld*         collisionWorld = nullptr;
+			const HeightmapTerrain* terrain        = nullptr;
+
+			/** @brief 追いかける相手（操作している狼）。 */
+			GameObjectHandle targetHandle;
+		};
+
+		/** @brief 1 フレームぶん進める。湧く条件が揃えば MinionBehavior を 1 体作る。 */
+		void Update(float deltaTimeSeconds, const Vector3& targetPosition, const Dependencies& dependencies);
+
+		/** @brief 今まで実際に作れた数。上限判定に使う。 */
+		[[nodiscard]] uint32_t GetAliveCount() const { return m_aliveCount; }
+
+
+	private:
+		SpawnScheduler m_scheduler;
+		SpawnParams    m_spawnParams;
+		MinionParams   m_minionParams;
+
+		uint32_t m_aliveCount = 0;
+	};
+} // namespace fang::game
