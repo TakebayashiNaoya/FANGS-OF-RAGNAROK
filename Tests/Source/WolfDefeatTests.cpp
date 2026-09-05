@@ -176,8 +176,12 @@ TEST_CASE("WolfDefeat: 追跡が止まる距離に居る狼に、向きによら
 	swingParams.reachCentimeters = MINION_REACH_CENTIMETERS;
 
 	// 狼役のカプセル(体長204・半径40)を4方向へ向けて、どの向きでも当たることを確かめる。
+	// 中心の高さは牙の高さ(fangHeightCentimeters)に合わせる ➡ 牙の球と確実に重なる。
 	constexpr float BODY_HALF_LENGTH_CENTIMETERS = 100.0f;
 	constexpr float BODY_RADIUS_CENTIMETERS      = 40.0f;
+
+	const fang::Vector3 targetCenter =
+		blackboard.lastSeenTargetPosition + fang::Vector3{ 0.0f, swingParams.fangHeightCentimeters, 0.0f };
 
 	for (int orientationIndex = 0; orientationIndex < 4; ++orientationIndex)
 	{
@@ -193,8 +197,8 @@ TEST_CASE("WolfDefeat: 追跡が止まる距離に居る狼に、向きによら
 			fang::ColliderProxy{
 				.shape = fang::MakeColliderShape(
 					fang::Capsule{
-						.pointA = blackboard.lastSeenTargetPosition - axis,
-						.pointB = blackboard.lastSeenTargetPosition + axis,
+						.pointA = targetCenter - axis,
+						.pointB = targetCenter + axis,
 						.radius = BODY_RADIUS_CENTIMETERS,
 					}
 				),
@@ -312,7 +316,8 @@ TEST_CASE("WolfDefeat: 当たるのは狼だけ")
 	fang::MeleeSwingParams params{};
 	params.reachCentimeters = MINION_REACH_CENTIMETERS;
 
-	const fang::Vector3 targetPosition{ MINION_REACH_CENTIMETERS, 0.0f, 0.0f };
+	// 牙の高さに合わせる ➡ 牙の球(y = fangHeightCentimeters)と確実に重なる。
+	const fang::Vector3 targetPosition{ MINION_REACH_CENTIMETERS, params.fangHeightCentimeters, 0.0f };
 
 	std::vector<fang::ColliderProxy> proxies;
 	proxies.push_back(
