@@ -11,6 +11,12 @@
 
 namespace fang
 {
+	static_assert(
+		MAX_SHAPE_LINE_COUNT >= SPHERE_LINE_COUNT && MAX_SHAPE_LINE_COUNT >= BOX_LINE_COUNT,
+		"作業用の配列の大きさが、いちばん本数の多い形に足りていない"
+	);
+
+
 	namespace
 	{
 		/** @brief 書き込み先を使い切ったらそこで止める、線分の積み込み。 */

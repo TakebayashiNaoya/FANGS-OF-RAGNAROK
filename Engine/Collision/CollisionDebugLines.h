@@ -34,6 +34,9 @@ namespace fang
 	/** @brief OBB に要る本数。箱の辺。 */
 	inline constexpr uint32_t BOX_LINE_COUNT = 12;
 
+	/** @brief どの形でも足りる本数。作業用の配列の大きさに使う。 */
+	inline constexpr uint32_t MAX_SHAPE_LINE_COUNT = CAPSULE_LINE_COUNT;
+
 	/**
 	 * @brief 形を描くのに要る線分の本数。
 	 * @param shape 描く形。
