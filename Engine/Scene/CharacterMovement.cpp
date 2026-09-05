@@ -136,6 +136,26 @@ namespace fang
 	}
 
 
+	ContactMoveResult MoveWithContacts(
+		const Vector3&           position,
+		const Vector3&           desiredDelta,
+		std::span<const Contact> contacts,
+		uint32_t                 userIndex
+	)
+	{
+		PenetrationSample                        samples[MAX_PENETRATION_SAMPLE_COUNT]{};
+		const uint32_t                           sampleCount = CollectPenetrations(contacts, userIndex, samples);
+		const std::span<const PenetrationSample> touching(samples, sampleCount);
+
+		ContactMoveResult result;
+		result.position     = position + ResolvePenetration(touching);
+		result.appliedDelta = SlideAlongNormals(desiredDelta, touching);
+		result.position += result.appliedDelta;
+
+		return result;
+	}
+
+
 	Vector3 MakeMoveDelta(const Vector2& stick, float cameraYawRadians, float speed, float deltaTimeSeconds)
 	{
 		const float stickLengthSquared = stick.x * stick.x + stick.y * stick.y;

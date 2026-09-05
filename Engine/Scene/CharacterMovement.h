@@ -79,6 +79,25 @@ namespace fang
 	 */
 	[[nodiscard]] Vector3 SlideAlongNormals(const Vector3& delta, std::span<const PenetrationSample> samples);
 
+	/** @brief 接触を解いた後の位置と、実際に進めた量。 */
+	struct ContactMoveResult
+	{
+		Vector3 position;     /**< 押し出しと移動を反映した後。 */
+		Vector3 appliedDelta; /**< 壁へ食い込む成分を削った後の、実際に進んだ量。 */
+	};
+
+	/**
+	 * @brief 前フレームの接触から押し出しつつ、進みたい量を壁に沿わせて足す。
+	 * @details CollectPenetrations ➡ ResolvePenetration ➡ SlideAlongNormals を 1 本にまとめたもの。
+	 *          狼と雑魚がこれを共有する ➡ 「同じ仕組みで動く」がコードの形になる。
+	 */
+	[[nodiscard]] ContactMoveResult MoveWithContacts(
+		const Vector3&           position,
+		const Vector3&           desiredDelta,
+		std::span<const Contact> contacts,
+		uint32_t                 userIndex
+	);
+
 	/**
 	 * @brief スティックとカメラの方位から、水平の移動量を作る。
 	 * @param stick             長さ 0 〜 1。y が画面の奥、x が画面の右。
