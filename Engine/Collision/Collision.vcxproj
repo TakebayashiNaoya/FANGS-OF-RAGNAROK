@@ -27,10 +27,13 @@
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
     <ClInclude Include="Collision.h" />
+    <ClInclude Include="CollisionLog.h" />
+    <ClInclude Include="CollisionShapes.h" />
     <ClInclude Include="Pch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Collision.cpp" />
+    <ClCompile Include="CollisionShapes.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

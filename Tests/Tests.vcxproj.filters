@@ -21,6 +21,9 @@
     <ClCompile Include="Source\AssetPathTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\CollisionShapeTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\DdsImageTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
