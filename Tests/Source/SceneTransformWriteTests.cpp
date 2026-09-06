@@ -16,7 +16,7 @@ TEST_CASE("SceneTransformWrite: 1人だけが書けば重複検出は0件")
 	fang::Scene scene;
 	CHECK(scene.Initialize(fang::HeapAllocator::GetInstance(), fang::SceneDesc{}));
 
-	const fang::GameObjectHandle handle = scene.CreateObject();
+	const fang::ActorHandle handle = scene.CreateObject();
 	CHECK(handle.IsValid());
 
 	CHECK(scene.SetLocalMatrix(handle, fang::Matrix4x4{}));
@@ -35,7 +35,7 @@ TEST_CASE("SceneTransformWrite: 同じフレームに2回書くと重複検出�
 	fang::Scene scene;
 	CHECK(scene.Initialize(fang::HeapAllocator::GetInstance(), fang::SceneDesc{}));
 
-	const fang::GameObjectHandle handle = scene.CreateObject();
+	const fang::ActorHandle handle = scene.CreateObject();
 	CHECK(handle.IsValid());
 
 	CHECK(scene.SetLocalMatrix(handle, fang::Matrix4x4{}));
@@ -55,7 +55,7 @@ TEST_CASE("SceneTransformWrite: 破棄済み・無効なハンドルへの書き
 	fang::Scene scene;
 	CHECK(scene.Initialize(fang::HeapAllocator::GetInstance(), fang::SceneDesc{}));
 
-	const fang::GameObjectHandle handle = scene.CreateObject();
+	const fang::ActorHandle handle = scene.CreateObject();
 	CHECK(handle.IsValid());
 	scene.DestroyObject(handle);
 	scene.Update(1.0f / 60.0f); // 破棄を反映し、世代を進める。
@@ -76,7 +76,7 @@ TEST_CASE("SceneTransformWrite: 窓は1フレームで閉じる（次のフレ�
 	fang::Scene scene;
 	CHECK(scene.Initialize(fang::HeapAllocator::GetInstance(), fang::SceneDesc{}));
 
-	const fang::GameObjectHandle handle = scene.CreateObject();
+	const fang::ActorHandle handle = scene.CreateObject();
 	CHECK(handle.IsValid());
 
 	CHECK(scene.SetLocalMatrix(handle, fang::Matrix4x4{}));

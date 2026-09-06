@@ -85,7 +85,7 @@ namespace fang::game
 	 * @details 作った時点では操作対象ではない。誰を操作するかは WolfManager が SetControlled で決める
 	 *          （生成時と実行中で決める場所が分かれていると、引き継いだ後に食い違うため）。
 	 */
-	[[nodiscard]] GameObjectHandle CreateWolfObject(
+	[[nodiscard]] ActorHandle CreateWolfObject(
 		Scene&                       scene,
 		WolfModel&                   model,
 		const WolfMovementParameter& parameter,

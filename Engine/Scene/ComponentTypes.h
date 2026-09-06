@@ -15,7 +15,7 @@
 namespace fang
 {
 	class Scene;
-	struct GameObjectHandle;
+	struct ActorHandle;
 
 	/**
 	 * @brief マテリアルの調整値。
@@ -129,6 +129,6 @@ namespace fang
 		 *          この中で AddBehavior したものは次の周から、DestroyObject したものはその周のうちに
 		 *          呼ばれなくなる。
 		 */
-		virtual void Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene) = 0;
+		virtual void Update(float deltaTimeSeconds, ActorHandle self, Scene& scene) = 0;
 	};
 } // namespace fang

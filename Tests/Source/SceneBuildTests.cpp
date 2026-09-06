@@ -42,7 +42,7 @@ namespace
 	class NoOpBehavior final : public fang::IComponent
 	{
 	public:
-		void Update(float /*deltaTimeSeconds*/, fang::GameObjectHandle /*self*/, fang::Scene& /*scene*/) override {}
+		void Update(float /*deltaTimeSeconds*/, fang::ActorHandle /*self*/, fang::Scene& /*scene*/) override {}
 	};
 
 	/** @brief min/max を指定した Aabb を作る。 */
@@ -65,9 +65,9 @@ TEST_CASE("SceneBuild: コンポーネントを持たないオブジェクトが
 		return;
 	}
 
-	const fang::GameObjectHandle withMesh     = scene.CreateObject();
-	const fang::GameObjectHandle bare         = scene.CreateObject(); // Transform だけで何も持たない。
-	const fang::GameObjectHandle withCollider = scene.CreateObject();
+	const fang::ActorHandle withMesh     = scene.CreateObject();
+	const fang::ActorHandle bare         = scene.CreateObject(); // Transform だけで何も持たない。
+	const fang::ActorHandle withCollider = scene.CreateObject();
 
 	fang::MeshRendererComponent meshComponent{};
 	meshComponent.localBounds = MakeAabb({ -1.0f, -1.0f, -1.0f }, { 1.0f, 1.0f, 1.0f });
@@ -116,7 +116,7 @@ TEST_CASE("ColliderComponent の attributeMask が ColliderProxy にそのまま
 
 	constexpr uint32_t CUSTOM_ATTRIBUTE = 1u << 3;
 
-	const fang::GameObjectHandle object = scene.CreateObject();
+	const fang::ActorHandle object = scene.CreateObject();
 
 	fang::ColliderComponent colliderComponent{};
 	colliderComponent.shapeType     = fang::EnShapeType::OBB;
@@ -162,7 +162,7 @@ TEST_CASE("SceneBuild: 生成・破棄・更新・組み立てでヒープ確保
 		return;
 	}
 
-	const fang::GameObjectHandle object = scene.CreateObject();
+	const fang::ActorHandle object = scene.CreateObject();
 
 	fang::MeshRendererComponent meshComponent{};
 	meshComponent.localBounds = MakeAabb({ -1.0f, -1.0f, -1.0f }, { 1.0f, 1.0f, 1.0f });

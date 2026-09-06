@@ -60,7 +60,7 @@ namespace
 	public:
 		TestEnemyController(
 			fang::CollisionWorld*            world,
-			fang::GameObjectHandle           target,
+			fang::ActorHandle                target,
 			const fang::PerceptionParameter& perceptionParameter,
 			const fang::PursuitParameter&    pursuitParameter,
 			const fang::MeleeSwingParameter& swingParameter,
@@ -77,7 +77,7 @@ namespace
 		{
 		}
 
-		void Update(float deltaTimeSeconds, fang::GameObjectHandle self, fang::Scene& scene) override
+		void Update(float deltaTimeSeconds, fang::ActorHandle self, fang::Scene& scene) override
 		{
 			fang::Vector3 targetPosition;
 			const bool    hasTarget = scene.IsValid(m_target);
@@ -122,7 +122,7 @@ namespace
 
 				for (uint32_t hitIndex = 0; hitIndex < swingResult.newHitCount; ++hitIndex)
 				{
-					const fang::GameObjectHandle victim = scene.GetHandleFromIndex(hits[hitIndex].userIndex);
+					const fang::ActorHandle victim = scene.GetHandleFromIndex(hits[hitIndex].userIndex);
 					if (!victim.IsValid() || scene.IsPendingDestroy(victim))
 					{
 						continue;
@@ -161,7 +161,7 @@ namespace
 
 	private:
 		fang::CollisionWorld*     m_world = nullptr;
-		fang::GameObjectHandle    m_target;
+		fang::ActorHandle         m_target;
 		fang::PerceptionParameter m_perceptionParameter;
 		fang::PursuitParameter    m_pursuitParameter;
 		fang::MeleeSwingParameter m_swingParameter;
@@ -175,7 +175,7 @@ namespace
 
 
 	/** @brief 雑魚 1 体ぶんの当たり判定を登録する。置き物としては数えない(遮蔽に使わない)層。 */
-	void RegisterEnemyCollider(fang::Scene& scene, fang::GameObjectHandle handle)
+	void RegisterEnemyCollider(fang::Scene& scene, fang::ActorHandle handle)
 	{
 		constexpr float HALF_EXTENT = 20.0f;
 		(void)scene.AddColliderComponent(
@@ -215,7 +215,7 @@ TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けても�
 	CHECK(frameAllocator.Initialize(fang::HeapAllocator::GetInstance(), 64 * 1024, "Test"));
 
 	// 狼役。設計の調整値と同じ HP・無敵時間。原点で静止したまま。
-	const fang::GameObjectHandle wolf = scene.CreateObject();
+	const fang::ActorHandle wolf = scene.CreateObject();
 	(void)scene.AddHealthComponent(
 		wolf,
 		fang::HealthComponent{ .maximumHitPoints = 300.0f, .currentHitPoints = 300.0f, .invincibleSeconds = 0.5f }
@@ -249,7 +249,7 @@ TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けても�
 	constexpr float    ENEMY_FACING_RADIANS          = fang::PI; // -X 向き。狼(原点)はその方向に居る。
 	constexpr float    SPAWN_RADIUS_STEP_CENTIMETERS = 15.0f;
 
-	std::vector<fang::GameObjectHandle> enemyHandles;
+	std::vector<fang::ActorHandle> enemyHandles;
 	enemyHandles.reserve(ENEMY_COUNT);
 
 	for (uint32_t index = 0; index < ENEMY_COUNT; ++index)
@@ -260,7 +260,7 @@ TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けても�
 			0.0f,
 		};
 
-		const fang::GameObjectHandle handle = scene.CreateObject();
+		const fang::ActorHandle handle = scene.CreateObject();
 		CHECK(handle.IsValid());
 
 		fang::IComponent* behavior = scene.AddBehavior<TestEnemyController>(

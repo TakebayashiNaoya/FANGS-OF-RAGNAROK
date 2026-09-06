@@ -19,7 +19,7 @@ namespace
 		{
 		}
 
-		void Update(float /*deltaTimeSeconds*/, fang::GameObjectHandle /*self*/, fang::Scene& /*scene*/) override
+		void Update(float /*deltaTimeSeconds*/, fang::ActorHandle /*self*/, fang::Scene& /*scene*/) override
 		{
 			++(*m_counter);
 		}
@@ -38,7 +38,7 @@ namespace
 		{
 		}
 
-		void Update(float /*deltaTimeSeconds*/, fang::GameObjectHandle /*self*/, fang::Scene& scene) override
+		void Update(float /*deltaTimeSeconds*/, fang::ActorHandle /*self*/, fang::Scene& scene) override
 		{
 			if (m_hasSpawned)
 			{
@@ -46,7 +46,7 @@ namespace
 			}
 			m_hasSpawned = true;
 
-			const fang::GameObjectHandle spawned = scene.CreateObject();
+			const fang::ActorHandle spawned = scene.CreateObject();
 			(void)scene.AddBehavior<CountingBehavior>(spawned, m_spawnedCounter);
 		}
 
@@ -60,19 +60,19 @@ namespace
 	class DestroyingBehavior final : public fang::IComponent
 	{
 	public:
-		explicit DestroyingBehavior(fang::GameObjectHandle target)
+		explicit DestroyingBehavior(fang::ActorHandle target)
 			: m_target(target)
 		{
 		}
 
-		void Update(float /*deltaTimeSeconds*/, fang::GameObjectHandle /*self*/, fang::Scene& scene) override
+		void Update(float /*deltaTimeSeconds*/, fang::ActorHandle /*self*/, fang::Scene& scene) override
 		{
 			scene.DestroyObject(m_target);
 		}
 
 
 	private:
-		fang::GameObjectHandle m_target;
+		fang::ActorHandle m_target;
 	};
 } // namespace
 
@@ -88,7 +88,7 @@ TEST_CASE("SceneComponent: 振る舞いは 1 回の Update で 1 回だけ回る
 
 	int counter = 0;
 
-	const fang::GameObjectHandle object = scene.CreateObject();
+	const fang::ActorHandle object = scene.CreateObject();
 	CHECK(scene.AddBehavior<CountingBehavior>(object, &counter) != nullptr);
 
 	scene.Update(0.0f);
@@ -115,7 +115,7 @@ TEST_CASE("SceneComponent: 更新中に足した振る舞いは次の周から�
 
 	int spawnedCounter = 0;
 
-	const fang::GameObjectHandle spawner = scene.CreateObject();
+	const fang::ActorHandle spawner = scene.CreateObject();
 	CHECK(scene.AddBehavior<SpawningBehavior>(spawner, &spawnedCounter) != nullptr);
 
 	scene.Update(0.0f); // ここで新しいオブジェクトと振る舞いが増える。
@@ -142,8 +142,8 @@ TEST_CASE("SceneComponent: 更新中に破棄されたオブジェクトの振�
 
 	int victimCounter = 0;
 
-	const fang::GameObjectHandle victim    = scene.CreateObject();
-	const fang::GameObjectHandle destroyer = scene.CreateObject();
+	const fang::ActorHandle victim    = scene.CreateObject();
+	const fang::ActorHandle destroyer = scene.CreateObject();
 
 	// 先に登録した振る舞いから回るので、destroyer を victim より先に登録しておく
 	// ➡ victim の番が来る前に破棄予約が立ち、その周のうちに止まることを確かめられる。
@@ -170,7 +170,7 @@ TEST_CASE("SceneComponent: 汎用コンポーネントは 1 個まで持てる")
 		return;
 	}
 
-	const fang::GameObjectHandle object = scene.CreateObject();
+	const fang::ActorHandle object = scene.CreateObject();
 
 	CHECK(scene.GetMeshRendererComponent(object) == nullptr);
 	CHECK(scene.AddMeshRendererComponent(object, fang::MeshRendererComponent{}));
@@ -186,7 +186,7 @@ TEST_CASE("SceneComponent: 汎用コンポーネントは 1 個まで持てる")
 	scene.Update(0.0f);
 
 	// 破棄されたオブジェクトの分だけコンポーネントも畳まれる（別のオブジェクトが持つ分に影響しない）。
-	const fang::GameObjectHandle other = scene.CreateObject();
+	const fang::ActorHandle other = scene.CreateObject();
 	CHECK(scene.AddMeshRendererComponent(other, fang::MeshRendererComponent{}));
 	CHECK(scene.GetMeshRendererComponent(other) != nullptr);
 

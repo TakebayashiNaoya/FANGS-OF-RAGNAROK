@@ -11,7 +11,7 @@ namespace fang::game
 	{
 		for (const SweepHit& hit : hits)
 		{
-			const GameObjectHandle target = scene.GetHandleFromIndex(hit.userIndex);
+			const ActorHandle target = scene.GetHandleFromIndex(hit.userIndex);
 			if (!target.IsValid() || scene.IsPendingDestroy(target))
 			{
 				continue;

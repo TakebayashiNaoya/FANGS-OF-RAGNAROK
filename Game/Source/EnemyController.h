@@ -76,7 +76,7 @@ namespace fang::game
 			const HeightmapTerrain* terrain = nullptr;
 
 			/** @brief 追いかける相手（今の操作対象）。Game が 1 か所で持ち替えるので、値では持たない。 */
-			const GameObjectHandle* targetHandle = nullptr;
+			const ActorHandle* targetHandle = nullptr;
 
 			/** @brief 狼と共有する歩行ポーズ。空なら SetSkinningMatrices を呼ばない。 */
 			std::span<const Matrix4x4> skinningMatricesStorage;
@@ -84,7 +84,7 @@ namespace fang::game
 
 		EnemyController(const Dependencies& dependencies, const Vector3& initialPosition);
 
-		void Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene) override;
+		void Update(float deltaTimeSeconds, ActorHandle self, Scene& scene) override;
 
 
 	private:

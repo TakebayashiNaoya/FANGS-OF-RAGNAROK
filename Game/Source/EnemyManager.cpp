@@ -41,7 +41,7 @@ namespace fang::game
 
 		const Vector3 spawnPosition{ request.position.x, groundHeight, request.position.z };
 
-		const GameObjectHandle handle = CreateEnemyObject(
+		const ActorHandle handle = CreateEnemyObject(
 			*dependencies.scene,
 			*dependencies.sharedModel,
 			m_enemyParameter,

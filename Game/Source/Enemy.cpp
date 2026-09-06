@@ -13,18 +13,18 @@
 
 namespace fang::game
 {
-	GameObjectHandle CreateEnemyObject(
+	ActorHandle CreateEnemyObject(
 		Scene&                  scene,
 		WolfModel&              model,
 		const EnemyParameter&   parameter,
 		CollisionWorld*         collisionWorld,
 		const HeightmapTerrain* terrain,
-		const GameObjectHandle* targetHandle,
+		const ActorHandle*      targetHandle,
 		const Vector3&          initialPosition,
 		EnemyController**       outController
 	)
 	{
-		const GameObjectHandle handle = scene.CreateObject();
+		const ActorHandle handle = scene.CreateObject();
 		if (!handle.IsValid())
 		{
 			FANG_LOG_WARNING(Game, "雑魚のオブジェクトを作れなかった（Scene の上限）");

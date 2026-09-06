@@ -34,7 +34,7 @@ namespace fang::game
 		static constexpr uint32_t MAX_WOLF_COUNT = 9;
 
 		/** @brief 生成した狼を席に加える。上限を超えたら false（何もしない）。 */
-		[[nodiscard]] bool Add(GameObjectHandle handle, WolfController* controller);
+		[[nodiscard]] bool Add(ActorHandle handle, WolfController* controller);
 
 		/**
 		 * @brief 生死を数え直し、操作対象を選び直す。
@@ -44,19 +44,19 @@ namespace fang::game
 		WolfManagerUpdateResult Update(const Scene& scene);
 
 		/** @brief 今の操作対象。生きていなければ無効なハンドルを指す。雑魚の標的に渡す。 */
-		[[nodiscard]] const GameObjectHandle* GetControlledHandle() const { return &m_controlledHandle; }
+		[[nodiscard]] const ActorHandle* GetControlledHandle() const { return &m_controlledHandle; }
 
 		/** @brief 今の操作対象の振る舞い。生きていなければ nullptr。 */
 		[[nodiscard]] WolfController* GetControlledWolf() const { return m_controlledWolf; }
 
 
 	private:
-		std::array<GameObjectHandle, MAX_WOLF_COUNT> m_handles;
-		std::array<WolfController*, MAX_WOLF_COUNT>  m_controllers{};
-		uint32_t                                     m_count = 0;
+		std::array<ActorHandle, MAX_WOLF_COUNT>     m_handles;
+		std::array<WolfController*, MAX_WOLF_COUNT> m_controllers{};
+		uint32_t                                    m_count = 0;
 
-		GameObjectHandle m_controlledHandle;
-		WolfController*  m_controlledWolf = nullptr;
-		bool             m_wasWipedOut    = false;
+		ActorHandle     m_controlledHandle;
+		WolfController* m_controlledWolf = nullptr;
+		bool            m_wasWipedOut    = false;
 	};
 } // namespace fang::game

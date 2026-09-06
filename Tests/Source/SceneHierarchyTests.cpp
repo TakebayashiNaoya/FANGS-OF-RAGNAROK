@@ -40,8 +40,8 @@ TEST_CASE("SceneHierarchy: 親を動かすと子が動く")
 		return;
 	}
 
-	const fang::GameObjectHandle parent = scene.CreateObject();
-	const fang::GameObjectHandle child  = scene.CreateObject();
+	const fang::ActorHandle parent = scene.CreateObject();
+	const fang::ActorHandle child  = scene.CreateObject();
 
 	CHECK(scene.SetParent(child, parent));
 	CHECK(scene.GetParent(child) == parent);
@@ -78,9 +78,9 @@ TEST_CASE("SceneHierarchy: 親を壊すと子も消える")
 		return;
 	}
 
-	const fang::GameObjectHandle parent     = scene.CreateObject();
-	const fang::GameObjectHandle child      = scene.CreateObject();
-	const fang::GameObjectHandle grandchild = scene.CreateObject();
+	const fang::ActorHandle parent     = scene.CreateObject();
+	const fang::ActorHandle child      = scene.CreateObject();
+	const fang::ActorHandle grandchild = scene.CreateObject();
 
 	CHECK(scene.SetParent(child, parent));
 	CHECK(scene.SetParent(grandchild, child));
@@ -106,8 +106,8 @@ TEST_CASE("SceneHierarchy: 輪を拒否する")
 		return;
 	}
 
-	const fang::GameObjectHandle objectA = scene.CreateObject();
-	const fang::GameObjectHandle objectB = scene.CreateObject();
+	const fang::ActorHandle objectA = scene.CreateObject();
+	const fang::ActorHandle objectB = scene.CreateObject();
 
 	CHECK(scene.SetParent(objectB, objectA)); // B の親は A。
 

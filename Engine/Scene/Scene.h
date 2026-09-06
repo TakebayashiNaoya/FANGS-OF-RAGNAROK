@@ -7,8 +7,8 @@
 #include "Core/CoreMacros.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Math/Vector3.h"
+#include "Scene/ActorHandle.h"
 #include "Scene/ComponentTypes.h"
-#include "Scene/GameObjectHandle.h"
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -71,7 +71,7 @@ namespace fang
 		[[nodiscard]] uint32_t GetDuplicateTransformWriteCount() const { return m_duplicateTransformWriteCount; }
 
 		/** @brief 今の窓でそのオブジェクトの Transform が書かれた回数。255 で頭打ち。 */
-		[[nodiscard]] uint32_t GetTransformWriteCount(GameObjectHandle handle) const;
+		[[nodiscard]] uint32_t GetTransformWriteCount(ActorHandle handle) const;
 #endif
 
 
@@ -92,16 +92,16 @@ namespace fang
 		 * @return 上限に達していたら無効なハンドル（FANG_LOG_WARNING を 1 回出す）。
 		 * @details 作った時点でそのフレームの配列組み立てに乗る。
 		 */
-		[[nodiscard]] GameObjectHandle CreateObject();
+		[[nodiscard]] ActorHandle CreateObject();
 
 		/**
 		 * @brief オブジェクトを破棄する。
 		 * @details 実際に席が空くのは次の Update の破棄反映。無効なハンドルや二重の呼び出しは何もしない。
 		 */
-		void DestroyObject(GameObjectHandle handle);
+		void DestroyObject(ActorHandle handle);
 
 		/** @brief handle が今も生きているオブジェクトを指しているか。 */
-		[[nodiscard]] bool IsValid(GameObjectHandle handle) const;
+		[[nodiscard]] bool IsValid(ActorHandle handle) const;
 
 		/**
 		 * @brief 1 フレームぶんの更新を進める。
@@ -114,20 +114,20 @@ namespace fang
 		 * @brief ローカル行列を直接書く。
 		 * @return 無効なハンドルなら false（何もしない）。
 		 */
-		[[nodiscard]] bool SetLocalMatrix(GameObjectHandle handle, const Matrix4x4& localMatrix);
+		[[nodiscard]] bool SetLocalMatrix(ActorHandle handle, const Matrix4x4& localMatrix);
 
 		/**
 		 * @brief 位置と Y 軸回りの向きだけでローカル行列を組み立てて書く。
 		 * @details 置き物のように位置と向きだけで配置したいものに使う。
 		 * @return 無効なハンドルなら false（何もしない）。
 		 */
-		[[nodiscard]] bool SetLocalTransform(GameObjectHandle handle, const Vector3& position, float rotationYRadians);
+		[[nodiscard]] bool SetLocalTransform(ActorHandle handle, const Vector3& position, float rotationYRadians);
 
 		/** @brief ローカル行列を読む。無効なハンドルなら単位行列。 */
-		[[nodiscard]] Matrix4x4 GetLocalMatrix(GameObjectHandle handle) const;
+		[[nodiscard]] Matrix4x4 GetLocalMatrix(ActorHandle handle) const;
 
 		/** @brief 直近の Update が作ったワールド行列を読む。無効なハンドルなら単位行列。 */
-		[[nodiscard]] Matrix4x4 GetWorldMatrix(GameObjectHandle handle) const;
+		[[nodiscard]] Matrix4x4 GetWorldMatrix(ActorHandle handle) const;
 
 		/**
 		 * @brief 親を付け替える。
@@ -135,56 +135,56 @@ namespace fang
 		 * @return handle が無効、parent が（無効ハンドル以外で）生きていない、または parent が handle の
 		 *         子孫（輪ができる）なら false（何もしない）。
 		 */
-		[[nodiscard]] bool SetParent(GameObjectHandle handle, GameObjectHandle parent);
+		[[nodiscard]] bool SetParent(ActorHandle handle, ActorHandle parent);
 
 		/** @brief 親を読む。無効なハンドル、または親を持たなければ無効なハンドル。 */
-		[[nodiscard]] GameObjectHandle GetParent(GameObjectHandle handle) const;
+		[[nodiscard]] ActorHandle GetParent(ActorHandle handle) const;
 
 		/**
 		 * @brief MeshRendererComponent を足す。1 オブジェクトにつき 1 個まで。
 		 * @return handle が無効、または既に持っていれば false（何もしない）。
 		 */
-		[[nodiscard]] bool AddMeshRendererComponent(GameObjectHandle handle, const MeshRendererComponent& component);
+		[[nodiscard]] bool AddMeshRendererComponent(ActorHandle handle, const MeshRendererComponent& component);
 
 		/** @brief MeshRendererComponent を読み書きする。持っていなければ nullptr。 */
-		[[nodiscard]] MeshRendererComponent* GetMeshRendererComponent(GameObjectHandle handle);
+		[[nodiscard]] MeshRendererComponent* GetMeshRendererComponent(ActorHandle handle);
 
 		/** @brief 読み取り専用版。 */
-		[[nodiscard]] const MeshRendererComponent* GetMeshRendererComponent(GameObjectHandle handle) const;
+		[[nodiscard]] const MeshRendererComponent* GetMeshRendererComponent(ActorHandle handle) const;
 
 		/**
 		 * @brief ColliderComponent を足す。1 オブジェクトにつき 1 個まで。
 		 * @return handle が無効、または既に持っていれば false（何もしない）。
 		 */
-		[[nodiscard]] bool AddColliderComponent(GameObjectHandle handle, const ColliderComponent& component);
+		[[nodiscard]] bool AddColliderComponent(ActorHandle handle, const ColliderComponent& component);
 
 		/** @brief ColliderComponent を読み書きする。持っていなければ nullptr。 */
-		[[nodiscard]] ColliderComponent* GetColliderComponent(GameObjectHandle handle);
+		[[nodiscard]] ColliderComponent* GetColliderComponent(ActorHandle handle);
 
 		/** @brief 読み取り専用版。 */
-		[[nodiscard]] const ColliderComponent* GetColliderComponent(GameObjectHandle handle) const;
+		[[nodiscard]] const ColliderComponent* GetColliderComponent(ActorHandle handle) const;
 
 		/**
 		 * @brief HealthComponent を足す。1 オブジェクトにつき 1 個まで。
 		 * @return handle が無効、または既に持っていれば false（何もしない）。
 		 */
-		[[nodiscard]] bool AddHealthComponent(GameObjectHandle handle, const HealthComponent& component);
+		[[nodiscard]] bool AddHealthComponent(ActorHandle handle, const HealthComponent& component);
 
 		/** @brief HealthComponent を読み書きする。持っていなければ nullptr。 */
-		[[nodiscard]] HealthComponent* GetHealthComponent(GameObjectHandle handle);
+		[[nodiscard]] HealthComponent* GetHealthComponent(ActorHandle handle);
 
 		/** @brief 読み取り専用版。 */
-		[[nodiscard]] const HealthComponent* GetHealthComponent(GameObjectHandle handle) const;
+		[[nodiscard]] const HealthComponent* GetHealthComponent(ActorHandle handle) const;
 
 		/**
 		 * @brief クエリが返した席番号からハンドルを引く。
 		 * @return その席が生きていなければ無効なハンドル。
 		 * @details 掃引や接触が返すのは席番号だけで、世代が入っていない ➡ コンポーネントを引く前にここを通す。
 		 */
-		[[nodiscard]] GameObjectHandle GetHandleFromIndex(uint32_t index) const;
+		[[nodiscard]] ActorHandle GetHandleFromIndex(uint32_t index) const;
 
 		/** @brief 破棄を予約済みか。IsValid は予約済みでも true を返す（席が空くのは次の Update）。 */
-		[[nodiscard]] bool IsPendingDestroy(GameObjectHandle handle) const;
+		[[nodiscard]] bool IsPendingDestroy(ActorHandle handle) const;
 
 		/**
 		 * @brief 振る舞い（IComponent）を 1 個足す。固定長ブロックのプールから配る。
@@ -193,7 +193,7 @@ namespace fang
 		 * @details 戻したポインタの寿命は Scene が持つ。呼び出し側は解放しない
 		 *          （DestroyObject が反映されたときに Scene がデストラクタを呼ぶ）。
 		 */
-		template <typename T, typename... Args> [[nodiscard]] T* AddBehavior(GameObjectHandle handle, Args&&... args)
+		template <typename T, typename... Args> [[nodiscard]] T* AddBehavior(ActorHandle handle, Args&&... args)
 		{
 			static_assert(std::is_base_of_v<IComponent, T>, "IComponent を継承していない");
 			static_assert(sizeof(T) <= BEHAVIOR_BLOCK_SIZE, "振る舞いのサイズが BEHAVIOR_BLOCK_SIZE を超えている");
@@ -220,10 +220,10 @@ namespace fang
 		 * @return handle が無効なら false（何もしない）。
 		 * @details 書かなければ次の Update の入口で空になり、MeshRenderer がバインドポーズで描く。
 		 */
-		[[nodiscard]] bool SetSkinningMatrices(GameObjectHandle handle, std::span<const Matrix4x4> matrices);
+		[[nodiscard]] bool SetSkinningMatrices(ActorHandle handle, std::span<const Matrix4x4> matrices);
 
 		/** @brief SetSkinningMatrices で預けたもの。無効なハンドル、または未設定なら空の span。 */
-		[[nodiscard]] std::span<const Matrix4x4> GetSkinningMatrices(GameObjectHandle handle) const;
+		[[nodiscard]] std::span<const Matrix4x4> GetSkinningMatrices(ActorHandle handle) const;
 
 		/**
 		 * @brief MeshRendererComponent を持つオブジェクトから RenderItem 列を組み立てる。
@@ -254,10 +254,10 @@ namespace fang
 		 * @param outBlockIndex 借りた番号。RegisterBehavior に渡す。
 		 * @return handle が無効、または空きがなければ nullptr。
 		 */
-		[[nodiscard]] void* AllocateBehaviorBlock(GameObjectHandle handle, uint32_t* outBlockIndex);
+		[[nodiscard]] void* AllocateBehaviorBlock(ActorHandle handle, uint32_t* outBlockIndex);
 
 		/** @brief 構築済みの振る舞いを記録に加える。AddBehavior の placement new の直後に呼ぶ。 */
-		void RegisterBehavior(GameObjectHandle handle, IComponent* instance, uint32_t blockIndex);
+		void RegisterBehavior(ActorHandle handle, IComponent* instance, uint32_t blockIndex);
 
 		/** @brief index が持つ振る舞いを全部デストラクトし、ブロックを返す。 */
 		void RemoveBehaviorsOwnedBy(uint32_t index);
@@ -300,7 +300,7 @@ namespace fang
 		uint32_t m_duplicateTransformWriteCount = 0;
 #endif
 
-		/** @brief 親のスロット番号。GameObjectHandle::INVALID_INDEX ならルート。 */
+		/** @brief 親のスロット番号。ActorHandle::INVALID_INDEX ならルート。 */
 		uint32_t* m_parentIndices = nullptr;
 
 		/** @brief 子リストの先頭。単方向リストで、兄弟は m_nextSiblingIndices をたどる。 */
@@ -342,7 +342,7 @@ namespace fang
 		/** @brief 振る舞い 1 個の記録。ownerIndex は破棄反映での一括デストラクトに使う。 */
 		struct BehaviorRecord
 		{
-			uint32_t    ownerIndex = GameObjectHandle::INVALID_INDEX;
+			uint32_t    ownerIndex = ActorHandle::INVALID_INDEX;
 			IComponent* instance   = nullptr;
 			uint32_t    blockIndex = 0;
 		};
@@ -362,8 +362,8 @@ namespace fang
 	 * @details 操作対象や標的のように「1 つを指し続ける」ものの付け替えに使う。破棄の通知を配らず、
 	 *          毎フレーム選び直す（ADR-036）。並びの順がそのまま引き継ぎの順になる。
 	 */
-	[[nodiscard]] GameObjectHandle FindFirstLiving(const Scene& scene, std::span<const GameObjectHandle> handles);
+	[[nodiscard]] ActorHandle FindFirstLiving(const Scene& scene, std::span<const ActorHandle> handles);
 
 	/** @brief 並びの中で生きているものの数。0 なら全滅。 */
-	[[nodiscard]] uint32_t CountLiving(const Scene& scene, std::span<const GameObjectHandle> handles);
+	[[nodiscard]] uint32_t CountLiving(const Scene& scene, std::span<const ActorHandle> handles);
 } // namespace fang

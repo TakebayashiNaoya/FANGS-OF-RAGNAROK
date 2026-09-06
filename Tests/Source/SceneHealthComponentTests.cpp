@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file SceneHealthComponentTests.cpp
  * @brief HealthComponent と ApplyDamage / TickInvincibility、Scene の HP まわり（GetHandleFromIndex /
  *        IsPendingDestroy 含む）のテスト。ダメージ・無敵時間の境目・撃破・破棄反映後の取り外しを確かめる。
@@ -106,7 +106,7 @@ TEST_CASE("Scene: HealthComponentは1個まで持て、破棄反映で取り外�
 	fang::Scene scene;
 	CHECK(scene.Initialize(fang::HeapAllocator::GetInstance(), fang::SceneDesc{}));
 
-	const fang::GameObjectHandle object = scene.CreateObject();
+	const fang::ActorHandle object = scene.CreateObject();
 
 	CHECK(scene.GetHealthComponent(object) == nullptr);
 	CHECK(scene.AddHealthComponent(object, fang::HealthComponent{}));
@@ -125,7 +125,7 @@ TEST_CASE("Scene: HealthComponentは1個まで持て、破棄反映で取り外�
 	CHECK_FALSE(scene.IsValid(object));
 
 	// 破棄された分だけ HealthComponent も畳まれる（別のオブジェクトが持つ分に影響しない）。
-	const fang::GameObjectHandle other = scene.CreateObject();
+	const fang::ActorHandle other = scene.CreateObject();
 	CHECK(scene.AddHealthComponent(other, fang::HealthComponent{}));
 	CHECK(scene.GetHealthComponent(other) != nullptr);
 
@@ -138,10 +138,10 @@ TEST_CASE("Scene: GetHandleFromIndexとIsPendingDestroyで破棄予約済みの�
 	fang::Scene scene;
 	CHECK(scene.Initialize(fang::HeapAllocator::GetInstance(), fang::SceneDesc{}));
 
-	const fang::GameObjectHandle object = scene.CreateObject();
+	const fang::ActorHandle object = scene.CreateObject();
 	CHECK(scene.AddHealthComponent(object, fang::HealthComponent{}));
 
-	const fang::GameObjectHandle sameSeat = scene.GetHandleFromIndex(object.index);
+	const fang::ActorHandle sameSeat = scene.GetHandleFromIndex(object.index);
 	CHECK(sameSeat == object);
 	CHECK_FALSE(scene.IsPendingDestroy(object));
 
@@ -166,7 +166,7 @@ TEST_CASE("Scene::Update: 無敵の残りを毎フレーム減らす")
 	fang::Scene scene;
 	CHECK(scene.Initialize(fang::HeapAllocator::GetInstance(), fang::SceneDesc{}));
 
-	const fang::GameObjectHandle object = scene.CreateObject();
+	const fang::ActorHandle object = scene.CreateObject();
 	CHECK(scene.AddHealthComponent(object, fang::HealthComponent{ .invincibleSeconds = 0.5f }));
 
 	fang::HealthComponent* health = scene.GetHealthComponent(object);

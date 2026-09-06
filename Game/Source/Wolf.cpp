@@ -209,7 +209,7 @@ namespace fang::game
 	}
 
 
-	GameObjectHandle CreateWolfObject(
+	ActorHandle CreateWolfObject(
 		Scene&                       scene,
 		WolfModel&                   model,
 		const WolfMovementParameter& parameter,
@@ -222,7 +222,7 @@ namespace fang::game
 		WolfController**             outController
 	)
 	{
-		const GameObjectHandle handle = scene.CreateObject();
+		const ActorHandle handle = scene.CreateObject();
 		if (!handle.IsValid())
 		{
 			FANG_LOG_ERROR(Game, "狼のオブジェクトを作れなかった（Scene の上限）");

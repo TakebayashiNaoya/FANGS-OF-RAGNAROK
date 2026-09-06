@@ -51,7 +51,7 @@ namespace fang::game
 	}
 
 
-	void WolfController::Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene)
+	void WolfController::Update(float deltaTimeSeconds, ActorHandle self, Scene& scene)
 	{
 		// 1. 振り(操作する狼のみ)。移動より前に置く ➡ m_position はまだ前フレームに SetLocalTransform で
 		//    書いた位置のまま。掃引が見る登録も前フレームのもの(ADR-034) ➡ 牙と相手が同じ瞬間の世界で揃う。

@@ -1,5 +1,5 @@
 ﻿/**
- * @file GameObjectHandle.h
+ * @file ActorHandle.h
  * @brief Scene 上のオブジェクトを指す、世代付きのハンドル。
  */
 #pragma once
@@ -14,7 +14,7 @@ namespace fang
 	 * @details index はスロット配列上の位置、generation はそのスロットが再利用された回数。
 	 *          破棄すると generation が 1 進むので、古いハンドルは同じ席に入った別のオブジェクトに当たらない。
 	 */
-	struct GameObjectHandle
+	struct ActorHandle
 	{
 		static constexpr uint32_t INVALID_INDEX = 0xFFFFFFFFu;
 
@@ -24,11 +24,11 @@ namespace fang
 		/** @brief 既定構築と、上限超過で返る無効なハンドルなら false。 */
 		[[nodiscard]] constexpr bool IsValid() const { return index != INVALID_INDEX; }
 
-		[[nodiscard]] constexpr bool operator==(const GameObjectHandle& other) const
+		[[nodiscard]] constexpr bool operator==(const ActorHandle& other) const
 		{
 			return index == other.index && generation == other.generation;
 		}
 
-		[[nodiscard]] constexpr bool operator!=(const GameObjectHandle& other) const { return !(*this == other); }
+		[[nodiscard]] constexpr bool operator!=(const ActorHandle& other) const { return !(*this == other); }
 	};
 } // namespace fang

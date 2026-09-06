@@ -9,7 +9,7 @@
 
 namespace fang::game
 {
-	bool WolfManager::Add(GameObjectHandle handle, WolfController* controller)
+	bool WolfManager::Add(ActorHandle handle, WolfController* controller)
 	{
 		if (m_count >= MAX_WOLF_COUNT)
 		{
@@ -42,8 +42,8 @@ namespace fang::game
 		m_count = aliveSeatCount;
 
 		// 2. 操作対象を選び直す。席の並びがそのまま引き継ぎの順になる。
-		const std::span<const GameObjectHandle> handles(m_handles.data(), m_count);
-		const GameObjectHandle                  selectedHandle = FindFirstLiving(scene, handles);
+		const std::span<const ActorHandle> handles(m_handles.data(), m_count);
+		const ActorHandle                  selectedHandle = FindFirstLiving(scene, handles);
 
 		// 3. 選ばれた席が変わったら、その振る舞いへ伝える。
 		if (selectedHandle != m_controlledHandle)

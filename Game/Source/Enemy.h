@@ -28,13 +28,13 @@ namespace fang::game
 	 * @param outController  作った振る舞いを受け取る。要らなければ nullptr でよい。寿命は scene が持つ。
 	 * @return 上限に達している等で作れなければ無効なハンドル。
 	 */
-	[[nodiscard]] GameObjectHandle CreateEnemyObject(
+	[[nodiscard]] ActorHandle CreateEnemyObject(
 		Scene&                  scene,
 		WolfModel&              model,
 		const EnemyParameter&   parameter,
 		CollisionWorld*         collisionWorld,
 		const HeightmapTerrain* terrain,
-		const GameObjectHandle* targetHandle,
+		const ActorHandle*      targetHandle,
 		const Vector3&          initialPosition,
 		EnemyController**       outController = nullptr
 	);

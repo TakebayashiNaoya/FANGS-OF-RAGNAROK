@@ -19,7 +19,7 @@ namespace fang::game
 	}
 
 
-	void EnemyController::Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene)
+	void EnemyController::Update(float deltaTimeSeconds, ActorHandle self, Scene& scene)
 	{
 		//------------------------------------------------------------------------
 		// 1. 相手の位置と生死を読む

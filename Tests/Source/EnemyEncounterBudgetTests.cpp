@@ -48,7 +48,7 @@ namespace
 	public:
 		TestEnemyController(
 			fang::CollisionWorld*            world,
-			fang::GameObjectHandle           target,
+			fang::ActorHandle                target,
 			const fang::PerceptionParameter& perceptionParameter,
 			const fang::PursuitParameter&    pursuitParameter,
 			const fang::Vector3&             initialPosition
@@ -61,7 +61,7 @@ namespace
 		{
 		}
 
-		void Update(float deltaTimeSeconds, fang::GameObjectHandle self, fang::Scene& scene) override
+		void Update(float deltaTimeSeconds, fang::ActorHandle self, fang::Scene& scene) override
 		{
 			fang::Vector3 targetPosition;
 			const bool    hasTarget = scene.IsValid(m_target);
@@ -102,7 +102,7 @@ namespace
 
 	private:
 		fang::CollisionWorld*     m_world = nullptr;
-		fang::GameObjectHandle    m_target;
+		fang::ActorHandle         m_target;
 		fang::PerceptionParameter m_perceptionParameter;
 		fang::PursuitParameter    m_pursuitParameter;
 
@@ -137,7 +137,7 @@ TEST_CASE("EnemyEncounter: 32体まで湧かせて600フレーム回してもヒ
 	fang::FrameAllocator frameAllocator;
 	CHECK(frameAllocator.Initialize(fang::HeapAllocator::GetInstance(), 64 * 1024, "Test"));
 
-	const fang::GameObjectHandle target = scene.CreateObject();
+	const fang::ActorHandle target = scene.CreateObject();
 
 	fang::SpawnScheduler scheduler;
 	fang::SpawnParameter spawnParameter{};
@@ -157,7 +157,7 @@ TEST_CASE("EnemyEncounter: 32体まで湧かせて600フレーム回してもヒ
 			scheduler.Update(deltaTimeSeconds, aliveCount, fang::Vector3{}, spawnParameter);
 		if (request.shouldSpawn)
 		{
-			const fang::GameObjectHandle handle = scene.CreateObject();
+			const fang::ActorHandle handle = scene.CreateObject();
 			if (handle.IsValid())
 			{
 				fang::IComponent* behavior = scene.AddBehavior<TestEnemyController>(

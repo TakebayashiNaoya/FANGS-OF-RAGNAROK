@@ -4,9 +4,9 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ActorHandle.h" />
     <ClInclude Include="CharacterController.h" />
     <ClInclude Include="ComponentTypes.h" />
-    <ClInclude Include="GameObjectHandle.h" />
     <ClInclude Include="MeleeSwing.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Scene.h" />

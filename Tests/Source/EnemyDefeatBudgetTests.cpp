@@ -52,7 +52,7 @@ namespace
 	public:
 		TestEnemyController(
 			fang::CollisionWorld*            world,
-			fang::GameObjectHandle           target,
+			fang::ActorHandle                target,
 			const fang::PerceptionParameter& perceptionParameter,
 			const fang::PursuitParameter&    pursuitParameter,
 			const fang::Vector3&             initialPosition
@@ -65,7 +65,7 @@ namespace
 		{
 		}
 
-		void Update(float deltaTimeSeconds, fang::GameObjectHandle self, fang::Scene& scene) override
+		void Update(float deltaTimeSeconds, fang::ActorHandle self, fang::Scene& scene) override
 		{
 			fang::Vector3 targetPosition;
 			const bool    hasTarget = scene.IsValid(m_target);
@@ -106,7 +106,7 @@ namespace
 
 	private:
 		fang::CollisionWorld*     m_world = nullptr;
-		fang::GameObjectHandle    m_target;
+		fang::ActorHandle         m_target;
 		fang::PerceptionParameter m_perceptionParameter;
 		fang::PursuitParameter    m_pursuitParameter;
 
@@ -117,7 +117,7 @@ namespace
 
 
 	/** @brief 雑魚 1 体ぶんの当たり判定を登録する。攻撃の掃引が拾えるよう ENEMY 層を付ける。 */
-	void RegisterEnemyCollider(fang::Scene& scene, fang::GameObjectHandle handle)
+	void RegisterEnemyCollider(fang::Scene& scene, fang::ActorHandle handle)
 	{
 		constexpr float HALF_EXTENT = 20.0f;
 		(void)scene.AddColliderComponent(
@@ -158,7 +158,7 @@ TEST_CASE("EnemyDefeat: 32体を密集させて600フレーム振り続けても
 	fang::FrameAllocator frameAllocator;
 	CHECK(frameAllocator.Initialize(fang::HeapAllocator::GetInstance(), 64 * 1024, "Test"));
 
-	const fang::GameObjectHandle target = scene.CreateObject();
+	const fang::ActorHandle target = scene.CreateObject();
 
 	fang::SpawnScheduler scheduler;
 	fang::SpawnParameter spawnParameter{};
@@ -184,7 +184,7 @@ TEST_CASE("EnemyDefeat: 32体を密集させて600フレーム振り続けても
 			scheduler.Update(deltaTimeSeconds, aliveCount, fang::Vector3{}, spawnParameter);
 		if (request.shouldSpawn)
 		{
-			const fang::GameObjectHandle handle = scene.CreateObject();
+			const fang::ActorHandle handle = scene.CreateObject();
 			if (handle.IsValid())
 			{
 				fang::IComponent* behavior = scene.AddBehavior<TestEnemyController>(
@@ -221,7 +221,7 @@ TEST_CASE("EnemyDefeat: 32体を密集させて600フレーム振り続けても
 
 		for (uint32_t hitIndex = 0; hitIndex < swingResult.newHitCount; ++hitIndex)
 		{
-			const fang::GameObjectHandle victim = scene.GetHandleFromIndex(hits[hitIndex].userIndex);
+			const fang::ActorHandle victim = scene.GetHandleFromIndex(hits[hitIndex].userIndex);
 			if (!victim.IsValid() || scene.IsPendingDestroy(victim))
 			{
 				continue;

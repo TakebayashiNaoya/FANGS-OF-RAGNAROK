@@ -43,7 +43,7 @@ namespace fang::game
 			const HeightmapTerrain* terrain        = nullptr;
 
 			/** @brief 追いかける相手（今の操作対象）。Game が持ち替えるので、寿命は呼び出し側が持つ。 */
-			const GameObjectHandle* targetHandle = nullptr;
+			const ActorHandle* targetHandle = nullptr;
 		};
 
 		/** @brief 1 フレームぶん進める。湧く条件が揃えば EnemyController を 1 体作る。 */
@@ -59,7 +59,7 @@ namespace fang::game
 		EnemyParameter m_enemyParameter;
 
 		/** @brief 湧かせた雑魚。毎フレーム Scene::IsValid で数え直し、消えたものを詰める(ADR-036)。 */
-		std::array<GameObjectHandle, MAX_TRACKED_ENEMY_COUNT> m_spawnedHandles;
-		uint32_t                                              m_aliveCount = 0;
+		std::array<ActorHandle, MAX_TRACKED_ENEMY_COUNT> m_spawnedHandles;
+		uint32_t                                         m_aliveCount = 0;
 	};
 } // namespace fang::game

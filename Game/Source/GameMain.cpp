@@ -131,7 +131,7 @@ namespace fang::game
 				{
 					WolfController* controller = nullptr;
 
-					const GameObjectHandle handle = CreateWolfObject(
+					const ActorHandle handle = CreateWolfObject(
 						m_scene,
 						m_wolf,
 						m_wolfMovementParameter,

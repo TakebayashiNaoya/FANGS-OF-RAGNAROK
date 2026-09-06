@@ -26,9 +26,9 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
+    <ClInclude Include="ActorHandle.h" />
     <ClInclude Include="CharacterController.h" />
     <ClInclude Include="ComponentTypes.h" />
-    <ClInclude Include="GameObjectHandle.h" />
     <ClInclude Include="MeleeSwing.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="Scene.h" />
