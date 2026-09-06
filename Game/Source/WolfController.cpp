@@ -15,21 +15,17 @@
 namespace fang::game
 {
 	WolfController::WolfController(
-		const WolfMovementParameter& parameter,
-		const MeleeSwingParameter&   swingParameter,
-		const Dependencies&          dependencies,
-		CollisionWorld*              collisionWorld,
-		const HeightmapTerrain*      terrain,
-		const Vector3&               initialPosition,
-		float                        initialFacingRadians
+		const Dependencies&     dependencies,
+		CollisionWorld*         collisionWorld,
+		const HeightmapTerrain* terrain,
+		const Vector3&          initialPosition,
+		float                   initialFacingRadians
 	)
 		: CharacterBase(
 			  GroundDependencies{ .collisionWorld = collisionWorld, .terrain = terrain },
 			  initialPosition,
 			  initialFacingRadians
 		  )
-		, m_parameter(parameter)
-		, m_swingParameter(swingParameter)
 		, m_dependencies(dependencies)
 	{
 	}
@@ -71,7 +67,7 @@ namespace fang::game
 			SweepHit               hits[MAX_MELEE_SWING_HIT_COUNT];
 			const MeleeSwingResult swingResult = StepMeleeSwing(
 				*GetCollisionWorld(),
-				m_swingParameter,
+				*m_dependencies.swingParameter,
 				swingInput,
 				deltaTimeSeconds,
 				&m_swingState,
@@ -81,7 +77,7 @@ namespace fang::game
 			ApplyMeleeHits(
 				self,
 				std::span<const SweepHit>(hits, swingResult.newHitCount),
-				m_swingParameter.attackPower
+				m_dependencies.swingParameter->attackPower
 			);
 		}
 
@@ -92,7 +88,7 @@ namespace fang::game
 			const Vector3 desiredDelta = MakeMoveDelta(
 				m_moveStick,
 				m_cameraYawRadians,
-				m_parameter.moveSpeedCentimetersPerSecond,
+				m_dependencies.parameter->moveSpeedCentimetersPerSecond,
 				deltaTimeSeconds
 			);
 
@@ -104,7 +100,7 @@ namespace fang::game
 			{
 				TurnFacingTowards(
 					GetYawFromDirection(appliedDelta),
-					m_parameter.turnSpeedRadiansPerSecond * deltaTimeSeconds
+					m_dependencies.parameter->turnSpeedRadiansPerSecond * deltaTimeSeconds
 				);
 			}
 		}
@@ -118,7 +114,9 @@ namespace fang::game
 			if (m_isControlled)
 			{
 				// 速さに合わせて進める ➡ 止まれば姿勢も止まり、ゆっくり倒せばゆっくり歩く。
-				m_dependencies.playback->SetPlaybackSpeed(appliedSpeed / m_parameter.moveSpeedCentimetersPerSecond);
+				m_dependencies.playback->SetPlaybackSpeed(
+					appliedSpeed / m_dependencies.parameter->moveSpeedCentimetersPerSecond
+				);
 				m_dependencies.playback->Advance(deltaTimeSeconds);
 
 				FANG_VERIFY(m_dependencies.animation->ComputeSkinningMatrices(

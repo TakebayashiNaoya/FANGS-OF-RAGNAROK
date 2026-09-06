@@ -255,6 +255,8 @@ namespace fang::game
 			MakeCharacterDesc(model, COLLISION_ATTRIBUTE_CHARACTER | COLLISION_ATTRIBUTE_WOLF, healthComponent);
 
 		const WolfController::Dependencies dependencies{
+			.parameter           = &parameter,
+			.swingParameter      = &swingParameter,
 			.isSkinned           = model.isSkinned,
 			.animation           = model.isSkinned ? &model.animation : nullptr,
 			.playback            = model.isSkinned ? &model.playback : nullptr,
@@ -263,16 +265,7 @@ namespace fang::game
 				model.isSkinned ? std::span<Matrix4x4>(model.skinningMatrices) : std::span<Matrix4x4>{},
 		};
 
-		return CreateCharacter<WolfController>(
-			scene,
-			desc,
-			parameter,
-			swingParameter,
-			dependencies,
-			collisionWorld,
-			terrain,
-			initialPosition,
-			initialFacingRadians
-		);
+		return CreateCharacter<
+			WolfController>(scene, desc, dependencies, collisionWorld, terrain, initialPosition, initialFacingRadians);
 	}
 } // namespace fang::game

@@ -21,6 +21,16 @@ namespace
 		int32_t count    = 0;
 		bool    isActive = false;
 	};
+
+	/** @brief 入れ子を 1 段持つ、テスト専用の反射対象。名前での読み書きが Struct を弾くことを確かめる。 */
+	struct ReflectionTestNestedParameter
+	{
+		FANG_REFLECT_BEGIN(ReflectionTestNestedParameter)
+		FANG_FIELD_NESTED(inner, "内側")
+		FANG_REFLECT_END()
+
+		ReflectionTestParameter inner;
+	};
 } // namespace
 
 
@@ -84,4 +94,54 @@ TEST_CASE("Reflection: 未知の名前は false を返す")
 	CHECK_FALSE(typeInfo.TryGetField(&parameter, "unknownField", &readValue));
 	CHECK_FALSE(typeInfo.TrySetField(&parameter, "unknownField", fang::FieldValue::MakeFloat(1.0f)));
 	CHECK(typeInfo.FindField("unknownField") == nullptr);
+}
+
+
+TEST_CASE("Reflection: 入れ子（Struct）は名前で読み書きできない")
+{
+	ReflectionTestNestedParameter parameter;
+	parameter.inner.speed = 3.0f;
+
+	const fang::TypeInfo& typeInfo = ReflectionTestNestedParameter::GetTypeInfo();
+
+	const fang::FieldInfo* innerField = typeInfo.FindField("inner");
+	CHECK(innerField != nullptr);
+	if (innerField != nullptr)
+	{
+		CHECK(innerField->type == fang::EnFieldType::Struct);
+		CHECK(innerField->getNestedTypeInfo != nullptr);
+	}
+
+	fang::FieldValue readValue;
+	CHECK_FALSE(typeInfo.TryGetField(&parameter, "inner", &readValue));
+	CHECK_FALSE(typeInfo.TrySetField(&parameter, "inner", fang::FieldValue::MakeFloat(9.0f)));
+
+	// 実体が 1 バイトも変わっていないことを、中のフィールドを直接読んで確かめる。
+	CHECK(parameter.inner.speed == doctest::Approx(3.0f));
+}
+
+
+TEST_CASE("Reflection: アドレスで読み書きする ReadFieldValue / WriteFieldValue")
+{
+	float value = 1.0f;
+
+	fang::FieldValue readValue;
+	CHECK(fang::ReadFieldValue(&value, fang::EnFieldType::Float, &readValue));
+	CHECK(readValue.floatValue == doctest::Approx(1.0f));
+
+	CHECK(
+		fang::WriteFieldValue(
+			&value,
+			fang::EnFieldType::Float,
+			fang::Range(0.0f, 10.0f),
+			fang::FieldValue::MakeFloat(100.0f)
+		)
+	);
+	CHECK(value == doctest::Approx(10.0f));
+
+	// Struct は値として読み書きできない。
+	CHECK_FALSE(fang::ReadFieldValue(&value, fang::EnFieldType::Struct, &readValue));
+	CHECK_FALSE(
+		fang::WriteFieldValue(&value, fang::EnFieldType::Struct, fang::Range(), fang::FieldValue::MakeFloat(1.0f))
+	);
 }

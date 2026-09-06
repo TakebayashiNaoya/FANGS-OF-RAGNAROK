@@ -3,6 +3,8 @@
  * @brief 一定の間隔で雑魚を湧かせ、地表に立たせて Scene オブジェクトへ実体化する。
  */
 #include "EnemyManager.h"
+#include "Core/Log/Assert.h"
+#include "Core/Reflection/TuningRegistry.h"
 #include "Resource/HeightmapTerrain.h"
 #include "Enemy.h"
 
@@ -56,5 +58,13 @@ namespace fang::game
 			m_spawnedActors[m_aliveCount] = result.actor;
 			++m_aliveCount;
 		}
+	}
+
+
+	void EnemyManager::RegisterTuningValues()
+	{
+		TuningRegistry& registry = TuningRegistry::GetInstance();
+		FANG_VERIFY(registry.Register("雑魚", &m_enemyParameter));
+		FANG_VERIFY(registry.Register("湧き", &m_spawnParameter));
 	}
 } // namespace fang::game

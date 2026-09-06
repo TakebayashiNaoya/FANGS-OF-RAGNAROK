@@ -36,6 +36,7 @@
     <ClInclude Include="Panels\JobSystemPanel.h" />
     <ClInclude Include="Panels\RenderStatisticsPanel.h" />
     <ClInclude Include="Panels\ShaderReloadPanel.h" />
+    <ClInclude Include="Panels\TuningPanel.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Editor.cpp" />
@@ -47,6 +48,7 @@
     <ClCompile Include="Panels\JobSystemPanel.cpp" />
     <ClCompile Include="Panels\RenderStatisticsPanel.cpp" />
     <ClCompile Include="Panels\ShaderReloadPanel.cpp" />
+    <ClCompile Include="Panels\TuningPanel.cpp" />
     <ClCompile Include="Windows\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Xbox\ImGuiPlatformInput.cpp" Condition="'$(FangIsXbox)' == 'true'" />
   </ItemGroup>

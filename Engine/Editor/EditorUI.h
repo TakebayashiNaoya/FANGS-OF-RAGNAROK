@@ -9,6 +9,7 @@
 #include "Editor/Panels/JobSystemPanel.h"
 #include "Editor/Panels/RenderStatisticsPanel.h"
 #include "Editor/Panels/ShaderReloadPanel.h"
+#include "Editor/Panels/TuningPanel.h"
 #include "RHI/RHIHandles.h"
 #include <imgui.h>
 #include <vector>
@@ -99,6 +100,7 @@ namespace fang::editor
 		BudgetPanel           m_budgetPanel;           /**< Xbox の予算に対する現在値と、換算・制限の操作。 */
 		JobSystemPanel        m_jobSystemPanel;        /**< ジョブシステムの稼働状況。 */
 		RenderStatisticsPanel m_renderStatisticsPanel; /**< 描画の中身（Submit数・描いた数・パス数など）。 */
+		TuningPanel           m_tuningPanel;           /**< 登録された調整値のつまみ。 */
 
 #if FANG_ENABLE_HOT_RELOAD
 		ShaderReloadPanel m_shaderReloadPanel; /**< .hlsl を保存したときの作り直しの結果。 */
