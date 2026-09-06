@@ -8,8 +8,10 @@
 
 namespace fang::game
 {
-	void ApplyMeleeHits(Actor self, std::span<const SweepHit> hits, float attackPower)
+	MeleeDamageResult ApplyMeleeHits(Actor self, std::span<const SweepHit> hits, float attackPower)
 	{
+		MeleeDamageResult result;
+
 		for (const SweepHit& hit : hits)
 		{
 			Actor target = self.GetActorFromIndex(hit.userIndex);
@@ -27,7 +29,10 @@ namespace fang::game
 			if (ApplyDamage(health, attackPower).wasDefeated)
 			{
 				target.Destroy();
+				++result.defeatedCount;
 			}
 		}
+
+		return result;
 	}
 } // namespace fang::game

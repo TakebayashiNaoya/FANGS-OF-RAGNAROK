@@ -84,6 +84,7 @@
     <ClInclude Include="Source\WolfController.h" />
     <ClInclude Include="Source\WolfManager.h" />
     <ClInclude Include="Source\WolfMovementParameter.h" />
+    <ClInclude Include="Source\WolfTeamGrowth.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Enemy.cpp" />

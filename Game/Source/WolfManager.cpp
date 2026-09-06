@@ -3,6 +3,8 @@
  * @brief 狼の席と、今どれを操作しているかを 1 か所で持つ入れ物。
  */
 #include "WolfManager.h"
+#include "Core/Reflection/TuningRegistry.h"
+#include "Scene/ComponentTypes.h"
 #include "GameLog.h"
 #include "WolfController.h"
 
@@ -41,11 +43,36 @@ namespace fang::game
 		}
 		m_count = aliveSeatCount;
 
-		// 2. 操作対象を選び直す。席の並びがそのまま引き継ぎの順になる。
+		// 2. 撃破の申告を経験値へ変える。
+		const int32_t defeatCount       = m_teamGrowth.pendingDefeatCount;
+		m_teamGrowth.pendingDefeatCount = 0;
+
+		const LevelGrowthResult growthResult = AddExperience(
+			m_teamGrowth.levelGrowth,
+			defeatCount * m_teamGrowth.experiencePerDefeat,
+			&m_teamGrowth.levelProgress
+		);
+
+		// 3. 倍率を出す。狼はこの周の Update でこれを読む ➡ レベルは同じフレームのうちに攻撃力へ届く。
+		m_teamGrowth.statusMultiplier =
+			ComputeStatusMultiplier(m_teamGrowth.levelGrowth, m_teamGrowth.levelProgress.level);
+
+		// 4. 最大 HP を全席へ配る。毎フレーム無条件 ➡ レベル・つまみ・席の増加のどれで変わったかを
+		//    区別しない。増分だけ今の HP へ足すのは SetMaximumHitPoints の中。
+		const float targetMaximumHitPoints = m_teamGrowth.baseMaximumHitPoints * m_teamGrowth.statusMultiplier;
+		for (uint32_t index = 0; index < m_count; ++index)
+		{
+			if (HealthComponent* health = m_actors[index].GetHealthComponent(); health != nullptr)
+			{
+				SetMaximumHitPoints(health, targetMaximumHitPoints);
+			}
+		}
+
+		// 5. 操作対象を選び直す。席の並びがそのまま引き継ぎの順になる。
 		const std::span<const Actor> actors(m_actors.data(), m_count);
 		const Actor*                 selectedActor = FindFirstLiving(actors);
 
-		// 3. 選ばれた席が変わったら、その振る舞いへ伝える。
+		// 6. 選ばれた席が変わったら、その振る舞いへ伝える。
 		const ActorHandle selectedHandle = (selectedActor != nullptr) ? selectedActor->GetHandle() : ActorHandle{};
 		if (selectedHandle != m_controlledActor.GetHandle())
 		{
@@ -67,11 +94,22 @@ namespace fang::game
 			}
 		}
 
-		// 4. 全滅の立ち上がりを検知する。
+		// 7. 全滅の立ち上がりを検知する。
 		const uint32_t aliveCount = CountLiving(actors);
 		const bool     didWipeOut = aliveCount == 0 && !m_wasWipedOut;
 		m_wasWipedOut             = aliveCount == 0;
 
-		return WolfManagerUpdateResult{ .aliveCount = aliveCount, .didWipeOut = didWipeOut };
+		return WolfManagerUpdateResult{
+			.aliveCount       = aliveCount,
+			.didWipeOut       = didWipeOut,
+			.gainedLevelCount = growthResult.gainedLevelCount,
+		};
+	}
+
+
+	void WolfManager::RegisterTuningValues()
+	{
+		TuningRegistry& registry = TuningRegistry::GetInstance();
+		FANG_VERIFY(registry.Register("狼の成長", &m_teamGrowth));
 	}
 } // namespace fang::game

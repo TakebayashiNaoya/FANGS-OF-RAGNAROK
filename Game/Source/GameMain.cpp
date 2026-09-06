@@ -25,6 +25,7 @@
 #include "WolfController.h"
 #include "WolfManager.h"
 #include "WolfMovementParameter.h"
+#include "WolfTeamGrowth.h"
 #include <array>
 #include <cmath>
 
@@ -57,12 +58,8 @@ namespace fang::game
 		/** @brief 狼の数。GameRules のとおり、動かすのは 1 匹だけで残りは置いたまま。 */
 		constexpr size_t WOLF_COUNT = 2;
 
-		/** @brief 狼の湧いたときの HP と無敵時間。攻撃力 50 に対して 300 ➡ 12 発で倒れる。 */
-		constexpr HealthComponent WOLF_HEALTH{
-			.maximumHitPoints  = 300.0f,
-			.currentHitPoints  = 300.0f,
-			.invincibleSeconds = 0.5f,
-		};
+		/** @brief 湧いたときの無敵時間。最大 HP は WolfTeamGrowth::baseMaximumHitPoints から読む（つまみ）。 */
+		constexpr float WOLF_INVINCIBLE_SECONDS = 0.5f;
 
 		// 狼 2 体のワールド XZ。Y は毎フレーム地表から決めるので持たない。1 体目はクリアリング
 		// （半径 800 の平地、地表 12.0）の中心。2 体目はその外へ出して、高さの違う 2 点で正しく載ることが
@@ -131,6 +128,13 @@ namespace fang::game
 				// メッシュ側は失敗しても OnInitialize 自体は続ける。モデルが出ないだけならゲームは続けられる。
 				LoadWolfModel(device, context.meshRenderer, &m_wolf);
 
+				WolfTeamGrowth*       teamGrowth = m_wolfManager.GetTeamGrowth();
+				const HealthComponent wolfHealth{
+					.maximumHitPoints  = teamGrowth->baseMaximumHitPoints,
+					.currentHitPoints  = teamGrowth->baseMaximumHitPoints,
+					.invincibleSeconds = WOLF_INVINCIBLE_SECONDS,
+				};
+
 				for (size_t index = 0; index < WOLF_COUNT; ++index)
 				{
 					const CharacterCreateResult<WolfController> result = CreateWolfObject(
@@ -138,7 +142,8 @@ namespace fang::game
 						m_wolf,
 						m_wolfMovementParameter,
 						m_wolfSwingParameter,
-						WOLF_HEALTH,
+						wolfHealth,
+						teamGrowth,
 						m_collisionWorld,
 						m_terrain,
 						WOLF_POSITIONS[index],
@@ -171,6 +176,14 @@ namespace fang::game
 				if (wolfManagerResult.didWipeOut)
 				{
 					FANG_LOG_INFO(Game, "狼が全滅した");
+				}
+				if (wolfManagerResult.gainedLevelCount > 0)
+				{
+					FANG_LOG_INFO(
+						Game,
+						"チームのレベルが上がった: Lv{}",
+						m_wolfManager.GetTeamGrowth()->levelProgress.level
+					);
 				}
 
 				// 昼夜サイクルはまだ無いので、光の向きを時間で回して「毎フレーム渡せる」ことを目で確かめる。
@@ -337,13 +350,14 @@ namespace fang::game
 			 */
 			void RegisterTuningValues()
 			{
-				constexpr uint32_t EXPECTED_TUNING_ROW_COUNT = 41;
+				constexpr uint32_t EXPECTED_TUNING_ROW_COUNT = 48;
 
 				TuningRegistry& registry = TuningRegistry::GetInstance();
 				FANG_VERIFY(registry.Register("狼の移動", &m_wolfMovementParameter));
 				FANG_VERIFY(registry.Register("狼の牙", &m_wolfSwingParameter));
 				FANG_VERIFY(registry.Register("カメラ", &m_cameraFollowParameter));
 				m_enemyManager.RegisterTuningValues();
+				m_wolfManager.RegisterTuningValues(); // 登録名は「狼の成長」
 
 				TuningRow                  rows[MAX_TUNING_ROW_COUNT];
 				const TuningRowBuildResult result = registry.BuildRows(rows);
