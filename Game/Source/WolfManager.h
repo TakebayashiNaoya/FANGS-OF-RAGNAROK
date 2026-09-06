@@ -6,6 +6,7 @@
 
 #include "Scene/Actor.h"
 #include "WolfTeamGrowth.h"
+#include "WolfTeamItems.h"
 #include <array>
 #include <cstdint>
 
@@ -54,7 +55,10 @@ namespace fang::game
 		/** @brief チームの成長。狼が借りるので、寿命はここが持つ。 */
 		[[nodiscard]] WolfTeamGrowth* GetTeamGrowth() { return &m_teamGrowth; }
 
-		/** @brief 自分が持つ調整値（チームの成長）を登録簿へ載せる。呼ぶかどうかは呼び出し側が決める。 */
+		/** @brief チームの持ち物（バッグ・落とし物の申し送り）。狼と MeatManager が借りるので、寿命はここが持つ。 */
+		[[nodiscard]] WolfTeamItems* GetTeamItems() { return &m_teamItems; }
+
+		/** @brief 自分が持つ調整値（チームの成長・肉のバッグ）を登録簿へ載せる。呼ぶかどうかは呼び出し側が決める。 */
 		void RegisterTuningValues();
 
 
@@ -69,5 +73,8 @@ namespace fang::game
 
 		/** @brief チームの経験値・レベル・倍率。撃破の申告も含めてここへ集める。 */
 		WolfTeamGrowth m_teamGrowth;
+
+		/** @brief チームの持ち物（肉のバッグ）と、この周に落ちるものの申し送り。 */
+		WolfTeamItems m_teamItems;
 	};
 } // namespace fang::game

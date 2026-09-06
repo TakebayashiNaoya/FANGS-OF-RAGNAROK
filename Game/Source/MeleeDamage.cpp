@@ -28,6 +28,10 @@ namespace fang::game
 
 			if (ApplyDamage(health, attackPower).wasDefeated)
 			{
+				// Destroy の1行前に控える。GetWorldPosition は直近のUpdateが組み立てたワールド行列を
+				// 読むので、破棄反映(次のUpdate)より前のこの瞬間が最後の機会。
+				result.defeatedPositions[result.defeatedCount] = target.GetWorldPosition();
+
 				target.Destroy();
 				++result.defeatedCount;
 			}

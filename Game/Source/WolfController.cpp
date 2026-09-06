@@ -37,17 +37,20 @@ namespace fang::game
 		m_isControlled = isControlled;
 		if (isControlled)
 		{
-			// 引き継いだ直後、押しっぱなしのボタンで振り出さないよう「既に押されていた」ことにしておく。
+			// 引き継いだ直後、押しっぱなしのボタンで振り出さない・肉を消費しないよう
+			// 「既に押されていた」ことにしておく。
 			m_swingState.wasAttackRequested = true;
+			m_wasUseItemRequested           = true;
 		}
 	}
 
 
 	void WolfController::SetFrameInput(const GamepadState& gamepad, float cameraYawRadians)
 	{
-		m_moveStick         = GetLeftStick(gamepad);
-		m_cameraYawRadians  = cameraYawRadians;
-		m_isAttackRequested = IsButtonDown(gamepad, EnGamepadButton::X);
+		m_moveStick          = GetLeftStick(gamepad);
+		m_cameraYawRadians   = cameraYawRadians;
+		m_isAttackRequested  = IsButtonDown(gamepad, EnGamepadButton::X);
+		m_isUseItemRequested = IsButtonDown(gamepad, EnGamepadButton::Y);
 	}
 
 
@@ -83,7 +86,26 @@ namespace fang::game
 			);
 
 			m_dependencies.teamGrowth->pendingDefeatCount += static_cast<int32_t>(damageResult.defeatedCount);
+
+			for (uint32_t hitIndex = 0; hitIndex < damageResult.defeatedCount; ++hitIndex)
+			{
+				PushPendingDrop(m_dependencies.teamItems, damageResult.defeatedPositions[hitIndex]);
+			}
 		}
+
+		// 肉を使う(操作する狼のみ)。押した瞬間だけ1個 ➡ 押しっぱなしでは2個目が減らない。
+		if (m_isControlled && m_isUseItemRequested && !m_wasUseItemRequested)
+		{
+			HealthComponent* health = self.GetHealthComponent();
+			if (health != nullptr && health->currentHitPoints < health->maximumHitPoints)
+			{
+				if (TakeItemFromBag(&m_dependencies.teamItems->bag))
+				{
+					(void)ApplyHeal(health, m_dependencies.itemParameter->healRatio);
+				}
+			}
+		}
+		m_wasUseItemRequested = m_isUseItemRequested;
 
 		float appliedSpeed = 0.0f;
 

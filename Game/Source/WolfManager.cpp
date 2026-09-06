@@ -111,5 +111,6 @@ namespace fang::game
 	{
 		TuningRegistry& registry = TuningRegistry::GetInstance();
 		FANG_VERIFY(registry.Register("狼の成長", &m_teamGrowth));
+		FANG_VERIFY(registry.Register("肉のバッグ", &m_teamItems.bag));
 	}
 } // namespace fang::game
