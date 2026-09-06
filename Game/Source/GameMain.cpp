@@ -4,9 +4,12 @@
  */
 #include "GameMain.h"
 #include "Collision/CollisionWorld.h"
+#include "Core/Log/Assert.h"
 #include "Core/Math/MathConstants.h"
 #include "Core/Memory/Allocator.h"
 #include "Core/Memory/FrameAllocator.h"
+#include "Core/Reflection/TuningRegistry.h"
+#include "Core/Reflection/TuningRow.h"
 #include "Input/Gamepad.h"
 #include "RHI/GraphicsDevice.h"
 #include "Runtime/Application.h"
@@ -150,6 +153,10 @@ namespace fang::game
 
 				// 置き物も同じく失敗しても続ける。読めなければ置き物なしで動く。
 				LoadAndCreateStageObjects(device, context.meshRenderer, m_scene, m_terrain, &m_stage);
+
+#if FANG_ENABLE_EDITOR
+				RegisterTuningValues();
+#endif
 
 				return true;
 			}
@@ -304,6 +311,10 @@ namespace fang::game
 
 			void OnShutdown(rhi::GraphicsDevice& device) override
 			{
+#if FANG_ENABLE_EDITOR
+				TuningRegistry::GetInstance().Clear();
+#endif
+
 				m_editorUI.Shutdown(device);
 
 				m_scene.Shutdown();
@@ -319,6 +330,55 @@ namespace fang::game
 
 
 		private:
+#if FANG_ENABLE_EDITOR
+			/**
+			 * @brief 調整値の実体を登録簿へ載せ、出た行の一覧をログへ流す。
+			 * @details 行の本数は EXPECTED_TUNING_ROW_COUNT で固定して確かめる ➡ 登録の漏れがここで止まる。
+			 */
+			void RegisterTuningValues()
+			{
+				constexpr uint32_t EXPECTED_TUNING_ROW_COUNT = 41;
+
+				TuningRegistry& registry = TuningRegistry::GetInstance();
+				FANG_VERIFY(registry.Register("狼の移動", &m_wolfMovementParameter));
+				FANG_VERIFY(registry.Register("狼の牙", &m_wolfSwingParameter));
+				FANG_VERIFY(registry.Register("カメラ", &m_cameraFollowParameter));
+				m_enemyManager.RegisterTuningValues();
+
+				TuningRow                  rows[MAX_TUNING_ROW_COUNT];
+				const TuningRowBuildResult result = registry.BuildRows(rows);
+
+				FANG_LOG_INFO(
+					Game,
+					"調整値を登録した（{} 件 / 行 {} 本 / 段で切った {} / 置き場不足 {}）",
+					registry.GetEntries().size(),
+					result.rowCount,
+					result.depthLimitedFieldCount,
+					result.droppedRowCount
+				);
+
+				for (uint32_t index = 0; index < result.rowCount; ++index)
+				{
+					const TuningRow& row = rows[index];
+
+					char path[MAX_TUNING_PATH_LENGTH];
+					(void)FormatTuningRowPath(row, path);
+
+					FANG_LOG_INFO(
+						Game,
+						"  {} / {} / {} 段 / {}",
+						registry.GetEntries()[row.entryIndex].displayName,
+						path,
+						row.depth,
+						row.GetDisplayName()
+					);
+				}
+
+				FANG_ASSERT(result.rowCount == EXPECTED_TUNING_ROW_COUNT, "登録した調整値から出る行の本数が変わった");
+			}
+#endif
+
+
 			EditorUI m_editorUI; /**< エディタ UI。Release 構成では空の代役に差し替わる。 */
 
 			Scene                 m_scene;

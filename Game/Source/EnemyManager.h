@@ -50,6 +50,9 @@ namespace fang::game
 		/** @brief 1 フレームぶん進める。湧く条件が揃えば EnemyController を 1 体作る。 */
 		void Update(float deltaTimeSeconds, const Vector3& targetPosition, const Dependencies& dependencies);
 
+		/** @brief 自分が持つ調整値（雑魚・湧き）を登録簿へ載せる。呼ぶかどうかは呼び出し側（FANG_ENABLE_EDITOR）が決める。 */
+		void RegisterTuningValues();
+
 		/** @brief 今 Scene に生きている数。直近の Update が数え直したもの。上限判定に使う。 */
 		[[nodiscard]] uint32_t GetAliveCount() const { return m_aliveCount; }
 
