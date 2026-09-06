@@ -38,6 +38,12 @@ namespace fang::game
 		/** @brief WolfModel など、Game 側が持ち続ける資源への借用。 */
 		struct Dependencies
 		{
+			/** @brief 移動の調整値。狼 2 体が同じ実体を読む ➡ つまみが 1 回で両方に効く。 */
+			const WolfMovementParameter* parameter = nullptr;
+
+			/** @brief 牙の時間割・間合い・攻撃力。同上。 */
+			const MeleeSwingParameter* swingParameter = nullptr;
+
 			/** @brief 骨を持つメッシュとして読めたか。false なら以下は使わない。 */
 			bool isSkinned = false;
 
@@ -58,7 +64,7 @@ namespace fang::game
 		};
 
 		/**
-		 * @param swingParameter        近接攻撃の時間割・間合い・攻撃力。操作対象でない間は使わない。
+		 * @param dependencies       移動・牙の調整値と WolfModel など、Game 側が持ち続ける資源への借用。
 		 * @param collisionWorld     当たり判定の入れ物。CharacterBase へそのまま渡す。nullptr なら押し戻さない。
 		 * @param terrain            接地の高さの問い合わせ先。CharacterBase へそのまま渡す。nullptr なら y = 0。
 		 * @param initialPosition    足元のワールド座標。y は接地で決まるので 0 でよい。
@@ -67,13 +73,11 @@ namespace fang::game
 		 *          書き直す）。操作対象にするかどうかは WolfManager が SetControlled で決める。
 		 */
 		WolfController(
-			const WolfMovementParameter& parameter,
-			const MeleeSwingParameter&   swingParameter,
-			const Dependencies&          dependencies,
-			CollisionWorld*              collisionWorld,
-			const HeightmapTerrain*      terrain,
-			const Vector3&               initialPosition,
-			float                        initialFacingRadians
+			const Dependencies&     dependencies,
+			CollisionWorld*         collisionWorld,
+			const HeightmapTerrain* terrain,
+			const Vector3&          initialPosition,
+			float                   initialFacingRadians
 		);
 
 		void Update(float deltaTimeSeconds, Actor self) override;
@@ -95,10 +99,8 @@ namespace fang::game
 
 
 	private:
-		bool                  m_isControlled = false;
-		WolfMovementParameter m_parameter;
-		MeleeSwingParameter   m_swingParameter;
-		Dependencies          m_dependencies;
+		bool         m_isControlled = false;
+		Dependencies m_dependencies;
 
 		Vector2 m_moveStick; /**< GetLeftStick を通した後。 */
 		float   m_cameraYawRadians  = 0.0f;
@@ -112,4 +114,8 @@ namespace fang::game
 		sizeof(WolfController) + Scene::BEHAVIOR_HEADROOM_SIZE <= Scene::BEHAVIOR_BLOCK_SIZE,
 		"WolfController がブロックの余白を食い潰した。BEHAVIOR_BLOCK_SIZE の引き上げとセットで考えること"
 	);
+
+	// 移動・牙の調整値をポインタ 2 本で借りるようにした（ADR-046 が計った 224 バイトから、値で持っていた
+	// WolfMovementParameter + MeleeSwingParameter の 52 バイトが抜けた）。縮んでいなければ複製が戻っている。
+	static_assert(sizeof(WolfController) < 224, "WolfController が値の複製を持たない形に縮んでいない");
 } // namespace fang::game
