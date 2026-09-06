@@ -1,8 +1,14 @@
 ﻿/**
  * @file BroadphaseTests.cpp
- * @brief 1 軸スイープのテスト。候補の組が総当たりと一致すること、上限で落ちないことを確かめる。
+ * @brief 1 軸スイープのテストと、3 実装(SweepAndPrune / UniformGrid / DynamicAabbTree)に共通の
+ *        正しさのテスト。候補の組が総当たりと一致すること、上限で落ちないことを確かめる。24 通りの
+ *        所要時間・確保量の比較は BroadphaseComparisonTests.cpp。
  */
 #include "Collision/Broadphase.h"
+#include "Collision/CollisionMath.h"
+#include "Collision/DynamicAabbTreeBroadphase.h"
+#include "Collision/SweepAndPruneBroadphase.h"
+#include "Collision/UniformGridBroadphase.h"
 #include "Core/Math/Aabb.h"
 #include "Core/Math/Vector3.h"
 #include "Core/Memory/Allocator.h"
@@ -13,6 +19,14 @@
 
 namespace
 {
+	/** @brief 3 実装に共通の正しさを確かめるテストが回す一覧。 */
+	constexpr fang::EnBroadphaseType ALL_BROADPHASE_TYPES[fang::BROADPHASE_TYPE_COUNT] = {
+		fang::EnBroadphaseType::SweepAndPrune,
+		fang::EnBroadphaseType::UniformGrid,
+		fang::EnBroadphaseType::DynamicAabbTree,
+	};
+
+
 	/** @brief 決定的な擬似乱数。テストの結果が実行ごとに変わらないよう、標準の乱数を使わない。 */
 	class TestRandom
 	{
@@ -47,14 +61,6 @@ namespace
 	}
 
 
-	/** @brief 3 軸すべてで重なっているか。総当たりの答え合わせに使う。 */
-	bool OverlapsOnAllAxes(const fang::Aabb& left, const fang::Aabb& right)
-	{
-		return left.min.x <= right.max.x && right.min.x <= left.max.x && left.min.y <= right.max.y &&
-			   right.min.y <= left.max.y && left.min.z <= right.max.z && right.min.z <= left.max.z;
-	}
-
-
 	/** @brief 組を番号の順に並べる。集合として比べるため。 */
 	bool IsPairLess(const fang::ColliderPair& left, const fang::ColliderPair& right)
 	{
@@ -70,7 +76,7 @@ namespace
 		{
 			for (uint32_t indexB = indexA + 1; indexB < bounds.size(); ++indexB)
 			{
-				if (OverlapsOnAllAxes(bounds[indexA], bounds[indexB]))
+				if (fang::OverlapsOnAllAxes(bounds[indexA], bounds[indexB]))
 				{
 					pairs.push_back(fang::ColliderPair{ .indexA = indexA, .indexB = indexB });
 				}
@@ -259,7 +265,7 @@ TEST_CASE("領域クエリが総当たりと一致する")
 	std::vector<uint32_t> expectedIndices;
 	for (uint32_t index = 0; index < bounds.size(); ++index)
 	{
-		if (OverlapsOnAllAxes(bounds[index], queryBounds))
+		if (fang::OverlapsOnAllAxes(bounds[index], queryBounds))
 		{
 			expectedIndices.push_back(index);
 		}
@@ -322,4 +328,189 @@ TEST_CASE("重なりの無い領域クエリは 0 件を返す")
 	);
 
 	broadphase.Shutdown();
+}
+
+
+TEST_CASE("3 実装の候補が総当たりと一致する")
+{
+	const std::vector<fang::Aabb> bounds = MakeScatteredBounds(200);
+
+	std::vector<fang::ColliderPair> expectedPairs = CollectPairsByBruteForce(bounds);
+	CHECK(expectedPairs.size() > 0); // 重なる組が 1 つも無いと、漏れがあっても気付けない。
+	std::sort(expectedPairs.begin(), expectedPairs.end(), IsPairLess);
+
+	for (const fang::EnBroadphaseType type : ALL_BROADPHASE_TYPES)
+	{
+		fang::IBroadphase* broadphase = fang::CreateBroadphase(fang::HeapAllocator::GetInstance(), type);
+		if (broadphase == nullptr)
+		{
+			CHECK_MESSAGE(false, "Broadphase を作れなかった");
+			continue;
+		}
+		CAPTURE(doctest::String(broadphase->GetName()));
+
+		CHECK(broadphase->Initialize(fang::HeapAllocator::GetInstance(), 256));
+		broadphase->Build(bounds);
+
+		std::vector<fang::ColliderPair> actualPairs(8192);
+		const uint32_t                  pairCount = broadphase->CollectPairs(actualPairs);
+		actualPairs.resize(pairCount);
+		std::sort(actualPairs.begin(), actualPairs.end(), IsPairLess);
+
+		CHECK(actualPairs.size() == expectedPairs.size());
+		if (actualPairs.size() == expectedPairs.size())
+		{
+			CHECK(
+				std::equal(
+					actualPairs.begin(),
+					actualPairs.end(),
+					expectedPairs.begin(),
+					[](const fang::ColliderPair& left, const fang::ColliderPair& right) {
+						return left.indexA == right.indexA && left.indexB == right.indexB;
+					}
+				)
+			);
+		}
+
+		broadphase->Shutdown();
+		fang::DestroyBroadphase(fang::HeapAllocator::GetInstance(), broadphase);
+	}
+}
+
+
+TEST_CASE("3 実装は同じ箱で 2 回組み立てても同じ組を返す")
+{
+	const std::vector<fang::Aabb> bounds = MakeScatteredBounds(64);
+
+	for (const fang::EnBroadphaseType type : ALL_BROADPHASE_TYPES)
+	{
+		fang::IBroadphase* broadphase = fang::CreateBroadphase(fang::HeapAllocator::GetInstance(), type);
+		if (broadphase == nullptr)
+		{
+			CHECK_MESSAGE(false, "Broadphase を作れなかった");
+			continue;
+		}
+		CAPTURE(doctest::String(broadphase->GetName()));
+
+		CHECK(broadphase->Initialize(fang::HeapAllocator::GetInstance(), 64));
+
+		std::vector<fang::ColliderPair> firstPairs(4096);
+		broadphase->Build(bounds);
+		const uint32_t firstCount = broadphase->CollectPairs(firstPairs);
+
+		std::vector<fang::ColliderPair> secondPairs(4096);
+		broadphase->Build(bounds);
+		const uint32_t secondCount = broadphase->CollectPairs(secondPairs);
+
+		CHECK(firstCount == secondCount);
+		for (uint32_t index = 0; index < firstCount && index < secondCount; ++index)
+		{
+			CHECK(firstPairs[index].indexA == secondPairs[index].indexA);
+			CHECK(firstPairs[index].indexB == secondPairs[index].indexB);
+		}
+
+		broadphase->Shutdown();
+		fang::DestroyBroadphase(fang::HeapAllocator::GetInstance(), broadphase);
+	}
+}
+
+
+TEST_CASE("3 実装は箱が 0 個でも上限を超えても落ちない")
+{
+	for (const fang::EnBroadphaseType type : ALL_BROADPHASE_TYPES)
+	{
+		fang::IBroadphase* broadphase = fang::CreateBroadphase(fang::HeapAllocator::GetInstance(), type);
+		if (broadphase == nullptr)
+		{
+			CHECK_MESSAGE(false, "Broadphase を作れなかった");
+			continue;
+		}
+		CAPTURE(doctest::String(broadphase->GetName()));
+
+		CHECK(broadphase->Initialize(fang::HeapAllocator::GetInstance(), 4));
+
+		std::vector<fang::ColliderPair> pairs(16);
+
+		broadphase->Build(std::span<const fang::Aabb>{});
+		CHECK(broadphase->CollectPairs(pairs) == 0);
+
+		const fang::Vector3     halfExtents{ 5.0f, 5.0f, 5.0f };
+		std::vector<fang::Aabb> manyBounds;
+		for (int index = 0; index < 10; ++index)
+		{
+			manyBounds.push_back(MakeAabb(fang::Vector3{ static_cast<float>(index), 0.0f, 0.0f }, halfExtents));
+		}
+
+		// 上限 4 に対して 10 個。超えたぶんは捨てる ➡ 4 個が全部重なるので 6 組。
+		broadphase->Build(manyBounds);
+		CHECK(broadphase->CollectPairs(pairs) == 6);
+
+		std::vector<fang::ColliderPair> smallPairs(2);
+		CHECK(broadphase->CollectPairs(smallPairs) == 2);
+
+		broadphase->Shutdown();
+		broadphase->Shutdown(); // 二重に呼んでも安全。
+		fang::DestroyBroadphase(fang::HeapAllocator::GetInstance(), broadphase);
+	}
+}
+
+
+TEST_CASE("3 実装とも上限 0 の初期化は失敗する")
+{
+	for (const fang::EnBroadphaseType type : ALL_BROADPHASE_TYPES)
+	{
+		fang::IBroadphase* broadphase = fang::CreateBroadphase(fang::HeapAllocator::GetInstance(), type);
+		if (broadphase == nullptr)
+		{
+			CHECK_MESSAGE(false, "Broadphase を作れなかった");
+			continue;
+		}
+		CAPTURE(doctest::String(broadphase->GetName()));
+
+		CHECK_FALSE(broadphase->Initialize(fang::HeapAllocator::GetInstance(), 0));
+
+		fang::DestroyBroadphase(fang::HeapAllocator::GetInstance(), broadphase);
+	}
+}
+
+
+TEST_CASE("3 実装の領域クエリが総当たりと一致する")
+{
+	const std::vector<fang::Aabb> bounds = MakeScatteredBounds(200);
+	const fang::Aabb queryBounds = MakeAabb(fang::Vector3{ 0.0f, 0.0f, 0.0f }, fang::Vector3{ 30.0f, 30.0f, 30.0f });
+
+	std::vector<uint32_t> expectedIndices;
+	for (uint32_t index = 0; index < bounds.size(); ++index)
+	{
+		if (fang::OverlapsOnAllAxes(bounds[index], queryBounds))
+		{
+			expectedIndices.push_back(index);
+		}
+	}
+	CHECK(expectedIndices.size() > 0); // 重なりが 1 つも無いと、漏れがあっても気付けない。
+	std::sort(expectedIndices.begin(), expectedIndices.end());
+
+	for (const fang::EnBroadphaseType type : ALL_BROADPHASE_TYPES)
+	{
+		fang::IBroadphase* broadphase = fang::CreateBroadphase(fang::HeapAllocator::GetInstance(), type);
+		if (broadphase == nullptr)
+		{
+			CHECK_MESSAGE(false, "Broadphase を作れなかった");
+			continue;
+		}
+		CAPTURE(doctest::String(broadphase->GetName()));
+
+		CHECK(broadphase->Initialize(fang::HeapAllocator::GetInstance(), 256));
+		broadphase->Build(bounds);
+
+		std::vector<uint32_t> actualIndices(256);
+		const uint32_t        actualCount = broadphase->QueryAabb(queryBounds, actualIndices);
+		actualIndices.resize(actualCount);
+		std::sort(actualIndices.begin(), actualIndices.end());
+
+		CHECK(actualIndices == expectedIndices);
+
+		broadphase->Shutdown();
+		fang::DestroyBroadphase(fang::HeapAllocator::GetInstance(), broadphase);
+	}
 }

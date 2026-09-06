@@ -6,7 +6,10 @@
 #include "Core/Math/Vector3.h"
 #include "Core/Memory/Allocator.h"
 #include <doctest.h>
+#include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <utility>
 #include <vector>
 
 
@@ -73,6 +76,43 @@ namespace
 		}
 
 		return false;
+	}
+
+
+	/** @brief 決定的な擬似乱数。3 実装の一致テストの結果が実行ごとに変わらないよう、標準の乱数を使わない。 */
+	class TestRandom
+	{
+	public:
+		[[nodiscard]] float NextFloat(float minimum, float maximum)
+		{
+			m_state = m_state * 1664525u + 1013904223u;
+
+			return minimum + (maximum - minimum) * (static_cast<float>(m_state >> 8) / 16777216.0f);
+		}
+
+
+	private:
+		uint32_t m_state = 777u;
+	};
+
+
+	/** @brief 球と OBB を混ぜた、重なりを含む配置。3 実装の結果が一致することを見るのに使う。 */
+	std::vector<fang::ColliderProxy> MakeMixedProxiesForCrossImplementationTest()
+	{
+		TestRandom                       random;
+		std::vector<fang::ColliderProxy> proxies;
+		for (uint32_t index = 0; index < 40; ++index)
+		{
+			const fang::Vector3 center{ random.NextFloat(-30.0f, 30.0f),
+										random.NextFloat(-5.0f, 5.0f),
+										random.NextFloat(-30.0f, 30.0f) };
+
+			proxies.push_back(
+				(index % 2 == 0) ? MakeSphereProxy(center, 3.0f, index) : MakeBoxProxy(center, 3.0f, index)
+			);
+		}
+
+		return proxies;
 	}
 } // namespace
 
@@ -733,6 +773,119 @@ TEST_CASE("視線を layerMask で壁だけに絞ると、キャラの層は遮�
 	));
 
 	world.Shutdown();
+}
+
+
+TEST_CASE("3 実装とも外から見える結果が変わらない")
+{
+	constexpr fang::EnBroadphaseType types[fang::BROADPHASE_TYPE_COUNT] = {
+		fang::EnBroadphaseType::SweepAndPrune,
+		fang::EnBroadphaseType::UniformGrid,
+		fang::EnBroadphaseType::DynamicAabbTree,
+	};
+	constexpr const char* expectedNames[fang::BROADPHASE_TYPE_COUNT] = {
+		"SweepAndPrune",
+		"UniformGrid",
+		"DynamicAabbTree",
+	};
+
+	const std::vector<fang::ColliderProxy> proxies = MakeMixedProxiesForCrossImplementationTest();
+
+	std::vector<std::pair<uint32_t, uint32_t>> expectedContactPairs;
+	std::vector<uint32_t>                      expectedOverlapIndices;
+	std::vector<uint32_t>                      expectedSweepUserIndices;
+	bool                                       expectedHasRayHit       = false;
+	uint32_t                                   expectedRayHitUserIndex = 0;
+	bool                                       expectedHasLineOfSight  = false;
+
+	for (uint32_t typeIndex = 0; typeIndex < fang::BROADPHASE_TYPE_COUNT; ++typeIndex)
+	{
+		fang::CollisionWorld           world;
+		const fang::CollisionWorldDesc desc{ .broadphaseType = types[typeIndex] };
+		CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), desc));
+		CAPTURE(expectedNames[typeIndex]);
+
+		CHECK(std::strcmp(world.GetBroadphaseName(), expectedNames[typeIndex]) == 0);
+
+		world.Update(proxies);
+
+		std::vector<std::pair<uint32_t, uint32_t>> contactPairs;
+		for (const fang::Contact& contact : world.GetContacts())
+		{
+			contactPairs.push_back(
+				{ std::min(contact.userIndexA, contact.userIndexB), std::max(contact.userIndexA, contact.userIndexB) }
+			);
+		}
+		std::sort(contactPairs.begin(), contactPairs.end());
+
+		fang::RayHit rayHit;
+		const bool   hasRayHit = world.Raycast(
+			fang::Vector3{ -100.0f, 0.0f, 0.0f },
+			fang::Vector3{ 1.0f, 0.0f, 0.0f },
+			300.0f,
+			fang::QueryFilter{},
+			&rayHit
+		);
+
+		std::vector<uint32_t> overlapIndices(64);
+		const uint32_t        overlapCount = world.OverlapSphere(
+			fang::Sphere{ .center = fang::Vector3{}, .radius = 20.0f },
+			fang::QueryFilter{},
+			overlapIndices
+		);
+		overlapIndices.resize(overlapCount);
+		std::sort(overlapIndices.begin(), overlapIndices.end());
+
+		std::vector<fang::SweepHit> sweepHits(64);
+		const fang::SweepResult     sweepResult = world.SweepSphere(
+			fang::Sphere{ .center = fang::Vector3{ -100.0f, 0.0f, 0.0f }, .radius = 2.0f },
+			fang::Vector3{ 200.0f, 0.0f, 0.0f },
+			fang::QueryFilter{},
+			sweepHits
+		);
+		std::vector<uint32_t> sweepUserIndices;
+		for (uint32_t hitIndex = 0; hitIndex < sweepResult.hitCount; ++hitIndex)
+		{
+			sweepUserIndices.push_back(sweepHits[hitIndex].userIndex);
+		}
+
+		fang::RayHit blockingHit;
+		const bool   hasLineOfSight = world.HasLineOfSight(
+			fang::Vector3{ -100.0f, 0.0f, 0.0f },
+			fang::Vector3{ 100.0f, 0.0f, 0.0f },
+			fang::QueryFilter{},
+			&blockingHit
+		);
+
+		if (typeIndex == 0)
+		{
+			expectedContactPairs     = contactPairs;
+			expectedOverlapIndices   = overlapIndices;
+			expectedSweepUserIndices = sweepUserIndices;
+			expectedHasRayHit        = hasRayHit;
+			expectedRayHitUserIndex  = hasRayHit ? rayHit.userIndex : 0;
+			expectedHasLineOfSight   = hasLineOfSight;
+
+			// 重なりも掃引も 1 件も無いと、実装の違いに気付けない。
+			CHECK(expectedContactPairs.size() > 0);
+			CHECK(expectedOverlapIndices.size() > 0);
+			CHECK(expectedSweepUserIndices.size() > 0);
+		}
+		else
+		{
+			CHECK(contactPairs == expectedContactPairs);
+			CHECK(overlapIndices == expectedOverlapIndices);
+			CHECK(sweepUserIndices == expectedSweepUserIndices);
+			CHECK(hasRayHit == expectedHasRayHit);
+			if (hasRayHit)
+			{
+				CHECK(rayHit.userIndex == expectedRayHitUserIndex);
+			}
+			CHECK(hasLineOfSight == expectedHasLineOfSight);
+		}
+
+		world.Shutdown();
+	}
 }
 
 

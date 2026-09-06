@@ -37,6 +37,7 @@
     <ClCompile Include="Source\AabbTests.cpp" />
     <ClCompile Include="Source\AnimationPlaybackTests.cpp" />
     <ClCompile Include="Source\AssetPathTests.cpp" />
+    <ClCompile Include="Source\BroadphaseComparisonTests.cpp" />
     <ClCompile Include="Source\BroadphaseTests.cpp" />
     <ClCompile Include="Source\CharacterMovementTests.cpp" />
     <ClCompile Include="Source\CollisionBudgetTests.cpp" />

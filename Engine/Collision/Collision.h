@@ -11,7 +11,10 @@
 #include "Collision/CollisionQuery.h"
 #include "Collision/CollisionShapes.h"
 #include "Collision/CollisionWorld.h"
+#include "Collision/DynamicAabbTreeBroadphase.h"
 #include "Collision/Narrowphase.h"
+#include "Collision/SweepAndPruneBroadphase.h"
+#include "Collision/UniformGridBroadphase.h"
 
 
 namespace fang

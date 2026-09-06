@@ -42,6 +42,8 @@ namespace fang
 		uint32_t maxColliderCount = 1024; /**< 1 フレームに登録できる数。 */
 		uint32_t maxPairCount     = 4096; /**< Broadphase が返せる候補の組の数。 */
 		uint32_t maxContactCount  = 4096; /**< 1 フレームに返せる接触の数。 */
+
+		EnBroadphaseType broadphaseType = EnBroadphaseType::SweepAndPrune; /**< 計測で決めた既定。 */
 	};
 
 	/**
@@ -67,8 +69,11 @@ namespace fang
 		/** @brief 直近の Update が作った接触。次の Update まで有効。 */
 		[[nodiscard]] std::span<const Contact> GetContacts() const;
 
-		/** @brief 使っている Broadphase の名前。ログとパネル用。 */
-		[[nodiscard]] const char* GetBroadphaseName() const { return m_sweepAndPruneBroadphase.GetName(); }
+		/** @brief 使っている Broadphase の名前。ログとパネル用。Initialize に失敗していれば "None"。 */
+		[[nodiscard]] const char* GetBroadphaseName() const
+		{
+			return (m_broadphase != nullptr) ? m_broadphase->GetName() : "None";
+		}
 
 
 	public:
@@ -159,12 +164,12 @@ namespace fang
 	private:
 		/**
 		 * @brief 候補を絞る仕組みの呼び出し口。
-		 * @details 実装を差し替えるときは下のメンバの型を変えるだけで、Update の中は変わらない。
+		 * @details Initialize が成功していれば必ず非 null。
 		 */
-		[[nodiscard]] FANG_FORCEINLINE IBroadphase& GetBroadphase() { return m_sweepAndPruneBroadphase; }
+		[[nodiscard]] FANG_FORCEINLINE IBroadphase& GetBroadphase() { return *m_broadphase; }
 
 		/** @brief const なクエリ(Raycast / OverlapSphere / Sweep* / HasLineOfSight)から使う版。 */
-		[[nodiscard]] FANG_FORCEINLINE const IBroadphase& GetBroadphase() const { return m_sweepAndPruneBroadphase; }
+		[[nodiscard]] FANG_FORCEINLINE const IBroadphase& GetBroadphase() const { return *m_broadphase; }
 
 		IAllocator* m_allocator = nullptr; /**< 借用。Shutdown で返すときにも同じものを使う。 */
 
@@ -173,8 +178,8 @@ namespace fang
 		ColliderPair*  m_pairs    = nullptr; /**< Broadphase が返した候補の組。 */
 		Contact*       m_contacts = nullptr; /**< Narrowphase が通した接触。 */
 
-		/** @brief 今の Broadphase の実体。差し替えるときはこの型を変える。 */
-		SweepAndPruneBroadphase m_sweepAndPruneBroadphase;
+		/** @brief 今の Broadphase の実体。CreateBroadphase で desc.broadphaseType から選ぶ。 */
+		IBroadphase* m_broadphase = nullptr;
 
 		uint32_t m_maxColliderCount = 0;
 		uint32_t m_maxPairCount     = 0;
