@@ -4,6 +4,8 @@
  */
 #include "Pch.h"
 #include "Scene/ItemDrop.h"
+#include "Core/Math/MathConstants.h"
+#include <cmath>
 
 
 namespace fang
@@ -119,5 +121,43 @@ namespace fang
 	{
 		const float radius = parameter.pickupRadiusCentimeters;
 		return LengthSquared(itemPosition - collectorPosition) <= radius * radius;
+	}
+
+
+	bool IsItemReadyForPickup(const ItemDropParameter& parameter, float remainingSeconds)
+	{
+		if (remainingSeconds <= 0.0f)
+		{
+			return false;
+		}
+
+		const float elapsedSeconds = parameter.lifetimeSeconds - remainingSeconds;
+		return elapsedSeconds + LIFETIME_EPSILON_SECONDS >= parameter.pickupDelaySeconds;
+	}
+
+
+	Matrix4x4 ComputeItemDisplayMatrix(
+		const ItemDropParameter& parameter,
+		const Vector3&           groundPosition,
+		double                   elapsedSeconds
+	)
+	{
+		// 位相は double のまま 1 回転ぶんに畳んでから float へ落とす。43,200 秒(12 時間)を float で持つと
+		// 刻みが 2.6 ms まで粗くなる(ADR-043 と同じ理由)。
+		const double turns   = std::fmod(elapsedSeconds * parameter.rotationsPerSecond, 1.0);
+		const float  radians = static_cast<float>(turns) * (2.0f * PI);
+
+		Matrix4x4 matrix = MakeRotationYMatrix(radians);
+		for (int row = 0; row < 3; ++row)
+		{
+			for (int column = 0; column < 3; ++column)
+			{
+				matrix.m[row][column] *= parameter.displayScale;
+			}
+		}
+		matrix.m[3][0] = groundPosition.x;
+		matrix.m[3][1] = groundPosition.y + parameter.hoverHeightCentimeters;
+		matrix.m[3][2] = groundPosition.z;
+		return matrix;
 	}
 } // namespace fang

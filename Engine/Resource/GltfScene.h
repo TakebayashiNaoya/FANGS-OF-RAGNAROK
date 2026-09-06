@@ -56,6 +56,13 @@ namespace fang
 
 		/** @brief 法線マップの強さ（normalTexture.scale）。書かれていない glTF では既定値の 1.0。 */
 		float normalScale = 1.0f;
+
+		/**
+		 * @brief glTF の meshes[].name。無ければ空。
+		 * @details 実体は GltfScene が持つ ➡ この string_view はこのオブジェクトより長生きさせない。
+		 *          同じメッシュの 2 つ目以降のプリミティブも同じ名前を持つ（名前はメッシュ単位、並びはプリミティブ単位）。
+		 */
+		std::string_view name;
 	};
 
 	/**
@@ -127,6 +134,7 @@ namespace fang
 			float                 metallicFactor  = 1.0f;
 			float                 roughnessFactor = 1.0f;
 			float                 normalScale     = 1.0f;
+			std::string           name;
 		};
 
 		/** @brief 配置 1 個分の実体。GltfSceneInstance::name はここの name を指す。 */

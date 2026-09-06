@@ -104,6 +104,7 @@ namespace fang
 			mesh.metallicFactor     = storage.metallicFactor;
 			mesh.roughnessFactor    = storage.roughnessFactor;
 			mesh.normalScale        = storage.normalScale;
+			mesh.name               = storage.name;
 			m_meshes.push_back(mesh);
 		}
 
@@ -200,6 +201,7 @@ namespace fang
 		}
 
 		MeshStorage storage;
+		storage.name = mesh.name != nullptr ? mesh.name : "";
 		if (!ReadPrimitiveIntoStorage(primitive, mesh.name, primitiveIndex, &storage))
 		{
 			m_primitiveToMeshIndex.emplace_back(&primitive, INVALID_MESH_INDEX);

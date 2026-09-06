@@ -270,6 +270,47 @@ TEST_CASE("三角形リスト以外のプリミティブは飛ばして残りを
 }
 
 
+TEST_CASE("メッシュの名前(meshes[].name)を持つ。無ければ空")
+{
+	// ノードの name とメッシュの name は別物。読むのはメッシュ側。
+	constexpr std::string_view GLTF_JSON = R"GLTF({
+		"asset": { "version": "2.0" },
+		"scene": 0,
+		"scenes": [ { "nodes": [0, 1] } ],
+		"nodes": [
+			{ "mesh": 0, "name": "NamedNode" },
+			{ "mesh": 1, "name": "UnnamedNode" }
+		],
+		"meshes": [
+			{ "name": "Marker", "primitives": [ { "attributes": { "POSITION": 0 }, "indices": 1, "mode": 4 } ] },
+			{ "primitives": [ { "attributes": { "POSITION": 0 }, "indices": 1, "mode": 4 } ] }
+		],
+		"buffers": [ { "uri": "Model.bin", "byteLength": 42 } ],
+		"bufferViews": [
+			{ "buffer": 0, "byteOffset": 0, "byteLength": 36 },
+			{ "buffer": 0, "byteOffset": 36, "byteLength": 6 }
+		],
+		"accessors": [
+			{ "bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3" },
+			{ "bufferView": 1, "componentType": 5123, "count": 3, "type": "SCALAR" }
+		]
+	})GLTF";
+
+	fang::test::NonAsciiTestDirectory directory(L"シーン読み込みテスト_メッシュ名");
+	fang::GltfScene                   scene;
+	CHECK(WriteAndLoad(&directory, GLTF_JSON, MakeTriangleBufferBytes(), &scene));
+
+	CHECK(scene.GetMeshes().size() == 2);
+	if (scene.GetMeshes().size() != 2)
+	{
+		return;
+	}
+
+	CHECK(scene.GetMeshes()[0].name == "Marker");
+	CHECK(scene.GetMeshes()[1].name.empty());
+}
+
+
 TEST_CASE("65,536 頂点超のプリミティブを検出する")
 {
 	// POSITION アクセサの count だけを 65,537 に偽装する。読む前に count を見て捨てるので、
