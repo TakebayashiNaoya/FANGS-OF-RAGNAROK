@@ -10,6 +10,7 @@
 #include "Input/Gamepad.h"
 #include "RHI/GraphicsDevice.h"
 #include "Runtime/Application.h"
+#include "Scene/CameraOcclusion.h"
 #include "Scene/CharacterController.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
@@ -269,8 +270,21 @@ namespace fang::game
 					std::cosf(m_cameraOrbitRadians) * orbitRadius,
 				};
 
+				// 遮蔽物(置き物)が視点と注視点の間に入っていれば、方位・俯角・注視点は変えずに距離だけ寄せる。
+				const CameraOcclusionResult occlusion = SolveCameraOcclusion(
+					m_collisionWorld,
+					m_cameraFollowParameter.occlusion,
+					CameraOcclusionInput{
+						.targetPosition              = cameraTarget,
+						.defaultEyePosition          = cameraTarget + orbitOffset,
+						.previousDistanceCentimeters = m_cameraDistanceCentimeters,
+						.deltaTimeSeconds            = context.deltaTimeSeconds,
+					}
+				);
+				m_cameraDistanceCentimeters = occlusion.distanceCentimeters;
+
 				frameData->camera = CameraView{
-					.eyePosition         = cameraTarget + orbitOffset,
+					.eyePosition         = occlusion.eyePosition,
 					.targetPosition      = cameraTarget,
 					.fieldOfViewYRadians = m_cameraFollowParameter.fieldOfViewYRadians,
 				};
@@ -327,6 +341,9 @@ namespace fang::game
 
 			/** @brief カメラの最後の注視点。全滅中は操作対象が居ないので、これを使い続ける。 */
 			Vector3 m_lastCameraTarget;
+
+			/** @brief 前フレームの解いたカメラ距離。0 は「まだ 1 度も解いていない」印(戻しの速度制限を掛けない)。 */
+			float m_cameraDistanceCentimeters = 0.0f;
 		};
 	} // namespace
 

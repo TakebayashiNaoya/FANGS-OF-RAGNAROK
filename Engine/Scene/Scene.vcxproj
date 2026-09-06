@@ -28,6 +28,7 @@
   <ItemGroup>
     <ClInclude Include="Actor.h" />
     <ClInclude Include="ActorHandle.h" />
+    <ClInclude Include="CameraOcclusion.h" />
     <ClInclude Include="CharacterBase.h" />
     <ClInclude Include="CharacterController.h" />
     <ClInclude Include="CharacterDesc.h" />
@@ -39,6 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Actor.cpp" />
+    <ClCompile Include="CameraOcclusion.cpp" />
     <ClCompile Include="CharacterBase.cpp" />
     <ClCompile Include="CharacterController.cpp" />
     <ClCompile Include="CharacterDesc.cpp" />

@@ -30,6 +30,9 @@
     <ClCompile Include="Source\BroadphaseTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\CameraOcclusionTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\CharacterBaseTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
