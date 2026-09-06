@@ -16,6 +16,15 @@
     <ClInclude Include="Source\CollisionAttribute.h">
       <Filter>Source</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Enemy.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\EnemyController.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\EnemyManager.h">
+      <Filter>Source</Filter>
+    </ClInclude>
     <ClInclude Include="Source\GameLog.h">
       <Filter>Source</Filter>
     </ClInclude>
@@ -23,15 +32,6 @@
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="Source\MeleeDamage.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\Minion.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\MinionBehavior.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\MinionSpawner.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="Source\Stage.h">
@@ -51,19 +51,19 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Enemy.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\EnemyController.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\EnemyManager.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\GameMain.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\MeleeDamage.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Minion.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\MinionBehavior.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\MinionSpawner.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\Stage.cpp">

@@ -26,9 +26,9 @@ namespace
 	constexpr uint32_t TEST_ATTRIBUTE_PROP      = 1u << 1;
 	constexpr uint32_t TEST_ATTRIBUTE_WOLF      = 1u << 3;
 
-	// MinionParameter(設計)と同じ値。
-	constexpr float MINION_STOP_DISTANCE_CENTIMETERS = 120.0f;
-	constexpr float MINION_REACH_CENTIMETERS         = 150.0f;
+	// EnemyParameter(設計)と同じ値。
+	constexpr float ENEMY_STOP_DISTANCE_CENTIMETERS = 120.0f;
+	constexpr float ENEMY_REACH_CENTIMETERS         = 150.0f;
 
 	/** @brief 呼ばれた回数を数えるだけのアロケータ。更新のたびのヒープ確保が 0 であることの確認に使う。 */
 	class CountingAllocator final : public fang::IAllocator
@@ -55,10 +55,10 @@ namespace
 
 
 	/** @brief 感知・追跡・振り・被弾判定を Scene の振る舞いとしてまとめた、テスト専用の雑魚役。 */
-	class TestMinionBehavior final : public fang::IComponent
+	class TestEnemyController final : public fang::IComponent
 	{
 	public:
-		TestMinionBehavior(
+		TestEnemyController(
 			fang::CollisionWorld*            world,
 			fang::GameObjectHandle           target,
 			const fang::PerceptionParameter& perceptionParameter,
@@ -175,7 +175,7 @@ namespace
 
 
 	/** @brief 雑魚 1 体ぶんの当たり判定を登録する。置き物としては数えない(遮蔽に使わない)層。 */
-	void RegisterMinionCollider(fang::Scene& scene, fang::GameObjectHandle handle)
+	void RegisterEnemyCollider(fang::Scene& scene, fang::GameObjectHandle handle)
 	{
 		constexpr float HALF_EXTENT = 20.0f;
 		(void)scene.AddColliderComponent(
@@ -231,31 +231,31 @@ TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けても�
 	);
 
 	const fang::PerceptionParameter perceptionParameter{ .blockerAttributeMask = TEST_ATTRIBUTE_PROP };
-	const fang::PursuitParameter    pursuitParameter{ .stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS };
+	const fang::PursuitParameter    pursuitParameter{ .stopDistanceCentimeters = ENEMY_STOP_DISTANCE_CENTIMETERS };
 
 	fang::MeleeSwingParameter swingParameter{};
 	swingParameter.windUpSeconds    = 0.30f;
 	swingParameter.activeSeconds    = 0.15f;
 	swingParameter.recoverySeconds  = 0.25f;
 	swingParameter.cooldownSeconds  = 0.30f;
-	swingParameter.reachCentimeters = MINION_REACH_CENTIMETERS;
+	swingParameter.reachCentimeters = ENEMY_REACH_CENTIMETERS;
 	swingParameter.attackPower      = 25.0f;
 	swingParameter.triggerMode      = fang::EnMeleeSwingTrigger::Continuous;
 
 	// 32体を +X 軸上に距離をずらして並べる(150〜615cm)。狼へ向く一定の向き(-X、PI)で見えるように
 	// 揃え、距離をずらすことで間合いへ入るタイミングをばらけさせる(全員が同時に振ると、無敵時間より
 	// 振りの周期のほうが利いてしまい、狼が実測どおりの速さで倒れない)。
-	constexpr uint32_t MINION_COUNT                  = 32;
-	constexpr float    MINION_FACING_RADIANS         = fang::PI; // -X 向き。狼(原点)はその方向に居る。
+	constexpr uint32_t ENEMY_COUNT                   = 32;
+	constexpr float    ENEMY_FACING_RADIANS          = fang::PI; // -X 向き。狼(原点)はその方向に居る。
 	constexpr float    SPAWN_RADIUS_STEP_CENTIMETERS = 15.0f;
 
-	std::vector<fang::GameObjectHandle> minionHandles;
-	minionHandles.reserve(MINION_COUNT);
+	std::vector<fang::GameObjectHandle> enemyHandles;
+	enemyHandles.reserve(ENEMY_COUNT);
 
-	for (uint32_t index = 0; index < MINION_COUNT; ++index)
+	for (uint32_t index = 0; index < ENEMY_COUNT; ++index)
 	{
 		const fang::Vector3 position{
-			MINION_STOP_DISTANCE_CENTIMETERS + 30.0f + static_cast<float>(index) * SPAWN_RADIUS_STEP_CENTIMETERS,
+			ENEMY_STOP_DISTANCE_CENTIMETERS + 30.0f + static_cast<float>(index) * SPAWN_RADIUS_STEP_CENTIMETERS,
 			0.0f,
 			0.0f,
 		};
@@ -263,7 +263,7 @@ TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けても�
 		const fang::GameObjectHandle handle = scene.CreateObject();
 		CHECK(handle.IsValid());
 
-		fang::IComponent* behavior = scene.AddBehavior<TestMinionBehavior>(
+		fang::IComponent* behavior = scene.AddBehavior<TestEnemyController>(
 			handle,
 			&world,
 			wolf,
@@ -271,12 +271,12 @@ TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けても�
 			pursuitParameter,
 			swingParameter,
 			position,
-			MINION_FACING_RADIANS
+			ENEMY_FACING_RADIANS
 		);
 		CHECK(behavior != nullptr);
 
-		RegisterMinionCollider(scene, handle);
-		minionHandles.push_back(handle);
+		RegisterEnemyCollider(scene, handle);
+		enemyHandles.push_back(handle);
 	}
 
 	const uint32_t allocationCountAfterSetup = allocator.GetAllocationCount();
@@ -301,7 +301,7 @@ TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けても�
 	CHECK_FALSE(scene.IsValid(wolf));
 
 	// 生きているオブジェクトは雑魚(最大32)だけ。狼が消えた分だけ減っている。
-	CHECK(scene.GetActiveObjectCount() <= MINION_COUNT);
+	CHECK(scene.GetActiveObjectCount() <= ENEMY_COUNT);
 
 	CHECK(allocator.GetAllocationCount() == allocationCountAfterSetup);
 
@@ -316,12 +316,12 @@ TEST_CASE("WolfDefeat: 視線32本+牙33本(雑魚32+狼1)の掃引が実機予�
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	constexpr uint32_t PROP_COUNT   = 40;
-	constexpr uint32_t WOLF_COUNT   = 2;
-	constexpr uint32_t MINION_COUNT = 32;
+	constexpr uint32_t PROP_COUNT  = 40;
+	constexpr uint32_t WOLF_COUNT  = 2;
+	constexpr uint32_t ENEMY_COUNT = 32;
 
-	constexpr uint32_t WOLF_USER_INDEX_BASE   = PROP_COUNT;
-	constexpr uint32_t MINION_USER_INDEX_BASE = PROP_COUNT + WOLF_COUNT;
+	constexpr uint32_t WOLF_USER_INDEX_BASE  = PROP_COUNT;
+	constexpr uint32_t ENEMY_USER_INDEX_BASE = PROP_COUNT + WOLF_COUNT;
 
 	std::vector<fang::ColliderProxy> proxies;
 
@@ -357,59 +357,59 @@ TEST_CASE("WolfDefeat: 視線32本+牙33本(雑魚32+狼1)の掃引が実機予�
 		);
 	}
 
-	std::vector<fang::Vector3> minionPositions(MINION_COUNT);
-	for (uint32_t index = 0; index < MINION_COUNT; ++index)
+	std::vector<fang::Vector3> enemyPositions(ENEMY_COUNT);
+	for (uint32_t index = 0; index < ENEMY_COUNT; ++index)
 	{
-		minionPositions[index] = fang::Vector3{ static_cast<float>(index) * 20.0f - 320.0f, 0.0f, 700.0f };
+		enemyPositions[index] = fang::Vector3{ static_cast<float>(index) * 20.0f - 320.0f, 0.0f, 700.0f };
 
 		proxies.push_back(
 			fang::ColliderProxy{
 				.shape = fang::MakeColliderShape(
 					fang::Capsule{
-						.pointA = minionPositions[index],
-						.pointB = minionPositions[index] + fang::Vector3{ 0.0f, 100.0f, 0.0f },
+						.pointA = enemyPositions[index],
+						.pointB = enemyPositions[index] + fang::Vector3{ 0.0f, 100.0f, 0.0f },
 						.radius = 20.0f,
 					}
 				),
-				.userIndex     = MINION_USER_INDEX_BASE + index,
+				.userIndex     = ENEMY_USER_INDEX_BASE + index,
 				.attributeMask = TEST_ATTRIBUTE_CHARACTER,
 			}
 		);
 	}
 
 	world.Update(proxies);
-	CHECK(world.GetColliderCount() == PROP_COUNT + WOLF_COUNT + MINION_COUNT);
+	CHECK(world.GetColliderCount() == PROP_COUNT + WOLF_COUNT + ENEMY_COUNT);
 
 	const fang::PerceptionParameter perceptionParameter{ .blockerAttributeMask = TEST_ATTRIBUTE_PROP };
 	const fang::PursuitParameter    pursuitParameter{};
-	const fang::MeleeSwingParameter minionSwingParameter{ .reachCentimeters = MINION_REACH_CENTIMETERS };
+	const fang::MeleeSwingParameter enemySwingParameter{ .reachCentimeters = ENEMY_REACH_CENTIMETERS };
 	const fang::MeleeSwingParameter wolfSwingParameter{};
 	const fang::Vector3             wolfPosition{ 0.0f, 0.0f, 500.0f };
 
-	std::vector<fang::AgentBlackboard> blackboards(MINION_COUNT);
-	std::vector<fang::EnPursuitState>  states(MINION_COUNT, fang::EnPursuitState::Chase);
-	std::vector<fang::MeleeSwingState> minionSwingStates(MINION_COUNT);
-	for (uint32_t index = 0; index < MINION_COUNT; ++index)
+	std::vector<fang::AgentBlackboard> blackboards(ENEMY_COUNT);
+	std::vector<fang::EnPursuitState>  states(ENEMY_COUNT, fang::EnPursuitState::Chase);
+	std::vector<fang::MeleeSwingState> enemySwingStates(ENEMY_COUNT);
+	for (uint32_t index = 0; index < ENEMY_COUNT; ++index)
 	{
 		blackboards[index].isTargetVisible        = true;
 		blackboards[index].hasLastSeenPosition    = true;
 		blackboards[index].lastSeenTargetPosition = wolfPosition;
 
 		// 掃引そのものの費用を測るため、判定区間から始める。
-		minionSwingStates[index].phase = fang::EnMeleeSwingPhase::Active;
+		enemySwingStates[index].phase = fang::EnMeleeSwingPhase::Active;
 	}
 
 	fang::MeleeSwingState wolfSwingState{};
 	wolfSwingState.phase = fang::EnMeleeSwingPhase::Active;
 
 	const float measuredSeconds = MeasureSeconds([&]() {
-		for (uint32_t index = 0; index < MINION_COUNT; ++index)
+		for (uint32_t index = 0; index < ENEMY_COUNT; ++index)
 		{
 			const fang::PerceptionInput input{
-				.selfPosition      = minionPositions[index],
+				.selfPosition      = enemyPositions[index],
 				.selfFacingRadians = 0.0f,
 				.targetPosition    = wolfPosition,
-				.selfUserIndex     = MINION_USER_INDEX_BASE + index,
+				.selfUserIndex     = ENEMY_USER_INDEX_BASE + index,
 				.targetUserIndex   = WOLF_USER_INDEX_BASE,
 			};
 			const fang::PerceptionResult result = fang::Sense(world, perceptionParameter, input);
@@ -418,26 +418,26 @@ TEST_CASE("WolfDefeat: 視線32本+牙33本(雑魚32+狼1)の掃引が実機予�
 			(void)fang::StepPursuit(
 				pursuitParameter,
 				blackboards[index],
-				minionPositions[index],
+				enemyPositions[index],
 				1.0f / 60.0f,
 				&states[index]
 			);
 
-			const fang::MeleeSwingInput minionSwingInput{
-				.selfPosition        = minionPositions[index],
+			const fang::MeleeSwingInput enemySwingInput{
+				.selfPosition        = enemyPositions[index],
 				.selfFacingRadians   = 0.0f,
 				.isAttackRequested   = true,
-				.selfUserIndex       = MINION_USER_INDEX_BASE + index,
+				.selfUserIndex       = ENEMY_USER_INDEX_BASE + index,
 				.targetAttributeMask = TEST_ATTRIBUTE_WOLF,
 			};
-			fang::SweepHit minionHits[fang::MAX_MELEE_SWING_HIT_COUNT];
+			fang::SweepHit enemyHits[fang::MAX_MELEE_SWING_HIT_COUNT];
 			(void)fang::StepMeleeSwing(
 				world,
-				minionSwingParameter,
-				minionSwingInput,
+				enemySwingParameter,
+				enemySwingInput,
 				1.0f / 60.0f,
-				&minionSwingStates[index],
-				minionHits
+				&enemySwingStates[index],
+				enemyHits
 			);
 		}
 

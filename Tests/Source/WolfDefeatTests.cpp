@@ -25,12 +25,12 @@ namespace
 	constexpr uint32_t TEST_ATTRIBUTE_ENEMY     = 1u << 2;
 	constexpr uint32_t TEST_ATTRIBUTE_WOLF      = 1u << 3;
 
-	// MinionParameter(設計)と同じ値。雑魚が狼へ詰める距離と牙の間合い。Tests は Game を参照しないので、
+	// EnemyParameter(設計)と同じ値。雑魚が狼へ詰める距離と牙の間合い。Tests は Game を参照しないので、
 	// ここでも同じ数を持つ(設計の static_assert と合わせて 2 か所で縛られる)。
-	constexpr float MINION_STOP_DISTANCE_CENTIMETERS = 120.0f;
-	constexpr float MINION_REACH_CENTIMETERS         = 150.0f;
+	constexpr float ENEMY_STOP_DISTANCE_CENTIMETERS = 120.0f;
+	constexpr float ENEMY_REACH_CENTIMETERS         = 150.0f;
 
-	/** @brief MinionBehavior が振りの合図に使うのと同じ式。 */
+	/** @brief EnemyController が振りの合図に使うのと同じ式。 */
 	[[nodiscard]] bool ComputeSwingTrigger(
 		const fang::CollisionWorld&      world,
 		const fang::PerceptionParameter& perceptionParameter,
@@ -61,11 +61,11 @@ TEST_CASE("WolfDefeat: 見えていても間合いの外なら振りは始まら
 
 	const fang::PerceptionParameter perceptionParameter{};
 	fang::MeleeSwingParameter       swingParameter{};
-	swingParameter.reachCentimeters = MINION_REACH_CENTIMETERS;
+	swingParameter.reachCentimeters = ENEMY_REACH_CENTIMETERS;
 	swingParameter.triggerMode      = fang::EnMeleeSwingTrigger::Continuous;
 
 	// 間合いの2倍離れた位置。視線を遮るものは無いので見えてはいる。
-	const fang::Vector3 targetPosition{ MINION_REACH_CENTIMETERS * 2.0f, 0.0f, 0.0f };
+	const fang::Vector3 targetPosition{ ENEMY_REACH_CENTIMETERS * 2.0f, 0.0f, 0.0f };
 
 	fang::MeleeSwingState state{};
 	bool                  didStartSwing = false;
@@ -101,18 +101,18 @@ TEST_CASE("WolfDefeat: 間合いの内でも遮蔽の裏なら振りは始まら
 
 	const fang::PerceptionParameter perceptionParameter{ .blockerAttributeMask = TEST_ATTRIBUTE_PROP };
 	fang::MeleeSwingParameter       swingParameter{};
-	swingParameter.reachCentimeters = MINION_REACH_CENTIMETERS;
+	swingParameter.reachCentimeters = ENEMY_REACH_CENTIMETERS;
 	swingParameter.triggerMode      = fang::EnMeleeSwingTrigger::Continuous;
 
 	// 間合いの内側だが、途中に壁を置いて視線を遮る。
-	const fang::Vector3 targetPosition{ MINION_REACH_CENTIMETERS * 0.5f, 0.0f, 0.0f };
+	const fang::Vector3 targetPosition{ ENEMY_REACH_CENTIMETERS * 0.5f, 0.0f, 0.0f };
 
 	std::vector<fang::ColliderProxy> proxies;
 	proxies.push_back(
 		fang::ColliderProxy{
 			.shape = fang::MakeColliderShape(
 				fang::OBB{
-					.center      = fang::Vector3{ MINION_REACH_CENTIMETERS * 0.25f, 0.0f, 0.0f },
+					.center      = fang::Vector3{ ENEMY_REACH_CENTIMETERS * 0.25f, 0.0f, 0.0f },
 					.halfExtents = fang::Vector3{ 10.0f, 200.0f, 200.0f },
 				}
 			),
@@ -152,7 +152,7 @@ TEST_CASE("WolfDefeat: 間合いの内でも遮蔽の裏なら振りは始まら
 TEST_CASE("WolfDefeat: 追跡が止まる距離に居る狼に、向きによらず振りが届く")
 {
 	fang::PursuitParameter pursuitParameter{};
-	pursuitParameter.stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS;
+	pursuitParameter.stopDistanceCentimeters = ENEMY_STOP_DISTANCE_CENTIMETERS;
 
 	fang::AgentBlackboard blackboard{};
 	blackboard.isTargetVisible        = true;
@@ -171,10 +171,10 @@ TEST_CASE("WolfDefeat: 追跡が止まる距離に居る狼に、向きによら
 	}
 
 	const float stoppedDistance = blackboard.lastSeenTargetPosition.x - position.x;
-	CHECK(stoppedDistance <= MINION_STOP_DISTANCE_CENTIMETERS + 0.5f);
+	CHECK(stoppedDistance <= ENEMY_STOP_DISTANCE_CENTIMETERS + 0.5f);
 
 	fang::MeleeSwingParameter swingParameter{};
-	swingParameter.reachCentimeters = MINION_REACH_CENTIMETERS;
+	swingParameter.reachCentimeters = ENEMY_REACH_CENTIMETERS;
 
 	// 狼役のカプセル(体長204・半径40)を4方向へ向けて、どの向きでも当たることを確かめる。
 	// 中心の高さは牙の高さ(fangHeightCentimeters)に合わせる ➡ 牙の球と確実に重なる。
@@ -242,12 +242,12 @@ TEST_CASE("WolfDefeat: 振りの最中は位置も向きも変わらない")
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
 	fang::PursuitParameter pursuitParameter{};
-	pursuitParameter.stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS;
+	pursuitParameter.stopDistanceCentimeters = ENEMY_STOP_DISTANCE_CENTIMETERS;
 
 	fang::AgentBlackboard blackboard{};
 	blackboard.isTargetVisible        = true;
 	blackboard.hasLastSeenPosition    = true;
-	blackboard.lastSeenTargetPosition = fang::Vector3{ MINION_REACH_CENTIMETERS, 0.0f, 0.0f };
+	blackboard.lastSeenTargetPosition = fang::Vector3{ ENEMY_REACH_CENTIMETERS, 0.0f, 0.0f };
 
 	fang::EnPursuitState state = fang::EnPursuitState::Chase;
 
@@ -257,7 +257,7 @@ TEST_CASE("WolfDefeat: 振りの最中は位置も向きも変わらない")
 	swingParameter.activeSeconds    = 0.15f;
 	swingParameter.recoverySeconds  = 0.25f;
 	swingParameter.cooldownSeconds  = 0.30f;
-	swingParameter.reachCentimeters = MINION_REACH_CENTIMETERS;
+	swingParameter.reachCentimeters = ENEMY_REACH_CENTIMETERS;
 	swingParameter.triggerMode      = fang::EnMeleeSwingTrigger::Continuous;
 
 	fang::MeleeSwingState swingState{};
@@ -315,10 +315,10 @@ TEST_CASE("WolfDefeat: 振りの最中は位置も向きも変わらない")
 TEST_CASE("WolfDefeat: 当たるのは狼だけ")
 {
 	fang::MeleeSwingParameter parameter{};
-	parameter.reachCentimeters = MINION_REACH_CENTIMETERS;
+	parameter.reachCentimeters = ENEMY_REACH_CENTIMETERS;
 
 	// 牙の高さに合わせる ➡ 牙の球(y = fangHeightCentimeters)と確実に重なる。
-	const fang::Vector3 targetPosition{ MINION_REACH_CENTIMETERS, parameter.fangHeightCentimeters, 0.0f };
+	const fang::Vector3 targetPosition{ ENEMY_REACH_CENTIMETERS, parameter.fangHeightCentimeters, 0.0f };
 
 	std::vector<fang::ColliderProxy> proxies;
 	proxies.push_back(

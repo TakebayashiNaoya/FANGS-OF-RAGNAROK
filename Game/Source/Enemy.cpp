@@ -1,27 +1,27 @@
 ﻿/**
- * @file Minion.cpp
+ * @file Enemy.cpp
  * @brief 雑魚 1 体の Scene オブジェクトとしての生成。狼のモデルを流用する。
  */
-#include "Minion.h"
+#include "Enemy.h"
 #include "Collision/CollisionShapes.h"
 #include "Core/Math/Matrix4x4.h"
 #include "CollisionAttribute.h"
+#include "EnemyController.h"
 #include "GameLog.h"
-#include "MinionBehavior.h"
 #include "Wolf.h"
 
 
 namespace fang::game
 {
-	GameObjectHandle CreateMinionObject(
+	GameObjectHandle CreateEnemyObject(
 		Scene&                  scene,
 		WolfModel&              model,
-		const MinionParameter&  parameter,
+		const EnemyParameter&   parameter,
 		CollisionWorld*         collisionWorld,
 		const HeightmapTerrain* terrain,
 		const GameObjectHandle* targetHandle,
 		const Vector3&          initialPosition,
-		MinionBehavior**        outBehavior
+		EnemyController**       outController
 	)
 	{
 		const GameObjectHandle handle = scene.CreateObject();
@@ -65,7 +65,7 @@ namespace fang::game
 							 .currentHitPoints = parameter.maximumHitPoints }
 		);
 
-		const MinionBehavior::Dependencies dependencies{
+		const EnemyController::Dependencies dependencies{
 			.parameter      = &parameter,
 			.collisionWorld = collisionWorld,
 			.terrain        = terrain,
@@ -74,15 +74,15 @@ namespace fang::game
 				model.isSkinned ? std::span<const Matrix4x4>(model.skinningMatrices) : std::span<const Matrix4x4>{},
 		};
 
-		MinionBehavior* behavior = scene.AddBehavior<MinionBehavior>(handle, dependencies, initialPosition);
-		if (behavior == nullptr)
+		EnemyController* controller = scene.AddBehavior<EnemyController>(handle, dependencies, initialPosition);
+		if (controller == nullptr)
 		{
 			FANG_LOG_ERROR(Game, "雑魚の振る舞いを作れなかった（Scene の振る舞い上限）");
 		}
 
-		if (outBehavior != nullptr)
+		if (outController != nullptr)
 		{
-			*outBehavior = behavior;
+			*outController = controller;
 		}
 
 		return handle;

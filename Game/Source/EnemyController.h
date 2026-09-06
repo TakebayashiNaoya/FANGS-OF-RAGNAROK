@@ -1,5 +1,5 @@
 ﻿/**
- * @file MinionBehavior.h
+ * @file EnemyController.h
  * @brief 雑魚 1 体ぶんの感知・追跡・移動・接地を進める振る舞い。
  */
 #pragma once
@@ -23,21 +23,21 @@ namespace fang
 namespace fang::game
 {
 	/** @brief 雑魚が狼へ詰める距離。牙の間合いの内側に入るまで詰める ➡ 止まった位置から届く。 */
-	inline constexpr float MINION_STOP_DISTANCE_CENTIMETERS = 120.0f;
+	inline constexpr float ENEMY_STOP_DISTANCE_CENTIMETERS = 120.0f;
 
 	/** @brief 雑魚の牙の間合い。狼と同じ体なので同じ値。 */
-	inline constexpr float MINION_REACH_CENTIMETERS = 150.0f;
+	inline constexpr float ENEMY_REACH_CENTIMETERS = 150.0f;
 
 	static_assert(
-		MINION_STOP_DISTANCE_CENTIMETERS < MINION_REACH_CENTIMETERS,
+		ENEMY_STOP_DISTANCE_CENTIMETERS < ENEMY_REACH_CENTIMETERS,
 		"雑魚が止まる位置から牙が届かない（停止距離が間合い以上）"
 	);
 
 	/** @brief 雑魚が共有する感知・追跡・振りの調整値。複数体で共有するので、Dependencies はポインタで参照する。 */
-	struct MinionParameter
+	struct EnemyParameter
 	{
 		PerceptionParameter perception{ .blockerAttributeMask = COLLISION_ATTRIBUTE_PROP };
-		PursuitParameter    pursuit{ .stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS };
+		PursuitParameter    pursuit{ .stopDistanceCentimeters = ENEMY_STOP_DISTANCE_CENTIMETERS };
 
 		/** @brief 振りの時間割。1 周 1.00 秒（0.30 + 0.15 + 0.25 + 0.30）。 */
 		MeleeSwingParameter swing{
@@ -45,7 +45,7 @@ namespace fang::game
 			.activeSeconds    = 0.15f,
 			.recoverySeconds  = 0.25f,
 			.cooldownSeconds  = 0.30f,
-			.reachCentimeters = MINION_REACH_CENTIMETERS,
+			.reachCentimeters = ENEMY_REACH_CENTIMETERS,
 			.attackPower      = 25.0f,
 			.triggerMode      = EnMeleeSwingTrigger::Continuous,
 		};
@@ -60,14 +60,14 @@ namespace fang::game
 	 *          順で 1 フレームを進める。見た目は狼と共有の歩行ポーズをそのまま指す
 	 *          （重いデータは Game 側の WolfModel が持つ）。
 	 */
-	class MinionBehavior final : public IComponent
+	class EnemyController final : public IComponent
 	{
 	public:
 		/** @brief 共有する調整値と、Game 側が持ち続ける資源への借用。 */
 		struct Dependencies
 		{
 			/** @brief 感知・追跡の調整値。複数体で共有するので値で持たない。 */
-			const MinionParameter* parameter = nullptr;
+			const EnemyParameter* parameter = nullptr;
 
 			/** @brief 当たり判定の入れ物。作れなかったときだけ nullptr（押し出しと感知を飛ばす）。 */
 			CollisionWorld* collisionWorld = nullptr;
@@ -82,7 +82,7 @@ namespace fang::game
 			std::span<const Matrix4x4> skinningMatricesStorage;
 		};
 
-		MinionBehavior(const Dependencies& dependencies, const Vector3& initialPosition);
+		EnemyController(const Dependencies& dependencies, const Vector3& initialPosition);
 
 		void Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene) override;
 

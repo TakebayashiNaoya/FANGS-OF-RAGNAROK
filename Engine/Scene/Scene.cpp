@@ -437,7 +437,7 @@ namespace fang
 
 #if FANG_ENABLE_SCENE_VALIDATION
 		// 6. Transform の書き手が 1 人だけだったかを数え直す。
-		//    窓は「前回のこの判定〜今回のこの判定」= 1 フレーム丸ごと。Update の外（MinionSpawner や Stage の
+		//    窓は「前回のこの判定〜今回のこの判定」= 1 フレーム丸ごと。Update の外（EnemyManager や Stage の
 		//    ロード時配置）で書いた分もこの窓に入るよう、入口ではなく末尾で判定してから 0 に戻す。
 		m_duplicateTransformWriteCount = 0;
 		for (uint32_t index = 0; index < m_maxObjectCount; ++index)

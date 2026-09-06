@@ -14,8 +14,8 @@
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
 #include "CameraFollowParameter.h"
+#include "EnemyManager.h"
 #include "GameLog.h"
-#include "MinionSpawner.h"
 #include "Stage.h"
 #include "Wolf.h"
 #include "WolfBehavior.h"
@@ -221,10 +221,10 @@ namespace fang::game
 
 					// 全滅中は呼ばない ➡ 狼が居なければ湧かない。標的はポインタ渡しなので、既に湧いている
 					// 雑魚も次に湧く雑魚も WolfPack が選び直した操作対象へ同じフレームで移る。
-					m_minionSpawner.Update(
+					m_enemyManager.Update(
 						context.deltaTimeSeconds,
 						controlledWolfPosition,
-						MinionSpawner::Dependencies{
+						EnemyManager::Dependencies{
 							.scene          = &m_scene,
 							.sharedModel    = &m_wolf,
 							.collisionWorld = m_collisionWorld,
@@ -322,7 +322,7 @@ namespace fang::game
 			WolfMovementParameter m_wolfMovementParameter;
 			MeleeSwingParameter   m_wolfSwingParameter;
 			CameraFollowParameter m_cameraFollowParameter;
-			MinionSpawner         m_minionSpawner;
+			EnemyManager          m_enemyManager;
 
 			/** @brief カメラの水平回転角。右スティックが無ければ時間で回る。OnUpdate だけが触る。 */
 			float m_cameraOrbitRadians = 0.0f;

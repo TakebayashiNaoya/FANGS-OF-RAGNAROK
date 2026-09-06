@@ -28,7 +28,7 @@ namespace fang::game
 	WolfPackUpdateResult WolfPack::Update(const Scene& scene)
 	{
 		// 1. 死んだ席を捨てる。解放済みのポインタが 1 フレームも残らないよう、誰かが触るより前に行う。
-		//    並び順を保ったまま詰める(MinionSpawner の生存数え直しと同じ形)。
+		//    並び順を保ったまま詰める(EnemyManager の生存数え直しと同じ形)。
 		uint32_t aliveSeatCount = 0;
 		for (uint32_t index = 0; index < m_count; ++index)
 		{

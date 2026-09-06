@@ -1,15 +1,15 @@
 ﻿/**
- * @file MinionSpawner.cpp
+ * @file EnemyManager.cpp
  * @brief 一定の間隔で雑魚を湧かせ、地表に立たせて Scene オブジェクトへ実体化する。
  */
-#include "MinionSpawner.h"
+#include "EnemyManager.h"
 #include "Resource/HeightmapTerrain.h"
-#include "Minion.h"
+#include "Enemy.h"
 
 
 namespace fang::game
 {
-	void MinionSpawner::Update(float deltaTimeSeconds, const Vector3& targetPosition, const Dependencies& dependencies)
+	void EnemyManager::Update(float deltaTimeSeconds, const Vector3& targetPosition, const Dependencies& dependencies)
 	{
 		// 生きている数を毎フレーム数え直す。撃破された分の空きはここで自然に戻る（ADR-036）。
 		// 通知を配る形にしないのは、撃破の経路が増えるたびに配り忘れが増えるため。
@@ -41,17 +41,17 @@ namespace fang::game
 
 		const Vector3 spawnPosition{ request.position.x, groundHeight, request.position.z };
 
-		const GameObjectHandle handle = CreateMinionObject(
+		const GameObjectHandle handle = CreateEnemyObject(
 			*dependencies.scene,
 			*dependencies.sharedModel,
-			m_minionParameter,
+			m_enemyParameter,
 			dependencies.collisionWorld,
 			dependencies.terrain,
 			dependencies.targetHandle,
 			spawnPosition
 		);
 
-		if (handle.IsValid() && m_aliveCount < MAX_TRACKED_MINION_COUNT)
+		if (handle.IsValid() && m_aliveCount < MAX_TRACKED_ENEMY_COUNT)
 		{
 			m_spawnedHandles[m_aliveCount] = handle;
 			++m_aliveCount;

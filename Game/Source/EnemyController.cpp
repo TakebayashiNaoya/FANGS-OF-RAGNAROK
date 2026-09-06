@@ -1,8 +1,8 @@
 ﻿/**
- * @file MinionBehavior.cpp
+ * @file EnemyController.cpp
  * @brief 雑魚 1 体ぶんの感知・追跡・移動・接地を進める振る舞い。
  */
-#include "MinionBehavior.h"
+#include "EnemyController.h"
 #include "Collision/CollisionWorld.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Resource/HeightmapTerrain.h"
@@ -12,14 +12,14 @@
 
 namespace fang::game
 {
-	MinionBehavior::MinionBehavior(const Dependencies& dependencies, const Vector3& initialPosition)
+	EnemyController::EnemyController(const Dependencies& dependencies, const Vector3& initialPosition)
 		: m_dependencies(dependencies)
 		, m_position(initialPosition)
 	{
 	}
 
 
-	void MinionBehavior::Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene)
+	void EnemyController::Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene)
 	{
 		//------------------------------------------------------------------------
 		// 1. 相手の位置と生死を読む
