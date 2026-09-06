@@ -139,3 +139,12 @@ namespace ImGui
     void MyFunction(const char* name, MyMatrix44* mtx);
 }
 */
+
+//---- FANG: ImFont::FindGlyph が代替グリフへ落としたコードポイントを通知する。詳細は FangChanges.md。
+// 実体は Core/Text/MissingGlyphCounter が exe のリンク時に解決する。既定は宣言だけなので、
+// この行を戻しても未定義参照にはならない（呼び出し側の imgui_draw.cpp も一緒に戻す前提）。
+namespace fang
+{
+	void NoteMissingGlyph(unsigned int codePoint);
+}
+#define IM_MISSING_GLYPH_HOOK(c) fang::NoteMissingGlyph((unsigned int)(c))

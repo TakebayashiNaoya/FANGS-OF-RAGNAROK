@@ -5,6 +5,7 @@
 #include "Pch.h"
 #include "Editor/Panels/TuningPanel.h"
 #include "Core/Reflection/TuningRegistry.h"
+#include "Core/Text/MissingGlyphCounter.h"
 #include <imgui.h>
 #include <cfloat>
 
@@ -19,6 +20,12 @@ namespace fang::editor
 		constexpr float WINDOW_MIN_WIDTH  = 400.0f;
 		constexpr float WINDOW_MAX_HEIGHT = 600.0f;
 		constexpr float ITEM_WIDTH        = 220.0f;
+
+		/** @brief 今のフォントにその字があるかを答える。MissingGlyphCounter::NoteText から呼ばれる。 */
+		bool IsGlyphPresentInCurrentFont(char32_t codePoint, void* /*userData*/)
+		{
+			return ImGui::GetFont()->FindGlyphNoFallback(static_cast<ImWchar>(codePoint)) != nullptr;
+		}
 	} // namespace
 
 
@@ -47,6 +54,8 @@ namespace fang::editor
 		const std::span<const TuningEntry> entries  = registry.GetEntries();
 
 		m_buildResult = registry.BuildRows(m_rows);
+
+		SweepLabelsForMissingGlyphs();
 
 		uint32_t rowIndex = 0;
 		for (uint32_t entryIndex = 0; entryIndex < entries.size(); ++entryIndex)
@@ -161,5 +170,39 @@ namespace fang::editor
 		}
 
 		ImGui::PopID();
+	}
+
+
+	void TuningPanel::SweepLabelsForMissingGlyphs()
+	{
+		const std::span<const TuningEntry> entries = TuningRegistry::GetInstance().GetEntries();
+		if (entries.size() == m_lastSweptEntryCount)
+		{
+			return;
+		}
+
+		MissingGlyphCounter& counter = MissingGlyphCounter::GetInstance();
+
+		for (const TuningEntry& entry : entries)
+		{
+			if (entry.displayName != nullptr)
+			{
+				counter.NoteText(entry.displayName, &IsGlyphPresentInCurrentFont, nullptr);
+			}
+		}
+
+		for (uint32_t rowIndex = 0; rowIndex < m_buildResult.rowCount; ++rowIndex)
+		{
+			const TuningRow& row = m_rows[rowIndex];
+			for (uint32_t depthIndex = 0; depthIndex < row.depth; ++depthIndex)
+			{
+				if (row.segments[depthIndex].displayName != nullptr)
+				{
+					counter.NoteText(row.segments[depthIndex].displayName, &IsGlyphPresentInCurrentFont, nullptr);
+				}
+			}
+		}
+
+		m_lastSweptEntryCount = static_cast<uint32_t>(entries.size());
 	}
 } // namespace fang::editor

@@ -20,6 +20,9 @@
     <Filter Include="Reflection">
       <UniqueIdentifier>{87433A36-6F21-FDEA-C50D-3FDE2B8721C4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Text">
+      <UniqueIdentifier>{4A991CED-82AF-1D97-C762-6059CA50A4D2}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Windows">
       <UniqueIdentifier>{19C5FCE6-0536-1AA4-7EBB-59879FAD8342}</UniqueIdentifier>
     </Filter>
@@ -104,9 +107,6 @@
     <ClInclude Include="Platform\MemoryUsage.h">
       <Filter>Platform</Filter>
     </ClInclude>
-    <ClInclude Include="Platform\SystemFont.h">
-      <Filter>Platform</Filter>
-    </ClInclude>
     <ClInclude Include="Platform\Thread.h">
       <Filter>Platform</Filter>
     </ClInclude>
@@ -133,6 +133,9 @@
     </ClInclude>
     <ClInclude Include="Reflection\TypeInfo.h">
       <Filter>Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Text\MissingGlyphCounter.h">
+      <Filter>Text</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -174,6 +177,9 @@
     <ClCompile Include="Reflection\TypeInfo.cpp">
       <Filter>Reflection</Filter>
     </ClCompile>
+    <ClCompile Include="Text\MissingGlyphCounter.cpp">
+      <Filter>Text</Filter>
+    </ClCompile>
     <ClCompile Include="Windows\AssetPath.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
@@ -187,9 +193,6 @@
       <Filter>Windows</Filter>
     </ClCompile>
     <ClCompile Include="Windows\PlatformLogSink.cpp">
-      <Filter>Windows</Filter>
-    </ClCompile>
-    <ClCompile Include="Windows\SystemFont.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
     <ClCompile Include="Windows\Thread.cpp">
@@ -211,9 +214,6 @@
       <Filter>Xbox</Filter>
     </ClCompile>
     <ClCompile Include="Xbox\PlatformLogSink.cpp">
-      <Filter>Xbox</Filter>
-    </ClCompile>
-    <ClCompile Include="Xbox\SystemFont.cpp">
       <Filter>Xbox</Filter>
     </ClCompile>
     <ClCompile Include="Xbox\Thread.cpp">
