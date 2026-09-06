@@ -65,6 +65,7 @@
     <ClCompile Include="Source\HeightmapTerrainTests.cpp" />
     <ClCompile Include="Source\JobSystemStressTests.cpp" />
     <ClCompile Include="Source\JobSystemTests.cpp" />
+    <ClCompile Include="Source\LevelGrowthTests.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Matrix4x4Tests.cpp" />
     <ClCompile Include="Source\MatrixOperationTests.cpp" />

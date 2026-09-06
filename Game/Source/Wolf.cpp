@@ -245,6 +245,7 @@ namespace fang::game
 		const WolfMovementParameter& parameter,
 		const MeleeSwingParameter&   swingParameter,
 		const HealthComponent&       healthComponent,
+		WolfTeamGrowth*              teamGrowth,
 		CollisionWorld*              collisionWorld,
 		const HeightmapTerrain*      terrain,
 		const Vector3&               initialPosition,
@@ -257,6 +258,7 @@ namespace fang::game
 		const WolfController::Dependencies dependencies{
 			.parameter           = &parameter,
 			.swingParameter      = &swingParameter,
+			.teamGrowth          = teamGrowth,
 			.isSkinned           = model.isSkinned,
 			.animation           = model.isSkinned ? &model.animation : nullptr,
 			.playback            = model.isSkinned ? &model.playback : nullptr,

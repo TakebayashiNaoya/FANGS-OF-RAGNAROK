@@ -77,7 +77,12 @@ namespace fang::game
 			const MeleeSwingResult swingResult =
 				StepMeleeSwing(*GetCollisionWorld(), swingParameter, swingInput, deltaTimeSeconds, &m_swingState, hits);
 
-			ApplyMeleeHits(self, std::span<const SweepHit>(hits, swingResult.newHitCount), swingParameter.attackPower);
+			// 雑魚が狼を倒しても経験値は動かない ➡ 申告先を持たないので捨てる。
+			(void)ApplyMeleeHits(
+				self,
+				std::span<const SweepHit>(hits, swingResult.newHitCount),
+				swingParameter.attackPower
+			);
 		}
 
 		//------------------------------------------------------------------------

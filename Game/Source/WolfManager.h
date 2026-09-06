@@ -5,6 +5,7 @@
 #pragma once
 
 #include "Scene/Actor.h"
+#include "WolfTeamGrowth.h"
 #include <array>
 #include <cstdint>
 
@@ -16,8 +17,9 @@ namespace fang::game
 	/** @brief 1 フレームぶんの答え。 */
 	struct WolfManagerUpdateResult
 	{
-		uint32_t aliveCount = 0;
-		bool     didWipeOut = false; /**< このフレームに全滅した。立ち上がりの 1 回だけ true。 */
+		uint32_t aliveCount       = 0;
+		bool     didWipeOut       = false; /**< このフレームに全滅した。立ち上がりの 1 回だけ true。 */
+		int32_t  gainedLevelCount = 0;     /**< この周にチームが上がった段の数。0 なら上がっていない。 */
 	};
 
 	/**
@@ -49,6 +51,12 @@ namespace fang::game
 		/** @brief 今の操作対象の振る舞い。生きていなければ nullptr。 */
 		[[nodiscard]] WolfController* GetControlledWolf() const { return m_controlledWolf; }
 
+		/** @brief チームの成長。狼が借りるので、寿命はここが持つ。 */
+		[[nodiscard]] WolfTeamGrowth* GetTeamGrowth() { return &m_teamGrowth; }
+
+		/** @brief 自分が持つ調整値（チームの成長）を登録簿へ載せる。呼ぶかどうかは呼び出し側が決める。 */
+		void RegisterTuningValues();
+
 
 	private:
 		std::array<Actor, MAX_WOLF_COUNT>           m_actors;
@@ -58,5 +66,8 @@ namespace fang::game
 		Actor           m_controlledActor;
 		WolfController* m_controlledWolf = nullptr;
 		bool            m_wasWipedOut    = false;
+
+		/** @brief チームの経験値・レベル・倍率。撃破の申告も含めてここへ集める。 */
+		WolfTeamGrowth m_teamGrowth;
 	};
 } // namespace fang::game

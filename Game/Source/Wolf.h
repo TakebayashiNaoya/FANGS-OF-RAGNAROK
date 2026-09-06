@@ -85,10 +85,13 @@ namespace fang::game
 		const HealthComponent& health
 	);
 
+	struct WolfTeamGrowth;
+
 	/**
 	 * @brief 読み込み済みの WolfModel から、Scene 上のオブジェクトを 1 体作る。
 	 * @param swingParameter      近接攻撃の時間割・間合い・攻撃力。
 	 * @param healthComponent  湧いたときの HP と無敵時間。
+	 * @param teamGrowth       チームの経験値・レベル・倍率。狼が申告と倍率の読み書きに借りる。
 	 * @param initialPosition  ワールド XZ。Y は毎フレーム地表から決める。
 	 * @return 上限に達している等で作れなければ actor が無効（作りかけは残らない）。
 	 * @details 作った時点では操作対象ではない。誰を操作するかは WolfManager が SetControlled で決める
@@ -100,6 +103,7 @@ namespace fang::game
 		const WolfMovementParameter& parameter,
 		const MeleeSwingParameter&   swingParameter,
 		const HealthComponent&       healthComponent,
+		WolfTeamGrowth*              teamGrowth,
 		CollisionWorld*              collisionWorld,
 		const HeightmapTerrain*      terrain,
 		const Vector3&               initialPosition,

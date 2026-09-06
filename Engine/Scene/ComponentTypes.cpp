@@ -40,4 +40,22 @@ namespace fang
 			health->invincibleSecondsRemaining = 0.0f;
 		}
 	}
+
+
+	void SetMaximumHitPoints(HealthComponent* health, float maximumHitPoints)
+	{
+		const float newMaximum = maximumHitPoints > 0.0f ? maximumHitPoints : 0.0f;
+		const float increase   = newMaximum - health->maximumHitPoints;
+
+		health->maximumHitPoints = newMaximum;
+
+		if (increase > 0.0f)
+		{
+			health->currentHitPoints += increase;
+		}
+		else if (health->currentHitPoints > newMaximum)
+		{
+			health->currentHitPoints = newMaximum;
+		}
+	}
 } // namespace fang

@@ -24,6 +24,8 @@ namespace fang
 
 namespace fang::game
 {
+	struct WolfTeamGrowth;
+
 	/**
 	 * @brief 狼の移動・接地・アニメーションを進める振る舞い。
 	 * @details 操作する 1 体（isControlled）だけがパッドと当たり判定を見て動く。残りは初期位置に置いたまま、
@@ -43,6 +45,9 @@ namespace fang::game
 
 			/** @brief 牙の時間割・間合い・攻撃力。同上。 */
 			const MeleeSwingParameter* swingParameter = nullptr;
+
+			/** @brief チームの経験値・レベル・倍率。読むのは倍率、書くのは撃破の申告箱。 */
+			WolfTeamGrowth* teamGrowth = nullptr;
 
 			/** @brief 骨を持つメッシュとして読めたか。false なら以下は使わない。 */
 			bool isSkinned = false;

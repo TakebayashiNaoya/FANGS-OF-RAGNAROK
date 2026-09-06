@@ -10,6 +10,7 @@
 #include "Core/Math/Matrix4x4.h"
 #include "CollisionAttribute.h"
 #include "MeleeDamage.h"
+#include "WolfTeamGrowth.h"
 
 
 namespace fang::game
@@ -74,11 +75,14 @@ namespace fang::game
 				hits
 			);
 
-			ApplyMeleeHits(
+			// 基準値は書き換えない。レベルの倍率は読むときにだけ掛ける（ADR-055）。
+			const MeleeDamageResult damageResult = ApplyMeleeHits(
 				self,
 				std::span<const SweepHit>(hits, swingResult.newHitCount),
-				m_dependencies.swingParameter->attackPower
+				m_dependencies.swingParameter->attackPower * m_dependencies.teamGrowth->statusMultiplier
 			);
+
+			m_dependencies.teamGrowth->pendingDefeatCount += static_cast<int32_t>(damageResult.defeatedCount);
 		}
 
 		float appliedSpeed = 0.0f;
