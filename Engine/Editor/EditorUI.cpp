@@ -204,6 +204,12 @@ namespace fang::editor
 			return false;
 		}
 
+		if (!m_statusPanel.Initialize())
+		{
+			FANG_LOG_ERROR(Editor, "実行中の値のパネルを作れなかった");
+			return false;
+		}
+
 #if FANG_ENABLE_HOT_RELOAD
 		if (!m_shaderReloadPanel.Initialize(context.shaderReloadStatus))
 		{
@@ -229,6 +235,7 @@ namespace fang::editor
 		m_shaderReloadPanel.Shutdown();
 #endif
 
+		m_statusPanel.Shutdown();
 		m_tuningPanel.Shutdown();
 		m_renderStatisticsPanel.Shutdown();
 		m_jobSystemPanel.Shutdown();
@@ -242,7 +249,12 @@ namespace fang::editor
 	}
 
 
-	void EditorUI::BuildFrame(const Window& window, float deltaTimeSeconds, const RenderStatistics& renderStatistics)
+	void EditorUI::BuildFrame(
+		const Window&           window,
+		float                   deltaTimeSeconds,
+		const RenderStatistics& renderStatistics,
+		const StatusRowList*    statusRows
+	)
 	{
 		FANG_ASSERT(m_isInitialized, "EditorUI が初期化されていない");
 
@@ -268,9 +280,19 @@ namespace fang::editor
 		if (GamepadDestination::GetInstance().HasJustChanged())
 		{
 			// 掴んでいた ActiveId を落とす。メニュー層への切り替えは NavWindow != nullptr を要求する
-			// ので、外したままにはできない ➡ 先頭パネルへ焦点を戻す。
+			// ので、外したままにはできない。
 			ImGui::SetWindowFocus(nullptr);
-			ImGui::SetWindowFocus(ENGINE_INFO_WINDOW_NAME);
+			if (GamepadDestination::GetInstance().Get() == EnGamepadDestination::Game)
+			{
+				// つまみを触った後にゲームへ戻る周 ➡ 読む相手を上に出す。ナビは落ちているので
+				// 焦点の意味は重なり順だけ。
+				ImGui::SetWindowFocus(STATUS_WINDOW_NAME);
+			}
+			else
+			{
+				// ImGui へ来た周は今までどおり先頭パネルへ。メニュー層の切り替えが NavWindow を要求する。
+				ImGui::SetWindowFocus(ENGINE_INFO_WINDOW_NAME);
+			}
 		}
 
 		BuildGamepadDestinationOverlay();
@@ -283,6 +305,9 @@ namespace fang::editor
 #if FANG_ENABLE_HOT_RELOAD
 		m_shaderReloadPanel.BuildFrame();
 #endif
+
+		// 最後に Begin するので、起動直後の重なり順ではいちばん上に来る。
+		m_statusPanel.BuildFrame(statusRows);
 
 		// ImGui 付属のデモ。中身は英語なので既定では出さない。
 		if (m_isDemoWindowVisible)

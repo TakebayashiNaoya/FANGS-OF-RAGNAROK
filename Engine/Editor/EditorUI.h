@@ -9,6 +9,7 @@
 #include "Editor/Panels/JobSystemPanel.h"
 #include "Editor/Panels/RenderStatisticsPanel.h"
 #include "Editor/Panels/ShaderReloadPanel.h"
+#include "Editor/Panels/StatusPanel.h"
 #include "Editor/Panels/TuningPanel.h"
 #include "RHI/RHIHandles.h"
 #include <imgui.h>
@@ -19,6 +20,7 @@ namespace fang
 {
 	class FramePipeline;
 	struct RenderStatistics;
+	struct StatusRowList;
 	class Window;
 } // namespace fang
 
@@ -62,8 +64,14 @@ namespace fang::editor
 		 * @brief 入力を取り込んで、このフレームの UI を組み立てる。
 		 * @param deltaTimeSeconds 前フレームからの経過時間（秒）。ImGui のアニメーションと入力判定に使う。
 		 * @param renderStatistics 1 つ前のフレームの Execute が書いた描画統計。RenderStatisticsPanel が読む。
+		 * @param statusRows       1 つ前のフレームの更新が写した実行中の値。無ければ nullptr。StatusPanel が読む。
 		 */
-		void BuildFrame(const Window& window, float deltaTimeSeconds, const RenderStatistics& renderStatistics);
+		void BuildFrame(
+			const Window&           window,
+			float                   deltaTimeSeconds,
+			const RenderStatistics& renderStatistics,
+			const StatusRowList*    statusRows
+		);
 
 		/** @brief 組み立てた UI を積む。BuildFrame と同じフレームで呼ぶ。 */
 		void Render(rhi::GraphicsDevice& device, rhi::CommandList& commandList);
@@ -104,6 +112,9 @@ namespace fang::editor
 		JobSystemPanel        m_jobSystemPanel;        /**< ジョブシステムの稼働状況。 */
 		RenderStatisticsPanel m_renderStatisticsPanel; /**< 描画の中身（Submit数・描いた数・パス数など）。 */
 		TuningPanel           m_tuningPanel;           /**< 登録された調整値のつまみ。 */
+
+		/** @brief 更新ジョブが写した実行中の値（狼の HP・雑魚の生存数など）。 */
+		StatusPanel m_statusPanel;
 
 #if FANG_ENABLE_HOT_RELOAD
 		ShaderReloadPanel m_shaderReloadPanel; /**< .hlsl を保存したときの作り直しの結果。 */

@@ -104,4 +104,19 @@ namespace fang::game
 		}
 		teamItems->pendingDropCount = 0;
 	}
+
+
+	uint32_t MeatManager::GetActiveCount() const
+	{
+		uint32_t activeCount = 0;
+		for (const float remainingSeconds : m_remainingSeconds)
+		{
+			if (remainingSeconds > 0.0f)
+			{
+				++activeCount;
+			}
+		}
+
+		return activeCount;
+	}
 } // namespace fang::game

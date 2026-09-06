@@ -19,11 +19,11 @@ namespace fang::editor
 	} // namespace
 
 
-	void ApplyPanelPlacement(EnPanelSlot slot)
+	void ApplyPanelPlacement(EnPanelSlot slot, bool isCollapsedAtStart)
 	{
 		const float y = PANEL_FIRST_Y + PANEL_STRIDE_Y * static_cast<float>(static_cast<uint32_t>(slot));
 
 		ImGui::SetNextWindowPos(ImVec2(PANEL_LEFT_X, y), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowCollapsed(isCollapsedAtStart, ImGuiCond_FirstUseEver);
 	}
 } // namespace fang::editor

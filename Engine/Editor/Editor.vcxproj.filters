@@ -31,6 +31,9 @@
     <ClInclude Include="Panels\ShaderReloadPanel.h">
       <Filter>Panels</Filter>
     </ClInclude>
+    <ClInclude Include="Panels\StatusPanel.h">
+      <Filter>Panels</Filter>
+    </ClInclude>
     <ClInclude Include="Panels\TuningPanel.h">
       <Filter>Panels</Filter>
     </ClInclude>
@@ -50,6 +53,9 @@
       <Filter>Panels</Filter>
     </ClCompile>
     <ClCompile Include="Panels\ShaderReloadPanel.cpp">
+      <Filter>Panels</Filter>
+    </ClCompile>
+    <ClCompile Include="Panels\StatusPanel.cpp">
       <Filter>Panels</Filter>
     </ClCompile>
     <ClCompile Include="Panels\TuningPanel.cpp">
