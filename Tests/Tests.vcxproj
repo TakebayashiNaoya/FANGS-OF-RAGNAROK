@@ -85,6 +85,7 @@
     <ClCompile Include="Source\SceneTransformWriteTests.cpp" />
     <ClCompile Include="Source\SpawnSchedulerTests.cpp" />
     <ClCompile Include="Source\TangentGenerationTests.cpp" />
+    <ClCompile Include="Source\TuningRowTests.cpp" />
     <ClCompile Include="Source\VectorTests.cpp" />
     <ClCompile Include="Source\WolfDefeatBudgetTests.cpp" />
     <ClCompile Include="Source\WolfDefeatTests.cpp" />
