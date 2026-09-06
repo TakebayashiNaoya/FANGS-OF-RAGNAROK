@@ -10,7 +10,7 @@
 #include "Input/Gamepad.h"
 #include "RHI/GraphicsDevice.h"
 #include "Runtime/Application.h"
-#include "Scene/CharacterMovement.h"
+#include "Scene/CharacterController.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
 #include "CameraFollowParams.h"

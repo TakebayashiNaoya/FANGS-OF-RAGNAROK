@@ -2,7 +2,7 @@
  * @file MeleeSwing.h
  * @brief 近接攻撃の振り 1 本ぶんの時間割と、判定区間の掃引。
  * @details 状態を持たない自由関数と POD だけを置く。Scene クラスは include しない
- *          （CharacterMovement と同じ性格のもの）。
+ *          （CharacterController と同じ性格のもの）。
  */
 #pragma once
 

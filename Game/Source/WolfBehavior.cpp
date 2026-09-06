@@ -9,7 +9,7 @@
 #include "Core/Log/Assert.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Resource/HeightmapTerrain.h"
-#include "Scene/CharacterMovement.h"
+#include "Scene/CharacterController.h"
 #include "CollisionAttribute.h"
 #include "MeleeDamage.h"
 

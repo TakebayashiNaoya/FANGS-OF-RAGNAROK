@@ -1,12 +1,12 @@
 ﻿/**
- * @file CharacterMovementTests.cpp
+ * @file CharacterControllerTests.cpp
  * @brief 移動と押し戻しのテスト。移動量・向きの詰め・押し出しの解決・壁沿いの滑りを確かめる。
  */
 #include "Collision/Collision.h"
 #include "Core/Math/MathConstants.h"
 #include "Core/Math/Vector3.h"
 #include "Core/Memory/Allocator.h"
-#include "Scene/CharacterMovement.h"
+#include "Scene/CharacterController.h"
 #include <doctest.h>
 #include <cmath>
 #include <vector>
@@ -356,7 +356,7 @@ TEST_CASE("当たり判定と組み合わせても壁を抜けず、壁沿いに
 		.userIndex = WALL_INDEX,
 	};
 
-	fang::CharacterMovementState wolf;
+	fang::CharacterControllerState wolf;
 
 	auto RunFrame = [&](const fang::Vector2& stick) {
 		fang::PenetrationSample penetrations[fang::MAX_PENETRATION_SAMPLE_COUNT]{};

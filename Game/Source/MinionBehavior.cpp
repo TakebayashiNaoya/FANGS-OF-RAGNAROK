@@ -6,7 +6,7 @@
 #include "Collision/CollisionWorld.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Resource/HeightmapTerrain.h"
-#include "Scene/CharacterMovement.h"
+#include "Scene/CharacterController.h"
 #include "MeleeDamage.h"
 
 

@@ -10,7 +10,7 @@
 #include "Core/Memory/Allocator.h"
 #include "Core/Memory/FrameAllocator.h"
 #include "Core/Platform/Budget.h"
-#include "Scene/CharacterMovement.h"
+#include "Scene/CharacterController.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
 #include <doctest.h>
