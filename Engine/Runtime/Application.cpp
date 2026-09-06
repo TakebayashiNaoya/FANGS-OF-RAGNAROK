@@ -16,6 +16,7 @@
 #include "Core/Platform/AssetPath.h"
 #include "Core/Platform/Budget.h"
 #include "Core/Platform/Window.h"
+#include "Core/Reflection/TuningRegistry.h"
 #include "Input/Input.h"
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
@@ -938,6 +939,12 @@ namespace fang
 			const auto frameWorkBeginTime = std::chrono::steady_clock::now();
 
 			framePipeline.RunFrame(frameTime, gamepad);
+
+			// つまみが控えた値をここで実体へ入れる。RunFrame は末尾で更新ジョブを回収済みで、次の Submit まで
+			// 調整値を読む相手が 1 人も走っていない ➡ 新しい同期を 1 つも足さずに競合が消える。
+			// 効き始めは次の Submit から（最大 1 フレーム遅れ）。Release では控え帳が常に空。
+			FANG_ASSERT(framePipeline.IsUpdateComplete(), "更新ジョブが走っている間に調整値を書こうとしている");
+			(void)TuningRegistry::GetInstance().ApplyPendingWrites();
 
 			// 予算の判定と、制限が入っているときの待ちはここで行う。
 			// 待った分は次の周の刻みに乗るので、実処理の時間だけを渡す。
