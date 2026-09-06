@@ -8,6 +8,7 @@
 
 #include "Runtime/Application.h"
 #include "Runtime/EngineContext.h"
+#include "Runtime/FrameClock.h"
 #include "Runtime/FrameContext.h"
 #include "Runtime/FramePipeline.h"
 #include "Runtime/RuntimeLog.h"

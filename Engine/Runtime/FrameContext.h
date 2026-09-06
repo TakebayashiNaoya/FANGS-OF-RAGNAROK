@@ -117,7 +117,14 @@ namespace fang
 	{
 		FrameAllocator& frameAllocator; /**< 今のフレームの置き場。書いてよいのはここだけ。 */
 		uint64_t        frameIndex       = 0;
-		float           deltaTimeSeconds = 0.0f; /**< 1 周の実時間。更新と描画へ同じ値を渡す。 */
+		float           deltaTimeSeconds = 0.0f; /**< 1 周の刻み。上限で切ってある。 */
+
+		/**
+		 * @brief 起動からの経過（秒）。切っていない実時間。
+		 * @details 昼夜サイクルのように実時間へ追随するものはこれを読む。積む値ではなく絶対の時刻なので、
+		 *          刻みとして使い回すことができない ➡ 素の実時間が刻みの経路へ漏れない。
+		 */
+		double elapsedSeconds = 0.0;
 
 		/**
 		 * @brief このフレームのパッド。

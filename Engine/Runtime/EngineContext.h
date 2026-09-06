@@ -13,6 +13,7 @@ namespace fang::rhi
 namespace fang
 {
 	class CollisionWorld;
+	class FrameClock;
 	class FrameMemory;
 	class FramePipeline;
 	class HeightmapTerrain;
@@ -32,6 +33,9 @@ namespace fang
 
 		/** @brief 1 周の並びと所要時間。上の層は数字を読むだけなので const で渡す。 */
 		const FramePipeline& framePipeline;
+
+		/** @brief 実時間の測定元。上限・切られた周の数を上の層が読む。測るのはメインだけなので const。 */
+		const FrameClock& frameClock;
 
 		/** @brief Xbox の予算に対する現在値。エディタから倍率と制限の入切を触るので const にしない。 */
 		PlatformBudget& platformBudget;

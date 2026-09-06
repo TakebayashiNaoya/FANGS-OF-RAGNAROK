@@ -20,10 +20,10 @@ namespace fang
 		 */
 		struct UpdateJobArguments
 		{
-			FramePipeline*  pipeline         = nullptr;
-			FrameAllocator* frameAllocator   = nullptr;
-			uint64_t        frameIndex       = 0;
-			float           deltaTimeSeconds = 0.0f;
+			FramePipeline*  pipeline       = nullptr;
+			FrameAllocator* frameAllocator = nullptr;
+			uint64_t        frameIndex     = 0;
+			FrameTime       frameTime;
 			GamepadState    gamepad;
 		};
 
@@ -98,14 +98,14 @@ namespace fang
 		// まだ描く相手がいないので、フレーム 0 の更新だけはジョブにせずここで済ませる。
 		// ➡ ループの中に「初回だけ」の分岐が 1 つも要らなくなる。
 		m_frameMemory->BeginFrame();
-		RunUpdate(m_frameMemory->GetCurrent(), 0, 0.0f, GamepadState{});
+		RunUpdate(m_frameMemory->GetCurrent(), 0, FrameTime{}, GamepadState{});
 
 		m_frameIndex = 0;
 		m_isPrimed   = true;
 	}
 
 
-	void FramePipeline::RunFrame(float deltaTimeSeconds, const GamepadState& gamepad)
+	void FramePipeline::RunFrame(const FrameTime& frameTime, const GamepadState& gamepad)
 	{
 		FANG_ASSERT(m_isPrimed, "助走を走らせないまま 1 周を回そうとしている");
 
@@ -122,11 +122,11 @@ namespace fang
 		++m_frameIndex;
 
 		UpdateJobArguments arguments{};
-		arguments.pipeline         = this;
-		arguments.frameAllocator   = &m_frameMemory->GetCurrent();
-		arguments.frameIndex       = m_frameIndex;
-		arguments.deltaTimeSeconds = deltaTimeSeconds;
-		arguments.gamepad          = gamepad;
+		arguments.pipeline       = this;
+		arguments.frameAllocator = &m_frameMemory->GetCurrent();
+		arguments.frameIndex     = m_frameIndex;
+		arguments.frameTime      = frameTime;
+		arguments.gamepad        = gamepad;
 
 		JobDesc desc{};
 		desc.function     = &FramePipeline::RunUpdateJob;
@@ -144,7 +144,12 @@ namespace fang
 		// 　 GetSlotIndex(renderFrameIndex) は増分前の番号の面なので、直前の RunUpdate が書き終えた面を読む
 		// 　 （更新ジョブが今書いている GetSlotIndex(m_frameIndex) とは別の面）。
 		// 1 つ前のフレームを描く。更新が今書いている面とは別の面を読む。
-		m_renderFunction(m_userData, m_frameData[GetSlotIndex(renderFrameIndex)], renderFrameIndex, deltaTimeSeconds);
+		m_renderFunction(
+			m_userData,
+			m_frameData[GetSlotIndex(renderFrameIndex)],
+			renderFrameIndex,
+			frameTime.deltaTimeSeconds
+		);
 
 #if FANG_ENABLE_PROFILER
 		m_renderMilliseconds = GetElapsedMilliseconds(renderBeginTime);
@@ -157,7 +162,7 @@ namespace fang
 
 #if FANG_ENABLE_PROFILER
 		m_updateMilliseconds = m_updateMillisecondsSlots[GetSlotIndex(m_frameIndex)];
-		m_frameMilliseconds  = deltaTimeSeconds * 1000.0f;
+		m_frameMilliseconds  = frameTime.deltaTimeSeconds * 1000.0f;
 #endif
 	}
 
@@ -172,7 +177,7 @@ namespace fang
 		pipeline.RunUpdate(
 			*jobArguments.frameAllocator,
 			jobArguments.frameIndex,
-			jobArguments.deltaTimeSeconds,
+			jobArguments.frameTime,
 			jobArguments.gamepad
 		);
 	}
@@ -181,11 +186,15 @@ namespace fang
 	void FramePipeline::RunUpdate(
 		FrameAllocator&     frameAllocator,
 		uint64_t            frameIndex,
-		float               deltaTimeSeconds,
+		const FrameTime&    frameTime,
 		const GamepadState& gamepad
 	)
 	{
-		const FrameUpdateContext context{ frameAllocator, frameIndex, deltaTimeSeconds, gamepad };
+		const FrameUpdateContext context{ frameAllocator,
+										  frameIndex,
+										  frameTime.deltaTimeSeconds,
+										  frameTime.elapsedSeconds,
+										  gamepad };
 
 #if FANG_ENABLE_PROFILER
 		const auto updateBeginTime = std::chrono::steady_clock::now();
