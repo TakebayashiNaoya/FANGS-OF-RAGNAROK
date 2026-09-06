@@ -1,9 +1,9 @@
 ﻿/**
- * @file Components.cpp
+ * @file ComponentTypes.cpp
  * @brief HealthComponent のダメージ処理（ApplyDamage / TickInvincibility）。
  */
 #include "Pch.h"
-#include "Scene/Components.h"
+#include "Scene/ComponentTypes.h"
 
 
 namespace fang

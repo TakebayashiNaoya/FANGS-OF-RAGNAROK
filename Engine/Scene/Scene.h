@@ -7,7 +7,7 @@
 #include "Core/CoreMacros.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Math/Vector3.h"
-#include "Scene/Components.h"
+#include "Scene/ComponentTypes.h"
 #include "Scene/GameObjectHandle.h"
 #include <cstddef>
 #include <cstdint>

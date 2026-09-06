@@ -27,7 +27,7 @@
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
     <ClInclude Include="CharacterMovement.h" />
-    <ClInclude Include="Components.h" />
+    <ClInclude Include="ComponentTypes.h" />
     <ClInclude Include="GameObjectHandle.h" />
     <ClInclude Include="MeleeSwing.h" />
     <ClInclude Include="Pch.h" />
@@ -36,7 +36,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CharacterMovement.cpp" />
-    <ClCompile Include="Components.cpp" />
+    <ClCompile Include="ComponentTypes.cpp" />
     <ClCompile Include="MeleeSwing.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>

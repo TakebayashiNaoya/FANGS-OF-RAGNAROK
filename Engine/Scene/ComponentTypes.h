@@ -1,5 +1,5 @@
 ﻿/**
- * @file Components.h
+ * @file ComponentTypes.h
  * @brief 汎用コンポーネント（MeshRendererComponent / ColliderComponent）と振る舞いの入口 IComponent。
  */
 #pragma once
