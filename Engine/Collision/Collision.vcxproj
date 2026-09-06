@@ -26,7 +26,6 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
-    <ClInclude Include="Broadphase.h" />
     <ClInclude Include="Collision.h" />
     <ClInclude Include="CollisionDebugLines.h" />
     <ClInclude Include="CollisionLog.h" />
@@ -36,13 +35,13 @@
     <ClInclude Include="CollisionSweep.h" />
     <ClInclude Include="CollisionWorld.h" />
     <ClInclude Include="DynamicAabbTreeBroadphase.h" />
+    <ClInclude Include="IBroadphase.h" />
     <ClInclude Include="Narrowphase.h" />
     <ClInclude Include="Pch.h" />
     <ClInclude Include="SweepAndPruneBroadphase.h" />
     <ClInclude Include="UniformGridBroadphase.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Broadphase.cpp" />
     <ClCompile Include="Collision.cpp" />
     <ClCompile Include="CollisionDebugLines.cpp" />
     <ClCompile Include="CollisionMath.cpp" />
@@ -50,6 +49,7 @@
     <ClCompile Include="CollisionSweep.cpp" />
     <ClCompile Include="CollisionWorld.cpp" />
     <ClCompile Include="DynamicAabbTreeBroadphase.cpp" />
+    <ClCompile Include="IBroadphase.cpp" />
     <ClCompile Include="Narrowphase.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>

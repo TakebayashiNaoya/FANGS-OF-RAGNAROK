@@ -1,9 +1,9 @@
 ﻿/**
- * @file Broadphase.cpp
+ * @file IBroadphase.cpp
  * @brief 種類を選んで Broadphase の実体を作る・壊す。
  */
 #include "Pch.h"
-#include "Collision/Broadphase.h"
+#include "Collision/IBroadphase.h"
 #include "Collision/CollisionLog.h"
 #include "Collision/DynamicAabbTreeBroadphase.h"
 #include "Collision/SweepAndPruneBroadphase.h"

@@ -1,5 +1,5 @@
 ﻿/**
- * @file Broadphase.h
+ * @file IBroadphase.h
  * @brief 候補の組を絞る仕組みの差し替え口。
  */
 #pragma once

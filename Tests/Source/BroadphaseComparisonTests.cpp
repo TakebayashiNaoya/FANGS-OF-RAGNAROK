@@ -6,9 +6,9 @@
  *          既定の選び方は 設計.md に書いた規則(登録 256 の 2 分布の合計時間が最短。差 10% 未満なら
  *          確保量の小さいほう)で、ここで出した数字をもとに機械的に決める。
  */
-#include "Collision/Broadphase.h"
 #include "Collision/CollisionMath.h"
 #include "Collision/CollisionWorld.h"
+#include "Collision/IBroadphase.h"
 #include "Core/Math/Aabb.h"
 #include "Core/Math/Vector3.h"
 #include "Core/Memory/Allocator.h"

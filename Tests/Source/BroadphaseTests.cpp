@@ -4,9 +4,9 @@
  *        正しさのテスト。候補の組が総当たりと一致すること、上限で落ちないことを確かめる。24 通りの
  *        所要時間・確保量の比較は BroadphaseComparisonTests.cpp。
  */
-#include "Collision/Broadphase.h"
 #include "Collision/CollisionMath.h"
 #include "Collision/DynamicAabbTreeBroadphase.h"
+#include "Collision/IBroadphase.h"
 #include "Collision/SweepAndPruneBroadphase.h"
 #include "Collision/UniformGridBroadphase.h"
 #include "Core/Math/Aabb.h"

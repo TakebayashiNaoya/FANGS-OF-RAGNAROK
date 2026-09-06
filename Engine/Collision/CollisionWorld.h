@@ -4,9 +4,9 @@
  */
 #pragma once
 
-#include "Collision/Broadphase.h"
 #include "Collision/CollisionQuery.h"
 #include "Collision/CollisionShapes.h"
+#include "Collision/IBroadphase.h"
 #include "Collision/Narrowphase.h"
 #include "Core/CoreMacros.h"
 #include "Core/Math/Vector3.h"
