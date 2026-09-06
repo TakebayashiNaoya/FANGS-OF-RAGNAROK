@@ -40,6 +40,7 @@
     <ClCompile Include="Source\AssetPathTests.cpp" />
     <ClCompile Include="Source\BroadphaseComparisonTests.cpp" />
     <ClCompile Include="Source\BroadphaseTests.cpp" />
+    <ClCompile Include="Source\CameraOcclusionTests.cpp" />
     <ClCompile Include="Source\CharacterBaseTests.cpp" />
     <ClCompile Include="Source\CharacterControllerTests.cpp" />
     <ClCompile Include="Source\CharacterCreationTests.cpp" />
