@@ -84,7 +84,7 @@ namespace fang::game
 
 		EnemyController(const Dependencies& dependencies, const Vector3& initialPosition);
 
-		void Update(float deltaTimeSeconds, ActorHandle self, Scene& scene) override;
+		void Update(float deltaTimeSeconds, Actor self) override;
 
 
 	private:

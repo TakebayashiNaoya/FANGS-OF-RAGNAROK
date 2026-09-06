@@ -51,7 +51,7 @@ namespace fang::game
 	}
 
 
-	void WolfController::Update(float deltaTimeSeconds, ActorHandle self, Scene& scene)
+	void WolfController::Update(float deltaTimeSeconds, Actor self)
 	{
 		// 1. 振り(操作する狼のみ)。移動より前に置く ➡ m_position はまだ前フレームに SetLocalTransform で
 		//    書いた位置のまま。掃引が見る登録も前フレームのもの(ADR-034) ➡ 牙と相手が同じ瞬間の世界で揃う。
@@ -61,7 +61,7 @@ namespace fang::game
 				.selfPosition        = m_position,
 				.selfFacingRadians   = m_facingRadians,
 				.isAttackRequested   = m_isAttackRequested,
-				.selfUserIndex       = self.index,
+				.selfUserIndex       = self.GetIndex(),
 				.targetAttributeMask = COLLISION_ATTRIBUTE_ENEMY,
 			};
 
@@ -76,7 +76,7 @@ namespace fang::game
 			);
 
 			ApplyMeleeHits(
-				scene,
+				self,
 				std::span<const SweepHit>(hits, swingResult.newHitCount),
 				m_swingParameter.attackPower
 			);
@@ -98,7 +98,7 @@ namespace fang::game
 				deltaTimeSeconds
 			);
 
-			const ContactMoveResult moveResult = MoveWithContacts(m_position, desiredDelta, contacts, self.index);
+			const ContactMoveResult moveResult = MoveWithContacts(m_position, desiredDelta, contacts, self.GetIndex());
 			m_position                         = moveResult.position;
 
 			appliedSpeed = Length(moveResult.appliedDelta) / (deltaTimeSeconds > 0.0f ? deltaTimeSeconds : 1.0f);
@@ -120,11 +120,7 @@ namespace fang::game
 			groundHeight = m_dependencies.terrain->GetHeightAt(m_position.x, m_position.z);
 		}
 
-		(void)scene.SetLocalTransform(
-			self,
-			Vector3{ m_position.x, m_position.y + groundHeight, m_position.z },
-			m_facingRadians
-		);
+		(void)self.SetTransform(Vector3{ m_position.x, m_position.y + groundHeight, m_position.z }, m_facingRadians);
 
 		if (m_dependencies.isSkinned && m_dependencies.animation != nullptr && m_dependencies.animation->IsReady())
 		{
@@ -142,7 +138,7 @@ namespace fang::game
 			}
 
 			// 操作していない狼は再生を進めず、共有の置き場をそのまま指す ➡ 同じポーズで歩いて見える。
-			(void)scene.SetSkinningMatrices(self, m_dependencies.skinningMatricesStorage);
+			(void)self.SetSkinningMatrices(m_dependencies.skinningMatricesStorage);
 		}
 	}
 } // namespace fang::game

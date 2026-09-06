@@ -19,26 +19,28 @@ namespace
 		{
 		}
 
-		void Update(float /*deltaTimeSeconds*/, fang::ActorHandle /*self*/, fang::Scene& /*scene*/) override
-		{
-			++(*m_counter);
-		}
+		void Update(float /*deltaTimeSeconds*/, fang::Actor /*self*/) override { ++(*m_counter); }
 
 
 	private:
 		int* m_counter = nullptr;
 	};
 
-	/** @brief 最初の Update で 1 個だけオブジェクトを作り、CountingBehavior を付ける振る舞い。 */
+	/**
+	 * @brief 最初の Update で 1 個だけオブジェクトを作り、CountingBehavior を付ける振る舞い。
+	 * @details 生成は Actor の窓の外（Scene::CreateObject / AddBehavior）なので、production の
+	 *          Dependencies と同じく Scene* を借用として持つ。
+	 */
 	class SpawningBehavior final : public fang::IComponent
 	{
 	public:
-		explicit SpawningBehavior(int* spawnedCounter)
-			: m_spawnedCounter(spawnedCounter)
+		SpawningBehavior(fang::Scene* scene, int* spawnedCounter)
+			: m_scene(scene)
+			, m_spawnedCounter(spawnedCounter)
 		{
 		}
 
-		void Update(float /*deltaTimeSeconds*/, fang::ActorHandle /*self*/, fang::Scene& scene) override
+		void Update(float /*deltaTimeSeconds*/, fang::Actor /*self*/) override
 		{
 			if (m_hasSpawned)
 			{
@@ -46,33 +48,31 @@ namespace
 			}
 			m_hasSpawned = true;
 
-			const fang::ActorHandle spawned = scene.CreateObject();
-			(void)scene.AddBehavior<CountingBehavior>(spawned, m_spawnedCounter);
+			const fang::ActorHandle spawned = m_scene->CreateObject();
+			(void)m_scene->AddBehavior<CountingBehavior>(spawned, m_spawnedCounter);
 		}
 
 
 	private:
-		bool m_hasSpawned     = false;
-		int* m_spawnedCounter = nullptr;
+		fang::Scene* m_scene          = nullptr;
+		bool         m_hasSpawned     = false;
+		int*         m_spawnedCounter = nullptr;
 	};
 
-	/** @brief 呼ばれるたびに指定したオブジェクトを破棄する振る舞い。 */
+	/** @brief 呼ばれるたびに指定した窓を破棄する振る舞い。 */
 	class DestroyingBehavior final : public fang::IComponent
 	{
 	public:
-		explicit DestroyingBehavior(fang::ActorHandle target)
+		explicit DestroyingBehavior(fang::Actor target)
 			: m_target(target)
 		{
 		}
 
-		void Update(float /*deltaTimeSeconds*/, fang::ActorHandle /*self*/, fang::Scene& scene) override
-		{
-			scene.DestroyObject(m_target);
-		}
+		void Update(float /*deltaTimeSeconds*/, fang::Actor /*self*/) override { m_target.Destroy(); }
 
 
 	private:
-		fang::ActorHandle m_target;
+		fang::Actor m_target;
 	};
 } // namespace
 
@@ -116,7 +116,7 @@ TEST_CASE("SceneComponent: 更新中に足した振る舞いは次の周から�
 	int spawnedCounter = 0;
 
 	const fang::ActorHandle spawner = scene.CreateObject();
-	CHECK(scene.AddBehavior<SpawningBehavior>(spawner, &spawnedCounter) != nullptr);
+	CHECK(scene.AddBehavior<SpawningBehavior>(spawner, &scene, &spawnedCounter) != nullptr);
 
 	scene.Update(0.0f); // ここで新しいオブジェクトと振る舞いが増える。
 	CHECK(spawnedCounter == 0);
@@ -147,7 +147,7 @@ TEST_CASE("SceneComponent: 更新中に破棄されたオブジェクトの振�
 
 	// 先に登録した振る舞いから回るので、destroyer を victim より先に登録しておく
 	// ➡ victim の番が来る前に破棄予約が立ち、その周のうちに止まることを確かめられる。
-	CHECK(scene.AddBehavior<DestroyingBehavior>(destroyer, victim) != nullptr);
+	CHECK(scene.AddBehavior<DestroyingBehavior>(destroyer, fang::Actor{ scene, victim }) != nullptr);
 	CHECK(scene.AddBehavior<CountingBehavior>(victim, &victimCounter) != nullptr);
 
 	scene.Update(0.0f);

@@ -22,6 +22,12 @@ namespace fang
 	}
 
 
+	bool Actor::IsPendingDestroy() const
+	{
+		return m_scene != nullptr && m_scene->IsPendingDestroy(m_handle);
+	}
+
+
 	bool Actor::SetTransform(const Vector3& position, float rotationYRadians)
 	{
 		if (m_scene == nullptr)
@@ -114,6 +120,28 @@ namespace fang
 		}
 
 		m_scene->DestroyObject(m_handle);
+	}
+
+
+	Actor Actor::GetActorFromHandle(ActorHandle handle) const
+	{
+		if (m_scene == nullptr)
+		{
+			return Actor{};
+		}
+
+		return Actor{ *m_scene, handle };
+	}
+
+
+	Actor Actor::GetActorFromIndex(uint32_t index) const
+	{
+		if (m_scene == nullptr)
+		{
+			return Actor{};
+		}
+
+		return m_scene->GetActorFromIndex(index);
 	}
 
 

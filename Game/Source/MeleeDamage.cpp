@@ -3,21 +3,22 @@
  * @brief 近接攻撃の掃引が返した当たりを HP へ流し、撃破を Scene へ反映する。
  */
 #include "MeleeDamage.h"
+#include "Scene/ComponentTypes.h"
 
 
 namespace fang::game
 {
-	void ApplyMeleeHits(Scene& scene, std::span<const SweepHit> hits, float attackPower)
+	void ApplyMeleeHits(Actor self, std::span<const SweepHit> hits, float attackPower)
 	{
 		for (const SweepHit& hit : hits)
 		{
-			const ActorHandle target = scene.GetHandleFromIndex(hit.userIndex);
-			if (!target.IsValid() || scene.IsPendingDestroy(target))
+			Actor target = self.GetActorFromIndex(hit.userIndex);
+			if (!target.IsValid() || target.IsPendingDestroy())
 			{
 				continue;
 			}
 
-			HealthComponent* health = scene.GetHealthComponent(target);
+			HealthComponent* health = target.GetHealthComponent();
 			if (health == nullptr)
 			{
 				continue;
@@ -25,7 +26,7 @@ namespace fang::game
 
 			if (ApplyDamage(health, attackPower).wasDefeated)
 			{
-				scene.DestroyObject(target);
+				target.Destroy();
 			}
 		}
 	}

@@ -377,7 +377,7 @@ namespace fang
 			}
 
 			const ActorHandle ownerHandle{ record.ownerIndex, m_generations[record.ownerIndex] };
-			record.instance->Update(deltaTimeSeconds, ownerHandle, *this);
+			record.instance->Update(deltaTimeSeconds, Actor{ *this, ownerHandle });
 		}
 
 		// 4. 破棄の予約を反映する（子リストから外し、コンポーネントと振る舞いを畳み、世代を進める）。

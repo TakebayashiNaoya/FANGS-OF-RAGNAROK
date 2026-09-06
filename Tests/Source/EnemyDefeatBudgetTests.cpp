@@ -65,14 +65,14 @@ namespace
 		{
 		}
 
-		void Update(float deltaTimeSeconds, fang::ActorHandle self, fang::Scene& scene) override
+		void Update(float deltaTimeSeconds, fang::Actor self) override
 		{
-			fang::Vector3 targetPosition;
-			const bool    hasTarget = scene.IsValid(m_target);
+			const fang::Actor target = self.GetActorFromHandle(m_target);
+			fang::Vector3     targetPosition;
+			const bool        hasTarget = target.IsValid();
 			if (hasTarget)
 			{
-				const fang::Matrix4x4 targetWorld = scene.GetWorldMatrix(m_target);
-				targetPosition = fang::Vector3{ targetWorld.m[3][0], targetWorld.m[3][1], targetWorld.m[3][2] };
+				targetPosition = target.GetWorldPosition();
 			}
 
 			fang::PerceptionResult perception;
@@ -82,8 +82,8 @@ namespace
 					.selfPosition      = m_position,
 					.selfFacingRadians = 0.0f,
 					.targetPosition    = targetPosition,
-					.selfUserIndex     = self.index,
-					.targetUserIndex   = m_target.index,
+					.selfUserIndex     = self.GetIndex(),
+					.targetUserIndex   = target.GetIndex(),
 				};
 				perception = fang::Sense(*m_world, m_perceptionParameter, input);
 			}
@@ -97,10 +97,10 @@ namespace
 				(m_world != nullptr) ? m_world->GetContacts() : std::span<const fang::Contact>{};
 
 			const fang::ContactMoveResult moveResult =
-				fang::MoveWithContacts(m_position, intent.desiredDelta, contacts, self.index);
+				fang::MoveWithContacts(m_position, intent.desiredDelta, contacts, self.GetIndex());
 			m_position = moveResult.position;
 
-			(void)scene.SetLocalTransform(self, m_position, 0.0f);
+			(void)self.SetTransform(m_position, 0.0f);
 		}
 
 

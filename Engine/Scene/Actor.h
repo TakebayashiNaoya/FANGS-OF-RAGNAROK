@@ -34,6 +34,9 @@ namespace fang
 		/** @brief 指している席が今も生きているか。既定構築なら false。 */
 		[[nodiscard]] bool IsValid() const;
 
+		/** @brief 破棄を予約済みか。IsValid は予約済みでも true を返す（席が空くのは次の Update）。 */
+		[[nodiscard]] bool IsPendingDestroy() const;
+
 		[[nodiscard]] ActorHandle GetHandle() const { return m_handle; }
 
 		/** @brief 席番号。掃引と接触が返す userIndex と同じ番号。 */
@@ -59,6 +62,20 @@ namespace fang
 
 		/** @brief 破棄を予約する。席が空くのは次の破棄反映（Scene::DestroyObject と同じ）。 */
 		void Destroy();
+
+		/**
+		 * @brief 同じ Scene 上の、既に分かっているハンドルから窓を作る。
+		 * @details 自分の Scene を経由するだけで、生死は問わない（IsValid は呼び出し側が確かめる）。
+		 *          追跡対象のように世代まで含めて持ち回っているハンドルを窓へ変えるときに使う。
+		 */
+		[[nodiscard]] Actor GetActorFromHandle(ActorHandle handle) const;
+
+		/**
+		 * @brief 同じ Scene の、クエリが返した席番号から窓を作る。
+		 * @details 掃引や接触は世代を持たない席番号だけを返すので、Scene::GetActorFromIndex と同じく
+		 *          その席が生きていなければ無効な Actor になる。
+		 */
+		[[nodiscard]] Actor GetActorFromIndex(uint32_t index) const;
 
 
 	private:

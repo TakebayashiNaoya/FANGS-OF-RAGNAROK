@@ -78,7 +78,7 @@ namespace fang::game
 			float                        initialFacingRadians
 		);
 
-		void Update(float deltaTimeSeconds, ActorHandle self, Scene& scene) override;
+		void Update(float deltaTimeSeconds, Actor self) override;
 
 		/**
 		 * @brief 操作対象にする / 外す。

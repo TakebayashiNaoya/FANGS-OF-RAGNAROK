@@ -19,17 +19,18 @@ namespace fang::game
 	}
 
 
-	void EnemyController::Update(float deltaTimeSeconds, ActorHandle self, Scene& scene)
+	void EnemyController::Update(float deltaTimeSeconds, Actor self)
 	{
 		//------------------------------------------------------------------------
 		// 1. 相手の位置と生死を読む
 		//------------------------------------------------------------------------
-		Vector3    targetPosition;
-		const bool hasTarget = m_dependencies.targetHandle != nullptr && scene.IsValid(*m_dependencies.targetHandle);
+		Vector3     targetPosition;
+		const Actor target =
+			(m_dependencies.targetHandle != nullptr) ? self.GetActorFromHandle(*m_dependencies.targetHandle) : Actor{};
+		const bool hasTarget = target.IsValid();
 		if (hasTarget)
 		{
-			const Matrix4x4 targetWorld = scene.GetWorldMatrix(*m_dependencies.targetHandle);
-			targetPosition              = Vector3{ targetWorld.m[3][0], targetWorld.m[3][1], targetWorld.m[3][2] };
+			targetPosition = target.GetWorldPosition();
 		}
 
 		//------------------------------------------------------------------------
@@ -42,8 +43,8 @@ namespace fang::game
 				.selfPosition      = m_position,
 				.selfFacingRadians = m_facingRadians,
 				.targetPosition    = targetPosition,
-				.selfUserIndex     = self.index,
-				.targetUserIndex   = m_dependencies.targetHandle->index,
+				.selfUserIndex     = self.GetIndex(),
+				.targetUserIndex   = target.GetIndex(),
 			};
 			perception = Sense(*m_dependencies.collisionWorld, m_dependencies.parameter->perception, input);
 		}
@@ -63,7 +64,7 @@ namespace fang::game
 				.selfFacingRadians   = m_facingRadians,
 				.isAttackRequested   = m_blackboard.isTargetVisible &&
 									   m_blackboard.distanceToTargetCentimeters <= swingParameter.reachCentimeters,
-				.selfUserIndex       = self.index,
+				.selfUserIndex       = self.GetIndex(),
 				.targetAttributeMask = COLLISION_ATTRIBUTE_WOLF,
 			};
 
@@ -77,7 +78,7 @@ namespace fang::game
 				hits
 			);
 
-			ApplyMeleeHits(scene, std::span<const SweepHit>(hits, swingResult.newHitCount), swingParameter.attackPower);
+			ApplyMeleeHits(self, std::span<const SweepHit>(hits, swingResult.newHitCount), swingParameter.attackPower);
 		}
 
 		//------------------------------------------------------------------------
@@ -98,8 +99,9 @@ namespace fang::game
 													  ? m_dependencies.collisionWorld->GetContacts()
 													  : std::span<const Contact>{};
 
-		const ContactMoveResult moveResult = MoveWithContacts(m_position, intent.desiredDelta, contacts, self.index);
-		m_position                         = moveResult.position;
+		const ContactMoveResult moveResult =
+			MoveWithContacts(m_position, intent.desiredDelta, contacts, self.GetIndex());
+		m_position = moveResult.position;
 
 		if (intent.wantsToTurn)
 		{
@@ -116,18 +118,14 @@ namespace fang::game
 			groundHeight = m_dependencies.terrain->GetHeightAt(m_position.x, m_position.z);
 		}
 
-		(void)scene.SetLocalTransform(
-			self,
-			Vector3{ m_position.x, m_position.y + groundHeight, m_position.z },
-			m_facingRadians
-		);
+		(void)self.SetTransform(Vector3{ m_position.x, m_position.y + groundHeight, m_position.z }, m_facingRadians);
 
 		//------------------------------------------------------------------------
 		// 6. 見た目（狼と共有のスキニング行列）
 		//------------------------------------------------------------------------
 		if (!m_dependencies.skinningMatricesStorage.empty())
 		{
-			(void)scene.SetSkinningMatrices(self, m_dependencies.skinningMatricesStorage);
+			(void)self.SetSkinningMatrices(m_dependencies.skinningMatricesStorage);
 		}
 	}
 } // namespace fang::game

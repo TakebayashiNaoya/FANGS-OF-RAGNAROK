@@ -42,7 +42,7 @@ namespace
 	class NoOpBehavior final : public fang::IComponent
 	{
 	public:
-		void Update(float /*deltaTimeSeconds*/, fang::ActorHandle /*self*/, fang::Scene& /*scene*/) override {}
+		void Update(float /*deltaTimeSeconds*/, fang::Actor /*self*/) override {}
 	};
 
 	/** @brief min/max を指定した Aabb を作る。 */
