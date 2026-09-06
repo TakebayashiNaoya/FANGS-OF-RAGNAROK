@@ -52,6 +52,7 @@
     <ClCompile Include="Source\EnemyDefeatRefillTests.cpp" />
     <ClCompile Include="Source\EnemyEncounterBudgetTests.cpp" />
     <ClCompile Include="Source\FrameAllocatorTests.cpp" />
+    <ClCompile Include="Source\FrameClockTests.cpp" />
     <ClCompile Include="Source\FramePipelineTests.cpp" />
     <ClCompile Include="Source\FrustumTests.cpp" />
     <ClCompile Include="Source\GamepadTests.cpp" />
@@ -77,6 +78,7 @@
     <ClCompile Include="Source\SceneHealthComponentTests.cpp" />
     <ClCompile Include="Source\SceneHierarchyTests.cpp" />
     <ClCompile Include="Source\SceneObjectTests.cpp" />
+    <ClCompile Include="Source\SceneTransformWriteTests.cpp" />
     <ClCompile Include="Source\SpawnSchedulerTests.cpp" />
     <ClCompile Include="Source\TangentGenerationTests.cpp" />
     <ClCompile Include="Source\VectorTests.cpp" />

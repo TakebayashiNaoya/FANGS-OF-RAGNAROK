@@ -66,6 +66,9 @@
     <ClCompile Include="Source\FrameAllocatorTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\FrameClockTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\FramePipelineTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
@@ -139,6 +142,9 @@
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\SceneObjectTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\SceneTransformWriteTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\SpawnSchedulerTests.cpp">

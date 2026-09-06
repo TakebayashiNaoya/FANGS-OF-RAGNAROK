@@ -6,6 +6,7 @@
 #include "Core/Job/JobCounter.h"
 #include "Core/Job/JobSystem.h"
 #include "Core/Memory/FrameAllocator.h"
+#include "Runtime/FrameClock.h"
 #include "Runtime/FrameContext.h"
 #include "Runtime/FramePipeline.h"
 #include <doctest.h>
@@ -25,8 +26,8 @@ namespace
 	/** @brief 1 枚あたりのフレームメモリ。偽の更新は 1 周に 1 個しか置かない。 */
 	constexpr size_t FRAME_MEMORY_CAPACITY = 64 * 1024;
 
-	/** @brief 偽の 1 周に渡す経過時間。値そのものは見ない。 */
-	constexpr float TEST_DELTA_TIME_SECONDS = 1.0f / 60.0f;
+	/** @brief 偽の 1 周に渡すフレーム時間。値そのものは見ない。 */
+	constexpr fang::FrameTime TEST_FRAME_TIME{ .deltaTimeSeconds = 1.0f / 60.0f, .elapsedSeconds = 0.0 };
 
 	/** @brief 塞ぎ役が待ちきる上限。メインが自分で引いてしまってもテストが止まらないようにするため。 */
 	constexpr std::chrono::seconds BLOCKER_TIME_LIMIT{ 5 };
@@ -161,7 +162,7 @@ namespace
 			framePipeline.Prime();
 			for (uint32_t i = 0; i < FRAME_COUNT; ++i)
 			{
-				framePipeline.RunFrame(TEST_DELTA_TIME_SECONDS, fang::GamepadState{});
+				framePipeline.RunFrame(TEST_FRAME_TIME, fang::GamepadState{});
 			}
 
 			recorder.isUpdateComplete = framePipeline.IsUpdateComplete();
