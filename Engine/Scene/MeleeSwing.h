@@ -2,7 +2,7 @@
  * @file MeleeSwing.h
  * @brief 近接攻撃の振り 1 本ぶんの時間割と、判定区間の掃引。
  * @details 状態を持たない自由関数と POD だけを置く。Scene クラスは include しない
- *          （CharacterMovement と同じ性格のもの）。
+ *          （CharacterController と同じ性格のもの）。
  */
 #pragma once
 
@@ -39,9 +39,9 @@ namespace fang
 	inline constexpr uint32_t MAX_MELEE_SWING_HIT_COUNT = 8;
 
 	/** @brief 振り 1 種類ぶんの調整値。 */
-	struct MeleeSwingParams
+	struct MeleeSwingParameter
 	{
-		FANG_REFLECT_BEGIN(MeleeSwingParams)
+		FANG_REFLECT_BEGIN(MeleeSwingParameter)
 		FANG_FIELD(windUpSeconds, "構えの秒数", Range(0.0f, 5.0f))
 		FANG_FIELD(activeSeconds, "判定区間の秒数", Range(0.0f, 5.0f))
 		FANG_FIELD(recoverySeconds, "戻りの秒数", Range(0.0f, 5.0f))
@@ -94,8 +94,8 @@ namespace fang
 
 		bool isAttackRequested = false;
 
-		uint32_t selfUserIndex   = 0;
-		uint32_t targetLayerMask = ALL_COLLISION_LAYERS; /**< 攻撃が当たる種別。意味は Game が決める。 */
+		uint32_t selfUserIndex       = 0;
+		uint32_t targetAttributeMask = ALL_COLLISION_ATTRIBUTE_MASK; /**< 攻撃が当たる種別。意味は Game が決める。 */
 	};
 
 	/** @brief 1 フレームの答え。 */
@@ -127,12 +127,12 @@ namespace fang
 	 * @threading 更新ジョブ 1 本から。world は const で読むだけ。
 	 */
 	[[nodiscard]] MeleeSwingResult StepMeleeSwing(
-		const CollisionWorld&   world,
-		const MeleeSwingParams& params,
-		const MeleeSwingInput&  input,
-		float                   deltaTimeSeconds,
-		MeleeSwingState*        state,
-		std::span<SweepHit>     outHits
+		const CollisionWorld&      world,
+		const MeleeSwingParameter& parameter,
+		const MeleeSwingInput&     input,
+		float                      deltaTimeSeconds,
+		MeleeSwingState*           state,
+		std::span<SweepHit>        outHits
 	);
 
 	/**
@@ -140,9 +140,9 @@ namespace fang
 	 * @param activeRatio 判定区間の始めを 0、終わりを 1 とした進み具合。
 	 */
 	[[nodiscard]] Vector3 ComputeFangPosition(
-		const MeleeSwingParams& params,
-		const Vector3&          selfPosition,
-		float                   selfFacingRadians,
-		float                   activeRatio
+		const MeleeSwingParameter& parameter,
+		const Vector3&             selfPosition,
+		float                      selfFacingRadians,
+		float                      activeRatio
 	);
 } // namespace fang

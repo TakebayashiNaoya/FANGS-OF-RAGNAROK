@@ -4,9 +4,9 @@
  */
 #pragma once
 
-#include "Collision/Broadphase.h"
 #include "Collision/CollisionQuery.h"
 #include "Collision/CollisionShapes.h"
+#include "Collision/IBroadphase.h"
 #include "Collision/Narrowphase.h"
 #include "Core/CoreMacros.h"
 #include "Core/Math/Vector3.h"
@@ -30,7 +30,7 @@ namespace fang
 		uint32_t userIndex = 0;
 
 		/** @brief 種別のビット。既定は全ビットなので、値を入れていない登録は今までどおり全クエリに出る。 */
-		uint32_t layerMask = ALL_COLLISION_LAYERS;
+		uint32_t attributeMask = ALL_COLLISION_ATTRIBUTE_MASK;
 	};
 
 	/**
@@ -109,7 +109,7 @@ namespace fang
 			const Vector3&     direction,
 			float              maxDistance,
 			const QueryFilter& filter,
-			RayHit*            outHit
+			RaycastHit*        outHit
 		) const;
 
 		/**
@@ -157,7 +157,7 @@ namespace fang
 			const Vector3&     fromPosition,
 			const Vector3&     toPosition,
 			const QueryFilter& filter,
-			RayHit*            outBlockingHit
+			RaycastHit*        outBlockingHit
 		) const;
 
 

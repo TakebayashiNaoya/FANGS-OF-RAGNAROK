@@ -1,5 +1,5 @@
 ﻿/**
- * @file CharacterMovement.h
+ * @file CharacterController.h
  * @brief 水平移動・向きの追従・置き物への応答。
  * @details 状態を持たない自由関数だけを置く。コンポーネントの中身から呼ばれる想定。
  *          Collision は接触情報を返すだけなので（01 アーキテクチャ 6）、押し出しの判断はここが持つ。
@@ -19,7 +19,7 @@ namespace fang
 	 * @brief 1 体ぶんの移動の状態。
 	 * @details 値を運ぶだけの POD。持ち主は今のところフレームループ。
 	 */
-	struct CharacterMovementState
+	struct CharacterControllerState
 	{
 		Vector3 position;             /**< 足元のワールド座標。y は接地で決まる。 */
 		float   facingRadians = 0.0f; /**< 水平の向き。0 = +X（狼のモデルが向いている向き）。 */

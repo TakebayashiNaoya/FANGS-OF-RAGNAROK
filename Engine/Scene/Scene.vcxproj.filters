@@ -4,8 +4,8 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CharacterMovement.h" />
-    <ClInclude Include="Components.h" />
+    <ClInclude Include="CharacterController.h" />
+    <ClInclude Include="ComponentTypes.h" />
     <ClInclude Include="GameObjectHandle.h" />
     <ClInclude Include="MeleeSwing.h" />
     <ClInclude Include="Pch.h" />
@@ -13,8 +13,8 @@
     <ClInclude Include="SceneLog.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="CharacterMovement.cpp" />
-    <ClCompile Include="Components.cpp" />
+    <ClCompile Include="CharacterController.cpp" />
+    <ClCompile Include="ComponentTypes.cpp" />
     <ClCompile Include="MeleeSwing.cpp" />
     <ClCompile Include="Pch.cpp" />
     <ClCompile Include="Scene.cpp" />

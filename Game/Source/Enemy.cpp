@@ -1,27 +1,27 @@
 ﻿/**
- * @file Minion.cpp
+ * @file Enemy.cpp
  * @brief 雑魚 1 体の Scene オブジェクトとしての生成。狼のモデルを流用する。
  */
-#include "Minion.h"
+#include "Enemy.h"
 #include "Collision/CollisionShapes.h"
 #include "Core/Math/Matrix4x4.h"
-#include "CollisionLayers.h"
+#include "CollisionAttribute.h"
+#include "EnemyController.h"
 #include "GameLog.h"
-#include "MinionBehavior.h"
 #include "Wolf.h"
 
 
 namespace fang::game
 {
-	GameObjectHandle CreateMinionObject(
+	GameObjectHandle CreateEnemyObject(
 		Scene&                  scene,
 		WolfModel&              model,
-		const MinionParams&     params,
+		const EnemyParameter&   parameter,
 		CollisionWorld*         collisionWorld,
 		const HeightmapTerrain* terrain,
 		const GameObjectHandle* targetHandle,
 		const Vector3&          initialPosition,
-		MinionBehavior**        outBehavior
+		EnemyController**       outController
 	)
 	{
 		const GameObjectHandle handle = scene.CreateObject();
@@ -38,8 +38,8 @@ namespace fang::game
 				.localBounds = model.localBounds,
 				.baseColor   = model.baseColor,
 				.normalMap   = model.normalMap,
-				.materialParams =
-					MaterialParams{
+				.materialParameter =
+					MaterialParameter{
 						.metallicFactor  = model.metallicFactor,
 						.roughnessFactor = model.roughnessFactor,
 						.normalScale     = model.normalScale,
@@ -51,21 +51,22 @@ namespace fang::game
 
 			// 狼と同じく、四つ足の体を包むカプセルで当たりを取る。ENEMY を足して攻撃の掃引に出す。
 			const ColliderComponent colliderComponent{
-				.shapeType   = EnShapeType::Capsule,
-				.localBounds = model.localBounds,
-				.isEnabled   = true,
-				.layerMask   = COLLISION_LAYER_CHARACTER | COLLISION_LAYER_ENEMY,
+				.shapeType     = EnShapeType::Capsule,
+				.localBounds   = model.localBounds,
+				.isEnabled     = true,
+				.attributeMask = COLLISION_ATTRIBUTE_CHARACTER | COLLISION_ATTRIBUTE_ENEMY,
 			};
 			(void)scene.AddColliderComponent(handle, colliderComponent);
 		}
 
 		(void)scene.AddHealthComponent(
 			handle,
-			HealthComponent{ .maximumHitPoints = params.maximumHitPoints, .currentHitPoints = params.maximumHitPoints }
+			HealthComponent{ .maximumHitPoints = parameter.maximumHitPoints,
+							 .currentHitPoints = parameter.maximumHitPoints }
 		);
 
-		const MinionBehavior::Dependencies dependencies{
-			.params         = &params,
+		const EnemyController::Dependencies dependencies{
+			.parameter      = &parameter,
 			.collisionWorld = collisionWorld,
 			.terrain        = terrain,
 			.targetHandle   = targetHandle,
@@ -73,15 +74,15 @@ namespace fang::game
 				model.isSkinned ? std::span<const Matrix4x4>(model.skinningMatrices) : std::span<const Matrix4x4>{},
 		};
 
-		MinionBehavior* behavior = scene.AddBehavior<MinionBehavior>(handle, dependencies, initialPosition);
-		if (behavior == nullptr)
+		EnemyController* controller = scene.AddBehavior<EnemyController>(handle, dependencies, initialPosition);
+		if (controller == nullptr)
 		{
 			FANG_LOG_ERROR(Game, "雑魚の振る舞いを作れなかった（Scene の振る舞い上限）");
 		}
 
-		if (outBehavior != nullptr)
+		if (outController != nullptr)
 		{
-			*outBehavior = behavior;
+			*outController = controller;
 		}
 
 		return handle;

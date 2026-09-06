@@ -17,7 +17,7 @@ namespace fang
 	} // namespace
 
 
-	bool IsWithinSightCone(const PerceptionParams& params, const PerceptionInput& input)
+	bool IsWithinSightCone(const PerceptionParameter& parameter, const PerceptionInput& input)
 	{
 		const Vector3 toTarget{
 			input.targetPosition.x - input.selfPosition.x,
@@ -26,7 +26,7 @@ namespace fang
 		};
 
 		const float distanceSquared = LengthSquared(toTarget);
-		if (distanceSquared > params.sightRangeCentimeters * params.sightRangeCentimeters)
+		if (distanceSquared > parameter.sightRangeCentimeters * parameter.sightRangeCentimeters)
 		{
 			return false;
 		}
@@ -40,11 +40,15 @@ namespace fang
 		const Vector3 facing{ std::cos(input.selfFacingRadians), 0.0f, std::sin(input.selfFacingRadians) };
 		const float   cosAngle = Dot(facing, toTarget) / std::sqrt(distanceSquared);
 
-		return cosAngle >= std::cos(params.halfFieldOfViewRadians);
+		return cosAngle >= std::cos(parameter.halfFieldOfViewRadians);
 	}
 
 
-	PerceptionResult Sense(const CollisionWorld& world, const PerceptionParams& params, const PerceptionInput& input)
+	PerceptionResult Sense(
+		const CollisionWorld&      world,
+		const PerceptionParameter& parameter,
+		const PerceptionInput&     input
+	)
 	{
 		PerceptionResult result;
 
@@ -55,30 +59,30 @@ namespace fang
 		};
 		result.distanceCentimeters = Length(horizontalDelta);
 
-		if (!IsWithinSightCone(params, input))
+		if (!IsWithinSightCone(parameter, input))
 		{
 			return result;
 		}
 
 		const Vector3 eyePosition{
 			input.selfPosition.x,
-			input.selfPosition.y + params.eyeHeightCentimeters,
+			input.selfPosition.y + parameter.eyeHeightCentimeters,
 			input.selfPosition.z,
 		};
 		const Vector3 targetEyePosition{
 			input.targetPosition.x,
-			input.targetPosition.y + params.targetEyeHeightCentimeters,
+			input.targetPosition.y + parameter.targetEyeHeightCentimeters,
 			input.targetPosition.z,
 		};
 
 		const uint32_t excluded[] = { input.selfUserIndex, input.targetUserIndex };
 
 		const QueryFilter filter{
-			.layerMask           = params.blockerLayerMask,
+			.attributeMask       = parameter.blockerAttributeMask,
 			.excludedUserIndices = excluded,
 		};
 
-		RayHit blockingHit;
+		RaycastHit blockingHit;
 		result.didTraceLineOfSight = true;
 		result.isVisible           = world.HasLineOfSight(eyePosition, targetEyePosition, filter, &blockingHit);
 

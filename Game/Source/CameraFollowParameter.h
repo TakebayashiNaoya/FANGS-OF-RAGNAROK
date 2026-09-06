@@ -1,5 +1,5 @@
 ﻿/**
- * @file CameraFollowParams.h
+ * @file CameraFollowParameter.h
  * @brief 操作する狼を追うカメラの調整値。
  */
 #pragma once
@@ -16,9 +16,9 @@ namespace fang::game
 	 * @details FANG_REFLECT 付きの POD（03 コーディング規約 14）。距離・俯角は狼 1 匹をちょうど収める値に
 	 *          してある（根拠は distanceCentimeters の注記）。
 	 */
-	struct CameraFollowParams
+	struct CameraFollowParameter
 	{
-		FANG_REFLECT_BEGIN(CameraFollowParams)
+		FANG_REFLECT_BEGIN(CameraFollowParameter)
 		FANG_FIELD(distanceCentimeters, "距離", Range(0.0f, 2000.0f))
 		FANG_FIELD(pitchRadians, "俯角", Range(0.0f, 1.5f))
 		FANG_FIELD(fieldOfViewYRadians, "画角", Range(0.1f, 3.0f))

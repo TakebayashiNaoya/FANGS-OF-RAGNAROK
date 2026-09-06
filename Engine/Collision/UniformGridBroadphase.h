@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include "Collision/Broadphase.h"
+#include "Collision/IBroadphase.h"
 #include "Core/CoreMacros.h"
 #include "Core/Math/Aabb.h"
 #include <cstdint>

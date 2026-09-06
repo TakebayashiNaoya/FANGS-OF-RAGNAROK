@@ -10,7 +10,7 @@
 
 namespace
 {
-	/** @brief 狼の既定の移動速度（WolfMovementParams::moveSpeedCentimetersPerSecond の既定値）。 */
+	/** @brief 狼の既定の移動速度（WolfMovementParameter::moveSpeedCentimetersPerSecond の既定値）。 */
 	constexpr float WOLF_MAXIMUM_SPEED_CENTIMETERS_PER_SECOND = 400.0f;
 
 	/** @brief 狼のカプセル半径（Wolf.gltf の POSITION 境界 Z 36.30 の半分）。 */

@@ -10,17 +10,17 @@
 #include "Input/Gamepad.h"
 #include "RHI/GraphicsDevice.h"
 #include "Runtime/Application.h"
-#include "Scene/CharacterMovement.h"
+#include "Scene/CharacterController.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
-#include "CameraFollowParams.h"
+#include "CameraFollowParameter.h"
+#include "EnemyManager.h"
 #include "GameLog.h"
-#include "MinionSpawner.h"
 #include "Stage.h"
 #include "Wolf.h"
-#include "WolfBehavior.h"
-#include "WolfMovementParams.h"
-#include "WolfPack.h"
+#include "WolfController.h"
+#include "WolfManager.h"
+#include "WolfMovementParameter.h"
 #include <array>
 #include <cmath>
 
@@ -96,7 +96,7 @@ namespace fang::game
 		 * @brief ゲーム本体。Runtime のフレームループから呼ばれる。
 		 * @details Game 側でエディタに触れるのはこのクラスの中だけ。
 		 * @threading メインスレッドのみ。ただし OnUpdate はワーカースレッドで走り、
-		 *            m_scene・m_wolfPack はそこからしか触らない。
+		 *            m_scene・m_wolfManager はそこからしか触らない。
 		 */
 		class FangsOfRagnarok final : public IApplication
 		{
@@ -129,24 +129,24 @@ namespace fang::game
 
 				for (size_t index = 0; index < WOLF_COUNT; ++index)
 				{
-					WolfBehavior* behavior = nullptr;
+					WolfController* controller = nullptr;
 
 					const GameObjectHandle handle = CreateWolfObject(
 						m_scene,
 						m_wolf,
-						m_wolfMovementParams,
-						m_wolfSwingParams,
+						m_wolfMovementParameter,
+						m_wolfSwingParameter,
 						WOLF_HEALTH,
 						m_collisionWorld,
 						m_terrain,
 						WOLF_POSITIONS[index],
 						0.0f,
-						&behavior
+						&controller
 					);
 
 					if (handle.IsValid())
 					{
-						(void)m_wolfPack.Add(handle, behavior);
+						(void)m_wolfManager.Add(handle, controller);
 					}
 				}
 
@@ -162,8 +162,8 @@ namespace fang::game
 
 				// 生死を数え直し、操作対象を選び直す。振る舞いのポインタを誰かが触るより前に呼ぶ
 				// （撃破された狼のポインタが 1 フレームも残らないようにするため）。
-				const WolfPackUpdateResult wolfPackResult = m_wolfPack.Update(m_scene);
-				if (wolfPackResult.didWipeOut)
+				const WolfManagerUpdateResult wolfManagerResult = m_wolfManager.Update(m_scene);
+				if (wolfManagerResult.didWipeOut)
 				{
 					FANG_LOG_INFO(Game, "狼が全滅した");
 				}
@@ -180,12 +180,12 @@ namespace fang::game
 				if (context.gamepad.isConnected)
 				{
 					m_cameraOrbitRadians += GetRightStick(context.gamepad).x *
-											m_cameraFollowParams.yawSpeedRadiansPerSecond * context.deltaTimeSeconds;
+											m_cameraFollowParameter.yawSpeedRadiansPerSecond * context.deltaTimeSeconds;
 				}
 				else
 				{
 					m_cameraOrbitRadians +=
-						context.deltaTimeSeconds * (2.0f * PI / m_cameraFollowParams.orbitSecondsWhenDisconnected);
+						context.deltaTimeSeconds * (2.0f * PI / m_cameraFollowParameter.orbitSecondsWhenDisconnected);
 				}
 
 				if (m_cameraOrbitRadians >= 2.0f * PI)
@@ -206,13 +206,13 @@ namespace fang::game
 
 				// ReadGamepadState はメインスレッドのみなので、周の頭でメインが読んだものを Runtime から受け取る。
 				// 全滅中は呼ばない ➡ 入力の受け付けが止まる。
-				WolfBehavior* controlledWolfBehavior = m_wolfPack.GetControlledBehavior();
-				if (controlledWolfBehavior != nullptr)
+				WolfController* controlledWolf = m_wolfManager.GetControlledWolf();
+				if (controlledWolf != nullptr)
 				{
-					controlledWolfBehavior->SetFrameInput(context.gamepad, cameraYawRadians);
+					controlledWolf->SetFrameInput(context.gamepad, cameraYawRadians);
 
 					// 湧きは前フレームのワールド行列を見る（当たり判定と同じ 1 フレーム遅れ、ADR-034）。
-					const Matrix4x4 controlledWolfWorld = m_scene.GetWorldMatrix(*m_wolfPack.GetControlledHandle());
+					const Matrix4x4 controlledWolfWorld = m_scene.GetWorldMatrix(*m_wolfManager.GetControlledHandle());
 					const Vector3   controlledWolfPosition{
 						controlledWolfWorld.m[3][0],
 						controlledWolfWorld.m[3][1],
@@ -220,16 +220,16 @@ namespace fang::game
 					};
 
 					// 全滅中は呼ばない ➡ 狼が居なければ湧かない。標的はポインタ渡しなので、既に湧いている
-					// 雑魚も次に湧く雑魚も WolfPack が選び直した操作対象へ同じフレームで移る。
-					m_minionSpawner.Update(
+					// 雑魚も次に湧く雑魚も WolfManager が選び直した操作対象へ同じフレームで移る。
+					m_enemyManager.Update(
 						context.deltaTimeSeconds,
 						controlledWolfPosition,
-						MinionSpawner::Dependencies{
+						EnemyManager::Dependencies{
 							.scene          = &m_scene,
 							.sharedModel    = &m_wolf,
 							.collisionWorld = m_collisionWorld,
 							.terrain        = m_terrain,
-							.targetHandle   = m_wolfPack.GetControlledHandle(),
+							.targetHandle   = m_wolfManager.GetControlledHandle(),
 						}
 					);
 				}
@@ -262,26 +262,26 @@ namespace fang::game
 				// 距離 × sin(俯角)。水平のままだと周回の途中で丘に潜るので、俯角で視点を持ち上げてある。
 				// 全滅中は操作対象が居ないので、最後に居た位置に留める
 				// （無効なハンドルの GetWorldMatrix は単位行列 ➡ そのまま使うと原点へ飛ぶ）。
-				if (controlledWolfBehavior != nullptr)
+				if (controlledWolf != nullptr)
 				{
-					const Matrix4x4 wolfWorld = m_scene.GetWorldMatrix(*m_wolfPack.GetControlledHandle());
+					const Matrix4x4 wolfWorld = m_scene.GetWorldMatrix(*m_wolfManager.GetControlledHandle());
 					const Vector3   wolfPosition{ wolfWorld.m[3][0], wolfWorld.m[3][1], wolfWorld.m[3][2] };
-					m_lastCameraTarget = wolfPosition + m_cameraFollowParams.targetOffset;
+					m_lastCameraTarget = wolfPosition + m_cameraFollowParameter.targetOffset;
 				}
 				const Vector3 cameraTarget = m_lastCameraTarget;
 
 				const float orbitRadius =
-					m_cameraFollowParams.distanceCentimeters * std::cosf(m_cameraFollowParams.pitchRadians);
+					m_cameraFollowParameter.distanceCentimeters * std::cosf(m_cameraFollowParameter.pitchRadians);
 				const Vector3 orbitOffset{
 					std::sinf(m_cameraOrbitRadians) * orbitRadius,
-					m_cameraFollowParams.distanceCentimeters * std::sinf(m_cameraFollowParams.pitchRadians),
+					m_cameraFollowParameter.distanceCentimeters * std::sinf(m_cameraFollowParameter.pitchRadians),
 					std::cosf(m_cameraOrbitRadians) * orbitRadius,
 				};
 
 				frameData->camera = CameraView{
 					.eyePosition         = cameraTarget + orbitOffset,
 					.targetPosition      = cameraTarget,
-					.fieldOfViewYRadians = m_cameraFollowParams.fieldOfViewYRadians,
+					.fieldOfViewYRadians = m_cameraFollowParameter.fieldOfViewYRadians,
 				};
 
 				frameData->renderItems     = m_scene.BuildRenderItems(context.frameAllocator);
@@ -316,13 +316,13 @@ namespace fang::game
 		private:
 			EditorUI m_editorUI; /**< エディタ UI。Release 構成では空の代役に差し替わる。 */
 
-			Scene              m_scene;
-			WolfModel          m_wolf;
-			StageModel         m_stage;
-			WolfMovementParams m_wolfMovementParams;
-			MeleeSwingParams   m_wolfSwingParams;
-			CameraFollowParams m_cameraFollowParams;
-			MinionSpawner      m_minionSpawner;
+			Scene                 m_scene;
+			WolfModel             m_wolf;
+			StageModel            m_stage;
+			WolfMovementParameter m_wolfMovementParameter;
+			MeleeSwingParameter   m_wolfSwingParameter;
+			CameraFollowParameter m_cameraFollowParameter;
+			EnemyManager          m_enemyManager;
 
 			/** @brief カメラの水平回転角。右スティックが無ければ時間で回る。OnUpdate だけが触る。 */
 			float m_cameraOrbitRadians = 0.0f;
@@ -332,7 +332,7 @@ namespace fang::game
 			const HeightmapTerrain* m_terrain        = nullptr;
 
 			/** @brief 狼の席と、今どれを操作しているか。操作・カメラ・湧きの基準・雑魚の標的はここから引く。 */
-			WolfPack m_wolfPack;
+			WolfManager m_wolfManager;
 
 			/** @brief カメラの最後の注視点。全滅中は操作対象が居ないので、これを使い続ける。 */
 			Vector3 m_lastCameraTarget;

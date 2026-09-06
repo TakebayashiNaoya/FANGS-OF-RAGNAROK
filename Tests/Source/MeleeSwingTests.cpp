@@ -16,23 +16,23 @@ namespace
 
 	constexpr uint32_t SELF_USER_INDEX = 999;
 
-	constexpr uint32_t TEST_LAYER_CHARACTER = 1u << 0;
-	constexpr uint32_t TEST_LAYER_PROP      = 1u << 1;
-	constexpr uint32_t TEST_LAYER_ENEMY     = 1u << 2;
+	constexpr uint32_t TEST_ATTRIBUTE_CHARACTER = 1u << 0;
+	constexpr uint32_t TEST_ATTRIBUTE_PROP      = 1u << 1;
+	constexpr uint32_t TEST_ATTRIBUTE_ENEMY     = 1u << 2;
 
 
 	/** @brief 立ち位置は原点、向きは +X 固定。振りの発生源を毎回書かずに済むための既定入力。 */
 	[[nodiscard]] fang::MeleeSwingInput MakeInput(
 		bool     isAttackRequested,
-		uint32_t targetLayerMask = fang::ALL_COLLISION_LAYERS
+		uint32_t targetAttributeMask = fang::ALL_COLLISION_ATTRIBUTE_MASK
 	)
 	{
 		return fang::MeleeSwingInput{
-			.selfPosition      = fang::Vector3{},
-			.selfFacingRadians = 0.0f,
-			.isAttackRequested = isAttackRequested,
-			.selfUserIndex     = SELF_USER_INDEX,
-			.targetLayerMask   = targetLayerMask,
+			.selfPosition        = fang::Vector3{},
+			.selfFacingRadians   = 0.0f,
+			.isAttackRequested   = isAttackRequested,
+			.selfUserIndex       = SELF_USER_INDEX,
+			.targetAttributeMask = targetAttributeMask,
 		};
 	}
 
@@ -42,23 +42,23 @@ namespace
 		uint32_t                          userIndex,
 		const fang::Vector3&              center,
 		float                             radius,
-		uint32_t                          layerMask = fang::ALL_COLLISION_LAYERS
+		uint32_t                          attributeMask = fang::ALL_COLLISION_ATTRIBUTE_MASK
 	)
 	{
 		proxies.push_back(
 			fang::ColliderProxy{
-				.shape     = fang::MakeColliderShape(fang::Sphere{ .center = center, .radius = radius }),
-				.userIndex = userIndex,
-				.layerMask = layerMask,
+				.shape         = fang::MakeColliderShape(fang::Sphere{ .center = center, .radius = radius }),
+				.userIndex     = userIndex,
+				.attributeMask = attributeMask,
 			}
 		);
 	}
 
 
 	/** @brief 判定区間の k 番目（0 始まり）の掃引が終わったときの牙の位置。 */
-	[[nodiscard]] fang::Vector3 FangPositionAtStep(const fang::MeleeSwingParams& params, uint32_t stepIndex)
+	[[nodiscard]] fang::Vector3 FangPositionAtStep(const fang::MeleeSwingParameter& parameter, uint32_t stepIndex)
 	{
-		return fang::ComputeFangPosition(params, fang::Vector3{}, 0.0f, static_cast<float>(stepIndex) / 9.0f);
+		return fang::ComputeFangPosition(parameter, fang::Vector3{}, 0.0f, static_cast<float>(stepIndex) / 9.0f);
 	}
 } // namespace
 
@@ -68,8 +68,8 @@ TEST_CASE("MeleeSwing: 判定区間の間だけ掃引が飛び、構え・戻り
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	fang::MeleeSwingParams params{};
-	fang::MeleeSwingState  state{};
+	fang::MeleeSwingParameter parameter{};
+	fang::MeleeSwingState     state{};
 
 	uint32_t sweepCount = 0;
 
@@ -79,7 +79,7 @@ TEST_CASE("MeleeSwing: 判定区間の間だけ掃引が飛び、構え・戻り
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const bool                   attackDown = (frame == 0);
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(attackDown), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(attackDown), FRAME_SECONDS, &state, hits);
 
 		if (result.didSweep)
 		{
@@ -99,8 +99,8 @@ TEST_CASE("MeleeSwing: 判定区間の秒数を倍にすると掃引本数も倍
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	fang::MeleeSwingParams params{};
-	params.activeSeconds = 0.30f; // 既定の 2 倍。
+	fang::MeleeSwingParameter parameter{};
+	parameter.activeSeconds = 0.30f; // 既定の 2 倍。
 
 	fang::MeleeSwingState state{};
 	uint32_t              sweepCount = 0;
@@ -109,7 +109,7 @@ TEST_CASE("MeleeSwing: 判定区間の秒数を倍にすると掃引本数も倍
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
 
 		if (result.didSweep)
 		{
@@ -128,8 +128,8 @@ TEST_CASE("MeleeSwing: 押しっぱなしでも新しい振りは1回しか始�
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	fang::MeleeSwingParams params{};
-	fang::MeleeSwingState  state{};
+	fang::MeleeSwingParameter parameter{};
+	fang::MeleeSwingState     state{};
 
 	uint32_t startCount = 0;
 
@@ -138,7 +138,7 @@ TEST_CASE("MeleeSwing: 押しっぱなしでも新しい振りは1回しか始�
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(true), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(true), FRAME_SECONDS, &state, hits);
 
 		if (result.didStartSwing)
 		{
@@ -154,12 +154,12 @@ TEST_CASE("MeleeSwing: 押しっぱなしでも新しい振りは1回しか始�
 
 TEST_CASE("MeleeSwing: 弧の上に並べた3体に1回の振りで当たる")
 {
-	fang::MeleeSwingParams params{};
+	fang::MeleeSwingParameter parameter{};
 
 	std::vector<fang::ColliderProxy> proxies;
-	RegisterTarget(proxies, 1, FangPositionAtStep(params, 1), 5.0f);
-	RegisterTarget(proxies, 2, FangPositionAtStep(params, 4), 5.0f);
-	RegisterTarget(proxies, 3, FangPositionAtStep(params, 7), 5.0f);
+	RegisterTarget(proxies, 1, FangPositionAtStep(parameter, 1), 5.0f);
+	RegisterTarget(proxies, 2, FangPositionAtStep(parameter, 4), 5.0f);
+	RegisterTarget(proxies, 3, FangPositionAtStep(parameter, 7), 5.0f);
 
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
@@ -172,7 +172,7 @@ TEST_CASE("MeleeSwing: 弧の上に並べた3体に1回の振りで当たる")
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
 
 		totalNewHitCount += result.newHitCount;
 	}
@@ -185,11 +185,11 @@ TEST_CASE("MeleeSwing: 弧の上に並べた3体に1回の振りで当たる")
 
 TEST_CASE("MeleeSwing: 同じ振りの間、同じ相手には1回だけ当たる")
 {
-	fang::MeleeSwingParams params{};
+	fang::MeleeSwingParameter parameter{};
 
 	// この位置は、ある1フレームの終点であると同時に、次のフレームの始点でもある
 	// (始点で重なっていれば timeRatio = 0 で当たる) ➡ 記録が無ければ2回当たってしまう配置。
-	const fang::Vector3 targetPosition = FangPositionAtStep(params, 4);
+	const fang::Vector3 targetPosition = FangPositionAtStep(parameter, 4);
 
 	std::vector<fang::ColliderProxy> proxies;
 	RegisterTarget(proxies, 1, targetPosition, 5.0f);
@@ -205,7 +205,7 @@ TEST_CASE("MeleeSwing: 同じ振りの間、同じ相手には1回だけ当た�
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
 
 		totalNewHitCount += result.newHitCount;
 	}
@@ -218,9 +218,9 @@ TEST_CASE("MeleeSwing: 同じ振りの間、同じ相手には1回だけ当た�
 
 TEST_CASE("MeleeSwing: 振りを終えて次の振りを始めると同じ相手にまた当たる")
 {
-	fang::MeleeSwingParams params{};
+	fang::MeleeSwingParameter parameter{};
 
-	const fang::Vector3 targetPosition = FangPositionAtStep(params, 4);
+	const fang::Vector3 targetPosition = FangPositionAtStep(parameter, 4);
 
 	std::vector<fang::ColliderProxy> proxies;
 	RegisterTarget(proxies, 1, targetPosition, 5.0f);
@@ -236,7 +236,7 @@ TEST_CASE("MeleeSwing: 振りを終えて次の振りを始めると同じ相手
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
 
 		firstSwingHitCount += result.newHitCount;
 	}
@@ -248,7 +248,7 @@ TEST_CASE("MeleeSwing: 振りを終えて次の振りを始めると同じ相手
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
 
 		secondSwingHitCount += result.newHitCount;
 	}
@@ -260,19 +260,19 @@ TEST_CASE("MeleeSwing: 振りを終えて次の振りを始めると同じ相手
 
 TEST_CASE("MeleeSwing: 始点でも終点でも重なっていない相手を拾う")
 {
-	fang::MeleeSwingParams params{};
-	params.fangRadiusCentimeters = 1.0f; // 牙を細くし、弦の途中でしか触れない配置を作る。
+	fang::MeleeSwingParameter parameter{};
+	parameter.fangRadiusCentimeters = 1.0f; // 牙を細くし、弦の途中でしか触れない配置を作る。
 
 	constexpr uint32_t  STEP_INDEX           = 4;
-	const fang::Vector3 previousFangPosition = FangPositionAtStep(params, STEP_INDEX - 1);
-	const fang::Vector3 currentFangPosition  = FangPositionAtStep(params, STEP_INDEX);
+	const fang::Vector3 previousFangPosition = FangPositionAtStep(parameter, STEP_INDEX - 1);
+	const fang::Vector3 currentFangPosition  = FangPositionAtStep(parameter, STEP_INDEX);
 	const fang::Vector3 chordMidpoint        = (previousFangPosition + currentFangPosition) * 0.5f;
 
 	constexpr float TARGET_RADIUS = 10.0f;
 
 	// 前提: 始点・終点のどちらからも、細くした牙(半径1)との合計より遠い。
-	CHECK(fang::Length(chordMidpoint - previousFangPosition) > params.fangRadiusCentimeters + TARGET_RADIUS);
-	CHECK(fang::Length(chordMidpoint - currentFangPosition) > params.fangRadiusCentimeters + TARGET_RADIUS);
+	CHECK(fang::Length(chordMidpoint - previousFangPosition) > parameter.fangRadiusCentimeters + TARGET_RADIUS);
+	CHECK(fang::Length(chordMidpoint - currentFangPosition) > parameter.fangRadiusCentimeters + TARGET_RADIUS);
 
 	std::vector<fang::ColliderProxy> proxies;
 	RegisterTarget(proxies, 1, chordMidpoint, TARGET_RADIUS);
@@ -288,7 +288,7 @@ TEST_CASE("MeleeSwing: 始点でも終点でも重なっていない相手を拾
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
 
 		totalNewHitCount += result.newHitCount;
 	}
@@ -301,13 +301,13 @@ TEST_CASE("MeleeSwing: 始点でも終点でも重なっていない相手を拾
 
 TEST_CASE("MeleeSwing: 自分自身・味方・置き物には当たらない")
 {
-	fang::MeleeSwingParams params{};
-	const fang::Vector3    targetPosition = FangPositionAtStep(params, 4);
+	fang::MeleeSwingParameter parameter{};
+	const fang::Vector3       targetPosition = FangPositionAtStep(parameter, 4);
 
 	std::vector<fang::ColliderProxy> proxies;
-	RegisterTarget(proxies, SELF_USER_INDEX, targetPosition, 5.0f);         // 自分自身。
-	RegisterTarget(proxies, 2, targetPosition, 5.0f, TEST_LAYER_CHARACTER); // 味方。
-	RegisterTarget(proxies, 3, targetPosition, 5.0f, TEST_LAYER_PROP);      // 置き物。
+	RegisterTarget(proxies, SELF_USER_INDEX, targetPosition, 5.0f);             // 自分自身。
+	RegisterTarget(proxies, 2, targetPosition, 5.0f, TEST_ATTRIBUTE_CHARACTER); // 味方。
+	RegisterTarget(proxies, 3, targetPosition, 5.0f, TEST_ATTRIBUTE_PROP);      // 置き物。
 
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
@@ -319,8 +319,14 @@ TEST_CASE("MeleeSwing: 自分自身・味方・置き物には当たらない")
 	for (int frame = 0; frame < 40; ++frame)
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
-		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(frame == 0, TEST_LAYER_ENEMY), FRAME_SECONDS, &state, hits);
+		const fang::MeleeSwingResult result = fang::StepMeleeSwing(
+			world,
+			parameter,
+			MakeInput(frame == 0, TEST_ATTRIBUTE_ENEMY),
+			FRAME_SECONDS,
+			&state,
+			hits
+		);
 
 		totalNewHitCount += result.newHitCount;
 	}
@@ -333,9 +339,9 @@ TEST_CASE("MeleeSwing: 自分自身・味方・置き物には当たらない")
 
 TEST_CASE("MeleeSwing: 間合いの外の相手には当たらない")
 {
-	fang::MeleeSwingParams params{};
+	fang::MeleeSwingParameter parameter{};
 
-	const fang::Vector3 farAwayPosition{ params.reachCentimeters * 2.0f, params.fangHeightCentimeters, 0.0f };
+	const fang::Vector3 farAwayPosition{ parameter.reachCentimeters * 2.0f, parameter.fangHeightCentimeters, 0.0f };
 
 	std::vector<fang::ColliderProxy> proxies;
 	RegisterTarget(proxies, 1, farAwayPosition, 5.0f);
@@ -351,7 +357,7 @@ TEST_CASE("MeleeSwing: 間合いの外の相手には当たらない")
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
 
 		totalNewHitCount += result.newHitCount;
 	}
@@ -364,8 +370,8 @@ TEST_CASE("MeleeSwing: 間合いの外の相手には当たらない")
 
 TEST_CASE("MeleeSwing: 当たった数が書き込み先を超えても落ちず、8で頭打ちになる")
 {
-	fang::MeleeSwingParams params{};
-	const fang::Vector3    clusterCenter = FangPositionAtStep(params, 4);
+	fang::MeleeSwingParameter parameter{};
+	const fang::Vector3       clusterCenter = FangPositionAtStep(parameter, 4);
 
 	std::vector<fang::ColliderProxy> proxies;
 	for (uint32_t index = 0; index < 12; ++index)
@@ -387,7 +393,7 @@ TEST_CASE("MeleeSwing: 当たった数が書き込み先を超えても落ちず
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
 
 		totalNewHitCount += result.newHitCount;
 		sawTruncated = sawTruncated || result.isTruncated;
@@ -405,8 +411,8 @@ TEST_CASE("MeleeSwing: 判定区間0秒でも落ちず、掃引0本でRecovery�
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	fang::MeleeSwingParams params{};
-	params.activeSeconds = 0.0f;
+	fang::MeleeSwingParameter parameter{};
+	parameter.activeSeconds = 0.0f;
 
 	fang::MeleeSwingState state{};
 	uint32_t              sweepCount = 0;
@@ -416,7 +422,7 @@ TEST_CASE("MeleeSwing: 判定区間0秒でも落ちず、掃引0本でRecovery�
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
 
 		if (result.didSweep)
 		{
@@ -436,17 +442,17 @@ TEST_CASE("MeleeSwing: 4区間すべて0秒でも無限ループせず1フレー
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	fang::MeleeSwingParams params{};
-	params.windUpSeconds   = 0.0f;
-	params.activeSeconds   = 0.0f;
-	params.recoverySeconds = 0.0f;
-	params.cooldownSeconds = 0.0f;
+	fang::MeleeSwingParameter parameter{};
+	parameter.windUpSeconds   = 0.0f;
+	parameter.activeSeconds   = 0.0f;
+	parameter.recoverySeconds = 0.0f;
+	parameter.cooldownSeconds = 0.0f;
 
 	fang::MeleeSwingState state{};
 	fang::SweepHit        hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 
 	const fang::MeleeSwingResult result =
-		fang::StepMeleeSwing(world, params, MakeInput(true), FRAME_SECONDS, &state, hits);
+		fang::StepMeleeSwing(world, parameter, MakeInput(true), FRAME_SECONDS, &state, hits);
 
 	CHECK_FALSE(result.didSweep);
 	CHECK(state.phase == fang::EnMeleeSwingPhase::Ready);
@@ -481,12 +487,12 @@ TEST_CASE("MeleeSwing: Continuousは次までの待ちを抜けるたびに合�
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	fang::MeleeSwingParams params{};
-	params.windUpSeconds   = 0.20f;
-	params.activeSeconds   = 0.30f;
-	params.recoverySeconds = 0.20f;
-	params.cooldownSeconds = 0.30f; // 1周 1.00 秒。
-	params.triggerMode     = fang::EnMeleeSwingTrigger::Continuous;
+	fang::MeleeSwingParameter parameter{};
+	parameter.windUpSeconds   = 0.20f;
+	parameter.activeSeconds   = 0.30f;
+	parameter.recoverySeconds = 0.20f;
+	parameter.cooldownSeconds = 0.30f; // 1周 1.00 秒。
+	parameter.triggerMode     = fang::EnMeleeSwingTrigger::Continuous;
 
 	fang::MeleeSwingState state{};
 	uint32_t              startCount = 0;
@@ -496,7 +502,7 @@ TEST_CASE("MeleeSwing: Continuousは次までの待ちを抜けるたびに合�
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(true), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(true), FRAME_SECONDS, &state, hits);
 
 		if (result.didStartSwing)
 		{
@@ -515,12 +521,12 @@ TEST_CASE("MeleeSwing: 待ちを倍にして1周を2.00秒にすると、同じ1
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	fang::MeleeSwingParams params{};
-	params.windUpSeconds   = 0.20f;
-	params.activeSeconds   = 0.30f;
-	params.recoverySeconds = 0.20f;
-	params.cooldownSeconds = 1.30f; // 1周 2.00 秒(待ちだけを倍の0.60ではなく、周を倍にする)。
-	params.triggerMode     = fang::EnMeleeSwingTrigger::Continuous;
+	fang::MeleeSwingParameter parameter{};
+	parameter.windUpSeconds   = 0.20f;
+	parameter.activeSeconds   = 0.30f;
+	parameter.recoverySeconds = 0.20f;
+	parameter.cooldownSeconds = 1.30f; // 1周 2.00 秒(待ちだけを倍の0.60ではなく、周を倍にする)。
+	parameter.triggerMode     = fang::EnMeleeSwingTrigger::Continuous;
 
 	fang::MeleeSwingState state{};
 	uint32_t              startCount = 0;
@@ -530,7 +536,7 @@ TEST_CASE("MeleeSwing: 待ちを倍にして1周を2.00秒にすると、同じ1
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(true), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(true), FRAME_SECONDS, &state, hits);
 
 		if (result.didStartSwing)
 		{
@@ -546,17 +552,17 @@ TEST_CASE("MeleeSwing: 待ちを倍にして1周を2.00秒にすると、同じ1
 
 TEST_CASE("MeleeSwing: 振りの記録が満杯だと、複数フレームにまたがる新顔もダメージ無しで落ちる")
 {
-	fang::MeleeSwingParams params{};
+	fang::MeleeSwingParameter parameter{};
 
 	std::vector<fang::ColliderProxy> proxies;
 	for (uint32_t step = 0; step < fang::MAX_MELEE_SWING_HIT_COUNT; ++step)
 	{
 		// 8 体を、判定区間の最初の 8 フレームへ 1 体ずつ当たるように並べる。
-		RegisterTarget(proxies, step, FangPositionAtStep(params, step), 5.0f);
+		RegisterTarget(proxies, step, FangPositionAtStep(parameter, step), 5.0f);
 	}
 	// 9 体目は最後のフレーム(8 番目)にだけ当たる、まったく新しい相手。
 	constexpr uint32_t NINTH_TARGET_USER_INDEX = 100;
-	RegisterTarget(proxies, NINTH_TARGET_USER_INDEX, FangPositionAtStep(params, 8), 5.0f);
+	RegisterTarget(proxies, NINTH_TARGET_USER_INDEX, FangPositionAtStep(parameter, 8), 5.0f);
 
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
@@ -571,7 +577,7 @@ TEST_CASE("MeleeSwing: 振りの記録が満杯だと、複数フレームにま
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, parameter, MakeInput(frame == 0), FRAME_SECONDS, &state, hits);
 
 		for (uint32_t hitIndex = 0; hitIndex < result.newHitCount; ++hitIndex)
 		{

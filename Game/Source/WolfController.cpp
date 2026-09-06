@@ -1,30 +1,30 @@
 ﻿/**
- * @file WolfBehavior.cpp
+ * @file WolfController.cpp
  * @brief 狼 1 体ぶんの移動・接地・アニメーションを進める振る舞い。
  */
-#include "WolfBehavior.h"
+#include "WolfController.h"
 #include "Animation/AnimationPlayback.h"
 #include "Animation/SkeletalAnimation.h"
 #include "Collision/CollisionWorld.h"
 #include "Core/Log/Assert.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Resource/HeightmapTerrain.h"
-#include "Scene/CharacterMovement.h"
-#include "CollisionLayers.h"
+#include "Scene/CharacterController.h"
+#include "CollisionAttribute.h"
 #include "MeleeDamage.h"
 
 
 namespace fang::game
 {
-	WolfBehavior::WolfBehavior(
-		const WolfMovementParams& params,
-		const MeleeSwingParams&   swingParams,
-		const Dependencies&       dependencies,
-		const Vector3&            initialPosition,
-		float                     initialFacingRadians
+	WolfController::WolfController(
+		const WolfMovementParameter& parameter,
+		const MeleeSwingParameter&   swingParameter,
+		const Dependencies&          dependencies,
+		const Vector3&               initialPosition,
+		float                        initialFacingRadians
 	)
-		: m_params(params)
-		, m_swingParams(swingParams)
+		: m_parameter(parameter)
+		, m_swingParameter(swingParameter)
 		, m_dependencies(dependencies)
 		, m_position(initialPosition)
 		, m_facingRadians(initialFacingRadians)
@@ -32,7 +32,7 @@ namespace fang::game
 	}
 
 
-	void WolfBehavior::SetControlled(bool isControlled)
+	void WolfController::SetControlled(bool isControlled)
 	{
 		m_isControlled = isControlled;
 		if (isControlled)
@@ -43,7 +43,7 @@ namespace fang::game
 	}
 
 
-	void WolfBehavior::SetFrameInput(const GamepadState& gamepad, float cameraYawRadians)
+	void WolfController::SetFrameInput(const GamepadState& gamepad, float cameraYawRadians)
 	{
 		m_moveStick         = GetLeftStick(gamepad);
 		m_cameraYawRadians  = cameraYawRadians;
@@ -51,31 +51,35 @@ namespace fang::game
 	}
 
 
-	void WolfBehavior::Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene)
+	void WolfController::Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene)
 	{
 		// 1. 振り(操作する狼のみ)。移動より前に置く ➡ m_position はまだ前フレームに SetLocalTransform で
 		//    書いた位置のまま。掃引が見る登録も前フレームのもの(ADR-034) ➡ 牙と相手が同じ瞬間の世界で揃う。
 		if (m_isControlled && m_dependencies.collisionWorld != nullptr)
 		{
 			const MeleeSwingInput swingInput{
-				.selfPosition      = m_position,
-				.selfFacingRadians = m_facingRadians,
-				.isAttackRequested = m_isAttackRequested,
-				.selfUserIndex     = self.index,
-				.targetLayerMask   = COLLISION_LAYER_ENEMY,
+				.selfPosition        = m_position,
+				.selfFacingRadians   = m_facingRadians,
+				.isAttackRequested   = m_isAttackRequested,
+				.selfUserIndex       = self.index,
+				.targetAttributeMask = COLLISION_ATTRIBUTE_ENEMY,
 			};
 
 			SweepHit               hits[MAX_MELEE_SWING_HIT_COUNT];
 			const MeleeSwingResult swingResult = StepMeleeSwing(
 				*m_dependencies.collisionWorld,
-				m_swingParams,
+				m_swingParameter,
 				swingInput,
 				deltaTimeSeconds,
 				&m_swingState,
 				hits
 			);
 
-			ApplyMeleeHits(scene, std::span<const SweepHit>(hits, swingResult.newHitCount), m_swingParams.attackPower);
+			ApplyMeleeHits(
+				scene,
+				std::span<const SweepHit>(hits, swingResult.newHitCount),
+				m_swingParameter.attackPower
+			);
 		}
 
 		float appliedSpeed = 0.0f;
@@ -90,7 +94,7 @@ namespace fang::game
 			const Vector3 desiredDelta = MakeMoveDelta(
 				m_moveStick,
 				m_cameraYawRadians,
-				m_params.moveSpeedCentimetersPerSecond,
+				m_parameter.moveSpeedCentimetersPerSecond,
 				deltaTimeSeconds
 			);
 
@@ -103,7 +107,7 @@ namespace fang::game
 				m_facingRadians = TurnTowards(
 					m_facingRadians,
 					GetYawFromDirection(moveResult.appliedDelta),
-					m_params.turnSpeedRadiansPerSecond * deltaTimeSeconds
+					m_parameter.turnSpeedRadiansPerSecond * deltaTimeSeconds
 				);
 			}
 		}
@@ -127,7 +131,7 @@ namespace fang::game
 			if (m_isControlled)
 			{
 				// 速さに合わせて進める ➡ 止まれば姿勢も止まり、ゆっくり倒せばゆっくり歩く。
-				m_dependencies.playback->SetPlaybackSpeed(appliedSpeed / m_params.moveSpeedCentimetersPerSecond);
+				m_dependencies.playback->SetPlaybackSpeed(appliedSpeed / m_parameter.moveSpeedCentimetersPerSecond);
 				m_dependencies.playback->Advance(deltaTimeSeconds);
 
 				FANG_VERIFY(m_dependencies.animation->ComputeSkinningMatrices(

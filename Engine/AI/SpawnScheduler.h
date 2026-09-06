@@ -12,9 +12,9 @@
 namespace fang
 {
 	/** @brief 湧きの調整値。 */
-	struct SpawnParams
+	struct SpawnParameter
 	{
-		FANG_REFLECT_BEGIN(SpawnParams)
+		FANG_REFLECT_BEGIN(SpawnParameter)
 		FANG_FIELD(intervalSeconds, "湧きの間隔", Range(0.0f, 60.0f))
 		FANG_FIELD(minimumDistanceCentimeters, "最小距離", Range(0.0f, 10000.0f))
 		FANG_FIELD(maximumDistanceCentimeters, "最大距離", Range(0.0f, 10000.0f))
@@ -45,10 +45,10 @@ namespace fang
 	{
 	public:
 		[[nodiscard]] SpawnRequest Update(
-			float              deltaTimeSeconds,
-			uint32_t           aliveCount,
-			const Vector3&     targetPosition,
-			const SpawnParams& params
+			float                 deltaTimeSeconds,
+			uint32_t              aliveCount,
+			const Vector3&        targetPosition,
+			const SpawnParameter& parameter
 		);
 
 		/** @brief 通算で湧かせた数。環の上の位置を決める番号でもある。 */

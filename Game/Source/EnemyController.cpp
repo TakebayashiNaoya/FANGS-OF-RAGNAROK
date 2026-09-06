@@ -1,25 +1,25 @@
 ﻿/**
- * @file MinionBehavior.cpp
+ * @file EnemyController.cpp
  * @brief 雑魚 1 体ぶんの感知・追跡・移動・接地を進める振る舞い。
  */
-#include "MinionBehavior.h"
+#include "EnemyController.h"
 #include "Collision/CollisionWorld.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Resource/HeightmapTerrain.h"
-#include "Scene/CharacterMovement.h"
+#include "Scene/CharacterController.h"
 #include "MeleeDamage.h"
 
 
 namespace fang::game
 {
-	MinionBehavior::MinionBehavior(const Dependencies& dependencies, const Vector3& initialPosition)
+	EnemyController::EnemyController(const Dependencies& dependencies, const Vector3& initialPosition)
 		: m_dependencies(dependencies)
 		, m_position(initialPosition)
 	{
 	}
 
 
-	void MinionBehavior::Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene)
+	void EnemyController::Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene)
 	{
 		//------------------------------------------------------------------------
 		// 1. 相手の位置と生死を読む
@@ -45,7 +45,7 @@ namespace fang::game
 				.selfUserIndex     = self.index,
 				.targetUserIndex   = m_dependencies.targetHandle->index,
 			};
-			perception = Sense(*m_dependencies.collisionWorld, m_dependencies.params->perception, input);
+			perception = Sense(*m_dependencies.collisionWorld, m_dependencies.parameter->perception, input);
 		}
 
 		WritePerception(perception, targetPosition, deltaTimeSeconds, &m_blackboard);
@@ -56,35 +56,35 @@ namespace fang::game
 		//------------------------------------------------------------------------
 		if (m_dependencies.collisionWorld != nullptr)
 		{
-			const MeleeSwingParams& swingParams = m_dependencies.params->swing;
+			const MeleeSwingParameter& swingParameter = m_dependencies.parameter->swing;
 
 			const MeleeSwingInput swingInput{
-				.selfPosition      = m_position,
-				.selfFacingRadians = m_facingRadians,
-				.isAttackRequested = m_blackboard.isTargetVisible &&
-									 m_blackboard.distanceToTargetCentimeters <= swingParams.reachCentimeters,
-				.selfUserIndex     = self.index,
-				.targetLayerMask   = COLLISION_LAYER_WOLF,
+				.selfPosition        = m_position,
+				.selfFacingRadians   = m_facingRadians,
+				.isAttackRequested   = m_blackboard.isTargetVisible &&
+									   m_blackboard.distanceToTargetCentimeters <= swingParameter.reachCentimeters,
+				.selfUserIndex       = self.index,
+				.targetAttributeMask = COLLISION_ATTRIBUTE_WOLF,
 			};
 
 			SweepHit               hits[MAX_MELEE_SWING_HIT_COUNT];
 			const MeleeSwingResult swingResult = StepMeleeSwing(
 				*m_dependencies.collisionWorld,
-				swingParams,
+				swingParameter,
 				swingInput,
 				deltaTimeSeconds,
 				&m_swingState,
 				hits
 			);
 
-			ApplyMeleeHits(scene, std::span<const SweepHit>(hits, swingResult.newHitCount), swingParams.attackPower);
+			ApplyMeleeHits(scene, std::span<const SweepHit>(hits, swingResult.newHitCount), swingParameter.attackPower);
 		}
 
 		//------------------------------------------------------------------------
 		// 4. 意思決定。振りの最中は答えを捨てる（進む量も向きも変えない。踏み込みの空振りを許す）。
 		//------------------------------------------------------------------------
 		MoveIntent intent =
-			StepPursuit(m_dependencies.params->pursuit, m_blackboard, m_position, deltaTimeSeconds, &m_state);
+			StepPursuit(m_dependencies.parameter->pursuit, m_blackboard, m_position, deltaTimeSeconds, &m_state);
 
 		if (IsMeleeSwingInProgress(m_swingState))
 		{
@@ -106,7 +106,7 @@ namespace fang::game
 			m_facingRadians = TurnTowards(
 				m_facingRadians,
 				intent.facingRadians,
-				m_dependencies.params->pursuit.turnSpeedRadiansPerSecond * deltaTimeSeconds
+				m_dependencies.parameter->pursuit.turnSpeedRadiansPerSecond * deltaTimeSeconds
 			);
 		}
 

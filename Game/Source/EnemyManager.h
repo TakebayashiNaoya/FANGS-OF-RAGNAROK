@@ -1,12 +1,12 @@
 ﻿/**
- * @file MinionSpawner.h
+ * @file EnemyManager.h
  * @brief 一定の間隔で雑魚を湧かせ、地表に立たせて Scene オブジェクトへ実体化する。
  */
 #pragma once
 
 #include "AI/AI.h"
 #include "Core/Math/Vector3.h"
-#include "MinionBehavior.h"
+#include "EnemyController.h"
 #include <array>
 
 
@@ -28,11 +28,11 @@ namespace fang::game
 	 *          （次の間隔で別の方位が出るので詰まらない）。
 	 * @threading 更新ジョブ 1 本から。
 	 */
-	class MinionSpawner
+	class EnemyManager
 	{
 	public:
-		/** @brief 同時に追える雑魚の上限。SpawnParams::maximumAliveCount はこれを超えられない。 */
-		static constexpr uint32_t MAX_TRACKED_MINION_COUNT = 32;
+		/** @brief 同時に追える雑魚の上限。SpawnParameter::maximumAliveCount はこれを超えられない。 */
+		static constexpr uint32_t MAX_TRACKED_ENEMY_COUNT = 32;
 
 		/** @brief Game 側が持ち続ける資源への借用。 */
 		struct Dependencies
@@ -46,7 +46,7 @@ namespace fang::game
 			const GameObjectHandle* targetHandle = nullptr;
 		};
 
-		/** @brief 1 フレームぶん進める。湧く条件が揃えば MinionBehavior を 1 体作る。 */
+		/** @brief 1 フレームぶん進める。湧く条件が揃えば EnemyController を 1 体作る。 */
 		void Update(float deltaTimeSeconds, const Vector3& targetPosition, const Dependencies& dependencies);
 
 		/** @brief 今 Scene に生きている数。直近の Update が数え直したもの。上限判定に使う。 */
@@ -55,11 +55,11 @@ namespace fang::game
 
 	private:
 		SpawnScheduler m_scheduler;
-		SpawnParams    m_spawnParams;
-		MinionParams   m_minionParams;
+		SpawnParameter m_spawnParameter;
+		EnemyParameter m_enemyParameter;
 
 		/** @brief 湧かせた雑魚。毎フレーム Scene::IsValid で数え直し、消えたものを詰める(ADR-036)。 */
-		std::array<GameObjectHandle, MAX_TRACKED_MINION_COUNT> m_spawnedHandles;
-		uint32_t                                               m_aliveCount = 0;
+		std::array<GameObjectHandle, MAX_TRACKED_ENEMY_COUNT> m_spawnedHandles;
+		uint32_t                                              m_aliveCount = 0;
 	};
 } // namespace fang::game

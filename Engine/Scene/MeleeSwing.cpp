@@ -17,27 +17,27 @@ namespace fang
 		constexpr int MAX_PHASE_ADVANCE_COUNT = 4;
 
 		/** @brief 位相ごとの持ち時間。Ready は時間で進まない（合図待ち）ので 0。 */
-		[[nodiscard]] float GetPhaseDurationSeconds(const MeleeSwingParams& params, EnMeleeSwingPhase phase)
+		[[nodiscard]] float GetPhaseDurationSeconds(const MeleeSwingParameter& parameter, EnMeleeSwingPhase phase)
 		{
 			switch (phase)
 			{
-				case EnMeleeSwingPhase::WindUp: return params.windUpSeconds;
-				case EnMeleeSwingPhase::Active: return params.activeSeconds;
-				case EnMeleeSwingPhase::Recovery: return params.recoverySeconds;
-				case EnMeleeSwingPhase::Cooldown: return params.cooldownSeconds;
+				case EnMeleeSwingPhase::WindUp: return parameter.windUpSeconds;
+				case EnMeleeSwingPhase::Active: return parameter.activeSeconds;
+				case EnMeleeSwingPhase::Recovery: return parameter.recoverySeconds;
+				case EnMeleeSwingPhase::Cooldown: return parameter.cooldownSeconds;
 				default: return 0.0f;
 			}
 		}
 
 		/** @brief 位相を 1 つ進める。判定区間に入った瞬間だけ、牙の始点を弧の始まりで埋め直す。 */
-		void AdvancePhase(const MeleeSwingParams& params, const MeleeSwingInput& input, MeleeSwingState* state)
+		void AdvancePhase(const MeleeSwingParameter& parameter, const MeleeSwingInput& input, MeleeSwingState* state)
 		{
 			switch (state->phase)
 			{
 				case EnMeleeSwingPhase::WindUp:
 					state->phase = EnMeleeSwingPhase::Active;
 					state->previousFangPosition =
-						ComputeFangPosition(params, input.selfPosition, input.selfFacingRadians, 0.0f);
+						ComputeFangPosition(parameter, input.selfPosition, input.selfFacingRadians, 0.0f);
 					break;
 
 				case EnMeleeSwingPhase::Active: state->phase = EnMeleeSwingPhase::Recovery; break;
@@ -66,36 +66,37 @@ namespace fang
 
 
 	Vector3 ComputeFangPosition(
-		const MeleeSwingParams& params,
-		const Vector3&          selfPosition,
-		float                   selfFacingRadians,
-		float                   activeRatio
+		const MeleeSwingParameter& parameter,
+		const Vector3&             selfPosition,
+		float                      selfFacingRadians,
+		float                      activeRatio
 	)
 	{
-		const float fangAngleRadians = selfFacingRadians - params.arcRadians * 0.5f + params.arcRadians * activeRatio;
+		const float fangAngleRadians =
+			selfFacingRadians - parameter.arcRadians * 0.5f + parameter.arcRadians * activeRatio;
 
 		const Vector3 planarOffset{
-			std::cos(fangAngleRadians) * params.reachCentimeters,
+			std::cos(fangAngleRadians) * parameter.reachCentimeters,
 			0.0f,
-			std::sin(fangAngleRadians) * params.reachCentimeters,
+			std::sin(fangAngleRadians) * parameter.reachCentimeters,
 		};
 
-		return selfPosition + planarOffset + Vector3{ 0.0f, params.fangHeightCentimeters, 0.0f };
+		return selfPosition + planarOffset + Vector3{ 0.0f, parameter.fangHeightCentimeters, 0.0f };
 	}
 
 
 	MeleeSwingResult StepMeleeSwing(
-		const CollisionWorld&   world,
-		const MeleeSwingParams& params,
-		const MeleeSwingInput&  input,
-		float                   deltaTimeSeconds,
-		MeleeSwingState*        state,
-		std::span<SweepHit>     outHits
+		const CollisionWorld&      world,
+		const MeleeSwingParameter& parameter,
+		const MeleeSwingInput&     input,
+		float                      deltaTimeSeconds,
+		MeleeSwingState*           state,
+		std::span<SweepHit>        outHits
 	)
 	{
 		MeleeSwingResult result;
 
-		const bool canStart       = (params.triggerMode == EnMeleeSwingTrigger::Continuous)
+		const bool canStart       = (parameter.triggerMode == EnMeleeSwingTrigger::Continuous)
 										? input.isAttackRequested
 										: (input.isAttackRequested && !state->wasAttackRequested);
 		state->wasAttackRequested = input.isAttackRequested;
@@ -121,14 +122,14 @@ namespace fang
 		// どれかの区間が 0 秒でも無限ループしないようにする。
 		for (int advance = 0; advance < MAX_PHASE_ADVANCE_COUNT; ++advance)
 		{
-			const float phaseDurationSeconds = GetPhaseDurationSeconds(params, state->phase);
+			const float phaseDurationSeconds = GetPhaseDurationSeconds(parameter, state->phase);
 			if (state->elapsedSeconds < phaseDurationSeconds)
 			{
 				break;
 			}
 
 			state->elapsedSeconds -= phaseDurationSeconds;
-			AdvancePhase(params, input, state);
+			AdvancePhase(parameter, input, state);
 		}
 
 		if (state->phase != EnMeleeSwingPhase::Active)
@@ -137,16 +138,16 @@ namespace fang
 		}
 
 		const float activeRatio =
-			(params.activeSeconds > 0.0f) ? std::min(state->elapsedSeconds / params.activeSeconds, 1.0f) : 1.0f;
+			(parameter.activeSeconds > 0.0f) ? std::min(state->elapsedSeconds / parameter.activeSeconds, 1.0f) : 1.0f;
 		const Vector3 fangPosition =
-			ComputeFangPosition(params, input.selfPosition, input.selfFacingRadians, activeRatio);
+			ComputeFangPosition(parameter, input.selfPosition, input.selfFacingRadians, activeRatio);
 		const Vector3 motion = fangPosition - state->previousFangPosition;
 
-		const Sphere fangSphere{ .center = state->previousFangPosition, .radius = params.fangRadiusCentimeters };
+		const Sphere fangSphere{ .center = state->previousFangPosition, .radius = parameter.fangRadiusCentimeters };
 
 		const uint32_t    excludedUserIndex = input.selfUserIndex;
 		const QueryFilter filter{
-			.layerMask           = input.targetLayerMask,
+			.attributeMask       = input.targetAttributeMask,
 			.excludedUserIndices = std::span<const uint32_t>(&excludedUserIndex, 1),
 		};
 

@@ -10,10 +10,19 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Source\CameraFollowParams.h">
+    <ClInclude Include="Source\CameraFollowParameter.h">
       <Filter>Source</Filter>
     </ClInclude>
-    <ClInclude Include="Source\CollisionLayers.h">
+    <ClInclude Include="Source\CollisionAttribute.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Enemy.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\EnemyController.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\EnemyManager.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="Source\GameLog.h">
@@ -25,45 +34,36 @@
     <ClInclude Include="Source\MeleeDamage.h">
       <Filter>Source</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Minion.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\MinionBehavior.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\MinionSpawner.h">
-      <Filter>Source</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Stage.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="Source\Wolf.h">
       <Filter>Source</Filter>
     </ClInclude>
-    <ClInclude Include="Source\WolfBehavior.h">
+    <ClInclude Include="Source\WolfController.h">
       <Filter>Source</Filter>
     </ClInclude>
-    <ClInclude Include="Source\WolfMovementParams.h">
+    <ClInclude Include="Source\WolfManager.h">
       <Filter>Source</Filter>
     </ClInclude>
-    <ClInclude Include="Source\WolfPack.h">
+    <ClInclude Include="Source\WolfMovementParameter.h">
       <Filter>Source</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Source\Enemy.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\EnemyController.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\EnemyManager.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\GameMain.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\MeleeDamage.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Minion.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\MinionBehavior.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\MinionSpawner.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\Stage.cpp">
@@ -72,10 +72,10 @@
     <ClCompile Include="Source\Wolf.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="Source\WolfBehavior.cpp">
+    <ClCompile Include="Source\WolfController.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="Source\WolfPack.cpp">
+    <ClCompile Include="Source\WolfManager.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\UWP\MainUWP.cpp">

@@ -5,9 +5,9 @@
  *          その場で（後ろに書いたメンバも含めて）フィールド一覧を組み立てる。
  *
  * @code
- * struct WolfMovementParams
+ * struct WolfMovementParameter
  * {
- *     FANG_REFLECT_BEGIN(WolfMovementParams)
+ *     FANG_REFLECT_BEGIN(WolfMovementParameter)
  *         FANG_FIELD(moveSpeedCentimetersPerSecond, "移動速度", Range(0.0f, 2000.0f))
  *         FANG_FIELD(turnSpeedRadiansPerSecond,     "旋回速度", Range(0.0f, 32.0f))
  *     FANG_REFLECT_END()

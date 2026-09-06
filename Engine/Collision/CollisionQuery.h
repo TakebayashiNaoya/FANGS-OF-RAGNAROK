@@ -1,6 +1,6 @@
 ﻿/**
  * @file CollisionQuery.h
- * @brief クエリの型（QueryFilter・RayHit・SweepHit・SweepResult）と種別ビットの定数。
+ * @brief クエリの型（QueryFilter・RaycastHit・SweepHit・SweepResult）と種別ビットの定数。
  */
 #pragma once
 
@@ -12,7 +12,7 @@
 namespace fang
 {
 	/** @brief すべての種別。ビットの意味は Collision が決めず、使う側が割り当てる。 */
-	inline constexpr uint32_t ALL_COLLISION_LAYERS = 0xFFFFFFFFu;
+	inline constexpr uint32_t ALL_COLLISION_ATTRIBUTE_MASK = 0xFFFFFFFFu;
 
 	/** @brief 1 回のクエリが Broadphase から受け取れる候補の上限。CollisionWorldDesc の既定と同じ数。 */
 	inline constexpr uint32_t MAX_QUERY_CANDIDATE_COUNT = 1024;
@@ -23,15 +23,15 @@ namespace fang
 	 */
 	struct QueryFilter
 	{
-		/** @brief 見る種別。登録の layerMask との AND が 0 でないものだけを見る。 */
-		uint32_t layerMask = ALL_COLLISION_LAYERS;
+		/** @brief 見る種別。登録の attributeMask との AND が 0 でないものだけを見る。 */
+		uint32_t attributeMask = ALL_COLLISION_ATTRIBUTE_MASK;
 
 		/** @brief 結果から外す userIndex。呼び出し側のスタックの配列でよい（クエリの間だけ読む）。 */
 		std::span<const uint32_t> excludedUserIndices;
 	};
 
 	/** @brief レイキャストの結果。 */
-	struct RayHit
+	struct RaycastHit
 	{
 		uint32_t userIndex = 0; /**< 当たったコライダーの呼び出し側の番号。 */
 
