@@ -22,6 +22,13 @@ namespace fang::game
 		/** @brief ステージの glTF。アセットの根っこからの相対パス。 */
 		constexpr const char* STAGE_MODEL_RELATIVE_PATH = "Models\\Stage.gltf";
 
+		/**
+		 * @brief 専用アセットが無い物に貸す静的メッシュの名前。
+		 * @details 番号や頂点数で当てない(ADR-062)。Stage.gltf を作り直しても、この名前のメッシュが
+		 *          残っていれば貸し出し先が変わらない。
+		 */
+		constexpr const char* PLACEHOLDER_MESH_NAME = "MarkerPyramid";
+
 		/** @brief ステージのモデルが置かれている場所。テクスチャの相対パスの組み立てに使う。 */
 		constexpr const char* MODEL_FOLDER_RELATIVE_PATH = "Models\\";
 
@@ -91,7 +98,25 @@ namespace fang::game
 				.indices   = mesh.indices,
 				.tangents  = mesh.tangents,
 			};
-			gpuMeshes.push_back(meshRenderer.CreateMesh(device, source));
+			const MeshId meshId = meshRenderer.CreateMesh(device, source);
+			gpuMeshes.push_back(meshId);
+
+			// 借りるメッシュは名前で引く。番号(並び)や頂点数で当てると、Stage.gltf を作り直した日に
+			// 黙って別の物を借りる。同じ名前が複数並ぶ(多プリミティブ)なら最初の 1 つ。
+			if (meshId.IsValid() && !outStageModel->placeholderMesh.IsValid() && mesh.name == PLACEHOLDER_MESH_NAME)
+			{
+				outStageModel->placeholderMesh        = meshId;
+				outStageModel->placeholderLocalBounds = meshRenderer.GetLocalBounds(meshId);
+			}
+		}
+
+		if (!outStageModel->placeholderMesh.IsValid())
+		{
+			FANG_LOG_WARNING(
+				Game,
+				"貸し出し用のメッシュ {} がステージに無い。落ちた物は見えないまま動く",
+				PLACEHOLDER_MESH_NAME
+			);
 		}
 
 		//------------------------------------------------------------------------

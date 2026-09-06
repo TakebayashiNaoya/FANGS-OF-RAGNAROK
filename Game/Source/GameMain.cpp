@@ -359,12 +359,13 @@ namespace fang::game
 				// 全滅中も呼ぶ（肉は歳を取り続ける。拾う側だけ無効な Actor になり、回収は起きない）。
 				m_meatManager.Update(
 					context.deltaTimeSeconds,
+					context.elapsedSeconds,
 					m_itemDropParameter,
 					m_wolfManager.GetTeamItems(),
 					MeatManager::Dependencies{
-						.scene       = &m_scene,
-						.sharedModel = &m_wolf,
-						.collector   = m_wolfManager.GetControlledActor(),
+						.scene     = &m_scene,
+						.stage     = &m_stage,
+						.collector = m_wolfManager.GetControlledActor(),
 					}
 				);
 
@@ -485,7 +486,7 @@ namespace fang::game
 			 */
 			void RegisterTuningValues()
 			{
-				constexpr uint32_t EXPECTED_TUNING_ROW_COUNT = 54;
+				constexpr uint32_t EXPECTED_TUNING_ROW_COUNT = 58;
 
 				TuningRegistry& registry = TuningRegistry::GetInstance();
 				FANG_VERIFY(registry.Register("狼の移動", &m_wolfMovementParameter));
