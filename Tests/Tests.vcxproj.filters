@@ -36,6 +36,9 @@
     <ClCompile Include="Source\CharacterControllerTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\CharacterCreationTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\CollisionBudgetTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>

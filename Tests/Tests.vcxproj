@@ -42,6 +42,7 @@
     <ClCompile Include="Source\BroadphaseTests.cpp" />
     <ClCompile Include="Source\CharacterBaseTests.cpp" />
     <ClCompile Include="Source\CharacterControllerTests.cpp" />
+    <ClCompile Include="Source\CharacterCreationTests.cpp" />
     <ClCompile Include="Source\CollisionBudgetTests.cpp" />
     <ClCompile Include="Source\CollisionDebugLineTests.cpp" />
     <ClCompile Include="Source\CollisionMathTests.cpp" />
