@@ -4,6 +4,7 @@
   <ItemGroup>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Actor.h" />
     <ClInclude Include="ActorHandle.h" />
     <ClInclude Include="CharacterController.h" />
     <ClInclude Include="ComponentTypes.h" />
@@ -13,6 +14,7 @@
     <ClInclude Include="SceneLog.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Actor.cpp" />
     <ClCompile Include="CharacterController.cpp" />
     <ClCompile Include="ComponentTypes.cpp" />
     <ClCompile Include="MeleeSwing.cpp" />

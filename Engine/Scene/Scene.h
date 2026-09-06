@@ -7,6 +7,7 @@
 #include "Core/CoreMacros.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Math/Vector3.h"
+#include "Scene/Actor.h"
 #include "Scene/ActorHandle.h"
 #include "Scene/ComponentTypes.h"
 #include <cstddef>
@@ -182,6 +183,9 @@ namespace fang
 		 * @details 掃引や接触が返すのは席番号だけで、世代が入っていない ➡ コンポーネントを引く前にここを通す。
 		 */
 		[[nodiscard]] ActorHandle GetHandleFromIndex(uint32_t index) const;
+
+		/** @brief クエリが返した席番号から窓を作る。生きていなければ無効な Actor。 */
+		[[nodiscard]] Actor GetActorFromIndex(uint32_t index);
 
 		/** @brief 破棄を予約済みか。IsValid は予約済みでも true を返す（席が空くのは次の Update）。 */
 		[[nodiscard]] bool IsPendingDestroy(ActorHandle handle) const;

@@ -742,6 +742,12 @@ namespace fang
 	}
 
 
+	Actor Scene::GetActorFromIndex(uint32_t index)
+	{
+		return Actor{ *this, GetHandleFromIndex(index) };
+	}
+
+
 	bool Scene::IsPendingDestroy(ActorHandle handle) const
 	{
 		return IsValid(handle) && m_pendingDestroy[handle.index];

@@ -15,6 +15,9 @@
     <ClCompile Include="Source\AabbTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\ActorTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\AnimationPlaybackTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
