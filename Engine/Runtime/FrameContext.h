@@ -17,6 +17,7 @@ namespace fang
 	class Window;
 	struct ColliderProxy;
 	struct RenderItem;
+	struct StatusRowList;
 } // namespace fang
 
 
@@ -69,6 +70,12 @@ namespace fang
 		 *          デバッグ描画がワイヤーを起こすための写し。
 		 */
 		std::span<const ColliderProxy> colliderProxies;
+
+		/**
+		 * @brief この周の実行中の値の写し。エディタの読み取り専用パネルが読む。
+		 * @details 更新ジョブが末尾で組み、フレームメモリに置く。無ければ nullptr（Release では常に nullptr）。
+		 */
+		const StatusRowList* statusRows = nullptr;
 	};
 
 #if FANG_ENABLE_PROFILER
