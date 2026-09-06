@@ -560,7 +560,7 @@ namespace fang
 		const Vector3&     direction,
 		float              maxDistance,
 		const QueryFilter& filter,
-		RayHit*            outHit
+		RaycastHit*        outHit
 	) const
 	{
 		FANG_ASSERT(outHit != nullptr, "ヒットの書き込み先が null");
@@ -735,7 +735,7 @@ namespace fang
 		const Vector3&     fromPosition,
 		const Vector3&     toPosition,
 		const QueryFilter& filter,
-		RayHit*            outBlockingHit
+		RaycastHit*        outBlockingHit
 	) const
 	{
 		FANG_ASSERT(outBlockingHit != nullptr, "遮蔽ヒットの書き込み先が null");

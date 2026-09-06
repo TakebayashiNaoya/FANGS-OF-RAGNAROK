@@ -1,6 +1,6 @@
 ﻿/**
  * @file CollisionQuery.h
- * @brief クエリの型（QueryFilter・RayHit・SweepHit・SweepResult）と種別ビットの定数。
+ * @brief クエリの型（QueryFilter・RaycastHit・SweepHit・SweepResult）と種別ビットの定数。
  */
 #pragma once
 
@@ -31,7 +31,7 @@ namespace fang
 	};
 
 	/** @brief レイキャストの結果。 */
-	struct RayHit
+	struct RaycastHit
 	{
 		uint32_t userIndex = 0; /**< 当たったコライダーの呼び出し側の番号。 */
 

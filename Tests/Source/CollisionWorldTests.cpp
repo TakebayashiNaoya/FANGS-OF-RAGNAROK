@@ -157,7 +157,7 @@ TEST_CASE("登録 0 件でも更新とクエリで落ちない")
 	CHECK(world.GetColliderCount() == 0);
 	CHECK(world.GetContacts().size() == 0);
 
-	fang::RayHit hit;
+	fang::RaycastHit hit;
 	CHECK_FALSE(world.Raycast(fang::Vector3{}, fang::Vector3{ 1.0f, 0.0f, 0.0f }, 100.0f, fang::QueryFilter{}, &hit));
 
 	std::vector<uint32_t> indices(8);
@@ -230,7 +230,7 @@ TEST_CASE("更新のたびのヒープ確保が 0")
 	{
 		world.Update(proxies);
 
-		fang::RayHit hit;
+		fang::RaycastHit hit;
 		(void)world.Raycast(
 			fang::Vector3{ -100.0f, 0.0f, 0.0f },
 			fang::Vector3{ 1.0f, 0.0f, 0.0f },
@@ -280,7 +280,7 @@ TEST_CASE("掃引と視線を 1000 回回してもヒープ確保が増えない
 			sweepHits
 		);
 
-		fang::RayHit blockingHit;
+		fang::RaycastHit blockingHit;
 		(void)world.HasLineOfSight(
 			fang::Vector3{ -100.0f, 0.0f, 0.0f },
 			fang::Vector3{ 400.0f, 0.0f, 0.0f },
@@ -316,7 +316,7 @@ TEST_CASE("レイキャストが 3 つの形すべてに当たる")
 
 	const fang::Vector3 origin{ 0.0f, 0.0f, 0.0f };
 
-	fang::RayHit hit;
+	fang::RaycastHit hit;
 
 	// 球。表面までの距離は 10 - 1 = 9。
 	CHECK(world.Raycast(origin, fang::Vector3{ 1.0f, 0.0f, 0.0f }, 100.0f, fang::QueryFilter{}, &hit));
@@ -352,7 +352,7 @@ TEST_CASE("始点が形の中なら距離 0 を返す")
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
 	const fang::Vector3 direction{ 1.0f, 0.0f, 0.0f };
-	fang::RayHit        hit;
+	fang::RaycastHit    hit;
 
 	std::vector<fang::ColliderProxy> proxies;
 
@@ -396,7 +396,7 @@ TEST_CASE("いちばん近いものだけがレイキャストの結果になる
 
 	world.Update(proxies);
 
-	fang::RayHit hit;
+	fang::RaycastHit hit;
 	CHECK(world.Raycast(fang::Vector3{}, fang::Vector3{ 1.0f, 0.0f, 0.0f }, 100.0f, fang::QueryFilter{}, &hit));
 	CHECK(hit.userIndex == 10);
 	CHECK(hit.distance == doctest::Approx(9.0f));
@@ -472,7 +472,7 @@ TEST_CASE("attributeMask で絞り込んだレイキャストは対象外の登�
 	);
 	world.Update(proxies);
 
-	fang::RayHit hit;
+	fang::RaycastHit hit;
 
 	// 壁だけを見るフィルタでは、キャラの層しか無いこの登録には当たらない。
 	CHECK_FALSE(world.Raycast(
@@ -506,8 +506,8 @@ TEST_CASE("excludedUserIndices で除外した番号はレイキャストに出�
 	proxies.push_back(MakeSphereProxy(fang::Vector3{ 10.0f, 0.0f, 0.0f }, 1.0f, 42));
 	world.Update(proxies);
 
-	const uint32_t excluded[] = { 42 };
-	fang::RayHit   hit;
+	const uint32_t   excluded[] = { 42 };
+	fang::RaycastHit hit;
 
 	CHECK_FALSE(world.Raycast(
 		fang::Vector3{},
@@ -695,7 +695,7 @@ TEST_CASE("視線は間を遮る登録があれば false、無ければ true に
 	proxies.push_back(MakeSphereProxy(fang::Vector3{ 5.0f, 0.0f, 0.0f }, 1.0f, 1));
 	world.Update(proxies);
 
-	fang::RayHit blockingHit;
+	fang::RaycastHit blockingHit;
 
 	// 遮る登録がある。
 	CHECK_FALSE(
@@ -721,7 +721,7 @@ TEST_CASE("視線は発信元と対象自身を除外すれば通る")
 	proxies.push_back(MakeSphereProxy(fang::Vector3{ 10.0f, 0.0f, 0.0f }, 1.0f, 2));
 	world.Update(proxies);
 
-	fang::RayHit blockingHit;
+	fang::RaycastHit blockingHit;
 
 	// 除外しなければ、発信元自身の登録に当たって遮られる。
 	CHECK_FALSE(
@@ -759,7 +759,7 @@ TEST_CASE("視線を attributeMask で壁だけに絞ると、キャラの層は
 	);
 	world.Update(proxies);
 
-	fang::RayHit blockingHit;
+	fang::RaycastHit blockingHit;
 
 	CHECK_FALSE(
 		world.HasLineOfSight(fang::Vector3{}, fang::Vector3{ 10.0f, 0.0f, 0.0f }, fang::QueryFilter{}, &blockingHit)
@@ -794,9 +794,9 @@ TEST_CASE("3 実装とも外から見える結果が変わらない")
 	std::vector<std::pair<uint32_t, uint32_t>> expectedContactPairs;
 	std::vector<uint32_t>                      expectedOverlapIndices;
 	std::vector<uint32_t>                      expectedSweepUserIndices;
-	bool                                       expectedHasRayHit       = false;
-	uint32_t                                   expectedRayHitUserIndex = 0;
-	bool                                       expectedHasLineOfSight  = false;
+	bool                                       expectedHasRaycastHit       = false;
+	uint32_t                                   expectedRaycastHitUserIndex = 0;
+	bool                                       expectedHasLineOfSight      = false;
 
 	for (uint32_t typeIndex = 0; typeIndex < fang::BROADPHASE_TYPE_COUNT; ++typeIndex)
 	{
@@ -818,13 +818,13 @@ TEST_CASE("3 実装とも外から見える結果が変わらない")
 		}
 		std::sort(contactPairs.begin(), contactPairs.end());
 
-		fang::RayHit rayHit;
-		const bool   hasRayHit = world.Raycast(
+		fang::RaycastHit raycastHit;
+		const bool       hasRaycastHit = world.Raycast(
 			fang::Vector3{ -100.0f, 0.0f, 0.0f },
 			fang::Vector3{ 1.0f, 0.0f, 0.0f },
 			300.0f,
 			fang::QueryFilter{},
-			&rayHit
+			&raycastHit
 		);
 
 		std::vector<uint32_t> overlapIndices(64);
@@ -849,8 +849,8 @@ TEST_CASE("3 実装とも外から見える結果が変わらない")
 			sweepUserIndices.push_back(sweepHits[hitIndex].userIndex);
 		}
 
-		fang::RayHit blockingHit;
-		const bool   hasLineOfSight = world.HasLineOfSight(
+		fang::RaycastHit blockingHit;
+		const bool       hasLineOfSight = world.HasLineOfSight(
 			fang::Vector3{ -100.0f, 0.0f, 0.0f },
 			fang::Vector3{ 100.0f, 0.0f, 0.0f },
 			fang::QueryFilter{},
@@ -859,12 +859,12 @@ TEST_CASE("3 実装とも外から見える結果が変わらない")
 
 		if (typeIndex == 0)
 		{
-			expectedContactPairs     = contactPairs;
-			expectedOverlapIndices   = overlapIndices;
-			expectedSweepUserIndices = sweepUserIndices;
-			expectedHasRayHit        = hasRayHit;
-			expectedRayHitUserIndex  = hasRayHit ? rayHit.userIndex : 0;
-			expectedHasLineOfSight   = hasLineOfSight;
+			expectedContactPairs        = contactPairs;
+			expectedOverlapIndices      = overlapIndices;
+			expectedSweepUserIndices    = sweepUserIndices;
+			expectedHasRaycastHit       = hasRaycastHit;
+			expectedRaycastHitUserIndex = hasRaycastHit ? raycastHit.userIndex : 0;
+			expectedHasLineOfSight      = hasLineOfSight;
 
 			// 重なりも掃引も 1 件も無いと、実装の違いに気付けない。
 			CHECK(expectedContactPairs.size() > 0);
@@ -876,10 +876,10 @@ TEST_CASE("3 実装とも外から見える結果が変わらない")
 			CHECK(contactPairs == expectedContactPairs);
 			CHECK(overlapIndices == expectedOverlapIndices);
 			CHECK(sweepUserIndices == expectedSweepUserIndices);
-			CHECK(hasRayHit == expectedHasRayHit);
-			if (hasRayHit)
+			CHECK(hasRaycastHit == expectedHasRaycastHit);
+			if (hasRaycastHit)
 			{
-				CHECK(rayHit.userIndex == expectedRayHitUserIndex);
+				CHECK(raycastHit.userIndex == expectedRaycastHitUserIndex);
 			}
 			CHECK(hasLineOfSight == expectedHasLineOfSight);
 		}
@@ -894,7 +894,7 @@ TEST_CASE("同じ位置への視線は常に見える扱いになる")
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	fang::RayHit blockingHit;
+	fang::RaycastHit blockingHit;
 	CHECK(world.HasLineOfSight(
 		fang::Vector3{ 5.0f, 0.0f, 0.0f },
 		fang::Vector3{ 5.0f, 0.0f, 0.0f },

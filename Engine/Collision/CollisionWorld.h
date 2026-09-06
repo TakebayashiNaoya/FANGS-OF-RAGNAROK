@@ -109,7 +109,7 @@ namespace fang
 			const Vector3&     direction,
 			float              maxDistance,
 			const QueryFilter& filter,
-			RayHit*            outHit
+			RaycastHit*        outHit
 		) const;
 
 		/**
@@ -157,7 +157,7 @@ namespace fang
 			const Vector3&     fromPosition,
 			const Vector3&     toPosition,
 			const QueryFilter& filter,
-			RayHit*            outBlockingHit
+			RaycastHit*        outBlockingHit
 		) const;
 
 

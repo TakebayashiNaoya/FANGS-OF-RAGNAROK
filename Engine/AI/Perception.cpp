@@ -78,7 +78,7 @@ namespace fang
 			.excludedUserIndices = excluded,
 		};
 
-		RayHit blockingHit;
+		RaycastHit blockingHit;
 		result.didTraceLineOfSight = true;
 		result.isVisible           = world.HasLineOfSight(eyePosition, targetEyePosition, filter, &blockingHit);
 

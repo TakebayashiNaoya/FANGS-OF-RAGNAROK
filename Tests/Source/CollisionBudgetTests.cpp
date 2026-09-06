@@ -115,7 +115,7 @@ TEST_CASE("256 登録・視線 32 本・掃引 4 本が実機予算の 1 割に�
 			const fang::Vector3 fromPosition{ static_cast<float>(index) - 16.0f, 5.0f, 0.0f };
 			const fang::Vector3 toPosition{ static_cast<float>(index) - 16.0f, 5.0f, 150.0f };
 
-			fang::RayHit blockingHit;
+			fang::RaycastHit blockingHit;
 			(void)world.HasLineOfSight(fromPosition, toPosition, fang::QueryFilter{}, &blockingHit);
 		}
 
