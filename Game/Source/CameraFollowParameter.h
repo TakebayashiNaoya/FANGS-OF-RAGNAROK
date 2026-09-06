@@ -26,6 +26,7 @@ namespace fang::game
 		FANG_FIELD(fieldOfViewYRadians, "画角", Range(0.1f, 3.0f))
 		FANG_FIELD(yawSpeedRadiansPerSecond, "右スティックの旋回速度", Range(0.0f, 8.0f))
 		FANG_FIELD(orbitSecondsWhenDisconnected, "パッドが無いときの周回秒数", Range(1.0f, 120.0f))
+		FANG_FIELD_NESTED(occlusion, "遮蔽")
 		FANG_REFLECT_END()
 
 		// 狼の頂点の実測範囲は X[-92.6, 111.4]（体長 204）、Y[-0.39, 106.6]、Z[±18.2]。1 匹を画面に収めたい

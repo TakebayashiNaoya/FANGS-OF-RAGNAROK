@@ -7,6 +7,7 @@
 #include "AI/AI.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Math/Vector3.h"
+#include "Core/Reflection/Reflection.h"
 #include "Scene/CharacterBase.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
@@ -30,6 +31,13 @@ namespace fang::game
 	/** @brief 雑魚が共有する感知・追跡・振りの調整値。複数体で共有するので、Dependencies はポインタで参照する。 */
 	struct EnemyParameter
 	{
+		FANG_REFLECT_BEGIN(EnemyParameter)
+		FANG_FIELD_NESTED(perception, "感知")
+		FANG_FIELD_NESTED(pursuit, "追跡")
+		FANG_FIELD_NESTED(swing, "牙")
+		FANG_FIELD(maximumHitPoints, "最大 HP", Range(1.0f, 10000.0f))
+		FANG_REFLECT_END()
+
 		PerceptionParameter perception{ .blockerAttributeMask = COLLISION_ATTRIBUTE_PROP };
 		PursuitParameter    pursuit{ .stopDistanceCentimeters = ENEMY_STOP_DISTANCE_CENTIMETERS };
 
