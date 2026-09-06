@@ -110,6 +110,13 @@ namespace fang
 	void TickInvincibility(HealthComponent* health, float deltaTimeSeconds);
 
 	/**
+	 * @brief 最大 HP を書き換え、増えた分だけ今の HP も増やす。
+	 * @details 全快はさせない（レベルアップを回復手段にしない）。下げ戻したときだけ今の HP を
+	 *          新しい上限で頭打ちにする。同じ値で呼べば何も起きない ➡ 毎フレーム呼んでよい。
+	 */
+	void SetMaximumHitPoints(HealthComponent* health, float maximumHitPoints);
+
+	/**
 	 * @brief 振る舞い（Update を持つコンポーネント）の入口。
 	 * @details Scene::AddBehavior<T> が固定長ブロックのプールから配る。狼の移動・アニメなど、
 	 *          ゲーム固有の振る舞いはこれを継承して Game/Source/ に置く（01 アーキテクチャ 2）。

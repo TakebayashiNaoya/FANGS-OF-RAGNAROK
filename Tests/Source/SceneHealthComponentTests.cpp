@@ -101,6 +101,36 @@ TEST_CASE("ApplyDamage: 無敵0なら毎回入る")
 }
 
 
+TEST_CASE("SetMaximumHitPoints: 最大HPが増えた分だけ今のHPも増える(満タンにはしない)")
+{
+	fang::HealthComponent health{ .maximumHitPoints = 300.0f, .currentHitPoints = 100.0f };
+
+	fang::SetMaximumHitPoints(&health, 345.0f);
+	CHECK(health.maximumHitPoints == doctest::Approx(345.0f));
+	CHECK(health.currentHitPoints == doctest::Approx(145.0f)); // 100 + (345 - 300)。満タンの345にはならない。
+}
+
+
+TEST_CASE("SetMaximumHitPoints: 下げ戻したときは今のHPを新しい上限で頭打ちにする")
+{
+	fang::HealthComponent health{ .maximumHitPoints = 345.0f, .currentHitPoints = 345.0f };
+
+	fang::SetMaximumHitPoints(&health, 300.0f);
+	CHECK(health.maximumHitPoints == doctest::Approx(300.0f));
+	CHECK(health.currentHitPoints == doctest::Approx(300.0f));
+}
+
+
+TEST_CASE("SetMaximumHitPoints: 同じ値で呼んでも今のHPは変わらない(毎フレーム呼んでよい)")
+{
+	fang::HealthComponent health{ .maximumHitPoints = 300.0f, .currentHitPoints = 200.0f };
+
+	fang::SetMaximumHitPoints(&health, 300.0f);
+	CHECK(health.maximumHitPoints == doctest::Approx(300.0f));
+	CHECK(health.currentHitPoints == doctest::Approx(200.0f));
+}
+
+
 TEST_CASE("Scene: HealthComponentは1個まで持て、破棄反映で取り外される")
 {
 	fang::Scene scene;
