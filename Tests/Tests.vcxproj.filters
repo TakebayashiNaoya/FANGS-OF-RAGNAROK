@@ -99,6 +99,9 @@
     <ClCompile Include="Source\HeightmapTerrainTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\ItemDropTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\JobSystemStressTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
