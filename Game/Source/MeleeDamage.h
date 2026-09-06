@@ -5,7 +5,9 @@
 #pragma once
 
 #include "Collision/CollisionQuery.h"
+#include "Core/Math/Vector3.h"
 #include "Scene/Actor.h"
+#include "Scene/MeleeSwing.h"
 #include <cstdint>
 #include <span>
 
@@ -16,6 +18,9 @@ namespace fang::game
 	struct MeleeDamageResult
 	{
 		uint32_t defeatedCount = 0; /**< この呼び出しで HP を 0 以下にした相手の数。 */
+
+		/** @brief 倒した相手が居たワールド位置。先頭 defeatedCount 件が有効（hits は最大 8 なので溢れない）。 */
+		Vector3 defeatedPositions[MAX_MELEE_SWING_HIT_COUNT];
 	};
 
 	/**

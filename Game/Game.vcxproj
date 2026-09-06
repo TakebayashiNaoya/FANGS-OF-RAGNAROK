@@ -44,6 +44,8 @@
     <ClInclude Include="Source\EnemyManager.h" />
     <ClInclude Include="Source\GameLog.h" />
     <ClInclude Include="Source\GameMain.h" />
+    <ClInclude Include="Source\Meat.h" />
+    <ClInclude Include="Source\MeatManager.h" />
     <ClInclude Include="Source\MeleeDamage.h" />
     <ClInclude Include="Source\Stage.h" />
     <ClInclude Include="Source\Wolf.h" />
@@ -51,12 +53,15 @@
     <ClInclude Include="Source\WolfManager.h" />
     <ClInclude Include="Source\WolfMovementParameter.h" />
     <ClInclude Include="Source\WolfTeamGrowth.h" />
+    <ClInclude Include="Source\WolfTeamItems.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Enemy.cpp" />
     <ClCompile Include="Source\EnemyController.cpp" />
     <ClCompile Include="Source\EnemyManager.cpp" />
     <ClCompile Include="Source\GameMain.cpp" />
+    <ClCompile Include="Source\Meat.cpp" />
+    <ClCompile Include="Source\MeatManager.cpp" />
     <ClCompile Include="Source\MeleeDamage.cpp" />
     <ClCompile Include="Source\Stage.cpp" />
     <ClCompile Include="Source\Wolf.cpp" />

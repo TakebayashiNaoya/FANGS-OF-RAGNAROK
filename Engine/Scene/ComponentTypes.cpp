@@ -4,6 +4,7 @@
  */
 #include "Pch.h"
 #include "Scene/ComponentTypes.h"
+#include <algorithm>
 
 
 namespace fang
@@ -57,5 +58,23 @@ namespace fang
 		{
 			health->currentHitPoints = newMaximum;
 		}
+	}
+
+
+	HealResult ApplyHeal(HealthComponent* health, float ratioOfMaximumHitPoints)
+	{
+		if (health->currentHitPoints >= health->maximumHitPoints)
+		{
+			return HealResult{};
+		}
+
+		const float healAmount = health->maximumHitPoints * std::max(ratioOfMaximumHitPoints, 0.0f);
+
+		const float newCurrentHitPoints = std::min(health->currentHitPoints + healAmount, health->maximumHitPoints);
+		const float healedHitPoints     = newCurrentHitPoints - health->currentHitPoints;
+
+		health->currentHitPoints = newCurrentHitPoints;
+
+		return HealResult{ .wasApplied = true, .healedHitPoints = healedHitPoints };
 	}
 } // namespace fang

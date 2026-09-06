@@ -116,6 +116,22 @@ namespace fang
 	 */
 	void SetMaximumHitPoints(HealthComponent* health, float maximumHitPoints);
 
+	/** @brief 回復した結果。 */
+	struct HealResult
+	{
+		bool  wasApplied      = false; /**< 満タンではなかったので使えた。 */
+		float healedHitPoints = 0.0f;  /**< 実際に戻った量。頭打ちで削られた分は含まない。 */
+	};
+
+	/**
+	 * @brief 最大 HP の割合ぶんだけ今の HP を戻す。
+	 * @param ratioOfMaximumHitPoints 最大 HP に対する割合。0 以下は 0 として扱う。
+	 * @details 満タン（今の HP が最大以上）なら何もせず false ➡ 呼び出し側はバッグを減らさない。
+	 *          今の HP は最大 HP を超えない（割合が 1 を超えても頭打ち）。
+	 *          減らす側（ApplyDamage）と同じく、これも引く/足す以外のことをしない（ADR-035）。
+	 */
+	[[nodiscard]] HealResult ApplyHeal(HealthComponent* health, float ratioOfMaximumHitPoints);
+
 	/**
 	 * @brief 振る舞い（Update を持つコンポーネント）の入口。
 	 * @details Scene::AddBehavior<T> が固定長ブロックのプールから配る。狼の移動・アニメなど、

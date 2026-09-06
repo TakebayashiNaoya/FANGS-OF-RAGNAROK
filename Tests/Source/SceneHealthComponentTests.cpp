@@ -1,7 +1,8 @@
 ﻿/**
  * @file SceneHealthComponentTests.cpp
- * @brief HealthComponent と ApplyDamage / TickInvincibility、Scene の HP まわり（GetHandleFromIndex /
- *        IsPendingDestroy 含む）のテスト。ダメージ・無敵時間の境目・撃破・破棄反映後の取り外しを確かめる。
+ * @brief HealthComponent と ApplyDamage / TickInvincibility / ApplyHeal、Scene の HP まわり
+ *        （GetHandleFromIndex / IsPendingDestroy 含む）のテスト。ダメージ・無敵時間の境目・撃破・
+ *        回復の頭打ち・破棄反映後の取り外しを確かめる。
  */
 #include "Core/Memory/Allocator.h"
 #include "Scene/Scene.h"
@@ -128,6 +129,61 @@ TEST_CASE("SetMaximumHitPoints: 同じ値で呼んでも今のHPは変わらな�
 	fang::SetMaximumHitPoints(&health, 300.0f);
 	CHECK(health.maximumHitPoints == doctest::Approx(300.0f));
 	CHECK(health.currentHitPoints == doctest::Approx(200.0f));
+}
+
+
+TEST_CASE("ApplyHeal: 最大HP705の3割(211.5)だけ今のHPが戻る")
+{
+	fang::HealthComponent health{ .maximumHitPoints = 705.0f, .currentHitPoints = 100.0f };
+
+	const fang::HealResult result = fang::ApplyHeal(&health, 0.3f);
+	CHECK(result.wasApplied);
+	CHECK(result.healedHitPoints == doctest::Approx(211.5f));
+	CHECK(health.currentHitPoints == doctest::Approx(311.5f));
+}
+
+
+TEST_CASE("ApplyHeal: 頭打ちで最大HPを超えない(250/300で使ったら300)")
+{
+	fang::HealthComponent health{ .maximumHitPoints = 300.0f, .currentHitPoints = 250.0f };
+
+	const fang::HealResult result = fang::ApplyHeal(&health, 0.3f); // 素の回復量は90だが50しか戻らない。
+	CHECK(result.wasApplied);
+	CHECK(result.healedHitPoints == doctest::Approx(50.0f));
+	CHECK(health.currentHitPoints == doctest::Approx(300.0f));
+}
+
+
+TEST_CASE("ApplyHeal: 満タンでは使えない(falseで今のHPも動かない)")
+{
+	fang::HealthComponent health{ .maximumHitPoints = 300.0f, .currentHitPoints = 300.0f };
+
+	const fang::HealResult result = fang::ApplyHeal(&health, 0.3f);
+	CHECK_FALSE(result.wasApplied);
+	CHECK(result.healedHitPoints == doctest::Approx(0.0f));
+	CHECK(health.currentHitPoints == doctest::Approx(300.0f));
+}
+
+
+TEST_CASE("ApplyHeal: 割合1を超える値を入れても最大HPを超えない")
+{
+	fang::HealthComponent health{ .maximumHitPoints = 300.0f, .currentHitPoints = 100.0f };
+
+	const fang::HealResult result = fang::ApplyHeal(&health, 2.0f);
+	CHECK(result.wasApplied);
+	CHECK(result.healedHitPoints == doctest::Approx(200.0f));
+	CHECK(health.currentHitPoints == doctest::Approx(300.0f));
+}
+
+
+TEST_CASE("ApplyHeal: 割合0のつまみでも満タンでなければ使え、戻る量は0")
+{
+	fang::HealthComponent health{ .maximumHitPoints = 300.0f, .currentHitPoints = 250.0f };
+
+	const fang::HealResult result = fang::ApplyHeal(&health, 0.0f);
+	CHECK(result.wasApplied);
+	CHECK(result.healedHitPoints == doctest::Approx(0.0f));
+	CHECK(health.currentHitPoints == doctest::Approx(250.0f));
 }
 
 

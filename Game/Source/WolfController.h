@@ -8,9 +8,11 @@
 #include "Core/Math/Vector3.h"
 #include "Input/Gamepad.h"
 #include "Scene/CharacterBase.h"
+#include "Scene/ItemDrop.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
 #include "WolfMovementParameter.h"
+#include "WolfTeamItems.h"
 #include <span>
 
 
@@ -48,6 +50,12 @@ namespace fang::game
 
 			/** @brief チームの経験値・レベル・倍率。読むのは倍率、書くのは撃破の申告箱。 */
 			WolfTeamGrowth* teamGrowth = nullptr;
+
+			/** @brief 落ちる・拾う・使う・消えるの調整値。読むのは回復の割合。 */
+			const ItemDropParameter* itemParameter = nullptr;
+
+			/** @brief チームの持ち物。バッグを減らし、倒した相手の位置を積む。 */
+			WolfTeamItems* teamItems = nullptr;
 
 			/** @brief 骨を持つメッシュとして読めたか。false なら以下は使わない。 */
 			bool isSkinned = false;
@@ -110,6 +118,9 @@ namespace fang::game
 		Vector2 m_moveStick; /**< GetLeftStick を通した後。 */
 		float   m_cameraYawRadians  = 0.0f;
 		bool    m_isAttackRequested = false; /**< X ボタン。 */
+
+		bool m_isUseItemRequested  = false; /**< Y ボタン。 */
+		bool m_wasUseItemRequested = false; /**< 立ち上がりを見るための前フレームの値。 */
 
 		/** @brief 攻撃ボタン（X）の振り 1 本ぶんの状態。操作対象でなければ進まない。 */
 		MeleeSwingState m_swingState;

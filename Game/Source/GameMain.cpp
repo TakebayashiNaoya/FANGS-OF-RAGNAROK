@@ -15,11 +15,13 @@
 #include "Runtime/Application.h"
 #include "Scene/CameraOcclusion.h"
 #include "Scene/CharacterController.h"
+#include "Scene/ItemDrop.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
 #include "CameraFollowParameter.h"
 #include "EnemyManager.h"
 #include "GameLog.h"
+#include "MeatManager.h"
 #include "Stage.h"
 #include "Wolf.h"
 #include "WolfController.h"
@@ -49,7 +51,7 @@ namespace fang::game
 		constexpr float LIGHT_DIRECTION_HORIZONTAL = 0.692f;
 		constexpr float LIGHT_DIRECTION_HEIGHT     = 0.722f;
 
-		/** @brief 同時に存在できるオブジェクトの数。狼 2 体 + 置き物 40 個 + 雑魚 32 体で 74。余白を足してある。 */
+		/** @brief 同時に存在できるオブジェクトの数。狼 2 体 + 置き物 40 個 + 雑魚 32 体 + 肉 8 個で 82。余白を足してある。 */
 		constexpr uint32_t MAX_OBJECT_COUNT = 128;
 
 		/** @brief 同時に存在できる振る舞いの数。狼 2 体 + 雑魚 32 体で 34。 */
@@ -144,6 +146,8 @@ namespace fang::game
 						m_wolfSwingParameter,
 						wolfHealth,
 						teamGrowth,
+						m_itemDropParameter,
+						m_wolfManager.GetTeamItems(),
 						m_collisionWorld,
 						m_terrain,
 						WOLF_POSITIONS[index],
@@ -246,6 +250,18 @@ namespace fang::game
 						}
 					);
 				}
+
+				// 全滅中も呼ぶ（肉は歳を取り続ける。拾う側だけ無効な Actor になり、回収は起きない）。
+				m_meatManager.Update(
+					context.deltaTimeSeconds,
+					m_itemDropParameter,
+					m_wolfManager.GetTeamItems(),
+					MeatManager::Dependencies{
+						.scene       = &m_scene,
+						.sharedModel = &m_wolf,
+						.collector   = m_wolfManager.GetControlledActor(),
+					}
+				);
 
 				m_scene.Update(context.deltaTimeSeconds);
 
@@ -350,14 +366,15 @@ namespace fang::game
 			 */
 			void RegisterTuningValues()
 			{
-				constexpr uint32_t EXPECTED_TUNING_ROW_COUNT = 48;
+				constexpr uint32_t EXPECTED_TUNING_ROW_COUNT = 54;
 
 				TuningRegistry& registry = TuningRegistry::GetInstance();
 				FANG_VERIFY(registry.Register("狼の移動", &m_wolfMovementParameter));
 				FANG_VERIFY(registry.Register("狼の牙", &m_wolfSwingParameter));
 				FANG_VERIFY(registry.Register("カメラ", &m_cameraFollowParameter));
+				FANG_VERIFY(registry.Register("肉", &m_itemDropParameter));
 				m_enemyManager.RegisterTuningValues();
-				m_wolfManager.RegisterTuningValues(); // 登録名は「狼の成長」
+				m_wolfManager.RegisterTuningValues(); // 登録名は「狼の成長」「肉のバッグ」
 
 				TuningRow                  rows[MAX_TUNING_ROW_COUNT];
 				const TuningRowBuildResult result = registry.BuildRows(rows);
@@ -402,6 +419,12 @@ namespace fang::game
 			MeleeSwingParameter   m_wolfSwingParameter;
 			CameraFollowParameter m_cameraFollowParameter;
 			EnemyManager          m_enemyManager;
+
+			/** @brief 落ちる・拾う・使う・消えるの調整値。実体はここ。狼と MeatManager の両方が読む。 */
+			ItemDropParameter m_itemDropParameter;
+
+			/** @brief 場に出ている肉の席。 */
+			MeatManager m_meatManager;
 
 			/** @brief カメラの水平回転角。右スティックが無ければ時間で回る。OnUpdate だけが触る。 */
 			float m_cameraOrbitRadians = 0.0f;
