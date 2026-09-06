@@ -6,6 +6,7 @@
 
 #include "AI/AI.h"
 #include "Core/Math/Vector3.h"
+#include "Scene/Actor.h"
 #include "EnemyController.h"
 #include <array>
 
@@ -43,7 +44,7 @@ namespace fang::game
 			const HeightmapTerrain* terrain        = nullptr;
 
 			/** @brief 追いかける相手（今の操作対象）。Game が持ち替えるので、寿命は呼び出し側が持つ。 */
-			const ActorHandle* targetHandle = nullptr;
+			const Actor* target = nullptr;
 		};
 
 		/** @brief 1 フレームぶん進める。湧く条件が揃えば EnemyController を 1 体作る。 */
@@ -58,8 +59,8 @@ namespace fang::game
 		SpawnParameter m_spawnParameter;
 		EnemyParameter m_enemyParameter;
 
-		/** @brief 湧かせた雑魚。毎フレーム Scene::IsValid で数え直し、消えたものを詰める(ADR-036)。 */
-		std::array<ActorHandle, MAX_TRACKED_ENEMY_COUNT> m_spawnedHandles;
-		uint32_t                                         m_aliveCount = 0;
+		/** @brief 湧かせた雑魚。毎フレーム IsValid で数え直し、消えたものを詰める(ADR-036)。 */
+		std::array<Actor, MAX_TRACKED_ENEMY_COUNT> m_spawnedActors;
+		uint32_t                                   m_aliveCount = 0;
 	};
 } // namespace fang::game

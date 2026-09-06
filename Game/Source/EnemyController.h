@@ -65,7 +65,7 @@ namespace fang::game
 			const EnemyParameter* parameter = nullptr;
 
 			/** @brief 追いかける相手（今の操作対象）。Game が 1 か所で持ち替えるので、値では持たない。 */
-			const ActorHandle* targetHandle = nullptr;
+			const Actor* target = nullptr;
 
 			/** @brief 狼と共有する歩行ポーズ。空なら SetSkinningMatrices を呼ばない。 */
 			std::span<const Matrix4x4> skinningMatricesStorage;

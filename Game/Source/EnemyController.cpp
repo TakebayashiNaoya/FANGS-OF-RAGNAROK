@@ -31,13 +31,11 @@ namespace fang::game
 		//------------------------------------------------------------------------
 		// 1. 相手の位置と生死を読む
 		//------------------------------------------------------------------------
-		Vector3     targetPosition;
-		const Actor target =
-			(m_dependencies.targetHandle != nullptr) ? self.GetActorFromHandle(*m_dependencies.targetHandle) : Actor{};
-		const bool hasTarget = target.IsValid();
+		Vector3    targetPosition;
+		const bool hasTarget = m_dependencies.target != nullptr && m_dependencies.target->IsValid();
 		if (hasTarget)
 		{
-			targetPosition = target.GetWorldPosition();
+			targetPosition = m_dependencies.target->GetWorldPosition();
 		}
 
 		//------------------------------------------------------------------------
@@ -51,7 +49,7 @@ namespace fang::game
 				.selfFacingRadians = GetFacingRadians(),
 				.targetPosition    = targetPosition,
 				.selfUserIndex     = self.GetIndex(),
-				.targetUserIndex   = target.GetIndex(),
+				.targetUserIndex   = m_dependencies.target->GetIndex(),
 			};
 			perception = Sense(*GetCollisionWorld(), m_dependencies.parameter->perception, input);
 		}

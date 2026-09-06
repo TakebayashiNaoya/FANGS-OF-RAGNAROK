@@ -16,9 +16,9 @@ namespace fang::game
 		uint32_t aliveCount = 0;
 		for (uint32_t index = 0; index < m_aliveCount; ++index)
 		{
-			if (dependencies.scene->IsValid(m_spawnedHandles[index]))
+			if (m_spawnedActors[index].IsValid())
 			{
-				m_spawnedHandles[aliveCount] = m_spawnedHandles[index];
+				m_spawnedActors[aliveCount] = m_spawnedActors[index];
 				++aliveCount;
 			}
 		}
@@ -47,13 +47,13 @@ namespace fang::game
 			m_enemyParameter,
 			dependencies.collisionWorld,
 			dependencies.terrain,
-			dependencies.targetHandle,
+			dependencies.target,
 			spawnPosition
 		);
 
 		if (result.actor.IsValid() && m_aliveCount < MAX_TRACKED_ENEMY_COUNT)
 		{
-			m_spawnedHandles[m_aliveCount] = result.actor.GetHandle();
+			m_spawnedActors[m_aliveCount] = result.actor;
 			++m_aliveCount;
 		}
 	}

@@ -4,7 +4,7 @@
  */
 #pragma once
 
-#include "Scene/Scene.h"
+#include "Scene/Actor.h"
 #include <array>
 #include <cstdint>
 
@@ -23,8 +23,8 @@ namespace fang::game
 	/**
 	 * @brief 狼の席と、今どれを操作しているか。
 	 * @details 操作・カメラ・湧きの基準・雑魚の標的はすべてここから引く（指す先が 1 つなので、
-	 *          引き継ぎで揃わないことが起きない）。振る舞いの生ポインタは世代付きハンドルと対で持ち、
-	 *          使う前に必ず Scene::IsValid を通す（ADR-038）。
+	 *          引き継ぎで揃わないことが起きない）。振る舞いの生ポインタは窓（Actor）と対で持ち、
+	 *          使う前に必ず IsValid を通す（ADR-038）。
 	 * @threading 更新ジョブ 1 本から。
 	 */
 	class WolfManager
@@ -34,28 +34,28 @@ namespace fang::game
 		static constexpr uint32_t MAX_WOLF_COUNT = 9;
 
 		/** @brief 生成した狼を席に加える。上限を超えたら false（何もしない）。 */
-		[[nodiscard]] bool Add(ActorHandle handle, WolfController* controller);
+		[[nodiscard]] bool Add(Actor actor, WolfController* controller);
 
 		/**
 		 * @brief 生死を数え直し、操作対象を選び直す。
 		 * @details 周の頭で、振る舞いのポインタを誰かが触るより前に呼ぶこと。撃破された狼の
 		 *          ポインタはここで捨てる（ブロックは前の周の破棄反映で解放済み）。
 		 */
-		WolfManagerUpdateResult Update(const Scene& scene);
+		WolfManagerUpdateResult Update();
 
-		/** @brief 今の操作対象。生きていなければ無効なハンドルを指す。雑魚の標的に渡す。 */
-		[[nodiscard]] const ActorHandle* GetControlledHandle() const { return &m_controlledHandle; }
+		/** @brief 今の操作対象。生きていなければ無効な Actor を指す。雑魚の標的にも渡す。 */
+		[[nodiscard]] const Actor* GetControlledActor() const { return &m_controlledActor; }
 
 		/** @brief 今の操作対象の振る舞い。生きていなければ nullptr。 */
 		[[nodiscard]] WolfController* GetControlledWolf() const { return m_controlledWolf; }
 
 
 	private:
-		std::array<ActorHandle, MAX_WOLF_COUNT>     m_handles;
+		std::array<Actor, MAX_WOLF_COUNT>           m_actors;
 		std::array<WolfController*, MAX_WOLF_COUNT> m_controllers{};
 		uint32_t                                    m_count = 0;
 
-		ActorHandle     m_controlledHandle;
+		Actor           m_controlledActor;
 		WolfController* m_controlledWolf = nullptr;
 		bool            m_wasWipedOut    = false;
 	};

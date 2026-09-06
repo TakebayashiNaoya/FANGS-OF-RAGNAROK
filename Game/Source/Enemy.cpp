@@ -17,7 +17,7 @@ namespace fang::game
 		const EnemyParameter&   parameter,
 		CollisionWorld*         collisionWorld,
 		const HeightmapTerrain* terrain,
-		const ActorHandle*      targetHandle,
+		const Actor*            target,
 		const Vector3&          initialPosition
 	)
 	{
@@ -29,8 +29,8 @@ namespace fang::game
 			MakeCharacterDesc(model, COLLISION_ATTRIBUTE_CHARACTER | COLLISION_ATTRIBUTE_ENEMY, health);
 
 		const EnemyController::Dependencies dependencies{
-			.parameter    = &parameter,
-			.targetHandle = targetHandle,
+			.parameter = &parameter,
+			.target    = target,
 			.skinningMatricesStorage =
 				model.isSkinned ? std::span<const Matrix4x4>(model.skinningMatrices) : std::span<const Matrix4x4>{},
 		};

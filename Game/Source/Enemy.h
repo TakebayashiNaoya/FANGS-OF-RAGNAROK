@@ -24,8 +24,8 @@ namespace fang::game
 
 	/**
 	 * @brief 読み込み済みの WolfModel を流用して、雑魚 1 体の Scene オブジェクトを作る。
-	 * @param model        狼と共有するメッシュ・テクスチャ・スキニング行列の置き場。
-	 * @param targetHandle 追いかける相手（今の操作対象）。Game が持ち替えるので、寿命は呼び出し側が持つ。
+	 * @param model  狼と共有するメッシュ・テクスチャ・スキニング行列の置き場。
+	 * @param target 追いかける相手（今の操作対象）。Game が持ち替えるので、寿命は呼び出し側が持つ。
 	 * @return 上限に達している等で作れなければ actor が無効（作りかけは残らない）。
 	 */
 	[[nodiscard]] CharacterCreateResult<EnemyController> CreateEnemyObject(
@@ -34,7 +34,7 @@ namespace fang::game
 		const EnemyParameter&   parameter,
 		CollisionWorld*         collisionWorld,
 		const HeightmapTerrain* terrain,
-		const ActorHandle*      targetHandle,
+		const Actor*            target,
 		const Vector3&          initialPosition
 	);
 } // namespace fang::game
