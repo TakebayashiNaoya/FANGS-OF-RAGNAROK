@@ -41,6 +41,23 @@ namespace
 
 		return contact;
 	}
+
+
+	/** @brief 狼の実寸の水平カプセル。中心線は体軸(X)、足元 position から地表 groundHeight ぶん持ち上げる。 */
+	fang::Capsule MakeWolfCapsule(const fang::Vector3& position, float groundHeight)
+	{
+		constexpr float CENTER_OFFSET_X     = 9.2f;   // ローカル箱 X の中心。
+		constexpr float CENTER_HEIGHT       = 53.1f;  // ローカル箱 Y の中心。
+		constexpr float RADIUS              = 18.15f; // Z の半幅。
+		constexpr float SEGMENT_HALF_LENGTH = 101.8f - RADIUS;
+
+		const float centerY = position.y + groundHeight + CENTER_HEIGHT;
+		return fang::Capsule{
+			.pointA = { position.x + CENTER_OFFSET_X - SEGMENT_HALF_LENGTH, centerY, position.z },
+			.pointB = { position.x + CENTER_OFFSET_X + SEGMENT_HALF_LENGTH, centerY, position.z },
+			.radius = RADIUS,
+		};
+	}
 } // namespace
 
 
@@ -409,6 +426,151 @@ TEST_CASE("当たり判定と組み合わせても壁を抜けず、壁沿いに
 
 	CHECK(wolf.position.z < startZ - 100.0f);
 	CHECK(wolf.position.x <= WALL_X - WOLF_RADIUS + fang::PENETRATION_SKIN_CENTIMETERS + 0.5f);
+
+	world.Shutdown();
+}
+
+
+TEST_CASE("接触の法線は水平面へ落とされる")
+{
+	// ADR-061: 押し戻しは水平面だけで解く。法線の縦成分は CollectPenetrations で捨てる。
+	const fang::Contact obliqueContact   = MakeContact(7, 9, fang::Vector3{ 0.0f, 0.6f, 0.8f }, 3.0f);
+	const fang::Contact fromAboveContact = MakeContact(7, 9, fang::Vector3{ 0.0f, 1.0f, 0.0f }, 36.3f);
+
+	fang::PenetrationSample samples[fang::MAX_PENETRATION_SAMPLE_COUNT]{};
+
+	CHECK(fang::CollectPenetrations(std::span<const fang::Contact>(&obliqueContact, 1), 9, samples) == 1);
+	CheckVector3(samples[0].normal, fang::Vector3{ 0.0f, 0.0f, 1.0f });
+	CHECK(samples[0].depth == doctest::Approx(3.0f));
+
+	CHECK(fang::CollectPenetrations(std::span<const fang::Contact>(&obliqueContact, 1), 7, samples) == 1);
+	CheckVector3(samples[0].normal, fang::Vector3{ 0.0f, 0.0f, -1.0f });
+
+	// 水平成分が無い接触(真上・真下)は既定の水平方向へ倒す(自分が 1 つ目なら反対向き)。
+	CHECK(fang::CollectPenetrations(std::span<const fang::Contact>(&fromAboveContact, 1), 9, samples) == 1);
+	CheckVector3(samples[0].normal, fang::Vector3{ 1.0f, 0.0f, 0.0f });
+
+	CHECK(fang::CollectPenetrations(std::span<const fang::Contact>(&fromAboveContact, 1), 7, samples) == 1);
+	CheckVector3(samples[0].normal, fang::Vector3{ -1.0f, 0.0f, 0.0f });
+
+	const fang::Contact           obliqueContacts[] = { obliqueContact };
+	const fang::ContactMoveResult result            = fang::MoveWithContacts(
+		fang::Vector3{ 10.0f, 0.0f, 0.0f },
+		fang::Vector3{ 0.0f, 0.0f, -5.0f },
+		obliqueContacts,
+		9
+	);
+	CheckVector3(result.position, fang::Vector3{ 10.0f, 0.0f, 2.5f });
+	CheckVector3(result.appliedDelta, fang::Vector3{});
+}
+
+
+TEST_CASE("実寸の水平カプセルどうしでは高さの差があっても縦へ動かない")
+{
+	constexpr uint32_t WOLF_A_INDEX = 0;
+	constexpr uint32_t WOLF_B_INDEX = 1;
+	constexpr float    DELTA_TIME   = 1.0f / 60.0f;
+	constexpr float    MOVE_SPEED   = 400.0f;
+	constexpr float    GROUND_B     = 78.3f;
+
+	float groundA = 72.6f;
+	SUBCASE("A の地表が B より低い")
+	{
+		groundA = 72.6f;
+	}
+	SUBCASE("A の地表が B より高い")
+	{
+		groundA = 84.0f;
+	}
+
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	const fang::Vector3       otherPosition{ 0.0f, 0.0f, 1150.0f };
+	const fang::ColliderProxy otherProxy{
+		.shape     = fang::MakeColliderShape(MakeWolfCapsule(otherPosition, GROUND_B)),
+		.userIndex = WOLF_B_INDEX,
+	};
+
+	fang::Vector3 position;
+
+	for (int frame = 0; frame < 300; ++frame)
+	{
+		const fang::Vector3 desiredDelta =
+			fang::MakeMoveDelta(fang::Vector2{ 0.0f, 1.0f }, fang::PI * 0.5f, MOVE_SPEED, DELTA_TIME);
+
+		const fang::ContactMoveResult result =
+			fang::MoveWithContacts(position, desiredDelta, world.GetContacts(), WOLF_A_INDEX);
+		position = result.position;
+
+		CHECK(position.y == doctest::Approx(0.0f));
+
+		const fang::ColliderProxy selfProxy{
+			.shape     = fang::MakeColliderShape(MakeWolfCapsule(position, groundA)),
+			.userIndex = WOLF_A_INDEX,
+		};
+		const fang::ColliderProxy proxies[] = { selfProxy, otherProxy };
+		world.Update(proxies);
+	}
+
+	CHECK(position.z > 1110.0f);
+	CHECK(position.z < 1120.0f);
+
+	world.Shutdown();
+}
+
+
+TEST_CASE("同じ位置に重なった2体は水平に離れる")
+{
+	// 雑魚どうしの形: 両方が同じ接触を見て、それぞれ全量の押し戻しを受ける。
+	constexpr uint32_t WOLF_A_INDEX = 0;
+	constexpr uint32_t WOLF_B_INDEX = 1;
+	constexpr float    GROUND       = 12.0f;
+
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	fang::Vector3 positionA;
+	fang::Vector3 positionB;
+
+	const fang::ColliderProxy initialA{
+		.shape     = fang::MakeColliderShape(MakeWolfCapsule(positionA, GROUND)),
+		.userIndex = WOLF_A_INDEX,
+	};
+	const fang::ColliderProxy initialB{
+		.shape     = fang::MakeColliderShape(MakeWolfCapsule(positionB, GROUND)),
+		.userIndex = WOLF_B_INDEX,
+	};
+	const fang::ColliderProxy initialProxies[] = { initialA, initialB };
+	world.Update(initialProxies);
+
+	for (int frame = 0; frame < 30; ++frame)
+	{
+		const fang::ContactMoveResult resultA =
+			fang::MoveWithContacts(positionA, fang::Vector3{}, world.GetContacts(), WOLF_A_INDEX);
+		const fang::ContactMoveResult resultB =
+			fang::MoveWithContacts(positionB, fang::Vector3{}, world.GetContacts(), WOLF_B_INDEX);
+		positionA = resultA.position;
+		positionB = resultB.position;
+
+		CHECK(positionA.y == doctest::Approx(0.0f));
+		CHECK(positionB.y == doctest::Approx(0.0f));
+
+		const fang::ColliderProxy proxyA{
+			.shape     = fang::MakeColliderShape(MakeWolfCapsule(positionA, GROUND)),
+			.userIndex = WOLF_A_INDEX,
+		};
+		const fang::ColliderProxy proxyB{
+			.shape     = fang::MakeColliderShape(MakeWolfCapsule(positionB, GROUND)),
+			.userIndex = WOLF_B_INDEX,
+		};
+		const fang::ColliderProxy proxies[] = { proxyA, proxyB };
+		world.Update(proxies);
+	}
+
+	CHECK(positionA.x < 0.0f);
+	CHECK(positionB.x > 0.0f);
+	CHECK(world.GetContacts().empty());
 
 	world.Shutdown();
 }

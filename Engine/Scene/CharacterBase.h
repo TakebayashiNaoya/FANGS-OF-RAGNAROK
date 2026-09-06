@@ -53,6 +53,7 @@ namespace fang
 		 * @brief 前フレームの接触から押し出しつつ、進みたい量を壁に沿わせて足す。
 		 * @return 壁へ食い込む成分を削った後の、実際に進んだ量。
 		 * @details 見るのは前フレームの接触（ADR-034）。当たり判定が無ければ押し戻しなしで足すだけ。
+		 *          押し戻しは y を書かない。縦は接地の持ち物（ADR-061）。
 		 */
 		Vector3 MovePosition(const Vector3& desiredDelta, uint32_t selfUserIndex);
 
