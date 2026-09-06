@@ -20,7 +20,7 @@
 
 namespace
 {
-	constexpr uint32_t TEST_LAYER_ENEMY = 1u << 2;
+	constexpr uint32_t TEST_ATTRIBUTE_ENEMY = 1u << 2;
 
 	/** @brief 呼ばれた回数を数えるだけのアロケータ。更新のたびのヒープ確保が 0 であることの確認に使う。 */
 	class CountingAllocator final : public fang::IAllocator
@@ -123,11 +123,11 @@ namespace
 		(void)scene.AddColliderComponent(
 			handle,
 			fang::ColliderComponent{
-				.shapeType   = fang::EnShapeType::Sphere,
-				.localBounds = fang::Aabb{ .min = { -HALF_EXTENT, -HALF_EXTENT, -HALF_EXTENT },
-										   .max = { HALF_EXTENT, HALF_EXTENT, HALF_EXTENT } },
-				.isEnabled   = true,
-				.layerMask   = TEST_LAYER_ENEMY,
+				.shapeType     = fang::EnShapeType::Sphere,
+				.localBounds   = fang::Aabb{ .min = { -HALF_EXTENT, -HALF_EXTENT, -HALF_EXTENT },
+											 .max = { HALF_EXTENT, HALF_EXTENT, HALF_EXTENT } },
+				.isEnabled     = true,
+				.attributeMask = TEST_ATTRIBUTE_ENEMY,
 			}
 		);
 	}
@@ -207,11 +207,11 @@ TEST_CASE("EnemyDefeat: 32体を密集させて600フレーム振り続けても
 		const bool attackButtonDown = (swingState.phase == fang::EnMeleeSwingPhase::Ready);
 
 		const fang::MeleeSwingInput swingInput{
-			.selfPosition      = fang::Vector3{},
-			.selfFacingRadians = 0.0f,
-			.isAttackRequested = attackButtonDown,
-			.selfUserIndex     = ATTACKER_USER_INDEX,
-			.targetLayerMask   = TEST_LAYER_ENEMY,
+			.selfPosition        = fang::Vector3{},
+			.selfFacingRadians   = 0.0f,
+			.isAttackRequested   = attackButtonDown,
+			.selfUserIndex       = ATTACKER_USER_INDEX,
+			.targetAttributeMask = TEST_ATTRIBUTE_ENEMY,
 		};
 
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
@@ -316,8 +316,8 @@ TEST_CASE("EnemyDefeat: 74登録+32体の感知・追跡+振りの掃引が実�
 						.radius = 20.0f,
 					}
 				),
-				.userIndex = MINION_USER_INDEX_BASE + index,
-				.layerMask = TEST_LAYER_ENEMY,
+				.userIndex     = MINION_USER_INDEX_BASE + index,
+				.attributeMask = TEST_ATTRIBUTE_ENEMY,
 			}
 		);
 	}
@@ -365,11 +365,11 @@ TEST_CASE("EnemyDefeat: 74登録+32体の感知・追跡+振りの掃引が実�
 		}
 
 		const fang::MeleeSwingInput swingInput{
-			.selfPosition      = targetPosition,
-			.selfFacingRadians = 0.0f,
-			.isAttackRequested = true,
-			.selfUserIndex     = WOLF_USER_INDEX_BASE,
-			.targetLayerMask   = TEST_LAYER_ENEMY,
+			.selfPosition        = targetPosition,
+			.selfFacingRadians   = 0.0f,
+			.isAttackRequested   = true,
+			.selfUserIndex       = WOLF_USER_INDEX_BASE,
+			.targetAttributeMask = TEST_ATTRIBUTE_ENEMY,
 		};
 		fang::SweepHit hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		(void)fang::StepMeleeSwing(world, swingParams, swingInput, 1.0f / 60.0f, &swingState, hits);

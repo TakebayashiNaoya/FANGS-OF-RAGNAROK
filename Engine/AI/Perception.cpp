@@ -74,7 +74,7 @@ namespace fang
 		const uint32_t excluded[] = { input.selfUserIndex, input.targetUserIndex };
 
 		const QueryFilter filter{
-			.layerMask           = params.blockerLayerMask,
+			.attributeMask       = params.blockerAttributeMask,
 			.excludedUserIndices = excluded,
 		};
 

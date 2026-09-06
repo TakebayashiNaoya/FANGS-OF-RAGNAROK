@@ -31,7 +31,7 @@ namespace fang
 		float targetEyeHeightCentimeters = 120.0f;
 
 		/** @brief 遮蔽と数える種別のビット。意味は Game が決める。調整つまみではないので反映しない。 */
-		uint32_t blockerLayerMask = ALL_COLLISION_LAYERS;
+		uint32_t blockerAttributeMask = ALL_COLLISION_ATTRIBUTE_MASK;
 	};
 
 	/** @brief 感知を呼ぶための、その瞬間の値。 */

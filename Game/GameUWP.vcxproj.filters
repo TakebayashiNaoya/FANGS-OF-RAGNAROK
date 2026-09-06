@@ -13,7 +13,7 @@
     <ClInclude Include="Source\CameraFollowParams.h">
       <Filter>Source</Filter>
     </ClInclude>
-    <ClInclude Include="Source\CollisionLayers.h">
+    <ClInclude Include="Source\CollisionAttribute.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="Source\GameLog.h">

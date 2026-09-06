@@ -5,7 +5,7 @@
 #include "Minion.h"
 #include "Collision/CollisionShapes.h"
 #include "Core/Math/Matrix4x4.h"
-#include "CollisionLayers.h"
+#include "CollisionAttribute.h"
 #include "GameLog.h"
 #include "MinionBehavior.h"
 #include "Wolf.h"
@@ -51,10 +51,10 @@ namespace fang::game
 
 			// 狼と同じく、四つ足の体を包むカプセルで当たりを取る。ENEMY を足して攻撃の掃引に出す。
 			const ColliderComponent colliderComponent{
-				.shapeType   = EnShapeType::Capsule,
-				.localBounds = model.localBounds,
-				.isEnabled   = true,
-				.layerMask   = COLLISION_LAYER_CHARACTER | COLLISION_LAYER_ENEMY,
+				.shapeType     = EnShapeType::Capsule,
+				.localBounds   = model.localBounds,
+				.isEnabled     = true,
+				.attributeMask = COLLISION_ATTRIBUTE_CHARACTER | COLLISION_ATTRIBUTE_ENEMY,
 			};
 			(void)scene.AddColliderComponent(handle, colliderComponent);
 		}

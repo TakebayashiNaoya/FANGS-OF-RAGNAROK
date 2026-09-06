@@ -59,12 +59,12 @@ namespace fang::game
 			const MeleeSwingParams& swingParams = m_dependencies.params->swing;
 
 			const MeleeSwingInput swingInput{
-				.selfPosition      = m_position,
-				.selfFacingRadians = m_facingRadians,
-				.isAttackRequested = m_blackboard.isTargetVisible &&
-									 m_blackboard.distanceToTargetCentimeters <= swingParams.reachCentimeters,
-				.selfUserIndex     = self.index,
-				.targetLayerMask   = COLLISION_LAYER_WOLF,
+				.selfPosition        = m_position,
+				.selfFacingRadians   = m_facingRadians,
+				.isAttackRequested   = m_blackboard.isTargetVisible &&
+									   m_blackboard.distanceToTargetCentimeters <= swingParams.reachCentimeters,
+				.selfUserIndex       = self.index,
+				.targetAttributeMask = COLLISION_ATTRIBUTE_WOLF,
 			};
 
 			SweepHit               hits[MAX_MELEE_SWING_HIT_COUNT];

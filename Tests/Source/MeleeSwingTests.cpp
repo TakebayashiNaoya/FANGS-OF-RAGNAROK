@@ -16,23 +16,23 @@ namespace
 
 	constexpr uint32_t SELF_USER_INDEX = 999;
 
-	constexpr uint32_t TEST_LAYER_CHARACTER = 1u << 0;
-	constexpr uint32_t TEST_LAYER_PROP      = 1u << 1;
-	constexpr uint32_t TEST_LAYER_ENEMY     = 1u << 2;
+	constexpr uint32_t TEST_ATTRIBUTE_CHARACTER = 1u << 0;
+	constexpr uint32_t TEST_ATTRIBUTE_PROP      = 1u << 1;
+	constexpr uint32_t TEST_ATTRIBUTE_ENEMY     = 1u << 2;
 
 
 	/** @brief 立ち位置は原点、向きは +X 固定。振りの発生源を毎回書かずに済むための既定入力。 */
 	[[nodiscard]] fang::MeleeSwingInput MakeInput(
 		bool     isAttackRequested,
-		uint32_t targetLayerMask = fang::ALL_COLLISION_LAYERS
+		uint32_t targetAttributeMask = fang::ALL_COLLISION_ATTRIBUTE_MASK
 	)
 	{
 		return fang::MeleeSwingInput{
-			.selfPosition      = fang::Vector3{},
-			.selfFacingRadians = 0.0f,
-			.isAttackRequested = isAttackRequested,
-			.selfUserIndex     = SELF_USER_INDEX,
-			.targetLayerMask   = targetLayerMask,
+			.selfPosition        = fang::Vector3{},
+			.selfFacingRadians   = 0.0f,
+			.isAttackRequested   = isAttackRequested,
+			.selfUserIndex       = SELF_USER_INDEX,
+			.targetAttributeMask = targetAttributeMask,
 		};
 	}
 
@@ -42,14 +42,14 @@ namespace
 		uint32_t                          userIndex,
 		const fang::Vector3&              center,
 		float                             radius,
-		uint32_t                          layerMask = fang::ALL_COLLISION_LAYERS
+		uint32_t                          attributeMask = fang::ALL_COLLISION_ATTRIBUTE_MASK
 	)
 	{
 		proxies.push_back(
 			fang::ColliderProxy{
-				.shape     = fang::MakeColliderShape(fang::Sphere{ .center = center, .radius = radius }),
-				.userIndex = userIndex,
-				.layerMask = layerMask,
+				.shape         = fang::MakeColliderShape(fang::Sphere{ .center = center, .radius = radius }),
+				.userIndex     = userIndex,
+				.attributeMask = attributeMask,
 			}
 		);
 	}
@@ -305,9 +305,9 @@ TEST_CASE("MeleeSwing: 自分自身・味方・置き物には当たらない")
 	const fang::Vector3    targetPosition = FangPositionAtStep(params, 4);
 
 	std::vector<fang::ColliderProxy> proxies;
-	RegisterTarget(proxies, SELF_USER_INDEX, targetPosition, 5.0f);         // 自分自身。
-	RegisterTarget(proxies, 2, targetPosition, 5.0f, TEST_LAYER_CHARACTER); // 味方。
-	RegisterTarget(proxies, 3, targetPosition, 5.0f, TEST_LAYER_PROP);      // 置き物。
+	RegisterTarget(proxies, SELF_USER_INDEX, targetPosition, 5.0f);             // 自分自身。
+	RegisterTarget(proxies, 2, targetPosition, 5.0f, TEST_ATTRIBUTE_CHARACTER); // 味方。
+	RegisterTarget(proxies, 3, targetPosition, 5.0f, TEST_ATTRIBUTE_PROP);      // 置き物。
 
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
@@ -319,8 +319,14 @@ TEST_CASE("MeleeSwing: 自分自身・味方・置き物には当たらない")
 	for (int frame = 0; frame < 40; ++frame)
 	{
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
-		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, params, MakeInput(frame == 0, TEST_LAYER_ENEMY), FRAME_SECONDS, &state, hits);
+		const fang::MeleeSwingResult result = fang::StepMeleeSwing(
+			world,
+			params,
+			MakeInput(frame == 0, TEST_ATTRIBUTE_ENEMY),
+			FRAME_SECONDS,
+			&state,
+			hits
+		);
 
 		totalNewHitCount += result.newHitCount;
 	}

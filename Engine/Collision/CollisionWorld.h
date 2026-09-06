@@ -30,7 +30,7 @@ namespace fang
 		uint32_t userIndex = 0;
 
 		/** @brief 種別のビット。既定は全ビットなので、値を入れていない登録は今までどおり全クエリに出る。 */
-		uint32_t layerMask = ALL_COLLISION_LAYERS;
+		uint32_t attributeMask = ALL_COLLISION_ATTRIBUTE_MASK;
 	};
 
 	/**

@@ -971,9 +971,9 @@ namespace fang
 			}
 
 			::new (&proxies[writtenCount]) ColliderProxy{
-				.shape     = shape,
-				.userIndex = ownerIndex,
-				.layerMask = component.layerMask,
+				.shape         = shape,
+				.userIndex     = ownerIndex,
+				.attributeMask = component.attributeMask,
 			};
 			++writtenCount;
 		}

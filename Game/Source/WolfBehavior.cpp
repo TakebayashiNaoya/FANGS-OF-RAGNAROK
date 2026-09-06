@@ -10,7 +10,7 @@
 #include "Core/Math/Matrix4x4.h"
 #include "Resource/HeightmapTerrain.h"
 #include "Scene/CharacterMovement.h"
-#include "CollisionLayers.h"
+#include "CollisionAttribute.h"
 #include "MeleeDamage.h"
 
 
@@ -58,11 +58,11 @@ namespace fang::game
 		if (m_isControlled && m_dependencies.collisionWorld != nullptr)
 		{
 			const MeleeSwingInput swingInput{
-				.selfPosition      = m_position,
-				.selfFacingRadians = m_facingRadians,
-				.isAttackRequested = m_isAttackRequested,
-				.selfUserIndex     = self.index,
-				.targetLayerMask   = COLLISION_LAYER_ENEMY,
+				.selfPosition        = m_position,
+				.selfFacingRadians   = m_facingRadians,
+				.isAttackRequested   = m_isAttackRequested,
+				.selfUserIndex       = self.index,
+				.targetAttributeMask = COLLISION_ATTRIBUTE_ENEMY,
 			};
 
 			SweepHit               hits[MAX_MELEE_SWING_HIT_COUNT];

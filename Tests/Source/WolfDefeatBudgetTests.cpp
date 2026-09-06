@@ -22,9 +22,9 @@
 
 namespace
 {
-	constexpr uint32_t TEST_LAYER_CHARACTER = 1u << 0;
-	constexpr uint32_t TEST_LAYER_PROP      = 1u << 1;
-	constexpr uint32_t TEST_LAYER_WOLF      = 1u << 3;
+	constexpr uint32_t TEST_ATTRIBUTE_CHARACTER = 1u << 0;
+	constexpr uint32_t TEST_ATTRIBUTE_PROP      = 1u << 1;
+	constexpr uint32_t TEST_ATTRIBUTE_WOLF      = 1u << 3;
 
 	// MinionParams(設計)と同じ値。
 	constexpr float MINION_STOP_DISTANCE_CENTIMETERS = 120.0f;
@@ -109,11 +109,11 @@ namespace
 					m_blackboard.distanceToTargetCentimeters <= m_swingParams.reachCentimeters;
 
 				const fang::MeleeSwingInput swingInput{
-					.selfPosition      = m_position,
-					.selfFacingRadians = m_facingRadians,
-					.isAttackRequested = isAttackRequested,
-					.selfUserIndex     = self.index,
-					.targetLayerMask   = TEST_LAYER_WOLF,
+					.selfPosition        = m_position,
+					.selfFacingRadians   = m_facingRadians,
+					.isAttackRequested   = isAttackRequested,
+					.selfUserIndex       = self.index,
+					.targetAttributeMask = TEST_ATTRIBUTE_WOLF,
 				};
 
 				fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
@@ -181,11 +181,11 @@ namespace
 		(void)scene.AddColliderComponent(
 			handle,
 			fang::ColliderComponent{
-				.shapeType   = fang::EnShapeType::Sphere,
-				.localBounds = fang::Aabb{ .min = { -HALF_EXTENT, -HALF_EXTENT, -HALF_EXTENT },
-										   .max = { HALF_EXTENT, HALF_EXTENT, HALF_EXTENT } },
-				.isEnabled   = true,
-				.layerMask   = TEST_LAYER_CHARACTER,
+				.shapeType     = fang::EnShapeType::Sphere,
+				.localBounds   = fang::Aabb{ .min = { -HALF_EXTENT, -HALF_EXTENT, -HALF_EXTENT },
+											 .max = { HALF_EXTENT, HALF_EXTENT, HALF_EXTENT } },
+				.isEnabled     = true,
+				.attributeMask = TEST_ATTRIBUTE_CHARACTER,
 			}
 		);
 	}
@@ -223,14 +223,14 @@ TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けても�
 	(void)scene.AddColliderComponent(
 		wolf,
 		fang::ColliderComponent{
-			.shapeType   = fang::EnShapeType::Sphere,
-			.localBounds = fang::Aabb{ .min = { -40.0f, -40.0f, -40.0f }, .max = { 40.0f, 40.0f, 40.0f } },
-			.isEnabled   = true,
-			.layerMask   = TEST_LAYER_CHARACTER | TEST_LAYER_WOLF,
+			.shapeType     = fang::EnShapeType::Sphere,
+			.localBounds   = fang::Aabb{ .min = { -40.0f, -40.0f, -40.0f }, .max = { 40.0f, 40.0f, 40.0f } },
+			.isEnabled     = true,
+			.attributeMask = TEST_ATTRIBUTE_CHARACTER | TEST_ATTRIBUTE_WOLF,
 		}
 	);
 
-	const fang::PerceptionParams perceptionParams{ .blockerLayerMask = TEST_LAYER_PROP };
+	const fang::PerceptionParams perceptionParams{ .blockerAttributeMask = TEST_ATTRIBUTE_PROP };
 	const fang::PursuitParams    pursuitParams{ .stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS };
 
 	fang::MeleeSwingParams swingParams{};
@@ -335,8 +335,8 @@ TEST_CASE("WolfDefeat: 視線32本+牙33本(雑魚32+狼1)の掃引が実機予�
 		proxies.push_back(
 			fang::ColliderProxy{
 				.shape = fang::MakeColliderShape(fang::OBB{ .center = center, .halfExtents = { 40.0f, 40.0f, 40.0f } }),
-				.userIndex = index,
-				.layerMask = TEST_LAYER_PROP,
+				.userIndex     = index,
+				.attributeMask = TEST_ATTRIBUTE_PROP,
 			}
 		);
 	}
@@ -351,8 +351,8 @@ TEST_CASE("WolfDefeat: 視線32本+牙33本(雑魚32+狼1)の掃引が実機予�
 								   .pointB = center + fang::Vector3{ 0.0f, 100.0f, 0.0f },
 								   .radius = 20.0f }
 				),
-				.userIndex = WOLF_USER_INDEX_BASE + index,
-				.layerMask = TEST_LAYER_CHARACTER | TEST_LAYER_WOLF,
+				.userIndex     = WOLF_USER_INDEX_BASE + index,
+				.attributeMask = TEST_ATTRIBUTE_CHARACTER | TEST_ATTRIBUTE_WOLF,
 			}
 		);
 	}
@@ -371,8 +371,8 @@ TEST_CASE("WolfDefeat: 視線32本+牙33本(雑魚32+狼1)の掃引が実機予�
 						.radius = 20.0f,
 					}
 				),
-				.userIndex = MINION_USER_INDEX_BASE + index,
-				.layerMask = TEST_LAYER_CHARACTER,
+				.userIndex     = MINION_USER_INDEX_BASE + index,
+				.attributeMask = TEST_ATTRIBUTE_CHARACTER,
 			}
 		);
 	}
@@ -380,7 +380,7 @@ TEST_CASE("WolfDefeat: 視線32本+牙33本(雑魚32+狼1)の掃引が実機予�
 	world.Update(proxies);
 	CHECK(world.GetColliderCount() == PROP_COUNT + WOLF_COUNT + MINION_COUNT);
 
-	const fang::PerceptionParams perceptionParams{ .blockerLayerMask = TEST_LAYER_PROP };
+	const fang::PerceptionParams perceptionParams{ .blockerAttributeMask = TEST_ATTRIBUTE_PROP };
 	const fang::PursuitParams    pursuitParams{};
 	const fang::MeleeSwingParams minionSwingParams{ .reachCentimeters = MINION_REACH_CENTIMETERS };
 	const fang::MeleeSwingParams wolfSwingParams{};
@@ -424,11 +424,11 @@ TEST_CASE("WolfDefeat: 視線32本+牙33本(雑魚32+狼1)の掃引が実機予�
 			);
 
 			const fang::MeleeSwingInput minionSwingInput{
-				.selfPosition      = minionPositions[index],
-				.selfFacingRadians = 0.0f,
-				.isAttackRequested = true,
-				.selfUserIndex     = MINION_USER_INDEX_BASE + index,
-				.targetLayerMask   = TEST_LAYER_WOLF,
+				.selfPosition        = minionPositions[index],
+				.selfFacingRadians   = 0.0f,
+				.isAttackRequested   = true,
+				.selfUserIndex       = MINION_USER_INDEX_BASE + index,
+				.targetAttributeMask = TEST_ATTRIBUTE_WOLF,
 			};
 			fang::SweepHit minionHits[fang::MAX_MELEE_SWING_HIT_COUNT];
 			(void)fang::StepMeleeSwing(
@@ -442,11 +442,11 @@ TEST_CASE("WolfDefeat: 視線32本+牙33本(雑魚32+狼1)の掃引が実機予�
 		}
 
 		const fang::MeleeSwingInput wolfSwingInput{
-			.selfPosition      = wolfPosition,
-			.selfFacingRadians = 0.0f,
-			.isAttackRequested = true,
-			.selfUserIndex     = WOLF_USER_INDEX_BASE,
-			.targetLayerMask   = TEST_LAYER_CHARACTER,
+			.selfPosition        = wolfPosition,
+			.selfFacingRadians   = 0.0f,
+			.isAttackRequested   = true,
+			.selfUserIndex       = WOLF_USER_INDEX_BASE,
+			.targetAttributeMask = TEST_ATTRIBUTE_CHARACTER,
 		};
 		fang::SweepHit wolfHits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		(void)fang::StepMeleeSwing(world, wolfSwingParams, wolfSwingInput, 1.0f / 60.0f, &wolfSwingState, wolfHits);

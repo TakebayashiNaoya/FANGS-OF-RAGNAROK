@@ -20,10 +20,10 @@ namespace
 	constexpr uint32_t ATTACKER_USER_INDEX = 999;
 	constexpr uint32_t TARGET_USER_INDEX   = 1;
 
-	constexpr uint32_t TEST_LAYER_CHARACTER = 1u << 0;
-	constexpr uint32_t TEST_LAYER_PROP      = 1u << 1;
-	constexpr uint32_t TEST_LAYER_ENEMY     = 1u << 2;
-	constexpr uint32_t TEST_LAYER_WOLF      = 1u << 3;
+	constexpr uint32_t TEST_ATTRIBUTE_CHARACTER = 1u << 0;
+	constexpr uint32_t TEST_ATTRIBUTE_PROP      = 1u << 1;
+	constexpr uint32_t TEST_ATTRIBUTE_ENEMY     = 1u << 2;
+	constexpr uint32_t TEST_ATTRIBUTE_WOLF      = 1u << 3;
 
 	// MinionParams(設計)と同じ値。雑魚が狼へ詰める距離と牙の間合い。Tests は Game を参照しないので、
 	// ここでも同じ数を持つ(設計の static_assert と合わせて 2 か所で縛られる)。
@@ -99,7 +99,7 @@ TEST_CASE("WolfDefeat: 間合いの内でも遮蔽の裏なら振りは始まら
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	const fang::PerceptionParams perceptionParams{ .blockerLayerMask = TEST_LAYER_PROP };
+	const fang::PerceptionParams perceptionParams{ .blockerAttributeMask = TEST_ATTRIBUTE_PROP };
 	fang::MeleeSwingParams       swingParams{};
 	swingParams.reachCentimeters = MINION_REACH_CENTIMETERS;
 	swingParams.triggerMode      = fang::EnMeleeSwingTrigger::Continuous;
@@ -116,8 +116,8 @@ TEST_CASE("WolfDefeat: 間合いの内でも遮蔽の裏なら振りは始まら
 					.halfExtents = fang::Vector3{ 10.0f, 200.0f, 200.0f },
 				}
 			),
-			.userIndex = 2,
-			.layerMask = TEST_LAYER_PROP,
+			.userIndex     = 2,
+			.attributeMask = TEST_ATTRIBUTE_PROP,
 		}
 	);
 	world.Update(proxies);
@@ -322,23 +322,23 @@ TEST_CASE("WolfDefeat: 当たるのは狼だけ")
 	std::vector<fang::ColliderProxy> proxies;
 	proxies.push_back(
 		fang::ColliderProxy{
-			.shape     = fang::MakeColliderShape(fang::Sphere{ .center = targetPosition, .radius = 5.0f }),
-			.userIndex = 1,
-			.layerMask = TEST_LAYER_CHARACTER | TEST_LAYER_ENEMY, // 雑魚どうし。
+			.shape         = fang::MakeColliderShape(fang::Sphere{ .center = targetPosition, .radius = 5.0f }),
+			.userIndex     = 1,
+			.attributeMask = TEST_ATTRIBUTE_CHARACTER | TEST_ATTRIBUTE_ENEMY, // 雑魚どうし。
 		}
 	);
 	proxies.push_back(
 		fang::ColliderProxy{
-			.shape     = fang::MakeColliderShape(fang::Sphere{ .center = targetPosition, .radius = 5.0f }),
-			.userIndex = 2,
-			.layerMask = TEST_LAYER_PROP, // 置き物。
+			.shape         = fang::MakeColliderShape(fang::Sphere{ .center = targetPosition, .radius = 5.0f }),
+			.userIndex     = 2,
+			.attributeMask = TEST_ATTRIBUTE_PROP, // 置き物。
 		}
 	);
 	proxies.push_back(
 		fang::ColliderProxy{
-			.shape     = fang::MakeColliderShape(fang::Sphere{ .center = targetPosition, .radius = 5.0f }),
-			.userIndex = TARGET_USER_INDEX,
-			.layerMask = TEST_LAYER_CHARACTER | TEST_LAYER_WOLF, // 狼。
+			.shape         = fang::MakeColliderShape(fang::Sphere{ .center = targetPosition, .radius = 5.0f }),
+			.userIndex     = TARGET_USER_INDEX,
+			.attributeMask = TEST_ATTRIBUTE_CHARACTER | TEST_ATTRIBUTE_WOLF, // 狼。
 		}
 	);
 
@@ -354,11 +354,11 @@ TEST_CASE("WolfDefeat: 当たるのは狼だけ")
 	{
 		fang::SweepHit              hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingInput input{
-			.selfPosition      = fang::Vector3{},
-			.selfFacingRadians = 0.0f,
-			.isAttackRequested = frame == 0,
-			.selfUserIndex     = ATTACKER_USER_INDEX,
-			.targetLayerMask   = TEST_LAYER_WOLF,
+			.selfPosition        = fang::Vector3{},
+			.selfFacingRadians   = 0.0f,
+			.isAttackRequested   = frame == 0,
+			.selfUserIndex       = ATTACKER_USER_INDEX,
+			.targetAttributeMask = TEST_ATTRIBUTE_WOLF,
 		};
 		const fang::MeleeSwingResult result = fang::StepMeleeSwing(world, params, input, FRAME_SECONDS, &state, hits);
 

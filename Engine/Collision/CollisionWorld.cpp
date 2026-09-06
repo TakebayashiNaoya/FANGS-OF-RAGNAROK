@@ -313,7 +313,7 @@ namespace fang
 		/** @brief 登録がクエリの絞り込みを通るか。 */
 		bool PassesFilter(const ColliderProxy& proxy, const QueryFilter& filter)
 		{
-			if ((proxy.layerMask & filter.layerMask) == 0)
+			if ((proxy.attributeMask & filter.attributeMask) == 0)
 			{
 				return false;
 			}

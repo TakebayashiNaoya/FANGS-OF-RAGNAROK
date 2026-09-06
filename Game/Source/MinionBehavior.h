@@ -9,7 +9,7 @@
 #include "Core/Math/Vector3.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
-#include "CollisionLayers.h"
+#include "CollisionAttribute.h"
 #include <span>
 
 
@@ -36,7 +36,7 @@ namespace fang::game
 	/** @brief 雑魚が共有する感知・追跡・振りの調整値。複数体で共有するので、Dependencies はポインタで参照する。 */
 	struct MinionParams
 	{
-		PerceptionParams perception{ .blockerLayerMask = COLLISION_LAYER_PROP };
+		PerceptionParams perception{ .blockerAttributeMask = COLLISION_ATTRIBUTE_PROP };
 		PursuitParams    pursuit{ .stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS };
 
 		/** @brief 振りの時間割。1 周 1.00 秒（0.30 + 0.15 + 0.25 + 0.30）。 */

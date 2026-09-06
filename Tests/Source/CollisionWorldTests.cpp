@@ -454,20 +454,20 @@ TEST_CASE("球の重なりが範囲内の番号を全部返す")
 }
 
 
-TEST_CASE("layerMask で絞り込んだレイキャストは対象外の登録を無視する")
+TEST_CASE("attributeMask で絞り込んだレイキャストは対象外の登録を無視する")
 {
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	constexpr uint32_t WALL_LAYER      = 1u << 0;
-	constexpr uint32_t CHARACTER_LAYER = 1u << 1;
+	constexpr uint32_t WALL_ATTRIBUTE      = 1u << 0;
+	constexpr uint32_t CHARACTER_ATTRIBUTE = 1u << 1;
 
 	std::vector<fang::ColliderProxy> proxies;
 	proxies.push_back(
 		fang::ColliderProxy{
-			.shape     = fang::MakeColliderShape(fang::Sphere{ .center = { 10.0f, 0.0f, 0.0f }, .radius = 1.0f }),
-			.userIndex = 1,
-			.layerMask = CHARACTER_LAYER,
+			.shape         = fang::MakeColliderShape(fang::Sphere{ .center = { 10.0f, 0.0f, 0.0f }, .radius = 1.0f }),
+			.userIndex     = 1,
+			.attributeMask = CHARACTER_ATTRIBUTE,
 		}
 	);
 	world.Update(proxies);
@@ -479,7 +479,7 @@ TEST_CASE("layerMask で絞り込んだレイキャストは対象外の登録�
 		fang::Vector3{},
 		fang::Vector3{ 1.0f, 0.0f, 0.0f },
 		100.0f,
-		fang::QueryFilter{ .layerMask = WALL_LAYER },
+		fang::QueryFilter{ .attributeMask = WALL_ATTRIBUTE },
 		&hit
 	));
 
@@ -488,7 +488,7 @@ TEST_CASE("layerMask で絞り込んだレイキャストは対象外の登録�
 		fang::Vector3{},
 		fang::Vector3{ 1.0f, 0.0f, 0.0f },
 		100.0f,
-		fang::QueryFilter{ .layerMask = CHARACTER_LAYER },
+		fang::QueryFilter{ .attributeMask = CHARACTER_ATTRIBUTE },
 		&hit
 	));
 	CHECK(hit.userIndex == 1);
@@ -523,20 +523,20 @@ TEST_CASE("excludedUserIndices で除外した番号はレイキャストに出�
 }
 
 
-TEST_CASE("layerMask で絞り込んだ球の重なりは対象外の登録を無視する")
+TEST_CASE("attributeMask で絞り込んだ球の重なりは対象外の登録を無視する")
 {
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	constexpr uint32_t WALL_LAYER      = 1u << 0;
-	constexpr uint32_t CHARACTER_LAYER = 1u << 1;
+	constexpr uint32_t WALL_ATTRIBUTE      = 1u << 0;
+	constexpr uint32_t CHARACTER_ATTRIBUTE = 1u << 1;
 
 	std::vector<fang::ColliderProxy> proxies;
 	proxies.push_back(
 		fang::ColliderProxy{
-			.shape     = fang::MakeColliderShape(fang::Sphere{ .center = { 0.0f, 0.0f, 0.0f }, .radius = 1.0f }),
-			.userIndex = 7,
-			.layerMask = CHARACTER_LAYER,
+			.shape         = fang::MakeColliderShape(fang::Sphere{ .center = { 0.0f, 0.0f, 0.0f }, .radius = 1.0f }),
+			.userIndex     = 7,
+			.attributeMask = CHARACTER_ATTRIBUTE,
 		}
 	);
 	world.Update(proxies);
@@ -545,14 +545,14 @@ TEST_CASE("layerMask で絞り込んだ球の重なりは対象外の登録を�
 	CHECK(
 		world.OverlapSphere(
 			fang::Sphere{ .center = fang::Vector3{}, .radius = 5.0f },
-			fang::QueryFilter{ .layerMask = WALL_LAYER },
+			fang::QueryFilter{ .attributeMask = WALL_ATTRIBUTE },
 			indices
 		) == 0
 	);
 	CHECK(
 		world.OverlapSphere(
 			fang::Sphere{ .center = fang::Vector3{}, .radius = 5.0f },
-			fang::QueryFilter{ .layerMask = CHARACTER_LAYER },
+			fang::QueryFilter{ .attributeMask = CHARACTER_ATTRIBUTE },
 			indices
 		) == 1
 	);
@@ -645,20 +645,20 @@ TEST_CASE("掃引の書き込み先が足りないぶんは遠いほうから捨
 }
 
 
-TEST_CASE("layerMask で絞り込んだ掃引は対象外の登録を無視する")
+TEST_CASE("attributeMask で絞り込んだ掃引は対象外の登録を無視する")
 {
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	constexpr uint32_t WALL_LAYER      = 1u << 0;
-	constexpr uint32_t CHARACTER_LAYER = 1u << 1;
+	constexpr uint32_t WALL_ATTRIBUTE      = 1u << 0;
+	constexpr uint32_t CHARACTER_ATTRIBUTE = 1u << 1;
 
 	std::vector<fang::ColliderProxy> proxies;
 	proxies.push_back(
 		fang::ColliderProxy{
-			.shape     = fang::MakeColliderShape(fang::Sphere{ .center = { 10.0f, 0.0f, 0.0f }, .radius = 1.0f }),
-			.userIndex = 1,
-			.layerMask = CHARACTER_LAYER,
+			.shape         = fang::MakeColliderShape(fang::Sphere{ .center = { 10.0f, 0.0f, 0.0f }, .radius = 1.0f }),
+			.userIndex     = 1,
+			.attributeMask = CHARACTER_ATTRIBUTE,
 		}
 	);
 	world.Update(proxies);
@@ -668,7 +668,7 @@ TEST_CASE("layerMask で絞り込んだ掃引は対象外の登録を無視す�
 	fang::SweepResult wallResult = world.SweepSphere(
 		fang::Sphere{ .center = fang::Vector3{}, .radius = 1.0f },
 		fang::Vector3{ 100.0f, 0.0f, 0.0f },
-		fang::QueryFilter{ .layerMask = WALL_LAYER },
+		fang::QueryFilter{ .attributeMask = WALL_ATTRIBUTE },
 		hits
 	);
 	CHECK(wallResult.hitCount == 0);
@@ -676,7 +676,7 @@ TEST_CASE("layerMask で絞り込んだ掃引は対象外の登録を無視す�
 	fang::SweepResult characterResult = world.SweepSphere(
 		fang::Sphere{ .center = fang::Vector3{}, .radius = 1.0f },
 		fang::Vector3{ 100.0f, 0.0f, 0.0f },
-		fang::QueryFilter{ .layerMask = CHARACTER_LAYER },
+		fang::QueryFilter{ .attributeMask = CHARACTER_ATTRIBUTE },
 		hits
 	);
 	CHECK(characterResult.hitCount == 1);
@@ -741,20 +741,20 @@ TEST_CASE("視線は発信元と対象自身を除外すれば通る")
 }
 
 
-TEST_CASE("視線を layerMask で壁だけに絞ると、キャラの層は遮らない")
+TEST_CASE("視線を attributeMask で壁だけに絞ると、キャラの層は遮らない")
 {
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	constexpr uint32_t WALL_LAYER      = 1u << 0;
-	constexpr uint32_t CHARACTER_LAYER = 1u << 1;
+	constexpr uint32_t WALL_ATTRIBUTE      = 1u << 0;
+	constexpr uint32_t CHARACTER_ATTRIBUTE = 1u << 1;
 
 	std::vector<fang::ColliderProxy> proxies;
 	proxies.push_back(
 		fang::ColliderProxy{
-			.shape     = fang::MakeColliderShape(fang::Sphere{ .center = { 5.0f, 0.0f, 0.0f }, .radius = 1.0f }),
-			.userIndex = 3,
-			.layerMask = CHARACTER_LAYER,
+			.shape         = fang::MakeColliderShape(fang::Sphere{ .center = { 5.0f, 0.0f, 0.0f }, .radius = 1.0f }),
+			.userIndex     = 3,
+			.attributeMask = CHARACTER_ATTRIBUTE,
 		}
 	);
 	world.Update(proxies);
@@ -768,7 +768,7 @@ TEST_CASE("視線を layerMask で壁だけに絞ると、キャラの層は遮�
 	CHECK(world.HasLineOfSight(
 		fang::Vector3{},
 		fang::Vector3{ 10.0f, 0.0f, 0.0f },
-		fang::QueryFilter{ .layerMask = WALL_LAYER },
+		fang::QueryFilter{ .attributeMask = WALL_ATTRIBUTE },
 		&blockingHit
 	));
 

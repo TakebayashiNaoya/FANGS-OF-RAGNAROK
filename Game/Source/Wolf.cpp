@@ -9,7 +9,7 @@
 #include "RHI/GraphicsDevice.h"
 #include "Resource/DdsImage.h"
 #include "Resource/GltfMesh.h"
-#include "CollisionLayers.h"
+#include "CollisionAttribute.h"
 #include "GameLog.h"
 #include "WolfBehavior.h"
 #include <span>
@@ -249,10 +249,10 @@ namespace fang::game
 
 			// 狼は四つ足なので、体を包むカプセルのほうが箱より当たりが素直。WOLF を足して雑魚の攻撃の掃引に出す。
 			const ColliderComponent colliderComponent{
-				.shapeType   = EnShapeType::Capsule,
-				.localBounds = model.localBounds,
-				.isEnabled   = true,
-				.layerMask   = COLLISION_LAYER_CHARACTER | COLLISION_LAYER_WOLF,
+				.shapeType     = EnShapeType::Capsule,
+				.localBounds   = model.localBounds,
+				.isEnabled     = true,
+				.attributeMask = COLLISION_ATTRIBUTE_CHARACTER | COLLISION_ATTRIBUTE_WOLF,
 			};
 			(void)scene.AddColliderComponent(handle, colliderComponent);
 		}

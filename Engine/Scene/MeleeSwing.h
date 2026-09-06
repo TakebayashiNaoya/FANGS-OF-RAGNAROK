@@ -94,8 +94,8 @@ namespace fang
 
 		bool isAttackRequested = false;
 
-		uint32_t selfUserIndex   = 0;
-		uint32_t targetLayerMask = ALL_COLLISION_LAYERS; /**< 攻撃が当たる種別。意味は Game が決める。 */
+		uint32_t selfUserIndex       = 0;
+		uint32_t targetAttributeMask = ALL_COLLISION_ATTRIBUTE_MASK; /**< 攻撃が当たる種別。意味は Game が決める。 */
 	};
 
 	/** @brief 1 フレームの答え。 */

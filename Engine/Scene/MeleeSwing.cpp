@@ -146,7 +146,7 @@ namespace fang
 
 		const uint32_t    excludedUserIndex = input.selfUserIndex;
 		const QueryFilter filter{
-			.layerMask           = input.targetLayerMask,
+			.attributeMask       = input.targetAttributeMask,
 			.excludedUserIndices = std::span<const uint32_t>(&excludedUserIndex, 1),
 		};
 
