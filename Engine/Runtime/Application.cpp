@@ -18,6 +18,9 @@
 #include "Core/Platform/Window.h"
 #include "Core/Reflection/TuningRegistry.h"
 #include "Input/Input.h"
+#if FANG_ENABLE_EDITOR
+#include "Input/GamepadDestination.h"
+#endif
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
 #include "Renderer/DebugDraw.h"
@@ -934,7 +937,12 @@ namespace fang
 			const FrameTime frameTime = frameClock.Tick();
 
 			// ReadGamepadState はメインスレッドのみなので、更新ジョブへ投げる前にここで読む。
+#if FANG_ENABLE_EDITOR
+			// 行き先がエディタの間、ゲームへ渡すパッドはここで空になる。書いたのは前の周の描画(同じメイン)。
+			const GamepadState gamepad = GamepadDestination::GetInstance().FilterForGame(ReadGamepadState());
+#else
 			const GamepadState gamepad = ReadGamepadState();
+#endif
 
 			const auto frameWorkBeginTime = std::chrono::steady_clock::now();
 

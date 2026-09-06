@@ -28,6 +28,7 @@
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
     <ClInclude Include="Editor.h" />
+    <ClInclude Include="EditorLayout.h" />
     <ClInclude Include="EditorLog.h" />
     <ClInclude Include="EditorUI.h" />
     <ClInclude Include="ImGuiPlatformInput.h" />
@@ -40,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Editor.cpp" />
+    <ClCompile Include="EditorLayout.cpp" />
     <ClCompile Include="EditorUI.cpp" />
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>

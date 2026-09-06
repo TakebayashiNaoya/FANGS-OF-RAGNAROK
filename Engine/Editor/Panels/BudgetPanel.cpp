@@ -6,6 +6,7 @@
 #include "Editor/Panels/BudgetPanel.h"
 #include "Core/Platform/Budget.h"
 #include "Core/Platform/Thread.h"
+#include "Editor/EditorLayout.h"
 #include "Runtime/EngineContext.h"
 #include "Runtime/FrameClock.h"
 #include <imgui.h>
@@ -15,11 +16,8 @@ namespace fang::editor
 {
 	namespace
 	{
-		/** @brief 「Xbox 予算」ウィンドウの幅。左の列（x=60）からジョブシステム（x=460）の手前までに収める。 */
+		/** @brief 「Xbox 予算」ウィンドウの幅。 */
 		constexpr float WINDOW_MIN_WIDTH = 400.0f;
-
-		/** @brief 初回に置く位置。右の列はレンダリング統計とシェーダーホットリロードで埋まっている。 */
-		constexpr ImVec2 FIRST_USE_POSITION{ 60.0f, 330.0f };
 
 		/** @brief 使用量のバーの幅。 */
 		constexpr float PROGRESS_BAR_WIDTH = 260.0f;
@@ -81,7 +79,7 @@ namespace fang::editor
 			return;
 		}
 
-		ImGui::SetNextWindowPos(FIRST_USE_POSITION, ImGuiCond_FirstUseEver);
+		ApplyPanelPlacement(EnPanelSlot::Budget);
 		ImGui::SetNextWindowSizeConstraints(ImVec2(WINDOW_MIN_WIDTH, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
 
 		if (!ImGui::Begin("Xbox 予算", nullptr, ImGuiWindowFlags_AlwaysAutoResize))

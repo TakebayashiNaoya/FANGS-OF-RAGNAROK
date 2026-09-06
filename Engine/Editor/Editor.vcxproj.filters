@@ -14,6 +14,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Editor.h" />
+    <ClInclude Include="EditorLayout.h" />
     <ClInclude Include="EditorLog.h" />
     <ClInclude Include="EditorUI.h" />
     <ClInclude Include="ImGuiPlatformInput.h" />
@@ -36,6 +37,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Editor.cpp" />
+    <ClCompile Include="EditorLayout.cpp" />
     <ClCompile Include="EditorUI.cpp" />
     <ClCompile Include="Pch.cpp" />
     <ClCompile Include="Panels\BudgetPanel.cpp">

@@ -11,6 +11,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Gamepad.h" />
+    <ClInclude Include="GamepadDestination.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="InputLog.h" />
     <ClInclude Include="Pch.h" />

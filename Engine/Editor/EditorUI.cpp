@@ -8,8 +8,10 @@
 #include "Core/Platform/AssetPath.h"
 #include "Core/Platform/Window.h"
 #include "Core/Text/MissingGlyphCounter.h"
+#include "Editor/EditorLayout.h"
 #include "Editor/EditorLog.h"
 #include "Editor/ImGuiPlatformInput.h"
+#include "Input/GamepadDestination.h"
 #include "RHI/CommandList.h"
 #include "RHI/GraphicsDevice.h"
 #include "Runtime/EngineContext.h"
@@ -51,6 +53,18 @@ namespace fang::editor
 
 		/** @brief 「エンジン情報」ウィンドウの最小幅。 */
 		constexpr float ENGINE_INFO_WINDOW_MIN_WIDTH = 360.0f;
+
+		/** @brief エンジン情報ウィンドウの名前。行き先が変わった周に焦点を戻す先としても使う。 */
+		constexpr const char* ENGINE_INFO_WINDOW_NAME = "エンジン情報";
+
+		/** @brief 行き先オーバーレイの位置。左端のパネル列（y=56〜）の真上。 */
+		constexpr ImVec2 DESTINATION_OVERLAY_POSITION{ 16.0f, 16.0f };
+
+		/** @brief 行き先がゲームのときの文字色。 */
+		constexpr ImVec4 GAME_DESTINATION_COLOR{ 0.35f, 0.85f, 0.35f, 1.0f };
+
+		/** @brief 行き先がエディタのときの文字色。 */
+		constexpr ImVec4 EDITOR_DESTINATION_COLOR{ 1.0f, 0.6f, 0.2f, 1.0f };
 
 #if FANG_DEBUG
 		constexpr const char* CONFIGURATION_DISPLAY_NAME = "Debug";
@@ -146,9 +160,10 @@ namespace fang::editor
 		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-		// 実機はマウスが無いのでパッドのナビゲーションが唯一の操作手段になる。
-		// 立てるだけでは何も起きず、実際に効くのは HasGamepad を立てるプラットフォームだけ。
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+		// 読まないし書かない。配置と畳みはコードで決め切るため、保存済みの imgui.ini に負けたくない。
+		io.IniFilename = nullptr;
+
+		// NavEnableGamepad は行き先がエディタの周だけ BuildFrame が立てる。ここでは立てない。
 
 		io.BackendRendererName = "FangEngine RHI";
 		io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
@@ -237,8 +252,28 @@ namespace fang::editor
 
 		UpdateImGuiPlatformInput(window.GetNativeHandle());
 
+		// 実機はマウスが無いのでパッドのナビゲーションが唯一の操作手段になる。行き先がゲームの間は
+		// 落とす ➡ フォーカス枠と io.NavActive が消え、狼を動かしている間にパネルが反応しない。
+		if (GamepadDestination::GetInstance().Get() == EnGamepadDestination::Editor)
+		{
+			io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+		}
+		else
+		{
+			io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad;
+		}
+
 		ImGui::NewFrame();
 
+		if (GamepadDestination::GetInstance().HasJustChanged())
+		{
+			// 掴んでいた ActiveId を落とす。メニュー層への切り替えは NavWindow != nullptr を要求する
+			// ので、外したままにはできない ➡ 先頭パネルへ焦点を戻す。
+			ImGui::SetWindowFocus(nullptr);
+			ImGui::SetWindowFocus(ENGINE_INFO_WINDOW_NAME);
+		}
+
+		BuildGamepadDestinationOverlay();
 		BuildEngineInfoWindow(window, deltaTimeSeconds);
 		m_jobSystemPanel.BuildFrame(deltaTimeSeconds, m_framePipeline->GetFrameIndex());
 		m_renderStatisticsPanel.BuildFrame(deltaTimeSeconds, renderStatistics);
@@ -260,11 +295,13 @@ namespace fang::editor
 	void EditorUI::BuildEngineInfoWindow(const Window& window, float deltaTimeSeconds)
 	{
 		// TODO: ヒエラルキー・インスペクタ・コンソールに置き換える。
+		ApplyPanelPlacement(EnPanelSlot::EngineInformation);
+
 		// 自動サイズだけだと日本語ラベルの末尾が切れるので下限を決めておく。
 		// ImGui はクリップ矩形からはみ出したグリフを丸ごと消すので、この下限が溢れを防いでいる。
 		ImGui::SetNextWindowSizeConstraints(ImVec2(ENGINE_INFO_WINDOW_MIN_WIDTH, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
 
-		if (!ImGui::Begin("エンジン情報", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		if (!ImGui::Begin(ENGINE_INFO_WINDOW_NAME, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 		{
 			ImGui::End();
 			return;
@@ -288,6 +325,41 @@ namespace fang::editor
 		ImGui::Separator();
 
 		ImGui::Checkbox("ImGui のデモを表示", &m_isDemoWindowVisible);
+
+		ImGui::End();
+	}
+
+
+	void EditorUI::BuildGamepadDestinationOverlay()
+	{
+		// 切り替えが効くのは ImGui がパッドを受け取れる場所だけ。ここが立っていないと、パッドが
+		// 誰にも届かない状態を案内してしまう。
+		if ((ImGui::GetIO().BackendFlags & ImGuiBackendFlags_HasGamepad) == 0)
+		{
+			return;
+		}
+
+		constexpr ImGuiWindowFlags OVERLAY_FLAGS =
+			ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoNav |
+			ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+			ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoDocking;
+
+		ImGui::SetNextWindowPos(DESTINATION_OVERLAY_POSITION, ImGuiCond_Always);
+
+		if (!ImGui::Begin("パッドの行き先", nullptr, OVERLAY_FLAGS))
+		{
+			ImGui::End();
+			return;
+		}
+
+		if (GamepadDestination::GetInstance().Get() == EnGamepadDestination::Editor)
+		{
+			ImGui::TextColored(EDITOR_DESTINATION_COLOR, "パッド: ImGui（View でゲームへ）");
+		}
+		else
+		{
+			ImGui::TextColored(GAME_DESTINATION_COLOR, "パッド: ゲーム（View で ImGui へ）");
+		}
 
 		ImGui::End();
 	}

@@ -59,6 +59,7 @@
     <ClCompile Include="Source\FrameClockTests.cpp" />
     <ClCompile Include="Source\FramePipelineTests.cpp" />
     <ClCompile Include="Source\FrustumTests.cpp" />
+    <ClCompile Include="Source\GamepadDestinationTests.cpp" />
     <ClCompile Include="Source\GamepadTests.cpp" />
     <ClCompile Include="Source\GltfMeshTests.cpp" />
     <ClCompile Include="Source\GltfSceneTests.cpp" />
