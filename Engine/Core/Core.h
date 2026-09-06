@@ -20,10 +20,10 @@
 #include "Core/Memory/FrameAllocator.h"
 #include "Core/Memory/UniquePtr.h"
 #include "Core/Platform/AssetPath.h"
-#include "Core/Platform/SystemFont.h"
 #include "Core/Platform/Thread.h"
 #include "Core/Platform/Window.h"
 #include "Core/Reflection/Reflection.h"
+#include "Core/Text/MissingGlyphCounter.h"
 
 
 namespace fang

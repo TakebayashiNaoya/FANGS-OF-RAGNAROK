@@ -69,6 +69,7 @@
     <ClCompile Include="Source\Matrix4x4Tests.cpp" />
     <ClCompile Include="Source\MatrixOperationTests.cpp" />
     <ClCompile Include="Source\MeleeSwingTests.cpp" />
+    <ClCompile Include="Source\MissingGlyphCounterTests.cpp" />
     <ClCompile Include="Source\NarrowphaseTests.cpp" />
     <ClCompile Include="Source\PackTests.cpp" />
     <ClCompile Include="Source\ParallelForTests.cpp" />

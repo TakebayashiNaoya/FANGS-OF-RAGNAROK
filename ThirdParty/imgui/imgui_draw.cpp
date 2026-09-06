@@ -3903,11 +3903,12 @@ void ImFont::AddRemapChar(ImWchar dst, ImWchar src, bool overwrite_dst)
 // Find glyph, return fallback if missing
 ImFontGlyph* ImFont::FindGlyph(ImWchar c)
 {
+    // FANG: 詳細は FangChanges.md。
     if (c >= (size_t)IndexLookup.Size)
-        return FallbackGlyph;
+        return IM_MISSING_GLYPH_HOOK(c), FallbackGlyph;
     const ImU16 i = IndexLookup.Data[c];
     if (i == (ImU16)-1)
-        return FallbackGlyph;
+        return IM_MISSING_GLYPH_HOOK(c), FallbackGlyph;
     return &Glyphs.Data[i];
 }
 

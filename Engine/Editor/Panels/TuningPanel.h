@@ -39,9 +39,17 @@ namespace fang::editor
 
 
 	private:
+		/** @brief 登録簿のラベルを欠字カウンタへ流す。件数が前回から変わっていなければ何もしない。 */
+		void SweepLabelsForMissingGlyphs();
+
+
+	private:
 		/** @brief このフレームの行。開いているフレームだけ組み立て直す。 */
 		std::array<TuningRow, MAX_TUNING_ROW_COUNT> m_rows;
 
 		TuningRowBuildResult m_buildResult;
+
+		/** @brief 直近に一掃した登録件数。GetEntries().size() と違えばもう一度舐める。 */
+		uint32_t m_lastSweptEntryCount = 0;
 	};
 } // namespace fang::editor

@@ -5,8 +5,9 @@
 #include "Pch.h"
 #include "Editor/EditorUI.h"
 #include "Core/Log/Assert.h"
-#include "Core/Platform/SystemFont.h"
+#include "Core/Platform/AssetPath.h"
 #include "Core/Platform/Window.h"
+#include "Core/Text/MissingGlyphCounter.h"
 #include "Editor/EditorLog.h"
 #include "Editor/ImGuiPlatformInput.h"
 #include "RHI/CommandList.h"
@@ -35,6 +36,19 @@ namespace fang::editor
 		/** @brief エディタのフォントサイズ。 */
 		constexpr float FONT_SIZE_IN_PIXELS = 18.0f;
 
+		/** @brief 同梱フォント。PC と実機で同じ字が出るよう、OS のフォントは使わない。 */
+		constexpr const char* FONT_RELATIVE_PATH = "Fonts\\MPLUS1p-Regular.ttf";
+
+		/** @brief アトラスの上限（RGBA32、1024x2048）。フォントを差し替えて黙って倍にならないための歯止め。 */
+		constexpr size_t MAXIMUM_FONT_ATLAS_BYTES = 8 * 1024 * 1024;
+
+		/**
+		 * @brief 積む字の範囲。範囲表を持たない。
+		 * @details ImGui は cmap に無いコードポイントを黙って飛ばすので、BMP 全域を要求すると
+		 *          「フォントが持つ字を全部」と同じ意味になる（要求 = 実在）。
+		 */
+		constexpr ImWchar GLYPH_RANGES[] = { 0x0020, 0xFFFF, 0 };
+
 		/** @brief 「エンジン情報」ウィンドウの最小幅。 */
 		constexpr float ENGINE_INFO_WINDOW_MIN_WIDTH = 360.0f;
 
@@ -46,34 +60,63 @@ namespace fang::editor
 		constexpr const char* CONFIGURATION_DISPLAY_NAME = "Release";
 #endif
 
-		/** @brief 日本語が出るフォントを読み込む。無ければ ImGui の既定フォント（英数字のみ）のままにする。 */
-		void LoadJapaneseFont()
+		/** @brief 同梱フォントを読み込む。無ければ ImGui の既定フォント（英数字のみ）のままにする。 */
+		void LoadBundledFont()
 		{
 			ImGuiIO& io = ImGui::GetIO();
 
-			const std::string fontPath = GetSystemUIFontPath();
+			const std::string fontPath = MakeAssetPath(FONT_RELATIVE_PATH);
 			if (fontPath.empty())
 			{
-				FANG_LOG_WARNING(Editor, "日本語フォントが見つからないので既定フォントを使う");
+				FANG_LOG_WARNING(Editor, "アセットの根っこが見つからないので既定フォントを使う");
 				return;
 			}
 
 			ImFontConfig fontConfig;
-			// .ttc は複数のフォントの束なので、先頭（レギュラー）を指定する。
-			fontConfig.FontNo = 0;
+			// オーバーサンプリングを 1 に倒す。字数を BMP 全域へ増やしてもアトラスの大きさが変わらないため。
+			fontConfig.PixelSnapH = true;
 
-			if (io.Fonts->AddFontFromFileTTF(
-					fontPath.c_str(),
-					FONT_SIZE_IN_PIXELS,
-					&fontConfig,
-					io.Fonts->GetGlyphRangesJapanese()
-				) == nullptr)
+			if (io.Fonts->AddFontFromFileTTF(fontPath.c_str(), FONT_SIZE_IN_PIXELS, &fontConfig, GLYPH_RANGES) ==
+				nullptr)
 			{
 				FANG_LOG_WARNING(Editor, "フォントを読めなかった: {}", fontPath);
 				return;
 			}
 
 			FANG_LOG_INFO(Editor, "フォントを読んだ: {}", fontPath);
+		}
+
+
+		/** @brief 欠字カウンタが欠字を見つけたときの通知先。ImGui を 1 つも知らない Core 側から呼ばれる。 */
+		void ReportMissingGlyph(char32_t codePoint, void* /*userData*/)
+		{
+			FANG_LOG_WARNING(Editor, "欠字 U+{:04X}", static_cast<uint32_t>(codePoint));
+		}
+
+
+		/**
+		 * @brief 欠字カウンタの通知先を差す前に、フックが生きているかを自己診断する。
+		 * @details U+FFFF はどのフォントにも無い非文字。これを 1 つ引いて種類数が 1 になるかで、
+		 *          imgui を上流に入れ替えたときにフックが消えていないかを確かめる（ADR-053）。
+		 *          診断の 1 字が「欠字 0 件」の判定を汚さないよう、Reset の後で通知先を差す。
+		 */
+		void InitializeMissingGlyphDetection()
+		{
+			ImFontAtlas* fontAtlas = ImGui::GetIO().Fonts;
+			FANG_ASSERT(fontAtlas->Fonts.Size > 0, "フォントアトラスにフォントが無い");
+			ImFont* font = fontAtlas->Fonts[0];
+
+			MissingGlyphCounter& counter = MissingGlyphCounter::GetInstance();
+
+			counter.Reset();
+			(void)font->FindGlyph(0xFFFF);
+			if (counter.GetDistinctMissingCount() != 1)
+			{
+				FANG_LOG_ERROR(Editor, "欠字の検出フックが効いていない");
+			}
+
+			counter.Reset();
+			counter.SetCallback(&ReportMissingGlyph, nullptr);
 		}
 	} // namespace
 
@@ -111,7 +154,7 @@ namespace fang::editor
 		io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 		io.DisplaySize = ImVec2(static_cast<float>(window.GetWidth()), static_cast<float>(window.GetHeight()));
 
-		LoadJapaneseFont();
+		LoadBundledFont();
 		ImGui::StyleColorsDark();
 
 		if (!InitializeBackend(device))
@@ -119,6 +162,8 @@ namespace fang::editor
 			FANG_LOG_ERROR(Editor, "ImGui の描画バックエンドを作れなかった");
 			return false;
 		}
+
+		InitializeMissingGlyphDetection();
 
 		if (!m_budgetPanel.Initialize(context))
 		{
@@ -294,15 +339,37 @@ namespace fang::editor
 			return false;
 		}
 
+		ImFontAtlas*   fontAtlas   = ImGui::GetIO().Fonts;
 		unsigned char* pixels      = nullptr;
 		int            atlasWidth  = 0;
 		int            atlasHeight = 0;
-		ImGui::GetIO().Fonts->GetTexDataAsRGBA32(&pixels, &atlasWidth, &atlasHeight);
+		fontAtlas->GetTexDataAsRGBA32(&pixels, &atlasWidth, &atlasHeight);
+
+		const size_t atlasBytes = static_cast<size_t>(atlasWidth) * static_cast<size_t>(atlasHeight) * 4;
+		const int    glyphCount = fontAtlas->Fonts.Size > 0 ? fontAtlas->Fonts[0]->Glyphs.Size : 0;
+		FANG_LOG_INFO(
+			Editor,
+			"フォントアトラス: {}x{}（{:.2f} MiB, {} 字）",
+			atlasWidth,
+			atlasHeight,
+			static_cast<double>(atlasBytes) / (1024.0 * 1024.0),
+			glyphCount
+		);
+		FANG_ASSERT(atlasBytes <= MAXIMUM_FONT_ATLAS_BYTES, "フォントアトラスが上限を超えた");
 
 		m_fontTexture =
 			device.CreateTexture2D(pixels, static_cast<uint32_t>(atlasWidth), static_cast<uint32_t>(atlasHeight));
 
-		return m_fontTexture.IsValid();
+		if (!m_fontTexture.IsValid())
+		{
+			return false;
+		}
+
+		// ImGui は焼いた画素を CPU 側に持ち続ける（RGBA32 + Alpha8 で計 10 MiB）が、
+		// アトラスは二度と組み直さないので要らない。
+		fontAtlas->ClearTexData();
+
+		return true;
 	}
 
 
