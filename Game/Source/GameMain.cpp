@@ -96,7 +96,7 @@ namespace fang::game
 		 * @brief ゲーム本体。Runtime のフレームループから呼ばれる。
 		 * @details Game 側でエディタに触れるのはこのクラスの中だけ。
 		 * @threading メインスレッドのみ。ただし OnUpdate はワーカースレッドで走り、
-		 *            m_lightOrbitRadians・m_scene・m_wolfPack はそこからしか触らない。
+		 *            m_scene・m_wolfPack はそこからしか触らない。
 		 */
 		class FangsOfRagnarok final : public IApplication
 		{
@@ -169,12 +169,11 @@ namespace fang::game
 				}
 
 				// 昼夜サイクルはまだ無いので、光の向きを時間で回して「毎フレーム渡せる」ことを目で確かめる。
-				m_lightOrbitRadians += context.deltaTimeSeconds * (2.0f * PI / LIGHT_ORBIT_SECONDS);
-				if (m_lightOrbitRadians >= 2.0f * PI)
-				{
-					// 積みっぱなしにすると値が大きくなるほど角度の刻みが粗くなるので、1 周ごとに戻す。
-					m_lightOrbitRadians -= 2.0f * PI;
-				}
+				// 積むのをやめて絶対の時刻から出す ➡ 上限で切られた周があっても、光の位置が実時間からずれない
+				// （ADR-043）。
+				const float lightOrbitRadians =
+					static_cast<float>(std::fmod(context.elapsedSeconds, LIGHT_ORBIT_SECONDS)) *
+					(2.0f * PI / LIGHT_ORBIT_SECONDS);
 
 				// カメラの方位。パッドがあれば右スティック、無ければ時間で回す
 				// ➡ 起動して放置しスクリーンショットを撮る確認手順がそのまま使える。
@@ -253,9 +252,9 @@ namespace fang::game
 				}
 
 				frameData->light.directionToLight = {
-					std::sinf(m_lightOrbitRadians) * LIGHT_DIRECTION_HORIZONTAL,
+					std::sinf(lightOrbitRadians) * LIGHT_DIRECTION_HORIZONTAL,
 					LIGHT_DIRECTION_HEIGHT,
-					std::cosf(m_lightOrbitRadians) * LIGHT_DIRECTION_HORIZONTAL,
+					std::cosf(lightOrbitRadians) * LIGHT_DIRECTION_HORIZONTAL,
 				};
 
 				// 注視点は操作している狼のワールド位置（接地後の高さ）。Scene::Update の後なので今フレームの
@@ -316,8 +315,6 @@ namespace fang::game
 
 		private:
 			EditorUI m_editorUI; /**< エディタ UI。Release 構成では空の代役に差し替わる。 */
-
-			float m_lightOrbitRadians = 0.0f; /**< 光源の方位角。OnUpdate（ワーカースレッド）だけが触る。 */
 
 			Scene              m_scene;
 			WolfModel          m_wolf;

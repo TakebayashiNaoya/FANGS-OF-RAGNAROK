@@ -9,6 +9,7 @@
 
 namespace fang
 {
+	class FrameClock;
 	class PlatformBudget;
 	struct EngineContext;
 } // namespace fang
@@ -55,5 +56,8 @@ namespace fang::editor
 	private:
 		/** @brief 予算の出どころ。RunApplication が持っているものを借りるだけ。 */
 		PlatformBudget* m_budget = nullptr;
+
+		/** @brief deltaTime の上限と、切られた周の数の出どころ。 */
+		const FrameClock* m_frameClock = nullptr;
 	};
 } // namespace fang::editor

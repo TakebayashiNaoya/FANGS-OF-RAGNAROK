@@ -6,6 +6,7 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="EngineContext.h" />
+    <ClInclude Include="FrameClock.h" />
     <ClInclude Include="FrameContext.h" />
     <ClInclude Include="FramePipeline.h" />
     <ClInclude Include="Pch.h" />
@@ -14,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
+    <ClCompile Include="FrameClock.cpp" />
     <ClCompile Include="FramePipeline.cpp" />
     <ClCompile Include="Pch.cpp" />
     <ClCompile Include="Runtime.cpp" />

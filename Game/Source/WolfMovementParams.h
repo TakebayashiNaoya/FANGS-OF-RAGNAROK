@@ -22,6 +22,8 @@ namespace fang::game
 
 		// 体長 204cm に対して 400cm/秒 は「小走り」くらい。旋回 8 ラジアン/秒（1 周 0.8 秒）は
 		// 真後ろへ倒しても 0.4 秒で振り向く速さ。
+		// moveSpeedCentimetersPerSecond を上げるときは FrameClock::MAXIMUM_DELTA_TIME_SECONDS の
+		// 導出（上限 × 最大速度 < 狼のカプセル半径）を見直すこと。
 		float moveSpeedCentimetersPerSecond = 400.0f;
 		float turnSpeedRadiansPerSecond     = 8.0f;
 	};

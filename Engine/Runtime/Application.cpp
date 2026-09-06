@@ -27,6 +27,7 @@
 #include "Renderer/UnlitRenderer.h"
 #include "Resource/DdsImage.h"
 #include "Resource/HeightmapTerrain.h"
+#include "Runtime/FrameClock.h"
 #include "Runtime/FramePipeline.h"
 #include "Runtime/RuntimeLog.h"
 #include <algorithm>
@@ -873,6 +874,9 @@ namespace fang
 		// 7. 上の層(ゲーム / エディタ)の初期化
 		// 　エンジン側の参照一式を EngineContext に束ねて渡す。
 		//------------------------------------------------------------------------
+		// 実時間の測定元。フレームループが Start してから毎周 Tick する。context より長く生きる必要がある。
+		FrameClock frameClock;
+
 		// 予算はフレームループが毎周更新し、エディタが読み書きする。context より長く生きる必要がある。
 		PlatformBudget platformBudget;
 
@@ -885,14 +889,24 @@ namespace fang
 
 		// 全部の初期化が終わってから束ねる。上の層はここで受けた参照を持ち続ける。
 #if FANG_ENABLE_HOT_RELOAD
-		const EngineContext context{ jobSystem,         frameMemory,
-									 framePipeline,     platformBudget,
-									 meshRenderer,      hasCollisionWorld ? &collisionWorld : nullptr,
-									 terrainForContext, &device.GetShaderReloadStatus() };
+		const EngineContext context{ jobSystem,
+									 frameMemory,
+									 framePipeline,
+									 frameClock,
+									 platformBudget,
+									 meshRenderer,
+									 hasCollisionWorld ? &collisionWorld : nullptr,
+									 terrainForContext,
+									 &device.GetShaderReloadStatus() };
 #else
 		const EngineContext context{
-			jobSystem,         frameMemory,  framePipeline,
-			platformBudget,    meshRenderer, hasCollisionWorld ? &collisionWorld : nullptr,
+			jobSystem,
+			frameMemory,
+			framePipeline,
+			frameClock,
+			platformBudget,
+			meshRenderer,
+			hasCollisionWorld ? &collisionWorld : nullptr,
 			terrainForContext,
 		};
 #endif
@@ -910,30 +924,34 @@ namespace fang
 		// 1 周目に描く相手を作っておく。
 		framePipeline.Prime();
 
-		// TODO: Core/Platform に時間を測る口を作る。
-		auto previousTime = std::chrono::steady_clock::now();
+		frameClock.Start();
 
 		// ウィンドウを閉じるまでループする。WM_QUIT を受け取ると PumpMessages() が false を返す。
 		while (!loopContext.hasDeviceError && window.PumpMessages())
 		{
-			// 前フレームからの経過時間を秒で計算する。更新と描画のどちらにも同じ値を渡す。
-			const auto  currentTime      = std::chrono::steady_clock::now();
-			const float deltaTimeSeconds = std::chrono::duration<float>(currentTime - previousTime).count();
-			previousTime                 = currentTime;
+			// 実時間を測り、上限を掛ける。更新と描画のどちらにも同じ FrameTime を渡す。
+			const FrameTime frameTime = frameClock.Tick();
 
 			// ReadGamepadState はメインスレッドのみなので、更新ジョブへ投げる前にここで読む。
 			const GamepadState gamepad = ReadGamepadState();
 
-			framePipeline.RunFrame(deltaTimeSeconds, gamepad);
+			const auto frameWorkBeginTime = std::chrono::steady_clock::now();
+
+			framePipeline.RunFrame(frameTime, gamepad);
 
 			// 予算の判定と、制限が入っているときの待ちはここで行う。
-			// 待った分は次の周の deltaTimeSeconds に乗るので、実処理の時間だけを渡す。
+			// 待った分は次の周の刻みに乗るので、実処理の時間だけを渡す。
 			const float frameWorkSeconds =
-				std::chrono::duration<float>(std::chrono::steady_clock::now() - currentTime).count();
+				std::chrono::duration<float>(std::chrono::steady_clock::now() - frameWorkBeginTime).count();
 			platformBudget.EndFrame(frameWorkSeconds);
 		}
 
-		FANG_LOG_INFO(Runtime, "フレームループを終了");
+		FANG_LOG_INFO(
+			Runtime,
+			"フレームループを終了（上限で切った周: {} / 経過 {:.1f} 秒）",
+			frameClock.GetClampedFrameCount(),
+			frameClock.GetElapsedSeconds()
+		);
 
 		//------------------------------------------------------------------------
 		// 9. 終了処理

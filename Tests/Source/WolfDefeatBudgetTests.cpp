@@ -287,6 +287,11 @@ TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けても�
 
 		scene.Update(deltaTimeSeconds);
 
+#if FANG_ENABLE_SCENE_VALIDATION
+		// 狼・32体の雑魚が毎周 Transform を書いても、書き手が重ならないこと（rigid-body-seams の完了条件）。
+		CHECK(scene.GetDuplicateTransformWriteCount() == 0);
+#endif
+
 		frameAllocator.Reset();
 		const std::span<const fang::ColliderProxy> colliderProxies = scene.BuildColliderProxies(frameAllocator);
 		world.Update(colliderProxies);

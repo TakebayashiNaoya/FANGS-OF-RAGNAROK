@@ -6,6 +6,7 @@
 
 #include "Core/CoreMacros.h"
 #include "Core/Job/JobCounter.h"
+#include "Runtime/FrameClock.h"
 #include "Runtime/FrameContext.h"
 #include <cstddef>
 #include <cstdint>
@@ -78,10 +79,11 @@ namespace fang
 
 		/**
 		 * @brief 1 周。面の切り替え ➡ 更新 N を投げる ➡ 描画 N−1 ➡ 更新の完了待ち。
-		 * @param gamepad このフレームのパッド。ReadGamepadState はメインスレッドのみなので、呼ぶ側が
-		 *                周の頭で読んで渡す。
+		 * @param frameTime このフレームの刻みと経過。FrameClock::Tick が返したもの。
+		 * @param gamepad   このフレームのパッド。ReadGamepadState はメインスレッドのみなので、呼ぶ側が
+		 *                  周の頭で読んで渡す。
 		 */
-		void RunFrame(float deltaTimeSeconds, const GamepadState& gamepad);
+		void RunFrame(const FrameTime& frameTime, const GamepadState& gamepad);
 
 
 	private:
@@ -100,7 +102,7 @@ namespace fang
 		void RunUpdate(
 			FrameAllocator&     frameAllocator,
 			uint64_t            frameIndex,
-			float               deltaTimeSeconds,
+			const FrameTime&    frameTime,
 			const GamepadState& gamepad
 		);
 
