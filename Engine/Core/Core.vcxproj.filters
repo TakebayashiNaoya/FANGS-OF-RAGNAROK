@@ -125,6 +125,12 @@
     <ClInclude Include="Reflection\Reflection.h">
       <Filter>Reflection</Filter>
     </ClInclude>
+    <ClInclude Include="Reflection\TuningRegistry.h">
+      <Filter>Reflection</Filter>
+    </ClInclude>
+    <ClInclude Include="Reflection\TuningRow.h">
+      <Filter>Reflection</Filter>
+    </ClInclude>
     <ClInclude Include="Reflection\TypeInfo.h">
       <Filter>Reflection</Filter>
     </ClInclude>
@@ -158,6 +164,12 @@
     </ClCompile>
     <ClCompile Include="Platform\Budget.cpp">
       <Filter>Platform</Filter>
+    </ClCompile>
+    <ClCompile Include="Reflection\TuningRegistry.cpp">
+      <Filter>Reflection</Filter>
+    </ClCompile>
+    <ClCompile Include="Reflection\TuningRow.cpp">
+      <Filter>Reflection</Filter>
     </ClCompile>
     <ClCompile Include="Reflection\TypeInfo.cpp">
       <Filter>Reflection</Filter>
