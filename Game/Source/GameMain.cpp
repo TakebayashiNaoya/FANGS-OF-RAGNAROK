@@ -206,10 +206,10 @@ namespace fang::game
 
 				// ReadGamepadState はメインスレッドのみなので、周の頭でメインが読んだものを Runtime から受け取る。
 				// 全滅中は呼ばない ➡ 入力の受け付けが止まる。
-				WolfController* controlledWolfController = m_wolfManager.GetControlledWolf();
-				if (controlledWolfController != nullptr)
+				WolfController* controlledWolf = m_wolfManager.GetControlledWolf();
+				if (controlledWolf != nullptr)
 				{
-					controlledWolfController->SetFrameInput(context.gamepad, cameraYawRadians);
+					controlledWolf->SetFrameInput(context.gamepad, cameraYawRadians);
 
 					// 湧きは前フレームのワールド行列を見る（当たり判定と同じ 1 フレーム遅れ、ADR-034）。
 					const Matrix4x4 controlledWolfWorld = m_scene.GetWorldMatrix(*m_wolfManager.GetControlledHandle());
@@ -262,7 +262,7 @@ namespace fang::game
 				// 距離 × sin(俯角)。水平のままだと周回の途中で丘に潜るので、俯角で視点を持ち上げてある。
 				// 全滅中は操作対象が居ないので、最後に居た位置に留める
 				// （無効なハンドルの GetWorldMatrix は単位行列 ➡ そのまま使うと原点へ飛ぶ）。
-				if (controlledWolfController != nullptr)
+				if (controlledWolf != nullptr)
 				{
 					const Matrix4x4 wolfWorld = m_scene.GetWorldMatrix(*m_wolfManager.GetControlledHandle());
 					const Vector3   wolfPosition{ wolfWorld.m[3][0], wolfWorld.m[3][1], wolfWorld.m[3][2] };
