@@ -129,9 +129,7 @@ namespace fang::game
 
 				for (size_t index = 0; index < WOLF_COUNT; ++index)
 				{
-					WolfController* controller = nullptr;
-
-					const ActorHandle handle = CreateWolfObject(
+					const CharacterCreateResult<WolfController> result = CreateWolfObject(
 						m_scene,
 						m_wolf,
 						m_wolfMovementParameter,
@@ -140,13 +138,12 @@ namespace fang::game
 						m_collisionWorld,
 						m_terrain,
 						WOLF_POSITIONS[index],
-						0.0f,
-						&controller
+						0.0f
 					);
 
-					if (handle.IsValid())
+					if (result.actor.IsValid())
 					{
-						(void)m_wolfManager.Add(handle, controller);
+						(void)m_wolfManager.Add(result.actor.GetHandle(), result.behavior);
 					}
 				}
 

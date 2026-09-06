@@ -41,7 +41,7 @@ namespace fang::game
 
 		const Vector3 spawnPosition{ request.position.x, groundHeight, request.position.z };
 
-		const ActorHandle handle = CreateEnemyObject(
+		const CharacterCreateResult<EnemyController> result = CreateEnemyObject(
 			*dependencies.scene,
 			*dependencies.sharedModel,
 			m_enemyParameter,
@@ -51,9 +51,9 @@ namespace fang::game
 			spawnPosition
 		);
 
-		if (handle.IsValid() && m_aliveCount < MAX_TRACKED_ENEMY_COUNT)
+		if (result.actor.IsValid() && m_aliveCount < MAX_TRACKED_ENEMY_COUNT)
 		{
-			m_spawnedHandles[m_aliveCount] = handle;
+			m_spawnedHandles[m_aliveCount] = result.actor.GetHandle();
 			++m_aliveCount;
 		}
 	}

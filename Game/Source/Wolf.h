@@ -11,6 +11,7 @@
 #include "Core/Math/Vector3.h"
 #include "RHI/RHIHandles.h"
 #include "Renderer/MeshRenderer.h"
+#include "Scene/CharacterDesc.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
 #include "WolfMovementParameter.h"
@@ -75,17 +76,25 @@ namespace fang::game
 	void LoadWolfModel(rhi::GraphicsDevice& device, MeshRenderer& meshRenderer, WolfModel* outWolf);
 
 	/**
+	 * @brief 読み込み済みの WolfModel から、キャラクター 1 体ぶんの記述子を作る。
+	 * @details 狼も雑魚もここを通る ➡ 見た目の組み立ては Game/Source 全体でこの 1 か所だけ。
+	 */
+	[[nodiscard]] CharacterDesc MakeCharacterDesc(
+		const WolfModel&       model,
+		uint32_t               attributeMask,
+		const HealthComponent& health
+	);
+
+	/**
 	 * @brief 読み込み済みの WolfModel から、Scene 上のオブジェクトを 1 体作る。
 	 * @param swingParameter      近接攻撃の時間割・間合い・攻撃力。
 	 * @param healthComponent  湧いたときの HP と無敵時間。
 	 * @param initialPosition  ワールド XZ。Y は毎フレーム地表から決める。
-	 * @param outController      作った振る舞いを受け取る。要らなければ nullptr でよい。
-	 *                         寿命は scene が持つので、呼び出し側は解放しない。
-	 * @return 上限に達している等で作れなければ無効なハンドル。
+	 * @return 上限に達している等で作れなければ actor が無効（作りかけは残らない）。
 	 * @details 作った時点では操作対象ではない。誰を操作するかは WolfManager が SetControlled で決める
 	 *          （生成時と実行中で決める場所が分かれていると、引き継いだ後に食い違うため）。
 	 */
-	[[nodiscard]] ActorHandle CreateWolfObject(
+	[[nodiscard]] CharacterCreateResult<WolfController> CreateWolfObject(
 		Scene&                       scene,
 		WolfModel&                   model,
 		const WolfMovementParameter& parameter,
@@ -94,7 +103,6 @@ namespace fang::game
 		CollisionWorld*              collisionWorld,
 		const HeightmapTerrain*      terrain,
 		const Vector3&               initialPosition,
-		float                        initialFacingRadians,
-		WolfController**             outController = nullptr
+		float                        initialFacingRadians
 	);
 } // namespace fang::game
