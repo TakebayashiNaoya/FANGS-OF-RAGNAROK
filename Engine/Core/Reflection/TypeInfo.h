@@ -51,4 +51,16 @@ namespace fang
 		 */
 		[[nodiscard]] bool TrySetField(void* object, std::string_view fieldName, const FieldValue& value) const;
 	};
+
+	/**
+	 * @brief フィールドの値をアドレスで読む。名前を経由しない、TuningRow などアドレスを直に持つ側の入口。
+	 * @param type Struct なら false（値としては読めない）。
+	 */
+	[[nodiscard]] bool ReadFieldValue(const void* address, EnFieldType type, FieldValue* outValue);
+
+	/**
+	 * @brief フィールドの値をアドレスで書く。
+	 * @details range を持つなら書く前に丸める。type が Struct、または value の型が違えば false（何も書かない）。
+	 */
+	[[nodiscard]] bool WriteFieldValue(void* address, EnFieldType type, const Range& range, const FieldValue& value);
 } // namespace fang

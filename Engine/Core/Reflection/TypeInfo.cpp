@@ -1,6 +1,6 @@
-﻿/**
+/**
  * @file TypeInfo.cpp
- * @brief フィールド名での読み書きの実装。
+ * @brief フィールド名・アドレスでの読み書きの実装。
  */
 #include "Pch.h"
 #include "Core/Reflection/TypeInfo.h"
@@ -59,9 +59,25 @@ namespace fang
 			return false;
 		}
 
-		const std::byte* address = GetFieldAddress(object, *field);
+		return ReadFieldValue(GetFieldAddress(object, *field), field->type, outValue);
+	}
 
-		switch (field->type)
+
+	bool TypeInfo::TrySetField(void* object, std::string_view fieldName, const FieldValue& value) const
+	{
+		const FieldInfo* field = FindField(fieldName);
+		if (field == nullptr)
+		{
+			return false;
+		}
+
+		return WriteFieldValue(GetFieldAddress(object, *field), field->type, field->range, value);
+	}
+
+
+	bool ReadFieldValue(const void* address, EnFieldType type, FieldValue* outValue)
+	{
+		switch (type)
 		{
 			case EnFieldType::Float:
 				*outValue = FieldValue::MakeFloat(*reinterpret_cast<const float*>(address));
@@ -74,36 +90,32 @@ namespace fang
 			case EnFieldType::Bool:
 				*outValue = FieldValue::MakeBool(*reinterpret_cast<const bool*>(address));
 				return true;
+
+			case EnFieldType::Struct: return false;
 		}
 
 		return false;
 	}
 
 
-	bool TypeInfo::TrySetField(void* object, std::string_view fieldName, const FieldValue& value) const
+	bool WriteFieldValue(void* address, EnFieldType type, const Range& range, const FieldValue& value)
 	{
-		const FieldInfo* field = FindField(fieldName);
-		if (field == nullptr)
+		if (type != value.type)
 		{
 			return false;
 		}
 
-		if (field->type != value.type)
-		{
-			return false;
-		}
-
-		std::byte* address = GetFieldAddress(object, *field);
-
-		switch (field->type)
+		switch (type)
 		{
 			case EnFieldType::Float:
-				*reinterpret_cast<float*>(address) = ClampToRange(value.floatValue, field->range);
+				*reinterpret_cast<float*>(address) = ClampToRange(value.floatValue, range);
 				return true;
 
 			case EnFieldType::Int32: *reinterpret_cast<int32_t*>(address) = value.int32Value; return true;
 
 			case EnFieldType::Bool: *reinterpret_cast<bool*>(address) = value.boolValue; return true;
+
+			case EnFieldType::Struct: return false;
 		}
 
 		return false;

@@ -15,6 +15,7 @@ namespace fang
 		Float,
 		Int32,
 		Bool,
+		Struct, /**< 入れ子の構造体。値としては読み書きせず、中へ降りるための印。 */
 	};
 
 	/**

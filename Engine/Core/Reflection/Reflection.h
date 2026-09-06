@@ -50,6 +50,18 @@ public:                                                                         
 		offsetof(FangReflectSelfType, fieldName) __VA_OPT__(, ) __VA_ARGS__                                            \
 	),
 
+/**
+ * @brief 入れ子の構造体を 1 個登録する。中のフィールドも段を 1 つ下げて画面に出る。
+ * @param fieldName   宣言する予定のメンバ変数名。その型に FANG_REFLECT が要る。
+ * @param displayName インスペクタに出す表示名。日本語。
+ */
+#define FANG_FIELD_NESTED(fieldName, displayName)                                                                      \
+	fang::MakeNestedFieldInfo<decltype(FangReflectSelfType::fieldName)>(                                               \
+		#fieldName,                                                                                                    \
+		displayName,                                                                                                   \
+		offsetof(FangReflectSelfType, fieldName)                                                                       \
+	),
+
 /** @brief フィールド一覧の宣言を終える。 */
 #define FANG_REFLECT_END()                                                                                             \
 	}                                                                                                                  \
