@@ -17,14 +17,14 @@
 namespace fang::game
 {
 	WolfBehavior::WolfBehavior(
-		const WolfMovementParams& params,
-		const MeleeSwingParams&   swingParams,
-		const Dependencies&       dependencies,
-		const Vector3&            initialPosition,
-		float                     initialFacingRadians
+		const WolfMovementParameter& parameter,
+		const MeleeSwingParameter&   swingParameter,
+		const Dependencies&          dependencies,
+		const Vector3&               initialPosition,
+		float                        initialFacingRadians
 	)
-		: m_params(params)
-		, m_swingParams(swingParams)
+		: m_parameter(parameter)
+		, m_swingParameter(swingParameter)
 		, m_dependencies(dependencies)
 		, m_position(initialPosition)
 		, m_facingRadians(initialFacingRadians)
@@ -68,14 +68,18 @@ namespace fang::game
 			SweepHit               hits[MAX_MELEE_SWING_HIT_COUNT];
 			const MeleeSwingResult swingResult = StepMeleeSwing(
 				*m_dependencies.collisionWorld,
-				m_swingParams,
+				m_swingParameter,
 				swingInput,
 				deltaTimeSeconds,
 				&m_swingState,
 				hits
 			);
 
-			ApplyMeleeHits(scene, std::span<const SweepHit>(hits, swingResult.newHitCount), m_swingParams.attackPower);
+			ApplyMeleeHits(
+				scene,
+				std::span<const SweepHit>(hits, swingResult.newHitCount),
+				m_swingParameter.attackPower
+			);
 		}
 
 		float appliedSpeed = 0.0f;
@@ -90,7 +94,7 @@ namespace fang::game
 			const Vector3 desiredDelta = MakeMoveDelta(
 				m_moveStick,
 				m_cameraYawRadians,
-				m_params.moveSpeedCentimetersPerSecond,
+				m_parameter.moveSpeedCentimetersPerSecond,
 				deltaTimeSeconds
 			);
 
@@ -103,7 +107,7 @@ namespace fang::game
 				m_facingRadians = TurnTowards(
 					m_facingRadians,
 					GetYawFromDirection(moveResult.appliedDelta),
-					m_params.turnSpeedRadiansPerSecond * deltaTimeSeconds
+					m_parameter.turnSpeedRadiansPerSecond * deltaTimeSeconds
 				);
 			}
 		}
@@ -127,7 +131,7 @@ namespace fang::game
 			if (m_isControlled)
 			{
 				// 速さに合わせて進める ➡ 止まれば姿勢も止まり、ゆっくり倒せばゆっくり歩く。
-				m_dependencies.playback->SetPlaybackSpeed(appliedSpeed / m_params.moveSpeedCentimetersPerSecond);
+				m_dependencies.playback->SetPlaybackSpeed(appliedSpeed / m_parameter.moveSpeedCentimetersPerSecond);
 				m_dependencies.playback->Advance(deltaTimeSeconds);
 
 				FANG_VERIFY(m_dependencies.animation->ComputeSkinningMatrices(

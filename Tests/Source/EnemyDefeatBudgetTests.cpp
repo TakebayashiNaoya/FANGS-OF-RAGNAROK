@@ -51,16 +51,16 @@ namespace
 	{
 	public:
 		TestMinionBehavior(
-			fang::CollisionWorld*         world,
-			fang::GameObjectHandle        target,
-			const fang::PerceptionParams& perceptionParams,
-			const fang::PursuitParams&    pursuitParams,
-			const fang::Vector3&          initialPosition
+			fang::CollisionWorld*            world,
+			fang::GameObjectHandle           target,
+			const fang::PerceptionParameter& perceptionParameter,
+			const fang::PursuitParameter&    pursuitParameter,
+			const fang::Vector3&             initialPosition
 		)
 			: m_world(world)
 			, m_target(target)
-			, m_perceptionParams(perceptionParams)
-			, m_pursuitParams(pursuitParams)
+			, m_perceptionParameter(perceptionParameter)
+			, m_pursuitParameter(pursuitParameter)
 			, m_position(initialPosition)
 		{
 		}
@@ -85,13 +85,13 @@ namespace
 					.selfUserIndex     = self.index,
 					.targetUserIndex   = m_target.index,
 				};
-				perception = fang::Sense(*m_world, m_perceptionParams, input);
+				perception = fang::Sense(*m_world, m_perceptionParameter, input);
 			}
 
 			fang::WritePerception(perception, targetPosition, deltaTimeSeconds, &m_blackboard);
 
 			const fang::MoveIntent intent =
-				fang::StepPursuit(m_pursuitParams, m_blackboard, m_position, deltaTimeSeconds, &m_state);
+				fang::StepPursuit(m_pursuitParameter, m_blackboard, m_position, deltaTimeSeconds, &m_state);
 
 			const std::span<const fang::Contact> contacts =
 				(m_world != nullptr) ? m_world->GetContacts() : std::span<const fang::Contact>{};
@@ -105,10 +105,10 @@ namespace
 
 
 	private:
-		fang::CollisionWorld*  m_world = nullptr;
-		fang::GameObjectHandle m_target;
-		fang::PerceptionParams m_perceptionParams;
-		fang::PursuitParams    m_pursuitParams;
+		fang::CollisionWorld*     m_world = nullptr;
+		fang::GameObjectHandle    m_target;
+		fang::PerceptionParameter m_perceptionParameter;
+		fang::PursuitParameter    m_pursuitParameter;
 
 		fang::Vector3         m_position;
 		fang::AgentBlackboard m_blackboard;
@@ -161,15 +161,15 @@ TEST_CASE("EnemyDefeat: 32体を密集させて600フレーム振り続けても
 	const fang::GameObjectHandle target = scene.CreateObject();
 
 	fang::SpawnScheduler scheduler;
-	fang::SpawnParams    spawnParams{};
-	spawnParams.intervalSeconds            = 0.05f; // テストを速く進めるため短くする(実際は 1 秒)。
-	spawnParams.maximumAliveCount          = 32;
-	spawnParams.minimumDistanceCentimeters = 50.0f; // 密集させるため、実際の湧きより近くに寄せる。
-	spawnParams.maximumDistanceCentimeters = 200.0f;
+	fang::SpawnParameter spawnParameter{};
+	spawnParameter.intervalSeconds            = 0.05f; // テストを速く進めるため短くする(実際は 1 秒)。
+	spawnParameter.maximumAliveCount          = 32;
+	spawnParameter.minimumDistanceCentimeters = 50.0f; // 密集させるため、実際の湧きより近くに寄せる。
+	spawnParameter.maximumDistanceCentimeters = 200.0f;
 
-	const fang::PerceptionParams perceptionParams{};
-	const fang::PursuitParams    pursuitParams{};
-	const fang::MeleeSwingParams swingParams{};
+	const fang::PerceptionParameter perceptionParameter{};
+	const fang::PursuitParameter    pursuitParameter{};
+	const fang::MeleeSwingParameter swingParameter{};
 
 	constexpr uint32_t ATTACKER_USER_INDEX = 0xFFFFu;
 
@@ -180,7 +180,8 @@ TEST_CASE("EnemyDefeat: 32体を密集させて600フレーム振り続けても
 	{
 		constexpr float deltaTimeSeconds = 1.0f / 60.0f;
 
-		const fang::SpawnRequest request = scheduler.Update(deltaTimeSeconds, aliveCount, fang::Vector3{}, spawnParams);
+		const fang::SpawnRequest request =
+			scheduler.Update(deltaTimeSeconds, aliveCount, fang::Vector3{}, spawnParameter);
 		if (request.shouldSpawn)
 		{
 			const fang::GameObjectHandle handle = scene.CreateObject();
@@ -190,8 +191,8 @@ TEST_CASE("EnemyDefeat: 32体を密集させて600フレーム振り続けても
 					handle,
 					&world,
 					target,
-					perceptionParams,
-					pursuitParams,
+					perceptionParameter,
+					pursuitParameter,
 					request.position
 				);
 				if (behavior != nullptr)
@@ -216,7 +217,7 @@ TEST_CASE("EnemyDefeat: 32体を密集させて600フレーム振り続けても
 
 		fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingResult swingResult =
-			fang::StepMeleeSwing(world, swingParams, swingInput, deltaTimeSeconds, &swingState, hits);
+			fang::StepMeleeSwing(world, swingParameter, swingInput, deltaTimeSeconds, &swingState, hits);
 
 		for (uint32_t hitIndex = 0; hitIndex < swingResult.newHitCount; ++hitIndex)
 		{
@@ -232,7 +233,7 @@ TEST_CASE("EnemyDefeat: 32体を密集させて600フレーム振り続けても
 				continue;
 			}
 
-			if (fang::ApplyDamage(health, swingParams.attackPower).wasDefeated)
+			if (fang::ApplyDamage(health, swingParameter.attackPower).wasDefeated)
 			{
 				scene.DestroyObject(victim);
 			}
@@ -325,10 +326,10 @@ TEST_CASE("EnemyDefeat: 74登録+32体の感知・追跡+振りの掃引が実�
 	world.Update(proxies);
 	CHECK(world.GetColliderCount() == PROP_COUNT + WOLF_COUNT + MINION_COUNT);
 
-	const fang::PerceptionParams perceptionParams{};
-	const fang::PursuitParams    pursuitParams{};
-	const fang::MeleeSwingParams swingParams{};
-	const fang::Vector3          targetPosition{ 0.0f, 0.0f, 500.0f };
+	const fang::PerceptionParameter perceptionParameter{};
+	const fang::PursuitParameter    pursuitParameter{};
+	const fang::MeleeSwingParameter swingParameter{};
+	const fang::Vector3             targetPosition{ 0.0f, 0.0f, 500.0f };
 
 	std::vector<fang::AgentBlackboard> blackboards(MINION_COUNT);
 	std::vector<fang::EnPursuitState>  states(MINION_COUNT, fang::EnPursuitState::Chase);
@@ -352,11 +353,11 @@ TEST_CASE("EnemyDefeat: 74登録+32体の感知・追跡+振りの掃引が実�
 				.selfUserIndex     = MINION_USER_INDEX_BASE + index,
 				.targetUserIndex   = WOLF_USER_INDEX_BASE,
 			};
-			const fang::PerceptionResult result = fang::Sense(world, perceptionParams, input);
+			const fang::PerceptionResult result = fang::Sense(world, perceptionParameter, input);
 			fang::WritePerception(result, targetPosition, 1.0f / 60.0f, &blackboards[index]);
 
 			(void)fang::StepPursuit(
-				pursuitParams,
+				pursuitParameter,
 				blackboards[index],
 				minionPositions[index],
 				1.0f / 60.0f,
@@ -372,7 +373,7 @@ TEST_CASE("EnemyDefeat: 74登録+32体の感知・追跡+振りの掃引が実�
 			.targetAttributeMask = TEST_ATTRIBUTE_ENEMY,
 		};
 		fang::SweepHit hits[fang::MAX_MELEE_SWING_HIT_COUNT];
-		(void)fang::StepMeleeSwing(world, swingParams, swingInput, 1.0f / 60.0f, &swingState, hits);
+		(void)fang::StepMeleeSwing(world, swingParameter, swingInput, 1.0f / 60.0f, &swingState, hits);
 	});
 
 	const float scaledSeconds = measuredSeconds * fang::budget::MEASURED_CPU_SCALE_FACTOR;

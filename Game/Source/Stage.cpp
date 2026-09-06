@@ -210,8 +210,8 @@ namespace fang::game
 				.localBounds = localBounds,
 				.baseColor   = findOrLoadTexture(meshData.baseColorImagePath),
 				.normalMap   = findOrLoadTexture(meshData.normalImagePath),
-				.materialParams =
-					MaterialParams{
+				.materialParameter =
+					MaterialParameter{
 						.metallicFactor  = meshData.metallicFactor,
 						.roughnessFactor = meshData.roughnessFactor,
 						.normalScale     = meshData.normalScale,

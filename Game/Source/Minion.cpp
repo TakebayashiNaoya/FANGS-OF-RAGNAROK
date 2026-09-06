@@ -16,7 +16,7 @@ namespace fang::game
 	GameObjectHandle CreateMinionObject(
 		Scene&                  scene,
 		WolfModel&              model,
-		const MinionParams&     params,
+		const MinionParameter&  parameter,
 		CollisionWorld*         collisionWorld,
 		const HeightmapTerrain* terrain,
 		const GameObjectHandle* targetHandle,
@@ -38,8 +38,8 @@ namespace fang::game
 				.localBounds = model.localBounds,
 				.baseColor   = model.baseColor,
 				.normalMap   = model.normalMap,
-				.materialParams =
-					MaterialParams{
+				.materialParameter =
+					MaterialParameter{
 						.metallicFactor  = model.metallicFactor,
 						.roughnessFactor = model.roughnessFactor,
 						.normalScale     = model.normalScale,
@@ -61,11 +61,12 @@ namespace fang::game
 
 		(void)scene.AddHealthComponent(
 			handle,
-			HealthComponent{ .maximumHitPoints = params.maximumHitPoints, .currentHitPoints = params.maximumHitPoints }
+			HealthComponent{ .maximumHitPoints = parameter.maximumHitPoints,
+							 .currentHitPoints = parameter.maximumHitPoints }
 		);
 
 		const MinionBehavior::Dependencies dependencies{
-			.params         = &params,
+			.parameter      = &parameter,
 			.collisionWorld = collisionWorld,
 			.terrain        = terrain,
 			.targetHandle   = targetHandle,

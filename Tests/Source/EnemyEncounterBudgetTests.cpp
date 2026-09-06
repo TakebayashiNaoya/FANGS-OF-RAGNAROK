@@ -47,16 +47,16 @@ namespace
 	{
 	public:
 		TestMinionBehavior(
-			fang::CollisionWorld*         world,
-			fang::GameObjectHandle        target,
-			const fang::PerceptionParams& perceptionParams,
-			const fang::PursuitParams&    pursuitParams,
-			const fang::Vector3&          initialPosition
+			fang::CollisionWorld*            world,
+			fang::GameObjectHandle           target,
+			const fang::PerceptionParameter& perceptionParameter,
+			const fang::PursuitParameter&    pursuitParameter,
+			const fang::Vector3&             initialPosition
 		)
 			: m_world(world)
 			, m_target(target)
-			, m_perceptionParams(perceptionParams)
-			, m_pursuitParams(pursuitParams)
+			, m_perceptionParameter(perceptionParameter)
+			, m_pursuitParameter(pursuitParameter)
 			, m_position(initialPosition)
 		{
 		}
@@ -81,13 +81,13 @@ namespace
 					.selfUserIndex     = self.index,
 					.targetUserIndex   = m_target.index,
 				};
-				perception = fang::Sense(*m_world, m_perceptionParams, input);
+				perception = fang::Sense(*m_world, m_perceptionParameter, input);
 			}
 
 			fang::WritePerception(perception, targetPosition, deltaTimeSeconds, &m_blackboard);
 
 			const fang::MoveIntent intent =
-				fang::StepPursuit(m_pursuitParams, m_blackboard, m_position, deltaTimeSeconds, &m_state);
+				fang::StepPursuit(m_pursuitParameter, m_blackboard, m_position, deltaTimeSeconds, &m_state);
 
 			const std::span<const fang::Contact> contacts =
 				(m_world != nullptr) ? m_world->GetContacts() : std::span<const fang::Contact>{};
@@ -101,10 +101,10 @@ namespace
 
 
 	private:
-		fang::CollisionWorld*  m_world = nullptr;
-		fang::GameObjectHandle m_target;
-		fang::PerceptionParams m_perceptionParams;
-		fang::PursuitParams    m_pursuitParams;
+		fang::CollisionWorld*     m_world = nullptr;
+		fang::GameObjectHandle    m_target;
+		fang::PerceptionParameter m_perceptionParameter;
+		fang::PursuitParameter    m_pursuitParameter;
 
 		fang::Vector3         m_position;
 		fang::AgentBlackboard m_blackboard;
@@ -140,12 +140,12 @@ TEST_CASE("EnemyEncounter: 32体まで湧かせて600フレーム回してもヒ
 	const fang::GameObjectHandle target = scene.CreateObject();
 
 	fang::SpawnScheduler scheduler;
-	fang::SpawnParams    spawnParams{};
-	spawnParams.intervalSeconds   = 0.05f; // テストを速く進めるため短くする(実際は 1 秒)。
-	spawnParams.maximumAliveCount = 32;
+	fang::SpawnParameter spawnParameter{};
+	spawnParameter.intervalSeconds   = 0.05f; // テストを速く進めるため短くする(実際は 1 秒)。
+	spawnParameter.maximumAliveCount = 32;
 
-	const fang::PerceptionParams perceptionParams{};
-	const fang::PursuitParams    pursuitParams{};
+	const fang::PerceptionParameter perceptionParameter{};
+	const fang::PursuitParameter    pursuitParameter{};
 
 	uint32_t aliveCount = 0;
 
@@ -153,7 +153,8 @@ TEST_CASE("EnemyEncounter: 32体まで湧かせて600フレーム回してもヒ
 	{
 		constexpr float deltaTimeSeconds = 1.0f / 60.0f;
 
-		const fang::SpawnRequest request = scheduler.Update(deltaTimeSeconds, aliveCount, fang::Vector3{}, spawnParams);
+		const fang::SpawnRequest request =
+			scheduler.Update(deltaTimeSeconds, aliveCount, fang::Vector3{}, spawnParameter);
 		if (request.shouldSpawn)
 		{
 			const fang::GameObjectHandle handle = scene.CreateObject();
@@ -163,8 +164,8 @@ TEST_CASE("EnemyEncounter: 32体まで湧かせて600フレーム回してもヒ
 					handle,
 					&world,
 					target,
-					perceptionParams,
-					pursuitParams,
+					perceptionParameter,
+					pursuitParameter,
 					request.position
 				);
 				if (behavior != nullptr)
@@ -180,7 +181,7 @@ TEST_CASE("EnemyEncounter: 32体まで湧かせて600フレーム回してもヒ
 		world.Update(colliderProxies);
 	}
 
-	CHECK(aliveCount == spawnParams.maximumAliveCount);
+	CHECK(aliveCount == spawnParameter.maximumAliveCount);
 	CHECK(allocator.GetAllocationCount() == allocationCountAfterInitialize);
 
 	frameAllocator.Shutdown();
@@ -256,9 +257,9 @@ TEST_CASE("EnemyEncounter: 74登録+32体の感知・追跡が実機予算の1�
 	world.Update(proxies);
 	CHECK(world.GetColliderCount() == PROP_COUNT + WOLF_COUNT + MINION_COUNT);
 
-	const fang::PerceptionParams perceptionParams{};
-	const fang::PursuitParams    pursuitParams{};
-	const fang::Vector3          targetPosition{ 0.0f, 0.0f, 500.0f };
+	const fang::PerceptionParameter perceptionParameter{};
+	const fang::PursuitParameter    pursuitParameter{};
+	const fang::Vector3             targetPosition{ 0.0f, 0.0f, 500.0f };
 
 	std::vector<fang::AgentBlackboard> blackboards(MINION_COUNT);
 	std::vector<fang::EnPursuitState>  states(MINION_COUNT, fang::EnPursuitState::Chase);
@@ -279,11 +280,11 @@ TEST_CASE("EnemyEncounter: 74登録+32体の感知・追跡が実機予算の1�
 				.selfUserIndex     = MINION_USER_INDEX_BASE + index,
 				.targetUserIndex   = WOLF_USER_INDEX_BASE,
 			};
-			const fang::PerceptionResult result = fang::Sense(world, perceptionParams, input);
+			const fang::PerceptionResult result = fang::Sense(world, perceptionParameter, input);
 			fang::WritePerception(result, targetPosition, 1.0f / 60.0f, &blackboards[index]);
 
 			(void)fang::StepPursuit(
-				pursuitParams,
+				pursuitParameter,
 				blackboards[index],
 				minionPositions[index],
 				1.0f / 60.0f,

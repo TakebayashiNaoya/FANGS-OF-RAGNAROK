@@ -26,7 +26,7 @@ namespace
 	constexpr uint32_t TEST_ATTRIBUTE_PROP      = 1u << 1;
 	constexpr uint32_t TEST_ATTRIBUTE_WOLF      = 1u << 3;
 
-	// MinionParams(設計)と同じ値。
+	// MinionParameter(設計)と同じ値。
 	constexpr float MINION_STOP_DISTANCE_CENTIMETERS = 120.0f;
 	constexpr float MINION_REACH_CENTIMETERS         = 150.0f;
 
@@ -59,19 +59,19 @@ namespace
 	{
 	public:
 		TestMinionBehavior(
-			fang::CollisionWorld*         world,
-			fang::GameObjectHandle        target,
-			const fang::PerceptionParams& perceptionParams,
-			const fang::PursuitParams&    pursuitParams,
-			const fang::MeleeSwingParams& swingParams,
-			const fang::Vector3&          initialPosition,
-			float                         initialFacingRadians
+			fang::CollisionWorld*            world,
+			fang::GameObjectHandle           target,
+			const fang::PerceptionParameter& perceptionParameter,
+			const fang::PursuitParameter&    pursuitParameter,
+			const fang::MeleeSwingParameter& swingParameter,
+			const fang::Vector3&             initialPosition,
+			float                            initialFacingRadians
 		)
 			: m_world(world)
 			, m_target(target)
-			, m_perceptionParams(perceptionParams)
-			, m_pursuitParams(pursuitParams)
-			, m_swingParams(swingParams)
+			, m_perceptionParameter(perceptionParameter)
+			, m_pursuitParameter(pursuitParameter)
+			, m_swingParameter(swingParameter)
 			, m_position(initialPosition)
 			, m_facingRadians(initialFacingRadians)
 		{
@@ -97,7 +97,7 @@ namespace
 					.selfUserIndex     = self.index,
 					.targetUserIndex   = m_target.index,
 				};
-				perception = fang::Sense(*m_world, m_perceptionParams, input);
+				perception = fang::Sense(*m_world, m_perceptionParameter, input);
 			}
 
 			fang::WritePerception(perception, targetPosition, deltaTimeSeconds, &m_blackboard);
@@ -106,7 +106,7 @@ namespace
 			{
 				const bool isAttackRequested =
 					m_blackboard.isTargetVisible &&
-					m_blackboard.distanceToTargetCentimeters <= m_swingParams.reachCentimeters;
+					m_blackboard.distanceToTargetCentimeters <= m_swingParameter.reachCentimeters;
 
 				const fang::MeleeSwingInput swingInput{
 					.selfPosition        = m_position,
@@ -118,7 +118,7 @@ namespace
 
 				fang::SweepHit               hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 				const fang::MeleeSwingResult swingResult =
-					fang::StepMeleeSwing(*m_world, m_swingParams, swingInput, deltaTimeSeconds, &m_swingState, hits);
+					fang::StepMeleeSwing(*m_world, m_swingParameter, swingInput, deltaTimeSeconds, &m_swingState, hits);
 
 				for (uint32_t hitIndex = 0; hitIndex < swingResult.newHitCount; ++hitIndex)
 				{
@@ -134,7 +134,7 @@ namespace
 						continue;
 					}
 
-					if (fang::ApplyDamage(health, m_swingParams.attackPower).wasDefeated)
+					if (fang::ApplyDamage(health, m_swingParameter.attackPower).wasDefeated)
 					{
 						scene.DestroyObject(victim);
 					}
@@ -142,7 +142,7 @@ namespace
 			}
 
 			fang::MoveIntent intent =
-				fang::StepPursuit(m_pursuitParams, m_blackboard, m_position, deltaTimeSeconds, &m_state);
+				fang::StepPursuit(m_pursuitParameter, m_blackboard, m_position, deltaTimeSeconds, &m_state);
 			if (fang::IsMeleeSwingInProgress(m_swingState))
 			{
 				intent = fang::MoveIntent{};
@@ -160,11 +160,11 @@ namespace
 
 
 	private:
-		fang::CollisionWorld*  m_world = nullptr;
-		fang::GameObjectHandle m_target;
-		fang::PerceptionParams m_perceptionParams;
-		fang::PursuitParams    m_pursuitParams;
-		fang::MeleeSwingParams m_swingParams;
+		fang::CollisionWorld*     m_world = nullptr;
+		fang::GameObjectHandle    m_target;
+		fang::PerceptionParameter m_perceptionParameter;
+		fang::PursuitParameter    m_pursuitParameter;
+		fang::MeleeSwingParameter m_swingParameter;
 
 		fang::Vector3         m_position;
 		float                 m_facingRadians = 0.0f;
@@ -230,17 +230,17 @@ TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けても�
 		}
 	);
 
-	const fang::PerceptionParams perceptionParams{ .blockerAttributeMask = TEST_ATTRIBUTE_PROP };
-	const fang::PursuitParams    pursuitParams{ .stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS };
+	const fang::PerceptionParameter perceptionParameter{ .blockerAttributeMask = TEST_ATTRIBUTE_PROP };
+	const fang::PursuitParameter    pursuitParameter{ .stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS };
 
-	fang::MeleeSwingParams swingParams{};
-	swingParams.windUpSeconds    = 0.30f;
-	swingParams.activeSeconds    = 0.15f;
-	swingParams.recoverySeconds  = 0.25f;
-	swingParams.cooldownSeconds  = 0.30f;
-	swingParams.reachCentimeters = MINION_REACH_CENTIMETERS;
-	swingParams.attackPower      = 25.0f;
-	swingParams.triggerMode      = fang::EnMeleeSwingTrigger::Continuous;
+	fang::MeleeSwingParameter swingParameter{};
+	swingParameter.windUpSeconds    = 0.30f;
+	swingParameter.activeSeconds    = 0.15f;
+	swingParameter.recoverySeconds  = 0.25f;
+	swingParameter.cooldownSeconds  = 0.30f;
+	swingParameter.reachCentimeters = MINION_REACH_CENTIMETERS;
+	swingParameter.attackPower      = 25.0f;
+	swingParameter.triggerMode      = fang::EnMeleeSwingTrigger::Continuous;
 
 	// 32体を +X 軸上に距離をずらして並べる(150〜615cm)。狼へ向く一定の向き(-X、PI)で見えるように
 	// 揃え、距離をずらすことで間合いへ入るタイミングをばらけさせる(全員が同時に振ると、無敵時間より
@@ -267,9 +267,9 @@ TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けても�
 			handle,
 			&world,
 			wolf,
-			perceptionParams,
-			pursuitParams,
-			swingParams,
+			perceptionParameter,
+			pursuitParameter,
+			swingParameter,
 			position,
 			MINION_FACING_RADIANS
 		);
@@ -380,11 +380,11 @@ TEST_CASE("WolfDefeat: 視線32本+牙33本(雑魚32+狼1)の掃引が実機予�
 	world.Update(proxies);
 	CHECK(world.GetColliderCount() == PROP_COUNT + WOLF_COUNT + MINION_COUNT);
 
-	const fang::PerceptionParams perceptionParams{ .blockerAttributeMask = TEST_ATTRIBUTE_PROP };
-	const fang::PursuitParams    pursuitParams{};
-	const fang::MeleeSwingParams minionSwingParams{ .reachCentimeters = MINION_REACH_CENTIMETERS };
-	const fang::MeleeSwingParams wolfSwingParams{};
-	const fang::Vector3          wolfPosition{ 0.0f, 0.0f, 500.0f };
+	const fang::PerceptionParameter perceptionParameter{ .blockerAttributeMask = TEST_ATTRIBUTE_PROP };
+	const fang::PursuitParameter    pursuitParameter{};
+	const fang::MeleeSwingParameter minionSwingParameter{ .reachCentimeters = MINION_REACH_CENTIMETERS };
+	const fang::MeleeSwingParameter wolfSwingParameter{};
+	const fang::Vector3             wolfPosition{ 0.0f, 0.0f, 500.0f };
 
 	std::vector<fang::AgentBlackboard> blackboards(MINION_COUNT);
 	std::vector<fang::EnPursuitState>  states(MINION_COUNT, fang::EnPursuitState::Chase);
@@ -412,11 +412,11 @@ TEST_CASE("WolfDefeat: 視線32本+牙33本(雑魚32+狼1)の掃引が実機予�
 				.selfUserIndex     = MINION_USER_INDEX_BASE + index,
 				.targetUserIndex   = WOLF_USER_INDEX_BASE,
 			};
-			const fang::PerceptionResult result = fang::Sense(world, perceptionParams, input);
+			const fang::PerceptionResult result = fang::Sense(world, perceptionParameter, input);
 			fang::WritePerception(result, wolfPosition, 1.0f / 60.0f, &blackboards[index]);
 
 			(void)fang::StepPursuit(
-				pursuitParams,
+				pursuitParameter,
 				blackboards[index],
 				minionPositions[index],
 				1.0f / 60.0f,
@@ -433,7 +433,7 @@ TEST_CASE("WolfDefeat: 視線32本+牙33本(雑魚32+狼1)の掃引が実機予�
 			fang::SweepHit minionHits[fang::MAX_MELEE_SWING_HIT_COUNT];
 			(void)fang::StepMeleeSwing(
 				world,
-				minionSwingParams,
+				minionSwingParameter,
 				minionSwingInput,
 				1.0f / 60.0f,
 				&minionSwingStates[index],
@@ -449,7 +449,7 @@ TEST_CASE("WolfDefeat: 視線32本+牙33本(雑魚32+狼1)の掃引が実機予�
 			.targetAttributeMask = TEST_ATTRIBUTE_CHARACTER,
 		};
 		fang::SweepHit wolfHits[fang::MAX_MELEE_SWING_HIT_COUNT];
-		(void)fang::StepMeleeSwing(world, wolfSwingParams, wolfSwingInput, 1.0f / 60.0f, &wolfSwingState, wolfHits);
+		(void)fang::StepMeleeSwing(world, wolfSwingParameter, wolfSwingInput, 1.0f / 60.0f, &wolfSwingState, wolfHits);
 	});
 
 	const float scaledSeconds = measuredSeconds * fang::budget::MEASURED_CPU_SCALE_FACTOR;

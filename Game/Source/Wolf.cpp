@@ -210,16 +210,16 @@ namespace fang::game
 
 
 	GameObjectHandle CreateWolfObject(
-		Scene&                    scene,
-		WolfModel&                model,
-		const WolfMovementParams& params,
-		const MeleeSwingParams&   swingParams,
-		const HealthComponent&    healthComponent,
-		CollisionWorld*           collisionWorld,
-		const HeightmapTerrain*   terrain,
-		const Vector3&            initialPosition,
-		float                     initialFacingRadians,
-		WolfBehavior**            outBehavior
+		Scene&                       scene,
+		WolfModel&                   model,
+		const WolfMovementParameter& parameter,
+		const MeleeSwingParameter&   swingParameter,
+		const HealthComponent&       healthComponent,
+		CollisionWorld*              collisionWorld,
+		const HeightmapTerrain*      terrain,
+		const Vector3&               initialPosition,
+		float                        initialFacingRadians,
+		WolfBehavior**               outBehavior
 	)
 	{
 		const GameObjectHandle handle = scene.CreateObject();
@@ -236,8 +236,8 @@ namespace fang::game
 				.localBounds = model.localBounds,
 				.baseColor   = model.baseColor,
 				.normalMap   = model.normalMap,
-				.materialParams =
-					MaterialParams{
+				.materialParameter =
+					MaterialParameter{
 						.metallicFactor  = model.metallicFactor,
 						.roughnessFactor = model.roughnessFactor,
 						.normalScale     = model.normalScale,
@@ -272,8 +272,8 @@ namespace fang::game
 
 		WolfBehavior* behavior = scene.AddBehavior<WolfBehavior>(
 			handle,
-			params,
-			swingParams,
+			parameter,
+			swingParameter,
 			dependencies,
 			initialPosition,
 			initialFacingRadians

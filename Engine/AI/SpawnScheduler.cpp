@@ -20,34 +20,35 @@ namespace fang
 
 
 	SpawnRequest SpawnScheduler::Update(
-		float              deltaTimeSeconds,
-		uint32_t           aliveCount,
-		const Vector3&     targetPosition,
-		const SpawnParams& params
+		float                 deltaTimeSeconds,
+		uint32_t              aliveCount,
+		const Vector3&        targetPosition,
+		const SpawnParameter& parameter
 	)
 	{
 		SpawnRequest request;
 
-		if (aliveCount >= params.maximumAliveCount)
+		if (aliveCount >= parameter.maximumAliveCount)
 		{
 			return request;
 		}
 
 		m_elapsedSeconds += deltaTimeSeconds;
-		if (m_elapsedSeconds < params.intervalSeconds)
+		if (m_elapsedSeconds < parameter.intervalSeconds)
 		{
 			return request;
 		}
 
 		// 間隔を 1 回ぶんだけ引く ➡ フレームが飛んでも 1 フレームに 1 体しか湧かない。
-		m_elapsedSeconds -= params.intervalSeconds;
+		m_elapsedSeconds -= parameter.intervalSeconds;
 
 		const float angleRadians = static_cast<float>(m_spawnedCount) * GOLDEN_ANGLE_RADIANS;
 
 		const float radiusStep     = static_cast<float>(m_spawnedCount) * GOLDEN_RATIO_STEP;
 		const float radiusFraction = radiusStep - std::floor(radiusStep);
-		const float radius = params.minimumDistanceCentimeters +
-							 (params.maximumDistanceCentimeters - params.minimumDistanceCentimeters) * radiusFraction;
+		const float radius =
+			parameter.minimumDistanceCentimeters +
+			(parameter.maximumDistanceCentimeters - parameter.minimumDistanceCentimeters) * radiusFraction;
 
 		request.shouldSpawn = true;
 		request.position    = Vector3{

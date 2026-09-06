@@ -13,13 +13,13 @@
 #include "Scene/CharacterController.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
-#include "CameraFollowParams.h"
+#include "CameraFollowParameter.h"
 #include "GameLog.h"
 #include "MinionSpawner.h"
 #include "Stage.h"
 #include "Wolf.h"
 #include "WolfBehavior.h"
-#include "WolfMovementParams.h"
+#include "WolfMovementParameter.h"
 #include "WolfPack.h"
 #include <array>
 #include <cmath>
@@ -134,8 +134,8 @@ namespace fang::game
 					const GameObjectHandle handle = CreateWolfObject(
 						m_scene,
 						m_wolf,
-						m_wolfMovementParams,
-						m_wolfSwingParams,
+						m_wolfMovementParameter,
+						m_wolfSwingParameter,
 						WOLF_HEALTH,
 						m_collisionWorld,
 						m_terrain,
@@ -180,12 +180,12 @@ namespace fang::game
 				if (context.gamepad.isConnected)
 				{
 					m_cameraOrbitRadians += GetRightStick(context.gamepad).x *
-											m_cameraFollowParams.yawSpeedRadiansPerSecond * context.deltaTimeSeconds;
+											m_cameraFollowParameter.yawSpeedRadiansPerSecond * context.deltaTimeSeconds;
 				}
 				else
 				{
 					m_cameraOrbitRadians +=
-						context.deltaTimeSeconds * (2.0f * PI / m_cameraFollowParams.orbitSecondsWhenDisconnected);
+						context.deltaTimeSeconds * (2.0f * PI / m_cameraFollowParameter.orbitSecondsWhenDisconnected);
 				}
 
 				if (m_cameraOrbitRadians >= 2.0f * PI)
@@ -266,22 +266,22 @@ namespace fang::game
 				{
 					const Matrix4x4 wolfWorld = m_scene.GetWorldMatrix(*m_wolfPack.GetControlledHandle());
 					const Vector3   wolfPosition{ wolfWorld.m[3][0], wolfWorld.m[3][1], wolfWorld.m[3][2] };
-					m_lastCameraTarget = wolfPosition + m_cameraFollowParams.targetOffset;
+					m_lastCameraTarget = wolfPosition + m_cameraFollowParameter.targetOffset;
 				}
 				const Vector3 cameraTarget = m_lastCameraTarget;
 
 				const float orbitRadius =
-					m_cameraFollowParams.distanceCentimeters * std::cosf(m_cameraFollowParams.pitchRadians);
+					m_cameraFollowParameter.distanceCentimeters * std::cosf(m_cameraFollowParameter.pitchRadians);
 				const Vector3 orbitOffset{
 					std::sinf(m_cameraOrbitRadians) * orbitRadius,
-					m_cameraFollowParams.distanceCentimeters * std::sinf(m_cameraFollowParams.pitchRadians),
+					m_cameraFollowParameter.distanceCentimeters * std::sinf(m_cameraFollowParameter.pitchRadians),
 					std::cosf(m_cameraOrbitRadians) * orbitRadius,
 				};
 
 				frameData->camera = CameraView{
 					.eyePosition         = cameraTarget + orbitOffset,
 					.targetPosition      = cameraTarget,
-					.fieldOfViewYRadians = m_cameraFollowParams.fieldOfViewYRadians,
+					.fieldOfViewYRadians = m_cameraFollowParameter.fieldOfViewYRadians,
 				};
 
 				frameData->renderItems     = m_scene.BuildRenderItems(context.frameAllocator);
@@ -316,13 +316,13 @@ namespace fang::game
 		private:
 			EditorUI m_editorUI; /**< エディタ UI。Release 構成では空の代役に差し替わる。 */
 
-			Scene              m_scene;
-			WolfModel          m_wolf;
-			StageModel         m_stage;
-			WolfMovementParams m_wolfMovementParams;
-			MeleeSwingParams   m_wolfSwingParams;
-			CameraFollowParams m_cameraFollowParams;
-			MinionSpawner      m_minionSpawner;
+			Scene                 m_scene;
+			WolfModel             m_wolf;
+			StageModel            m_stage;
+			WolfMovementParameter m_wolfMovementParameter;
+			MeleeSwingParameter   m_wolfSwingParameter;
+			CameraFollowParameter m_cameraFollowParameter;
+			MinionSpawner         m_minionSpawner;
 
 			/** @brief カメラの水平回転角。右スティックが無ければ時間で回る。OnUpdate だけが触る。 */
 			float m_cameraOrbitRadians = 0.0f;

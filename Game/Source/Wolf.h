@@ -13,7 +13,7 @@
 #include "Renderer/MeshRenderer.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
-#include "WolfMovementParams.h"
+#include "WolfMovementParameter.h"
 #include <vector>
 
 
@@ -76,7 +76,7 @@ namespace fang::game
 
 	/**
 	 * @brief 読み込み済みの WolfModel から、Scene 上のオブジェクトを 1 体作る。
-	 * @param swingParams      近接攻撃の時間割・間合い・攻撃力。
+	 * @param swingParameter      近接攻撃の時間割・間合い・攻撃力。
 	 * @param healthComponent  湧いたときの HP と無敵時間。
 	 * @param initialPosition  ワールド XZ。Y は毎フレーム地表から決める。
 	 * @param outBehavior      作った振る舞いを受け取る。要らなければ nullptr でよい。
@@ -86,15 +86,15 @@ namespace fang::game
 	 *          （生成時と実行中で決める場所が分かれていると、引き継いだ後に食い違うため）。
 	 */
 	[[nodiscard]] GameObjectHandle CreateWolfObject(
-		Scene&                    scene,
-		WolfModel&                model,
-		const WolfMovementParams& params,
-		const MeleeSwingParams&   swingParams,
-		const HealthComponent&    healthComponent,
-		CollisionWorld*           collisionWorld,
-		const HeightmapTerrain*   terrain,
-		const Vector3&            initialPosition,
-		float                     initialFacingRadians,
-		WolfBehavior**            outBehavior = nullptr
+		Scene&                       scene,
+		WolfModel&                   model,
+		const WolfMovementParameter& parameter,
+		const MeleeSwingParameter&   swingParameter,
+		const HealthComponent&       healthComponent,
+		CollisionWorld*              collisionWorld,
+		const HeightmapTerrain*      terrain,
+		const Vector3&               initialPosition,
+		float                        initialFacingRadians,
+		WolfBehavior**               outBehavior = nullptr
 	);
 } // namespace fang::game

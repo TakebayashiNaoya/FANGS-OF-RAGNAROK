@@ -31,7 +31,7 @@ namespace fang::game
 	class MinionSpawner
 	{
 	public:
-		/** @brief 同時に追える雑魚の上限。SpawnParams::maximumAliveCount はこれを超えられない。 */
+		/** @brief 同時に追える雑魚の上限。SpawnParameter::maximumAliveCount はこれを超えられない。 */
 		static constexpr uint32_t MAX_TRACKED_MINION_COUNT = 32;
 
 		/** @brief Game 側が持ち続ける資源への借用。 */
@@ -54,9 +54,9 @@ namespace fang::game
 
 
 	private:
-		SpawnScheduler m_scheduler;
-		SpawnParams    m_spawnParams;
-		MinionParams   m_minionParams;
+		SpawnScheduler  m_scheduler;
+		SpawnParameter  m_spawnParameter;
+		MinionParameter m_minionParameter;
 
 		/** @brief 湧かせた雑魚。毎フレーム Scene::IsValid で数え直し、消えたものを詰める(ADR-036)。 */
 		std::array<GameObjectHandle, MAX_TRACKED_MINION_COUNT> m_spawnedHandles;

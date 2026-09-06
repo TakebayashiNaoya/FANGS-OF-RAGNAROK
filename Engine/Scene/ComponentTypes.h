@@ -21,9 +21,9 @@ namespace fang
 	 * @brief マテリアルの調整値。
 	 * @details FANG_REFLECT 付きの POD。JSON はまだ読めないので既定値はコード内（03 コーディング規約 14）。
 	 */
-	struct MaterialParams
+	struct MaterialParameter
 	{
-		FANG_REFLECT_BEGIN(MaterialParams)
+		FANG_REFLECT_BEGIN(MaterialParameter)
 		FANG_FIELD(metallicFactor, "メタリック", Range(0.0f, 1.0f))
 		FANG_FIELD(roughnessFactor, "ラフネス", Range(0.0f, 1.0f))
 		FANG_FIELD(normalScale, "法線マップの強さ", Range(0.0f, 4.0f))
@@ -47,7 +47,7 @@ namespace fang
 		rhi::TextureHandle baseColor;
 		rhi::TextureHandle normalMap;
 
-		MaterialParams materialParams;
+		MaterialParameter materialParameter;
 
 		bool castsShadow = true; /**< false なら DrawDepth の対象から外す（床のような受け専用のもの）。 */
 		bool isVisible   = true; /**< false なら配列の組み立てそのものから外す。 */

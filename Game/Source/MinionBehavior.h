@@ -34,13 +34,13 @@ namespace fang::game
 	);
 
 	/** @brief 雑魚が共有する感知・追跡・振りの調整値。複数体で共有するので、Dependencies はポインタで参照する。 */
-	struct MinionParams
+	struct MinionParameter
 	{
-		PerceptionParams perception{ .blockerAttributeMask = COLLISION_ATTRIBUTE_PROP };
-		PursuitParams    pursuit{ .stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS };
+		PerceptionParameter perception{ .blockerAttributeMask = COLLISION_ATTRIBUTE_PROP };
+		PursuitParameter    pursuit{ .stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS };
 
 		/** @brief 振りの時間割。1 周 1.00 秒（0.30 + 0.15 + 0.25 + 0.30）。 */
-		MeleeSwingParams swing{
+		MeleeSwingParameter swing{
 			.windUpSeconds    = 0.30f,
 			.activeSeconds    = 0.15f,
 			.recoverySeconds  = 0.25f,
@@ -67,7 +67,7 @@ namespace fang::game
 		struct Dependencies
 		{
 			/** @brief 感知・追跡の調整値。複数体で共有するので値で持たない。 */
-			const MinionParams* params = nullptr;
+			const MinionParameter* parameter = nullptr;
 
 			/** @brief 当たり判定の入れ物。作れなかったときだけ nullptr（押し出しと感知を飛ばす）。 */
 			CollisionWorld* collisionWorld = nullptr;

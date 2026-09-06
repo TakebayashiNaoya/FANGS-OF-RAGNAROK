@@ -22,9 +22,9 @@ namespace fang
 	};
 
 	/** @brief 1 体ぶんの追跡の調整値。 */
-	struct PursuitParams
+	struct PursuitParameter
 	{
-		FANG_REFLECT_BEGIN(PursuitParams)
+		FANG_REFLECT_BEGIN(PursuitParameter)
 		FANG_FIELD(moveSpeedCentimetersPerSecond, "移動速度", Range(0.0f, 2000.0f))
 		FANG_FIELD(turnSpeedRadiansPerSecond, "旋回速度", Range(0.0f, 32.0f))
 		FANG_FIELD(stopDistanceCentimeters, "停止距離", Range(0.0f, 1000.0f))
@@ -52,10 +52,10 @@ namespace fang
 	 * @param state 呼び出し側が持つ状態。この関数が書き換える。
 	 */
 	[[nodiscard]] MoveIntent StepPursuit(
-		const PursuitParams&   params,
-		const AgentBlackboard& blackboard,
-		const Vector3&         selfPosition,
-		float                  deltaTimeSeconds,
-		EnPursuitState*        state
+		const PursuitParameter& parameter,
+		const AgentBlackboard&  blackboard,
+		const Vector3&          selfPosition,
+		float                   deltaTimeSeconds,
+		EnPursuitState*         state
 	);
 } // namespace fang

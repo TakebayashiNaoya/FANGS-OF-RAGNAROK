@@ -46,16 +46,16 @@ TEST_CASE("EnemyDefeat: 数え直した生存数をSpawnSchedulerへ渡すと、
 {
 	fang::SpawnScheduler scheduler;
 
-	fang::SpawnParams params{};
-	params.intervalSeconds   = 0.1f;
-	params.maximumAliveCount = 32;
+	fang::SpawnParameter parameter{};
+	parameter.intervalSeconds   = 0.1f;
+	parameter.maximumAliveCount = 32;
 
 	uint32_t aliveCount = 22; // 32 席のうち 10 席が撃破で空いた状態を模す。
 
 	uint32_t spawnedCount = 0;
 	for (int step = 0; step < 200; ++step)
 	{
-		const fang::SpawnRequest request = scheduler.Update(0.1f, aliveCount, fang::Vector3{}, params);
+		const fang::SpawnRequest request = scheduler.Update(0.1f, aliveCount, fang::Vector3{}, parameter);
 		if (request.shouldSpawn)
 		{
 			++spawnedCount;
@@ -64,5 +64,5 @@ TEST_CASE("EnemyDefeat: 数え直した生存数をSpawnSchedulerへ渡すと、
 	}
 
 	CHECK(spawnedCount == 10);
-	CHECK(aliveCount == params.maximumAliveCount);
+	CHECK(aliveCount == parameter.maximumAliveCount);
 }

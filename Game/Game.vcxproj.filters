@@ -10,7 +10,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Source\CameraFollowParams.h">
+    <ClInclude Include="Source\CameraFollowParameter.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="Source\CollisionAttribute.h">
@@ -43,7 +43,7 @@
     <ClInclude Include="Source\WolfBehavior.h">
       <Filter>Source</Filter>
     </ClInclude>
-    <ClInclude Include="Source\WolfMovementParams.h">
+    <ClInclude Include="Source\WolfMovementParameter.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="Source\WolfPack.h">

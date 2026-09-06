@@ -16,9 +16,9 @@ namespace fang
 	class CollisionWorld;
 
 	/** @brief 1 体ぶんの感知の調整値。 */
-	struct PerceptionParams
+	struct PerceptionParameter
 	{
-		FANG_REFLECT_BEGIN(PerceptionParams)
+		FANG_REFLECT_BEGIN(PerceptionParameter)
 		FANG_FIELD(sightRangeCentimeters, "索敵距離", Range(0.0f, 10000.0f))
 		FANG_FIELD(halfFieldOfViewRadians, "視野角の半分", Range(0.0f, PI))
 		FANG_FIELD(eyeHeightCentimeters, "目の高さ", Range(0.0f, 500.0f))
@@ -53,7 +53,7 @@ namespace fang
 	};
 
 	/** @brief 距離と視野角だけの足切り。視線を投げる前にここで落とす。 */
-	[[nodiscard]] bool IsWithinSightCone(const PerceptionParams& params, const PerceptionInput& input);
+	[[nodiscard]] bool IsWithinSightCone(const PerceptionParameter& parameter, const PerceptionInput& input);
 
 	/**
 	 * @brief 距離 ➡ 視野角 ➡ 遮蔽の順に見て、見えているかを答える。
@@ -61,8 +61,8 @@ namespace fang
 	 *          filter には自分と相手の両方の userIndex を除外に入れる。
 	 */
 	[[nodiscard]] PerceptionResult Sense(
-		const CollisionWorld&   world,
-		const PerceptionParams& params,
-		const PerceptionInput&  input
+		const CollisionWorld&      world,
+		const PerceptionParameter& parameter,
+		const PerceptionInput&     input
 	);
 } // namespace fang

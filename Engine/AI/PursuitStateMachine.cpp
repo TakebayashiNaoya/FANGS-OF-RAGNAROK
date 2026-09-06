@@ -33,11 +33,11 @@ namespace fang
 
 
 	MoveIntent StepPursuit(
-		const PursuitParams&   params,
-		const AgentBlackboard& blackboard,
-		const Vector3&         selfPosition,
-		float                  deltaTimeSeconds,
-		EnPursuitState*        state
+		const PursuitParameter& parameter,
+		const AgentBlackboard&  blackboard,
+		const Vector3&          selfPosition,
+		float                   deltaTimeSeconds,
+		EnPursuitState*         state
 	)
 	{
 		if (blackboard.isTargetVisible)
@@ -49,7 +49,7 @@ namespace fang
 			*state = EnPursuitState::Search;
 		}
 
-		if (*state == EnPursuitState::Search && blackboard.secondsSinceLastSeen >= params.giveUpSeconds)
+		if (*state == EnPursuitState::Search && blackboard.secondsSinceLastSeen >= parameter.giveUpSeconds)
 		{
 			*state = EnPursuitState::Idle;
 		}
@@ -66,7 +66,7 @@ namespace fang
 		};
 		const float distance = Length(horizontalDelta);
 
-		if (*state == EnPursuitState::Search && distance <= params.arriveRadiusCentimeters)
+		if (*state == EnPursuitState::Search && distance <= parameter.arriveRadiusCentimeters)
 		{
 			*state = EnPursuitState::Idle;
 			return MoveIntent{};
@@ -76,7 +76,7 @@ namespace fang
 		// ➡ 行き過ぎないので戻る動きが生まれず、押し合いにならない。
 		// 向きは移動と別に決める。間合いで止まっていても相手のほうを向き続けないと、横へ回られて
 		// 見失う（振る舞い側で振りの最中だけ向きを捨てる）。
-		const float stopDistance = (*state == EnPursuitState::Chase) ? params.stopDistanceCentimeters : 0.0f;
+		const float stopDistance = (*state == EnPursuitState::Chase) ? parameter.stopDistanceCentimeters : 0.0f;
 		const float remaining    = distance - stopDistance;
 
 		MoveIntent intent;
@@ -87,7 +87,7 @@ namespace fang
 
 			if (remaining > 0.0f)
 			{
-				const float step    = std::min(params.moveSpeedCentimetersPerSecond * deltaTimeSeconds, remaining);
+				const float step    = std::min(parameter.moveSpeedCentimetersPerSecond * deltaTimeSeconds, remaining);
 				intent.desiredDelta = horizontalDelta * (step / distance);
 			}
 		}

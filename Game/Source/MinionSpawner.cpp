@@ -24,7 +24,8 @@ namespace fang::game
 		}
 		m_aliveCount = aliveCount;
 
-		const SpawnRequest request = m_scheduler.Update(deltaTimeSeconds, m_aliveCount, targetPosition, m_spawnParams);
+		const SpawnRequest request =
+			m_scheduler.Update(deltaTimeSeconds, m_aliveCount, targetPosition, m_spawnParameter);
 		if (!request.shouldSpawn)
 		{
 			return;
@@ -43,7 +44,7 @@ namespace fang::game
 		const GameObjectHandle handle = CreateMinionObject(
 			*dependencies.scene,
 			*dependencies.sharedModel,
-			m_minionParams,
+			m_minionParameter,
 			dependencies.collisionWorld,
 			dependencies.terrain,
 			dependencies.targetHandle,

@@ -37,7 +37,7 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
-    <ClInclude Include="Source\CameraFollowParams.h" />
+    <ClInclude Include="Source\CameraFollowParameter.h" />
     <ClInclude Include="Source\CollisionAttribute.h" />
     <ClInclude Include="Source\GameLog.h" />
     <ClInclude Include="Source\GameMain.h" />
@@ -48,7 +48,7 @@
     <ClInclude Include="Source\Stage.h" />
     <ClInclude Include="Source\Wolf.h" />
     <ClInclude Include="Source\WolfBehavior.h" />
-    <ClInclude Include="Source\WolfMovementParams.h" />
+    <ClInclude Include="Source\WolfMovementParameter.h" />
     <ClInclude Include="Source\WolfPack.h" />
   </ItemGroup>
   <ItemGroup>

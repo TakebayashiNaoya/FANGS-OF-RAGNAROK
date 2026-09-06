@@ -25,19 +25,19 @@ namespace
 	constexpr uint32_t TEST_ATTRIBUTE_ENEMY     = 1u << 2;
 	constexpr uint32_t TEST_ATTRIBUTE_WOLF      = 1u << 3;
 
-	// MinionParams(設計)と同じ値。雑魚が狼へ詰める距離と牙の間合い。Tests は Game を参照しないので、
+	// MinionParameter(設計)と同じ値。雑魚が狼へ詰める距離と牙の間合い。Tests は Game を参照しないので、
 	// ここでも同じ数を持つ(設計の static_assert と合わせて 2 か所で縛られる)。
 	constexpr float MINION_STOP_DISTANCE_CENTIMETERS = 120.0f;
 	constexpr float MINION_REACH_CENTIMETERS         = 150.0f;
 
 	/** @brief MinionBehavior が振りの合図に使うのと同じ式。 */
 	[[nodiscard]] bool ComputeSwingTrigger(
-		const fang::CollisionWorld&   world,
-		const fang::PerceptionParams& perceptionParams,
-		const fang::MeleeSwingParams& swingParams,
-		const fang::Vector3&          selfPosition,
-		float                         selfFacingRadians,
-		const fang::Vector3&          targetPosition
+		const fang::CollisionWorld&      world,
+		const fang::PerceptionParameter& perceptionParameter,
+		const fang::MeleeSwingParameter& swingParameter,
+		const fang::Vector3&             selfPosition,
+		float                            selfFacingRadians,
+		const fang::Vector3&             targetPosition
 	)
 	{
 		const fang::PerceptionInput perceptionInput{
@@ -47,9 +47,9 @@ namespace
 			.selfUserIndex     = ATTACKER_USER_INDEX,
 			.targetUserIndex   = TARGET_USER_INDEX,
 		};
-		const fang::PerceptionResult perception = fang::Sense(world, perceptionParams, perceptionInput);
+		const fang::PerceptionResult perception = fang::Sense(world, perceptionParameter, perceptionInput);
 
-		return perception.isVisible && perception.distanceCentimeters <= swingParams.reachCentimeters;
+		return perception.isVisible && perception.distanceCentimeters <= swingParameter.reachCentimeters;
 	}
 } // namespace
 
@@ -59,10 +59,10 @@ TEST_CASE("WolfDefeat: 見えていても間合いの外なら振りは始まら
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	const fang::PerceptionParams perceptionParams{};
-	fang::MeleeSwingParams       swingParams{};
-	swingParams.reachCentimeters = MINION_REACH_CENTIMETERS;
-	swingParams.triggerMode      = fang::EnMeleeSwingTrigger::Continuous;
+	const fang::PerceptionParameter perceptionParameter{};
+	fang::MeleeSwingParameter       swingParameter{};
+	swingParameter.reachCentimeters = MINION_REACH_CENTIMETERS;
+	swingParameter.triggerMode      = fang::EnMeleeSwingTrigger::Continuous;
 
 	// 間合いの2倍離れた位置。視線を遮るものは無いので見えてはいる。
 	const fang::Vector3 targetPosition{ MINION_REACH_CENTIMETERS * 2.0f, 0.0f, 0.0f };
@@ -73,7 +73,7 @@ TEST_CASE("WolfDefeat: 見えていても間合いの外なら振りは始まら
 	for (int frame = 0; frame < 40; ++frame)
 	{
 		const bool isAttackRequested =
-			ComputeSwingTrigger(world, perceptionParams, swingParams, fang::Vector3{}, 0.0f, targetPosition);
+			ComputeSwingTrigger(world, perceptionParameter, swingParameter, fang::Vector3{}, 0.0f, targetPosition);
 
 		fang::SweepHit              hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingInput input{
@@ -83,7 +83,7 @@ TEST_CASE("WolfDefeat: 見えていても間合いの外なら振りは始まら
 			.selfUserIndex     = ATTACKER_USER_INDEX,
 		};
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, swingParams, input, FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, swingParameter, input, FRAME_SECONDS, &state, hits);
 
 		didStartSwing = didStartSwing || result.didStartSwing;
 	}
@@ -99,10 +99,10 @@ TEST_CASE("WolfDefeat: 間合いの内でも遮蔽の裏なら振りは始まら
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	const fang::PerceptionParams perceptionParams{ .blockerAttributeMask = TEST_ATTRIBUTE_PROP };
-	fang::MeleeSwingParams       swingParams{};
-	swingParams.reachCentimeters = MINION_REACH_CENTIMETERS;
-	swingParams.triggerMode      = fang::EnMeleeSwingTrigger::Continuous;
+	const fang::PerceptionParameter perceptionParameter{ .blockerAttributeMask = TEST_ATTRIBUTE_PROP };
+	fang::MeleeSwingParameter       swingParameter{};
+	swingParameter.reachCentimeters = MINION_REACH_CENTIMETERS;
+	swingParameter.triggerMode      = fang::EnMeleeSwingTrigger::Continuous;
 
 	// 間合いの内側だが、途中に壁を置いて視線を遮る。
 	const fang::Vector3 targetPosition{ MINION_REACH_CENTIMETERS * 0.5f, 0.0f, 0.0f };
@@ -128,7 +128,7 @@ TEST_CASE("WolfDefeat: 間合いの内でも遮蔽の裏なら振りは始まら
 	for (int frame = 0; frame < 40; ++frame)
 	{
 		const bool isAttackRequested =
-			ComputeSwingTrigger(world, perceptionParams, swingParams, fang::Vector3{}, 0.0f, targetPosition);
+			ComputeSwingTrigger(world, perceptionParameter, swingParameter, fang::Vector3{}, 0.0f, targetPosition);
 
 		fang::SweepHit              hits[fang::MAX_MELEE_SWING_HIT_COUNT];
 		const fang::MeleeSwingInput input{
@@ -138,7 +138,7 @@ TEST_CASE("WolfDefeat: 間合いの内でも遮蔽の裏なら振りは始まら
 			.selfUserIndex     = ATTACKER_USER_INDEX,
 		};
 		const fang::MeleeSwingResult result =
-			fang::StepMeleeSwing(world, swingParams, input, FRAME_SECONDS, &state, hits);
+			fang::StepMeleeSwing(world, swingParameter, input, FRAME_SECONDS, &state, hits);
 
 		didStartSwing = didStartSwing || result.didStartSwing;
 	}
@@ -151,8 +151,8 @@ TEST_CASE("WolfDefeat: 間合いの内でも遮蔽の裏なら振りは始まら
 
 TEST_CASE("WolfDefeat: 追跡が止まる距離に居る狼に、向きによらず振りが届く")
 {
-	fang::PursuitParams pursuitParams{};
-	pursuitParams.stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS;
+	fang::PursuitParameter pursuitParameter{};
+	pursuitParameter.stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS;
 
 	fang::AgentBlackboard blackboard{};
 	blackboard.isTargetVisible        = true;
@@ -165,15 +165,16 @@ TEST_CASE("WolfDefeat: 追跡が止まる距離に居る狼に、向きによら
 	// 十分な時間をかけて停止距離まで詰める(PursuitStateMachineTests と同じ流儀)。
 	for (int step = 0; step < 600; ++step)
 	{
-		const fang::MoveIntent intent = fang::StepPursuit(pursuitParams, blackboard, position, FRAME_SECONDS, &state);
+		const fang::MoveIntent intent =
+			fang::StepPursuit(pursuitParameter, blackboard, position, FRAME_SECONDS, &state);
 		position += intent.desiredDelta;
 	}
 
 	const float stoppedDistance = blackboard.lastSeenTargetPosition.x - position.x;
 	CHECK(stoppedDistance <= MINION_STOP_DISTANCE_CENTIMETERS + 0.5f);
 
-	fang::MeleeSwingParams swingParams{};
-	swingParams.reachCentimeters = MINION_REACH_CENTIMETERS;
+	fang::MeleeSwingParameter swingParameter{};
+	swingParameter.reachCentimeters = MINION_REACH_CENTIMETERS;
 
 	// 狼役のカプセル(体長204・半径40)を4方向へ向けて、どの向きでも当たることを確かめる。
 	// 中心の高さは牙の高さ(fangHeightCentimeters)に合わせる ➡ 牙の球と確実に重なる。
@@ -181,7 +182,7 @@ TEST_CASE("WolfDefeat: 追跡が止まる距離に居る狼に、向きによら
 	constexpr float BODY_RADIUS_CENTIMETERS      = 40.0f;
 
 	const fang::Vector3 targetCenter =
-		blackboard.lastSeenTargetPosition + fang::Vector3{ 0.0f, swingParams.fangHeightCentimeters, 0.0f };
+		blackboard.lastSeenTargetPosition + fang::Vector3{ 0.0f, swingParameter.fangHeightCentimeters, 0.0f };
 
 	for (int orientationIndex = 0; orientationIndex < 4; ++orientationIndex)
 	{
@@ -223,7 +224,7 @@ TEST_CASE("WolfDefeat: 追跡が止まる距離に居る狼に、向きによら
 				.selfUserIndex     = ATTACKER_USER_INDEX,
 			};
 			const fang::MeleeSwingResult result =
-				fang::StepMeleeSwing(world, swingParams, input, FRAME_SECONDS, &swingState, hits);
+				fang::StepMeleeSwing(world, swingParameter, input, FRAME_SECONDS, &swingState, hits);
 
 			totalNewHitCount += result.newHitCount;
 		}
@@ -240,8 +241,8 @@ TEST_CASE("WolfDefeat: 振りの最中は位置も向きも変わらない")
 	fang::CollisionWorld world;
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
-	fang::PursuitParams pursuitParams{};
-	pursuitParams.stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS;
+	fang::PursuitParameter pursuitParameter{};
+	pursuitParameter.stopDistanceCentimeters = MINION_STOP_DISTANCE_CENTIMETERS;
 
 	fang::AgentBlackboard blackboard{};
 	blackboard.isTargetVisible        = true;
@@ -251,13 +252,13 @@ TEST_CASE("WolfDefeat: 振りの最中は位置も向きも変わらない")
 	fang::EnPursuitState state = fang::EnPursuitState::Chase;
 
 	// 雑魚の時間割(設計)と同じ。1周1.00秒のうち構え+判定+戻りで0.70秒 ➡ 42フレーム。
-	fang::MeleeSwingParams swingParams{};
-	swingParams.windUpSeconds    = 0.30f;
-	swingParams.activeSeconds    = 0.15f;
-	swingParams.recoverySeconds  = 0.25f;
-	swingParams.cooldownSeconds  = 0.30f;
-	swingParams.reachCentimeters = MINION_REACH_CENTIMETERS;
-	swingParams.triggerMode      = fang::EnMeleeSwingTrigger::Continuous;
+	fang::MeleeSwingParameter swingParameter{};
+	swingParameter.windUpSeconds    = 0.30f;
+	swingParameter.activeSeconds    = 0.15f;
+	swingParameter.recoverySeconds  = 0.25f;
+	swingParameter.cooldownSeconds  = 0.30f;
+	swingParameter.reachCentimeters = MINION_REACH_CENTIMETERS;
+	swingParameter.triggerMode      = fang::EnMeleeSwingTrigger::Continuous;
 
 	fang::MeleeSwingState swingState{};
 	fang::Vector3         position{};
@@ -278,13 +279,13 @@ TEST_CASE("WolfDefeat: 振りの最中は位置も向きも変わらない")
 			.isAttackRequested = true,
 			.selfUserIndex     = ATTACKER_USER_INDEX,
 		};
-		(void)fang::StepMeleeSwing(world, swingParams, swingInput, FRAME_SECONDS, &swingState, hits);
+		(void)fang::StepMeleeSwing(world, swingParameter, swingInput, FRAME_SECONDS, &swingState, hits);
 
 		const bool isInProgress = fang::IsMeleeSwingInProgress(swingState);
 		sawSwingInProgress      = sawSwingInProgress || isInProgress;
 
 		// 4. 意思決定。振りの最中は答えを捨てる。
-		fang::MoveIntent intent = fang::StepPursuit(pursuitParams, blackboard, position, FRAME_SECONDS, &state);
+		fang::MoveIntent intent = fang::StepPursuit(pursuitParameter, blackboard, position, FRAME_SECONDS, &state);
 		if (isInProgress)
 		{
 			intent = fang::MoveIntent{};
@@ -313,11 +314,11 @@ TEST_CASE("WolfDefeat: 振りの最中は位置も向きも変わらない")
 
 TEST_CASE("WolfDefeat: 当たるのは狼だけ")
 {
-	fang::MeleeSwingParams params{};
-	params.reachCentimeters = MINION_REACH_CENTIMETERS;
+	fang::MeleeSwingParameter parameter{};
+	parameter.reachCentimeters = MINION_REACH_CENTIMETERS;
 
 	// 牙の高さに合わせる ➡ 牙の球(y = fangHeightCentimeters)と確実に重なる。
-	const fang::Vector3 targetPosition{ MINION_REACH_CENTIMETERS, params.fangHeightCentimeters, 0.0f };
+	const fang::Vector3 targetPosition{ MINION_REACH_CENTIMETERS, parameter.fangHeightCentimeters, 0.0f };
 
 	std::vector<fang::ColliderProxy> proxies;
 	proxies.push_back(
@@ -360,7 +361,8 @@ TEST_CASE("WolfDefeat: 当たるのは狼だけ")
 			.selfUserIndex       = ATTACKER_USER_INDEX,
 			.targetAttributeMask = TEST_ATTRIBUTE_WOLF,
 		};
-		const fang::MeleeSwingResult result = fang::StepMeleeSwing(world, params, input, FRAME_SECONDS, &state, hits);
+		const fang::MeleeSwingResult result =
+			fang::StepMeleeSwing(world, parameter, input, FRAME_SECONDS, &state, hits);
 
 		for (uint32_t hitIndex = 0; hitIndex < result.newHitCount; ++hitIndex)
 		{

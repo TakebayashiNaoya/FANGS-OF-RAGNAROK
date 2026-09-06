@@ -44,7 +44,7 @@ namespace fang
 
 	/**
 	 * @brief カメラ 1 台の視点。
-	 * @details Game が CameraFollowParams から毎フレーム計算して FrameData へ書く。縦横比は Runtime が
+	 * @details Game が CameraFollowParameter から毎フレーム計算して FrameData へ書く。縦横比は Runtime が
 	 *          ウィンドウの大きさから足す（Game はウィンドウを知らないため）。
 	 */
 	struct CameraView

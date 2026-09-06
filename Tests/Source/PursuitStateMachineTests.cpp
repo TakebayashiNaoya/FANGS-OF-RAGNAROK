@@ -27,7 +27,7 @@ TEST_CASE("待機は見えなければ動かない")
 	fang::EnPursuitState  state = fang::EnPursuitState::Idle;
 
 	const fang::MoveIntent intent =
-		fang::StepPursuit(fang::PursuitParams{}, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
+		fang::StepPursuit(fang::PursuitParameter{}, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
 
 	CHECK(state == fang::EnPursuitState::Idle);
 	CheckVector3(intent.desiredDelta, fang::Vector3{});
@@ -37,7 +37,7 @@ TEST_CASE("待機は見えなければ動かない")
 
 TEST_CASE("見えると追跡へ移り、距離が縮む")
 {
-	const fang::PursuitParams params{};
+	const fang::PursuitParameter parameter{};
 
 	fang::AgentBlackboard blackboard{};
 	blackboard.isTargetVisible        = true;
@@ -50,7 +50,7 @@ TEST_CASE("見えると追跡へ移り、距離が縮む")
 	float previousDistance = 1000.0f;
 	for (int step = 0; step < 30; ++step)
 	{
-		const fang::MoveIntent intent = fang::StepPursuit(params, blackboard, position, 1.0f / 60.0f, &state);
+		const fang::MoveIntent intent = fang::StepPursuit(parameter, blackboard, position, 1.0f / 60.0f, &state);
 		position += intent.desiredDelta;
 
 		const float currentDistance = 1000.0f - position.x;
@@ -65,7 +65,7 @@ TEST_CASE("見えると追跡へ移り、距離が縮む")
 
 TEST_CASE("間合いまで詰めたら止まり、押し合いを続けない")
 {
-	const fang::PursuitParams params{};
+	const fang::PursuitParameter parameter{};
 
 	fang::AgentBlackboard blackboard{};
 	blackboard.isTargetVisible        = true;
@@ -78,44 +78,45 @@ TEST_CASE("間合いまで詰めたら止まり、押し合いを続けない")
 	// 十分な時間をかけて間合いまで詰める。
 	for (int step = 0; step < 600; ++step)
 	{
-		const fang::MoveIntent intent = fang::StepPursuit(params, blackboard, position, 1.0f / 60.0f, &state);
+		const fang::MoveIntent intent = fang::StepPursuit(parameter, blackboard, position, 1.0f / 60.0f, &state);
 		position += intent.desiredDelta;
 	}
 
 	const float distanceAfterApproach = 1000.0f - position.x;
-	CHECK(distanceAfterApproach <= params.stopDistanceCentimeters + 0.5f);
+	CHECK(distanceAfterApproach <= parameter.stopDistanceCentimeters + 0.5f);
 
 	// 間合いに入った後は、呼び続けても行き過ぎない（振動しない）。
 	for (int step = 0; step < 30; ++step)
 	{
-		const fang::MoveIntent intent = fang::StepPursuit(params, blackboard, position, 1.0f / 60.0f, &state);
+		const fang::MoveIntent intent = fang::StepPursuit(parameter, blackboard, position, 1.0f / 60.0f, &state);
 		position += intent.desiredDelta;
 
-		CHECK((1000.0f - position.x) >= params.stopDistanceCentimeters - 0.5f);
+		CHECK((1000.0f - position.x) >= parameter.stopDistanceCentimeters - 0.5f);
 	}
 }
 
 
 TEST_CASE("間合いで止まっていても、横へ回られると向きだけ追いかける")
 {
-	const fang::PursuitParams params{};
+	const fang::PursuitParameter parameter{};
 
 	fang::AgentBlackboard blackboard{};
 	blackboard.isTargetVisible     = true;
 	blackboard.hasLastSeenPosition = true;
 
 	// 間合い(stopDistance)ちょうどの距離に静止 ➡ desiredDelta は 0 のまま、向きだけ変わるはず。
-	blackboard.lastSeenTargetPosition = fang::Vector3{ params.stopDistanceCentimeters, 0.0f, 0.0f };
+	blackboard.lastSeenTargetPosition = fang::Vector3{ parameter.stopDistanceCentimeters, 0.0f, 0.0f };
 
-	fang::EnPursuitState   state       = fang::EnPursuitState::Chase;
-	const fang::MoveIntent frontIntent = fang::StepPursuit(params, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
+	fang::EnPursuitState   state = fang::EnPursuitState::Chase;
+	const fang::MoveIntent frontIntent =
+		fang::StepPursuit(parameter, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
 	CheckVector3(frontIntent.desiredDelta, fang::Vector3{});
 	CHECK(frontIntent.wantsToTurn);
 	CHECK(frontIntent.facingRadians == doctest::Approx(0.0f));
 
 	// 横へ回られた(Z方向)後も、動かないまま向きだけ追従する。
-	blackboard.lastSeenTargetPosition = fang::Vector3{ 0.0f, 0.0f, params.stopDistanceCentimeters };
-	const fang::MoveIntent sideIntent = fang::StepPursuit(params, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
+	blackboard.lastSeenTargetPosition = fang::Vector3{ 0.0f, 0.0f, parameter.stopDistanceCentimeters };
+	const fang::MoveIntent sideIntent = fang::StepPursuit(parameter, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
 	CheckVector3(sideIntent.desiredDelta, fang::Vector3{});
 	CHECK(sideIntent.wantsToTurn);
 	CHECK(sideIntent.facingRadians == doctest::Approx(fang::PI * 0.5f));
@@ -124,7 +125,7 @@ TEST_CASE("間合いで止まっていても、横へ回られると向きだけ
 
 TEST_CASE("見失うと最後に見た位置まで進み、追跡から見失いへ移る")
 {
-	const fang::PursuitParams params{};
+	const fang::PursuitParameter parameter{};
 
 	fang::AgentBlackboard blackboard{};
 	blackboard.isTargetVisible        = false;
@@ -134,7 +135,7 @@ TEST_CASE("見失うと最後に見た位置まで進み、追跡から見失い
 
 	fang::EnPursuitState state = fang::EnPursuitState::Chase;
 
-	const fang::MoveIntent intent = fang::StepPursuit(params, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
+	const fang::MoveIntent intent = fang::StepPursuit(parameter, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
 
 	CHECK(state == fang::EnPursuitState::Search);
 	CHECK(intent.desiredDelta.x > 0.0f);
@@ -144,7 +145,7 @@ TEST_CASE("見失うと最後に見た位置まで進み、追跡から見失い
 
 TEST_CASE("最後に見た位置へ着くと待機に戻る")
 {
-	const fang::PursuitParams params{};
+	const fang::PursuitParameter parameter{};
 
 	fang::AgentBlackboard blackboard{};
 	blackboard.isTargetVisible        = false;
@@ -154,7 +155,7 @@ TEST_CASE("最後に見た位置へ着くと待機に戻る")
 
 	fang::EnPursuitState state = fang::EnPursuitState::Search;
 
-	const fang::MoveIntent intent = fang::StepPursuit(params, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
+	const fang::MoveIntent intent = fang::StepPursuit(parameter, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
 
 	CHECK(state == fang::EnPursuitState::Idle);
 	CheckVector3(intent.desiredDelta, fang::Vector3{});
@@ -163,17 +164,17 @@ TEST_CASE("最後に見た位置へ着くと待機に戻る")
 
 TEST_CASE("見失ってから一定時間で、着いていなくても待機に戻る")
 {
-	const fang::PursuitParams params{};
+	const fang::PursuitParameter parameter{};
 
 	fang::AgentBlackboard blackboard{};
 	blackboard.isTargetVisible        = false;
 	blackboard.hasLastSeenPosition    = true;
 	blackboard.lastSeenTargetPosition = fang::Vector3{ 5000.0f, 0.0f, 0.0f }; // arriveRadius よりずっと遠い。
-	blackboard.secondsSinceLastSeen   = params.giveUpSeconds;                 // 猶予をちょうど超えた。
+	blackboard.secondsSinceLastSeen   = parameter.giveUpSeconds;              // 猶予をちょうど超えた。
 
 	fang::EnPursuitState state = fang::EnPursuitState::Search;
 
-	const fang::MoveIntent intent = fang::StepPursuit(params, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
+	const fang::MoveIntent intent = fang::StepPursuit(parameter, blackboard, fang::Vector3{}, 1.0f / 60.0f, &state);
 
 	CHECK(state == fang::EnPursuitState::Idle);
 	CheckVector3(intent.desiredDelta, fang::Vector3{});
@@ -182,7 +183,7 @@ TEST_CASE("見失ってから一定時間で、着いていなくても待機に
 
 TEST_CASE("重なった位置で回しても振動せず NaN を出さない")
 {
-	const fang::PursuitParams params{};
+	const fang::PursuitParameter parameter{};
 
 	fang::AgentBlackboard blackboard{};
 	blackboard.isTargetVisible        = true;
@@ -194,7 +195,7 @@ TEST_CASE("重なった位置で回しても振動せず NaN を出さない")
 
 	for (int step = 0; step < 100; ++step)
 	{
-		const fang::MoveIntent intent = fang::StepPursuit(params, blackboard, position, 1.0f / 60.0f, &state);
+		const fang::MoveIntent intent = fang::StepPursuit(parameter, blackboard, position, 1.0f / 60.0f, &state);
 
 		CHECK(std::isfinite(intent.desiredDelta.x));
 		CHECK(std::isfinite(intent.desiredDelta.y));

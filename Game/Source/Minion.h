@@ -18,7 +18,7 @@ namespace fang
 namespace fang::game
 {
 	class MinionBehavior;
-	struct MinionParams;
+	struct MinionParameter;
 	struct WolfModel;
 
 	/**
@@ -31,7 +31,7 @@ namespace fang::game
 	[[nodiscard]] GameObjectHandle CreateMinionObject(
 		Scene&                  scene,
 		WolfModel&              model,
-		const MinionParams&     params,
+		const MinionParameter&  parameter,
 		CollisionWorld*         collisionWorld,
 		const HeightmapTerrain* terrain,
 		const GameObjectHandle* targetHandle,

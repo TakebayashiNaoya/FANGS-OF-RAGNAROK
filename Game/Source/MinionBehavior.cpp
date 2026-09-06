@@ -45,7 +45,7 @@ namespace fang::game
 				.selfUserIndex     = self.index,
 				.targetUserIndex   = m_dependencies.targetHandle->index,
 			};
-			perception = Sense(*m_dependencies.collisionWorld, m_dependencies.params->perception, input);
+			perception = Sense(*m_dependencies.collisionWorld, m_dependencies.parameter->perception, input);
 		}
 
 		WritePerception(perception, targetPosition, deltaTimeSeconds, &m_blackboard);
@@ -56,13 +56,13 @@ namespace fang::game
 		//------------------------------------------------------------------------
 		if (m_dependencies.collisionWorld != nullptr)
 		{
-			const MeleeSwingParams& swingParams = m_dependencies.params->swing;
+			const MeleeSwingParameter& swingParameter = m_dependencies.parameter->swing;
 
 			const MeleeSwingInput swingInput{
 				.selfPosition        = m_position,
 				.selfFacingRadians   = m_facingRadians,
 				.isAttackRequested   = m_blackboard.isTargetVisible &&
-									   m_blackboard.distanceToTargetCentimeters <= swingParams.reachCentimeters,
+									   m_blackboard.distanceToTargetCentimeters <= swingParameter.reachCentimeters,
 				.selfUserIndex       = self.index,
 				.targetAttributeMask = COLLISION_ATTRIBUTE_WOLF,
 			};
@@ -70,21 +70,21 @@ namespace fang::game
 			SweepHit               hits[MAX_MELEE_SWING_HIT_COUNT];
 			const MeleeSwingResult swingResult = StepMeleeSwing(
 				*m_dependencies.collisionWorld,
-				swingParams,
+				swingParameter,
 				swingInput,
 				deltaTimeSeconds,
 				&m_swingState,
 				hits
 			);
 
-			ApplyMeleeHits(scene, std::span<const SweepHit>(hits, swingResult.newHitCount), swingParams.attackPower);
+			ApplyMeleeHits(scene, std::span<const SweepHit>(hits, swingResult.newHitCount), swingParameter.attackPower);
 		}
 
 		//------------------------------------------------------------------------
 		// 4. 意思決定。振りの最中は答えを捨てる（進む量も向きも変えない。踏み込みの空振りを許す）。
 		//------------------------------------------------------------------------
 		MoveIntent intent =
-			StepPursuit(m_dependencies.params->pursuit, m_blackboard, m_position, deltaTimeSeconds, &m_state);
+			StepPursuit(m_dependencies.parameter->pursuit, m_blackboard, m_position, deltaTimeSeconds, &m_state);
 
 		if (IsMeleeSwingInProgress(m_swingState))
 		{
@@ -106,7 +106,7 @@ namespace fang::game
 			m_facingRadians = TurnTowards(
 				m_facingRadians,
 				intent.facingRadians,
-				m_dependencies.params->pursuit.turnSpeedRadiansPerSecond * deltaTimeSeconds
+				m_dependencies.parameter->pursuit.turnSpeedRadiansPerSecond * deltaTimeSeconds
 			);
 		}
 

@@ -29,8 +29,8 @@ TEST_CASE("索敵距離・視野角・遮蔽がそろうと見える")
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 	world.Update(std::span<const fang::ColliderProxy>{});
 
-	const fang::PerceptionParams params{};
-	const fang::PerceptionInput  input{
+	const fang::PerceptionParameter parameter{};
+	const fang::PerceptionInput     input{
 		.selfPosition      = fang::Vector3{ 0.0f, 0.0f, 0.0f },
 		.selfFacingRadians = 0.0f,
 		.targetPosition    = fang::Vector3{ 500.0f, 0.0f, 0.0f },
@@ -38,7 +38,7 @@ TEST_CASE("索敵距離・視野角・遮蔽がそろうと見える")
 		.targetUserIndex   = 2,
 	};
 
-	const fang::PerceptionResult result = fang::Sense(world, params, input);
+	const fang::PerceptionResult result = fang::Sense(world, parameter, input);
 	CHECK(result.isVisible);
 	CHECK(result.didTraceLineOfSight);
 	CHECK(result.distanceCentimeters == doctest::Approx(500.0f));
@@ -53,7 +53,7 @@ TEST_CASE("視野角の外は距離が近くても見つけない")
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 	world.Update(std::span<const fang::ColliderProxy>{});
 
-	const fang::PerceptionParams params{};
+	const fang::PerceptionParameter parameter{};
 
 	// 正面(+X)を向いているところへ、真後ろ(-X)に相手がいる。距離は十分近い。
 	const fang::PerceptionInput input{
@@ -64,7 +64,7 @@ TEST_CASE("視野角の外は距離が近くても見つけない")
 		.targetUserIndex   = 2,
 	};
 
-	const fang::PerceptionResult result = fang::Sense(world, params, input);
+	const fang::PerceptionResult result = fang::Sense(world, parameter, input);
 	CHECK_FALSE(result.isVisible);
 
 	world.Shutdown();
@@ -77,8 +77,8 @@ TEST_CASE("索敵距離の外は正面でも見つけない")
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 	world.Update(std::span<const fang::ColliderProxy>{});
 
-	fang::PerceptionParams params{};
-	params.sightRangeCentimeters = 2000.0f;
+	fang::PerceptionParameter parameter{};
+	parameter.sightRangeCentimeters = 2000.0f;
 
 	const fang::PerceptionInput input{
 		.selfPosition      = fang::Vector3{ 0.0f, 0.0f, 0.0f },
@@ -88,7 +88,7 @@ TEST_CASE("索敵距離の外は正面でも見つけない")
 		.targetUserIndex   = 2,
 	};
 
-	const fang::PerceptionResult result = fang::Sense(world, params, input);
+	const fang::PerceptionResult result = fang::Sense(world, parameter, input);
 	CHECK_FALSE(result.isVisible);
 	CHECK_FALSE(result.didTraceLineOfSight);
 
@@ -102,9 +102,9 @@ TEST_CASE("遮蔽物があると見つけない、どければ見つける")
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
 	// 目の高さを 0 にして、視線を y = 0 の水平線にそろえる（置き物の高さと合わせるため）。
-	fang::PerceptionParams params{};
-	params.eyeHeightCentimeters       = 0.0f;
-	params.targetEyeHeightCentimeters = 0.0f;
+	fang::PerceptionParameter parameter{};
+	parameter.eyeHeightCentimeters       = 0.0f;
+	parameter.targetEyeHeightCentimeters = 0.0f;
 
 	const fang::PerceptionInput input{
 		.selfPosition      = fang::Vector3{ 0.0f, 0.0f, 0.0f },
@@ -119,11 +119,11 @@ TEST_CASE("遮蔽物があると見つけない、どければ見つける")
 	proxies.push_back(MakeSphereProxy(fang::Vector3{ 250.0f, 0.0f, 0.0f }, 30.0f, 100));
 	world.Update(proxies);
 
-	CHECK_FALSE(fang::Sense(world, params, input).isVisible);
+	CHECK_FALSE(fang::Sense(world, parameter, input).isVisible);
 
 	// どければ見える。
 	world.Update(std::span<const fang::ColliderProxy>{});
-	CHECK(fang::Sense(world, params, input).isVisible);
+	CHECK(fang::Sense(world, parameter, input).isVisible);
 
 	world.Shutdown();
 }
@@ -135,9 +135,9 @@ TEST_CASE("自分自身と相手自身は遮蔽物として数えない")
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 
 	// 目の高さを 0 にする（自分・相手の当たり判定と同じ高さに視線をそろえ、除外が効いているかを実際に試す）。
-	fang::PerceptionParams params{};
-	params.eyeHeightCentimeters       = 0.0f;
-	params.targetEyeHeightCentimeters = 0.0f;
+	fang::PerceptionParameter parameter{};
+	parameter.eyeHeightCentimeters       = 0.0f;
+	parameter.targetEyeHeightCentimeters = 0.0f;
 
 	const fang::PerceptionInput input{
 		.selfPosition      = fang::Vector3{ 0.0f, 0.0f, 0.0f },
@@ -153,7 +153,7 @@ TEST_CASE("自分自身と相手自身は遮蔽物として数えない")
 	proxies.push_back(MakeSphereProxy(input.targetPosition, 40.0f, input.targetUserIndex));
 	world.Update(proxies);
 
-	CHECK(fang::Sense(world, params, input).isVisible);
+	CHECK(fang::Sense(world, parameter, input).isVisible);
 
 	world.Shutdown();
 }
@@ -165,7 +165,7 @@ TEST_CASE("視野角と索敵距離で落ちれば視線を投げない")
 	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
 	world.Update(std::span<const fang::ColliderProxy>{});
 
-	const fang::PerceptionParams params{};
+	const fang::PerceptionParameter parameter{};
 
 	// 視野角の外。
 	const fang::PerceptionInput outsideCone{
@@ -175,7 +175,7 @@ TEST_CASE("視野角と索敵距離で落ちれば視線を投げない")
 		.selfUserIndex     = 1,
 		.targetUserIndex   = 2,
 	};
-	CHECK_FALSE(fang::Sense(world, params, outsideCone).didTraceLineOfSight);
+	CHECK_FALSE(fang::Sense(world, parameter, outsideCone).didTraceLineOfSight);
 
 	// 索敵距離の内側かつ視野角の内側なら投げる。
 	const fang::PerceptionInput inside{
@@ -185,7 +185,7 @@ TEST_CASE("視野角と索敵距離で落ちれば視線を投げない")
 		.selfUserIndex     = 1,
 		.targetUserIndex   = 2,
 	};
-	CHECK(fang::Sense(world, params, inside).didTraceLineOfSight);
+	CHECK(fang::Sense(world, parameter, inside).didTraceLineOfSight);
 
 	world.Shutdown();
 }

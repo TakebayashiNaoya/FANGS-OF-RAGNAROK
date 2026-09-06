@@ -12,16 +12,16 @@ TEST_CASE("間隔どおりに1体ずつ湧き、上限で止まる")
 {
 	fang::SpawnScheduler scheduler;
 
-	fang::SpawnParams params{};
-	params.intervalSeconds   = 1.0f;
-	params.maximumAliveCount = 3;
+	fang::SpawnParameter parameter{};
+	parameter.intervalSeconds   = 1.0f;
+	parameter.maximumAliveCount = 3;
 
 	uint32_t aliveCount = 0;
 
 	// 0.5 秒ぶんでは間隔に届かない ➡ 湧かない。
 	for (int step = 0; step < 30; ++step)
 	{
-		const fang::SpawnRequest request = scheduler.Update(1.0f / 60.0f, aliveCount, fang::Vector3{}, params);
+		const fang::SpawnRequest request = scheduler.Update(1.0f / 60.0f, aliveCount, fang::Vector3{}, parameter);
 		CHECK_FALSE(request.shouldSpawn);
 	}
 
@@ -30,7 +30,7 @@ TEST_CASE("間隔どおりに1体ずつ湧き、上限で止まる")
 	uint32_t spawnedCount = 0;
 	for (int step = 0; step < 34; ++step)
 	{
-		const fang::SpawnRequest request = scheduler.Update(1.0f / 60.0f, aliveCount, fang::Vector3{}, params);
+		const fang::SpawnRequest request = scheduler.Update(1.0f / 60.0f, aliveCount, fang::Vector3{}, parameter);
 		if (request.shouldSpawn)
 		{
 			++spawnedCount;
@@ -44,7 +44,7 @@ TEST_CASE("間隔どおりに1体ずつ湧き、上限で止まる")
 	{
 		for (int step = 0; step < 64; ++step)
 		{
-			const fang::SpawnRequest request = scheduler.Update(1.0f / 60.0f, aliveCount, fang::Vector3{}, params);
+			const fang::SpawnRequest request = scheduler.Update(1.0f / 60.0f, aliveCount, fang::Vector3{}, parameter);
 			if (request.shouldSpawn)
 			{
 				++spawnedCount;
@@ -53,8 +53,8 @@ TEST_CASE("間隔どおりに1体ずつ湧き、上限で止まる")
 		}
 	}
 
-	CHECK(spawnedCount == params.maximumAliveCount);
-	CHECK(aliveCount == params.maximumAliveCount);
+	CHECK(spawnedCount == parameter.maximumAliveCount);
+	CHECK(aliveCount == parameter.maximumAliveCount);
 }
 
 
@@ -62,18 +62,18 @@ TEST_CASE("湧く位置は最小距離以上、最大距離以内")
 {
 	fang::SpawnScheduler scheduler;
 
-	fang::SpawnParams params{};
-	params.intervalSeconds            = 0.1f;
-	params.maximumAliveCount          = 20;
-	params.minimumDistanceCentimeters = 2200.0f;
-	params.maximumDistanceCentimeters = 3200.0f;
+	fang::SpawnParameter parameter{};
+	parameter.intervalSeconds            = 0.1f;
+	parameter.maximumAliveCount          = 20;
+	parameter.minimumDistanceCentimeters = 2200.0f;
+	parameter.maximumDistanceCentimeters = 3200.0f;
 
 	const fang::Vector3 target{ 100.0f, 0.0f, 100.0f };
 	uint32_t            aliveCount = 0;
 
 	for (int step = 0; step < 20; ++step)
 	{
-		const fang::SpawnRequest request = scheduler.Update(0.1f, aliveCount, target, params);
+		const fang::SpawnRequest request = scheduler.Update(0.1f, aliveCount, target, parameter);
 		if (!request.shouldSpawn)
 		{
 			continue;
@@ -83,11 +83,11 @@ TEST_CASE("湧く位置は最小距離以上、最大距離以内")
 		const fang::Vector3 delta{ request.position.x - target.x, 0.0f, request.position.z - target.z };
 		const float         distance = std::sqrt(delta.x * delta.x + delta.z * delta.z);
 
-		CHECK(distance >= params.minimumDistanceCentimeters - 0.01f);
-		CHECK(distance <= params.maximumDistanceCentimeters + 0.01f);
+		CHECK(distance >= parameter.minimumDistanceCentimeters - 0.01f);
+		CHECK(distance <= parameter.maximumDistanceCentimeters + 0.01f);
 	}
 
-	CHECK(aliveCount == params.maximumAliveCount);
+	CHECK(aliveCount == parameter.maximumAliveCount);
 }
 
 
@@ -95,18 +95,18 @@ TEST_CASE("連続する2体は近くに並ばない")
 {
 	fang::SpawnScheduler scheduler;
 
-	fang::SpawnParams params{};
-	params.intervalSeconds   = 0.1f;
-	params.maximumAliveCount = 2;
+	fang::SpawnParameter parameter{};
+	parameter.intervalSeconds   = 0.1f;
+	parameter.maximumAliveCount = 2;
 
 	fang::Vector3 firstPosition;
 	fang::Vector3 secondPosition;
 
-	const fang::SpawnRequest first = scheduler.Update(0.1f, 0, fang::Vector3{}, params);
+	const fang::SpawnRequest first = scheduler.Update(0.1f, 0, fang::Vector3{}, parameter);
 	CHECK(first.shouldSpawn);
 	firstPosition = first.position;
 
-	const fang::SpawnRequest second = scheduler.Update(0.1f, 1, fang::Vector3{}, params);
+	const fang::SpawnRequest second = scheduler.Update(0.1f, 1, fang::Vector3{}, parameter);
 	CHECK(second.shouldSpawn);
 	secondPosition = second.position;
 
@@ -122,17 +122,17 @@ TEST_CASE("フレームが飛んでも1フレームに1体しか湧かない")
 {
 	fang::SpawnScheduler scheduler;
 
-	fang::SpawnParams params{};
-	params.intervalSeconds   = 1.0f;
-	params.maximumAliveCount = 100;
+	fang::SpawnParameter parameter{};
+	parameter.intervalSeconds   = 1.0f;
+	parameter.maximumAliveCount = 100;
 
 	// 間隔の 10 倍のフレーム落ちが起きても、1 回の Update では 1 体しか湧かない。
-	const fang::SpawnRequest request = scheduler.Update(10.0f, 0, fang::Vector3{}, params);
+	const fang::SpawnRequest request = scheduler.Update(10.0f, 0, fang::Vector3{}, parameter);
 	CHECK(request.shouldSpawn);
 	CHECK(scheduler.GetSpawnedCount() == 1);
 
 	// 貯まった経過時間は捨てずに残るので、次の呼び出し(0 秒経過)でもすぐ 2 体目が湧く。
-	const fang::SpawnRequest next = scheduler.Update(0.0f, 1, fang::Vector3{}, params);
+	const fang::SpawnRequest next = scheduler.Update(0.0f, 1, fang::Vector3{}, parameter);
 	CHECK(next.shouldSpawn);
 	CHECK(scheduler.GetSpawnedCount() == 2);
 }
@@ -142,25 +142,25 @@ TEST_CASE("1体も居ない状態、および上限に達した後も呼び続�
 {
 	fang::SpawnScheduler scheduler;
 
-	fang::SpawnParams params{};
-	params.intervalSeconds   = 0.1f;
-	params.maximumAliveCount = 2;
+	fang::SpawnParameter parameter{};
+	parameter.intervalSeconds   = 0.1f;
+	parameter.maximumAliveCount = 2;
 
 	uint32_t aliveCount = 0;
-	for (int step = 0; step < 10 && aliveCount < params.maximumAliveCount; ++step)
+	for (int step = 0; step < 10 && aliveCount < parameter.maximumAliveCount; ++step)
 	{
-		const fang::SpawnRequest request = scheduler.Update(0.1f, aliveCount, fang::Vector3{}, params);
+		const fang::SpawnRequest request = scheduler.Update(0.1f, aliveCount, fang::Vector3{}, parameter);
 		if (request.shouldSpawn)
 		{
 			++aliveCount;
 		}
 	}
-	CHECK(aliveCount == params.maximumAliveCount);
+	CHECK(aliveCount == parameter.maximumAliveCount);
 
 	// 上限後は 1000 回呼んでも湧こうとしない。
 	for (int step = 0; step < 1000; ++step)
 	{
-		const fang::SpawnRequest request = scheduler.Update(0.1f, aliveCount, fang::Vector3{}, params);
+		const fang::SpawnRequest request = scheduler.Update(0.1f, aliveCount, fang::Vector3{}, parameter);
 		CHECK_FALSE(request.shouldSpawn);
 	}
 }

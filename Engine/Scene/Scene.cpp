@@ -916,9 +916,9 @@ namespace fang
 				.skinningMatrices = m_skinningMatricesSpans[ownerIndex],
 				.baseColor        = component.baseColor,
 				.normalMap        = component.normalMap,
-				.metallicFactor   = component.materialParams.metallicFactor,
-				.roughnessFactor  = component.materialParams.roughnessFactor,
-				.normalScale      = component.materialParams.normalScale,
+				.metallicFactor   = component.materialParameter.metallicFactor,
+				.roughnessFactor  = component.materialParameter.roughnessFactor,
+				.normalScale      = component.materialParameter.normalScale,
 				.castsShadow      = component.castsShadow,
 			};
 			++writtenCount;
