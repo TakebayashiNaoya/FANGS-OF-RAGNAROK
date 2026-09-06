@@ -63,6 +63,7 @@
     <ClInclude Include="Reflection\TuningRegistry.h" />
     <ClInclude Include="Reflection\TuningRow.h" />
     <ClInclude Include="Reflection\TypeInfo.h" />
+    <ClInclude Include="Status\StatusRow.h" />
     <ClInclude Include="Text\MissingGlyphCounter.h" />
   </ItemGroup>
   <ItemGroup>
@@ -82,6 +83,7 @@
     <ClCompile Include="Reflection\TuningRegistry.cpp" />
     <ClCompile Include="Reflection\TuningRow.cpp" />
     <ClCompile Include="Reflection\TypeInfo.cpp" />
+    <ClCompile Include="Status\StatusRow.cpp" />
     <ClCompile Include="Text\MissingGlyphCounter.cpp" />
     <ClCompile Include="Windows\AssetPath.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Windows\DirectoryWatcher.cpp" Condition="'$(FangIsXbox)' != 'true'" />

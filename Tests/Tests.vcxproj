@@ -88,6 +88,7 @@
     <ClCompile Include="Source\SceneObjectTests.cpp" />
     <ClCompile Include="Source\SceneTransformWriteTests.cpp" />
     <ClCompile Include="Source\SpawnSchedulerTests.cpp" />
+    <ClCompile Include="Source\StatusRowTests.cpp" />
     <ClCompile Include="Source\TangentGenerationTests.cpp" />
     <ClCompile Include="Source\TuningRowTests.cpp" />
     <ClCompile Include="Source\VectorTests.cpp" />

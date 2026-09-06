@@ -20,6 +20,9 @@
     <Filter Include="Reflection">
       <UniqueIdentifier>{87433A36-6F21-FDEA-C50D-3FDE2B8721C4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Status">
+      <UniqueIdentifier>{C7382042-7A33-FEA1-805C-81321A6D653F}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Text">
       <UniqueIdentifier>{4A991CED-82AF-1D97-C762-6059CA50A4D2}</UniqueIdentifier>
     </Filter>
@@ -134,6 +137,9 @@
     <ClInclude Include="Reflection\TypeInfo.h">
       <Filter>Reflection</Filter>
     </ClInclude>
+    <ClInclude Include="Status\StatusRow.h">
+      <Filter>Status</Filter>
+    </ClInclude>
     <ClInclude Include="Text\MissingGlyphCounter.h">
       <Filter>Text</Filter>
     </ClInclude>
@@ -176,6 +182,9 @@
     </ClCompile>
     <ClCompile Include="Reflection\TypeInfo.cpp">
       <Filter>Reflection</Filter>
+    </ClCompile>
+    <ClCompile Include="Status\StatusRow.cpp">
+      <Filter>Status</Filter>
     </ClCompile>
     <ClCompile Include="Text\MissingGlyphCounter.cpp">
       <Filter>Text</Filter>

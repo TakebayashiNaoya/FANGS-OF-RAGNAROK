@@ -53,6 +53,9 @@ namespace fang::game
 			const Dependencies&      dependencies
 		);
 
+		/** @brief 今場に出ている肉の数。残り秒数が 0 より大きい席を数える（8 席）。 */
+		[[nodiscard]] uint32_t GetActiveCount() const;
+
 
 	private:
 		std::array<Actor, MAX_MEAT_COUNT>   m_actors;

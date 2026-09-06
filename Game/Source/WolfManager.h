@@ -9,6 +9,7 @@
 #include "WolfTeamItems.h"
 #include <array>
 #include <cstdint>
+#include <span>
 
 
 namespace fang::game
@@ -52,11 +53,23 @@ namespace fang::game
 		/** @brief 今の操作対象の振る舞い。生きていなければ nullptr。 */
 		[[nodiscard]] WolfController* GetControlledWolf() const { return m_controlledWolf; }
 
+		/** @brief 生きている席の並び。周の頭で詰めてあるので、この周は全部 IsValid（撃破予約済みを含む）。 */
+		[[nodiscard]] std::span<const Actor> GetActors() const
+		{
+			return std::span<const Actor>(m_actors.data(), m_count);
+		}
+
 		/** @brief チームの成長。狼が借りるので、寿命はここが持つ。 */
 		[[nodiscard]] WolfTeamGrowth* GetTeamGrowth() { return &m_teamGrowth; }
 
+		/** @brief チームの成長。読み取り専用。 */
+		[[nodiscard]] const WolfTeamGrowth* GetTeamGrowth() const { return &m_teamGrowth; }
+
 		/** @brief チームの持ち物（バッグ・落とし物の申し送り）。狼と MeatManager が借りるので、寿命はここが持つ。 */
 		[[nodiscard]] WolfTeamItems* GetTeamItems() { return &m_teamItems; }
+
+		/** @brief チームの持ち物。読み取り専用。 */
+		[[nodiscard]] const WolfTeamItems* GetTeamItems() const { return &m_teamItems; }
 
 		/** @brief 自分が持つ調整値（チームの成長・肉のバッグ）を登録簿へ載せる。呼ぶかどうかは呼び出し側が決める。 */
 		void RegisterTuningValues();

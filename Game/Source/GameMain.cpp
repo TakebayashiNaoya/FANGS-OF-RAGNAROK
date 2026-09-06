@@ -10,12 +10,14 @@
 #include "Core/Memory/FrameAllocator.h"
 #include "Core/Reflection/TuningRegistry.h"
 #include "Core/Reflection/TuningRow.h"
+#include "Core/Status/StatusRow.h"
 #include "Input/Gamepad.h"
 #include "RHI/GraphicsDevice.h"
 #include "Runtime/Application.h"
 #include "Scene/CameraOcclusion.h"
 #include "Scene/CharacterController.h"
 #include "Scene/ItemDrop.h"
+#include "Scene/LevelGrowth.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
 #include "CameraFollowParameter.h"
@@ -86,12 +88,115 @@ namespace fang::game
 		{
 		public:
 			[[nodiscard]] bool Initialize(const EngineContext&, rhi::GraphicsDevice&, const Window&) { return true; }
-			void               BuildFrame(const Window&, float, const RenderStatistics&) {}
+			void               BuildFrame(const Window&, float, const RenderStatistics&, const StatusRowList*) {}
 			void               Render(rhi::GraphicsDevice&, rhi::CommandList&) {}
 			void               RunRequestedTestLoad(uint64_t) {}
 			void               Shutdown(rhi::GraphicsDevice&) {}
 		};
 
+#endif
+
+
+#if FANG_ENABLE_EDITOR
+		/**
+		 * @brief 実行中の値を行に写す。呼ぶのは更新ジョブの末尾（Scene::Update の後）。
+		 * @return フレームメモリが足りなければ nullptr。
+		 */
+		StatusRowList* BuildStatusRows(
+			FrameAllocator&          frameAllocator,
+			const WolfManager&       wolfManager,
+			const EnemyManager&      enemyManager,
+			const MeatManager&       meatManager,
+			const ItemDropParameter& itemDropParameter
+		)
+		{
+			StatusRowList* list = NewFrame<StatusRowList>(frameAllocator);
+			if (list == nullptr)
+			{
+				return nullptr;
+			}
+
+			const std::span<const Actor> actors           = wolfManager.GetActors();
+			const ActorHandle            controlledHandle = wolfManager.GetControlledActor()->GetHandle();
+
+			(void)list->Append(
+				{
+					.label   = "生きている席",
+					.value   = static_cast<float>(actors.size()),
+					.maximum = static_cast<float>(WolfManager::MAX_WOLF_COUNT),
+					.kind    = EnStatusRowKind::Count,
+				}
+			);
+			for (uint32_t index = 0; index < actors.size(); ++index)
+			{
+				const HealthComponent* health = actors[index].GetHealthComponent();
+				if (health == nullptr)
+				{
+					continue; // 席が消えた後は読みに行かない（ADR-038）。
+				}
+
+				(void)list->Append(
+					{
+						.label    = "狼",
+						.ordinal  = index + 1,
+						.value    = health->currentHitPoints,
+						.maximum  = health->maximumHitPoints,
+						.kind     = EnStatusRowKind::Gauge,
+						.isMarked = actors[index].GetHandle() == controlledHandle,
+					}
+				);
+			}
+
+			(void)list->Append({ .kind = EnStatusRowKind::Separator });
+			(void)list->Append(
+				{
+					.label   = "雑魚の生存数",
+					.value   = static_cast<float>(enemyManager.GetAliveCount()),
+					.maximum = static_cast<float>(EnemyManager::MAX_TRACKED_ENEMY_COUNT),
+					.kind    = EnStatusRowKind::Count,
+				}
+			);
+			(void)list->Append(
+				{
+					.label   = "場の肉",
+					.value   = static_cast<float>(meatManager.GetActiveCount()),
+					.maximum = static_cast<float>(MeatManager::MAX_MEAT_COUNT),
+					.kind    = EnStatusRowKind::Count,
+				}
+			);
+
+			const WolfTeamGrowth& growth = *wolfManager.GetTeamGrowth();
+			(void)list->Append({ .kind = EnStatusRowKind::Separator });
+			(void)list->Append(
+				{
+					.label   = "レベル",
+					.value   = static_cast<float>(growth.levelProgress.level),
+					.maximum = static_cast<float>(growth.levelGrowth.maximumLevel),
+					.kind    = EnStatusRowKind::Count,
+				}
+			);
+			(void)list->Append(
+				{
+					.label   = "経験値",
+					.value   = static_cast<float>(growth.levelProgress.experiencePoints),
+					.maximum = static_cast<float>(
+						ComputeExperienceToNextLevel(growth.levelGrowth, growth.levelProgress.level)
+					),
+					.kind = EnStatusRowKind::Count,
+				}
+			);
+			(void)list->Append({ .label = "倍率", .value = growth.statusMultiplier, .kind = EnStatusRowKind::Scalar });
+			(void)list->Append(
+				{
+					.label   = "肉のバッグ",
+					.value   = static_cast<float>(wolfManager.GetTeamItems()->bag.count),
+					.maximum = static_cast<float>(itemDropParameter.bagCapacity),
+					.kind    = EnStatusRowKind::Count,
+				}
+			);
+
+			return list;
+		}
 #endif
 
 
@@ -327,6 +432,15 @@ namespace fang::game
 
 				frameData->renderItems     = m_scene.BuildRenderItems(context.frameAllocator);
 				frameData->colliderProxies = colliderProxies;
+#if FANG_ENABLE_EDITOR
+				frameData->statusRows = BuildStatusRows(
+					context.frameAllocator,
+					m_wolfManager,
+					m_enemyManager,
+					m_meatManager,
+					m_itemDropParameter
+				);
+#endif
 
 				return frameData;
 			}
@@ -334,7 +448,12 @@ namespace fang::game
 			void OnRender(const FrameRenderContext& context) override
 			{
 				// ImGui は NewFrame と Render を同じフレームで対にしないといけないので、組み立てもここで行う。
-				m_editorUI.BuildFrame(context.window, context.deltaTimeSeconds, context.renderStatistics);
+				m_editorUI.BuildFrame(
+					context.window,
+					context.deltaTimeSeconds,
+					context.renderStatistics,
+					context.frameData != nullptr ? context.frameData->statusRows : nullptr
+				);
 				m_editorUI.Render(context.device, context.commandList);
 			}
 
