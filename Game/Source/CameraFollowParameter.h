@@ -7,6 +7,8 @@
 #include "Core/Math/MathConstants.h"
 #include "Core/Math/Vector3.h"
 #include "Core/Reflection/Reflection.h"
+#include "Scene/CameraOcclusion.h"
+#include "CollisionAttribute.h"
 
 
 namespace fang::game
@@ -44,5 +46,8 @@ namespace fang::game
 
 		/** @brief 注視点に足すオフセット。足元ではなく胴の高さを見せる。FANG_FIELD にしていない固定値。 */
 		Vector3 targetOffset{ 0.0f, 60.0f, 0.0f };
+
+		/** @brief 遮られたときに寄せる値。解き方は Scene が持ち、ここで決めるのは「何を遮蔽と数えるか」だけ。 */
+		CameraOcclusionParameter occlusion{ .blockerAttributeMask = COLLISION_ATTRIBUTE_PROP };
 	};
 } // namespace fang::game
