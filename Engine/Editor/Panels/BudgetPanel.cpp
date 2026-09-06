@@ -7,6 +7,7 @@
 #include "Core/Platform/Budget.h"
 #include "Core/Platform/Thread.h"
 #include "Runtime/EngineContext.h"
+#include "Runtime/FrameClock.h"
 #include <imgui.h>
 
 
@@ -60,14 +61,16 @@ namespace fang::editor
 
 	bool BudgetPanel::Initialize(const EngineContext& context)
 	{
-		m_budget = &context.platformBudget;
+		m_budget     = &context.platformBudget;
+		m_frameClock = &context.frameClock;
 		return true;
 	}
 
 
 	void BudgetPanel::Shutdown()
 	{
-		m_budget = nullptr;
+		m_budget     = nullptr;
+		m_frameClock = nullptr;
 	}
 
 
@@ -187,6 +190,15 @@ namespace fang::editor
 		if (ImGui::Checkbox("Xbox 換算の時間まで待たせる", &isThrottleEnabled))
 		{
 			m_budget->SetThrottleEnabled(isThrottleEnabled);
+		}
+
+		if (m_frameClock != nullptr)
+		{
+			ImGui::Text(
+				"上限: %.1f ms（1/25 秒）／ 切られた周: %u 回",
+				MAXIMUM_DELTA_TIME_SECONDS * 1000.0f,
+				m_frameClock->GetClampedFrameCount()
+			);
 		}
 
 		if (scaleFactor <= budget::MINIMUM_CPU_SCALE_FACTOR)
