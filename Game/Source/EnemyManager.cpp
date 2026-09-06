@@ -41,7 +41,9 @@ namespace fang::game
 			return;
 		}
 
-		const Vector3 spawnPosition{ request.position.x, groundHeight, request.position.z };
+		// y は 0 のまま渡す。地表へ載せるのは WriteTransform の仕事で、ここで足すと二重になる（ADR-061）。
+		// groundHeight は地形の中かの判定にしか使わない。
+		const Vector3 spawnPosition{ request.position.x, 0.0f, request.position.z };
 
 		const CharacterCreateResult<EnemyController> result = CreateEnemyObject(
 			*dependencies.scene,
