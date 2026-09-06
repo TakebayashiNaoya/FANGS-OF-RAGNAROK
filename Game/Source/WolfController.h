@@ -7,6 +7,7 @@
 #include "Core/Math/Vector2.h"
 #include "Core/Math/Vector3.h"
 #include "Input/Gamepad.h"
+#include "Scene/CharacterBase.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
 #include "WolfMovementParameter.h"
@@ -15,8 +16,6 @@
 
 namespace fang
 {
-	class CollisionWorld;
-	class HeightmapTerrain;
 	class SkeletalAnimation;
 	class AnimationPlayback;
 	struct Matrix4x4;
@@ -31,19 +30,14 @@ namespace fang::game
 	 *          スキニング行列だけを操作する狼と共有する（2 体が同じ歩行ポーズで動く）。
 	 *          重いデータ（SkeletalAnimation・逆バインド行列・スキニング行列の置き場）は Game 側の WolfModel が
 	 *          持ち、ここではポインタと span だけを借りる ➡ Scene::BEHAVIOR_BLOCK_SIZE に収まる。
+	 *          位置・向き・当たり判定・地形は CharacterBase（基底）の持ち物。
 	 */
-	class WolfController final : public IComponent
+	class WolfController final : public CharacterBase
 	{
 	public:
 		/** @brief WolfModel など、Game 側が持ち続ける資源への借用。 */
 		struct Dependencies
 		{
-			/** @brief 当たり判定の入れ物。作れなかったときだけ nullptr（押し出しを飛ばす）。 */
-			CollisionWorld* collisionWorld = nullptr;
-
-			/** @brief 接地の高さの問い合わせ先。読めていなければ nullptr（y = 0 に立つ）。 */
-			const HeightmapTerrain* terrain = nullptr;
-
 			/** @brief 骨を持つメッシュとして読めたか。false なら以下は使わない。 */
 			bool isSkinned = false;
 
@@ -65,6 +59,8 @@ namespace fang::game
 
 		/**
 		 * @param swingParameter        近接攻撃の時間割・間合い・攻撃力。操作対象でない間は使わない。
+		 * @param collisionWorld     当たり判定の入れ物。CharacterBase へそのまま渡す。nullptr なら押し戻さない。
+		 * @param terrain            接地の高さの問い合わせ先。CharacterBase へそのまま渡す。nullptr なら y = 0。
 		 * @param initialPosition    足元のワールド座標。y は接地で決まるので 0 でよい。
 		 * @param initialFacingRadians 初期の向き。0 = +X。
 		 * @details 生成した時点では操作対象ではない（初期位置に立ったまま、共有スキニング行列だけを毎フレーム
@@ -74,6 +70,8 @@ namespace fang::game
 			const WolfMovementParameter& parameter,
 			const MeleeSwingParameter&   swingParameter,
 			const Dependencies&          dependencies,
+			CollisionWorld*              collisionWorld,
+			const HeightmapTerrain*      terrain,
 			const Vector3&               initialPosition,
 			float                        initialFacingRadians
 		);
@@ -95,21 +93,12 @@ namespace fang::game
 		 */
 		void SetFrameInput(const GamepadState& gamepad, float cameraYawRadians);
 
-		/** @brief 直近の Update が計算した足元のワールド座標（接地前、y は常に 0）。 */
-		[[nodiscard]] Vector3 GetPosition() const { return m_position; }
-
-		/** @brief 直近の Update が計算した向き。0 = +X。 */
-		[[nodiscard]] float GetFacingRadians() const { return m_facingRadians; }
-
 
 	private:
 		bool                  m_isControlled = false;
 		WolfMovementParameter m_parameter;
 		MeleeSwingParameter   m_swingParameter;
 		Dependencies          m_dependencies;
-
-		Vector3 m_position; /**< 足元のワールド座標。y は常に 0（接地は Update の中で足す）。 */
-		float   m_facingRadians = 0.0f;
 
 		Vector2 m_moveStick; /**< GetLeftStick を通した後。 */
 		float   m_cameraYawRadians  = 0.0f;
@@ -118,4 +107,9 @@ namespace fang::game
 		/** @brief 攻撃ボタン（X）の振り 1 本ぶんの状態。操作対象でなければ進まない。 */
 		MeleeSwingState m_swingState;
 	};
+
+	static_assert(
+		sizeof(WolfController) + Scene::BEHAVIOR_HEADROOM_SIZE <= Scene::BEHAVIOR_BLOCK_SIZE,
+		"WolfController がブロックの余白を食い潰した。BEHAVIOR_BLOCK_SIZE の引き上げとセットで考えること"
+	);
 } // namespace fang::game

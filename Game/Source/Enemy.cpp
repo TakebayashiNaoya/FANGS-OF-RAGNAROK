@@ -66,15 +66,14 @@ namespace fang::game
 		);
 
 		const EnemyController::Dependencies dependencies{
-			.parameter      = &parameter,
-			.collisionWorld = collisionWorld,
-			.terrain        = terrain,
-			.targetHandle   = targetHandle,
+			.parameter    = &parameter,
+			.targetHandle = targetHandle,
 			.skinningMatricesStorage =
 				model.isSkinned ? std::span<const Matrix4x4>(model.skinningMatrices) : std::span<const Matrix4x4>{},
 		};
 
-		EnemyController* controller = scene.AddBehavior<EnemyController>(handle, dependencies, initialPosition);
+		EnemyController* controller =
+			scene.AddBehavior<EnemyController>(handle, dependencies, collisionWorld, terrain, initialPosition);
 		if (controller == nullptr)
 		{
 			FANG_LOG_ERROR(Game, "雑魚の振る舞いを作れなかった（Scene の振る舞い上限）");

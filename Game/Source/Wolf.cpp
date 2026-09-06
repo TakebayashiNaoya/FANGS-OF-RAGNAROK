@@ -260,8 +260,6 @@ namespace fang::game
 		(void)scene.AddHealthComponent(handle, healthComponent);
 
 		const WolfController::Dependencies dependencies{
-			.collisionWorld      = collisionWorld,
-			.terrain             = terrain,
 			.isSkinned           = model.isSkinned,
 			.animation           = model.isSkinned ? &model.animation : nullptr,
 			.playback            = model.isSkinned ? &model.playback : nullptr,
@@ -275,6 +273,8 @@ namespace fang::game
 			parameter,
 			swingParameter,
 			dependencies,
+			collisionWorld,
+			terrain,
 			initialPosition,
 			initialFacingRadians
 		);
