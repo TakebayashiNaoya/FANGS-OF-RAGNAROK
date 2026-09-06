@@ -4,6 +4,7 @@
  */
 #include "Pch.h"
 #include "Editor/Panels/ShaderReloadPanel.h"
+#include "Editor/EditorLayout.h"
 #include "RHI/ShaderHotReload.h"
 #include <imgui.h>
 
@@ -14,9 +15,6 @@ namespace fang::editor
 	{
 		/** @brief 「シェーダーホットリロード」ウィンドウの最小幅。エラー文が 1 語ずつに折られると読めない。 */
 		constexpr float WINDOW_MIN_WIDTH = 480.0f;
-
-		/** @brief 初回に置く位置。既定のままだとレンダリング統計に重なる。 */
-		constexpr ImVec2 FIRST_USE_POSITION{ 900.0f, 530.0f };
 
 		/** @brief 失敗しているときの文字色。 */
 		constexpr ImVec4 FAILURE_COLOR{ 1.0f, 0.4f, 0.4f, 1.0f };
@@ -38,7 +36,7 @@ namespace fang::editor
 
 	void ShaderReloadPanel::BuildFrame() const
 	{
-		ImGui::SetNextWindowPos(FIRST_USE_POSITION, ImGuiCond_FirstUseEver);
+		ApplyPanelPlacement(EnPanelSlot::ShaderReload);
 		ImGui::SetNextWindowSizeConstraints(ImVec2(WINDOW_MIN_WIDTH, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
 
 		if (!ImGui::Begin("シェーダーホットリロード", nullptr, ImGuiWindowFlags_AlwaysAutoResize))

@@ -6,6 +6,7 @@
 #include "Editor/ImGuiPlatformInput.h"
 #include "Core/CoreMacros.h"
 #include "Input/Gamepad.h"
+#include "Input/GamepadDestination.h"
 #include <imgui.h>
 
 
@@ -77,11 +78,11 @@ namespace fang::editor
 
 		ImGuiIO& io = ImGui::GetIO();
 
-		const GamepadState state = ReadGamepadState();
+		const GamepadState rawState = ReadGamepadState();
 
 		// ImGui のヘッダはこのフラグを「今 1 台繋がっている」の意味だと書いているので毎フレーム上げ下げする。
 		// ➡起動した後に挿しても、抜いても、次のフレームで追いつく。
-		if (state.isConnected)
+		if (rawState.isConnected)
 		{
 			io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
 		}
@@ -90,10 +91,18 @@ namespace fang::editor
 			io.BackendFlags &= ~ImGuiBackendFlags_HasGamepad;
 		}
 
+		// HasGamepad を立てているのはこのファイルだけ ➡ 行き先の切り替えを受け付けてよい場所もここだけ。
+		GamepadDestination& destination = GamepadDestination::GetInstance();
+		destination.Advance(rawState);
+
+		const GamepadState state = destination.FilterForEditor(rawState);
+
 		// 未接続でも 24 種を全部流す。抜かれた瞬間に押していたものを離した扱いにするため、途中で返らない。
 		AddButtonEvent(io, state, ImGuiKey_GamepadStart, EnGamepadButton::Menu);
 		AddButtonEvent(io, state, ImGuiKey_GamepadBack, EnGamepadButton::View);
-		AddButtonEvent(io, state, ImGuiKey_GamepadFaceLeft, EnGamepadButton::X);
+		// X の長押しはウィンドウ操作モードの入口。X をゲームの攻撃に譲るので、代わりに空いている
+		// R3（ImGui はどこでも消費していない）を折り畳みボタンへ行く唯一の口として割り当てる。
+		AddButtonEvent(io, state, ImGuiKey_GamepadFaceLeft, EnGamepadButton::RightThumbstick);
 		AddButtonEvent(io, state, ImGuiKey_GamepadFaceRight, EnGamepadButton::B);
 		AddButtonEvent(io, state, ImGuiKey_GamepadFaceUp, EnGamepadButton::Y);
 		AddButtonEvent(io, state, ImGuiKey_GamepadFaceDown, EnGamepadButton::A);
@@ -104,7 +113,7 @@ namespace fang::editor
 		AddButtonEvent(io, state, ImGuiKey_GamepadL1, EnGamepadButton::LeftShoulder);
 		AddButtonEvent(io, state, ImGuiKey_GamepadR1, EnGamepadButton::RightShoulder);
 		AddButtonEvent(io, state, ImGuiKey_GamepadL3, EnGamepadButton::LeftThumbstick);
-		AddButtonEvent(io, state, ImGuiKey_GamepadR3, EnGamepadButton::RightThumbstick);
+		io.AddKeyEvent(ImGuiKey_GamepadR3, false); // FaceLeft へ回したぶん、こちらは常に離した扱い。
 
 		AddTriggerEvent(io, ImGuiKey_GamepadL2, state.leftTrigger);
 		AddTriggerEvent(io, ImGuiKey_GamepadR2, state.rightTrigger);

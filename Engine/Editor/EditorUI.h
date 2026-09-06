@@ -95,6 +95,9 @@ namespace fang::editor
 		/** @brief フレーム時間などを出すエンジン情報ウィンドウを組み立てる。 */
 		void BuildEngineInfoWindow(const Window& window, float deltaTimeSeconds);
 
+		/** @brief パッドの行き先を左上に出す。HasGamepad が立っているときだけ描く。 */
+		void BuildGamepadDestinationOverlay();
+
 
 	private:
 		BudgetPanel           m_budgetPanel;           /**< Xbox の予算に対する現在値と、換算・制限の操作。 */

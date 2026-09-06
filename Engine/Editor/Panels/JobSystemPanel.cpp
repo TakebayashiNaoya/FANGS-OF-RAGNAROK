@@ -5,6 +5,7 @@
 #include "Pch.h"
 #include "Editor/Panels/JobSystemPanel.h"
 #include "Core/Job/ParallelFor.h"
+#include "Editor/EditorLayout.h"
 #include "Runtime/EngineContext.h"
 #include <imgui.h>
 #include <chrono>
@@ -16,9 +17,6 @@ namespace fang::editor
 	{
 		/** @brief 「ジョブシステム」ウィンドウの最小幅。自動サイズだけだと日本語ラベルの末尾が切れる。 */
 		constexpr float WINDOW_MIN_WIDTH = 420.0f;
-
-		/** @brief 初回に置く位置。既定のままだとエンジン情報ウィンドウの真上に重なる。 */
-		constexpr ImVec2 FIRST_USE_POSITION{ 460.0f, 60.0f };
 
 		/** @brief 毎秒の実行数を出し直す間隔。1 フレームごとに割ると数字が跳ねて読めない。 */
 		constexpr float SAMPLE_INTERVAL_SECONDS = 0.5f;
@@ -156,7 +154,7 @@ namespace fang::editor
 	{
 		FANG_ASSERT(m_jobSystem != nullptr, "JobSystemPanel が初期化されていない");
 
-		ImGui::SetNextWindowPos(FIRST_USE_POSITION, ImGuiCond_FirstUseEver);
+		ApplyPanelPlacement(EnPanelSlot::JobSystem);
 		ImGui::SetNextWindowSizeConstraints(ImVec2(WINDOW_MIN_WIDTH, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
 
 		if (!ImGui::Begin("ジョブシステム", nullptr, ImGuiWindowFlags_AlwaysAutoResize))

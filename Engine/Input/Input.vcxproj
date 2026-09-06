@@ -27,6 +27,7 @@
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
     <ClInclude Include="Gamepad.h" />
+    <ClInclude Include="GamepadDestination.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="InputLog.h" />
     <ClInclude Include="Pch.h" />

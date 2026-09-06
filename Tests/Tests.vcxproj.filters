@@ -87,6 +87,9 @@
     <ClCompile Include="Source\FrustumTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\GamepadDestinationTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\GamepadTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>

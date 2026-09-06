@@ -6,6 +6,7 @@
 #include "Editor/Panels/TuningPanel.h"
 #include "Core/Reflection/TuningRegistry.h"
 #include "Core/Text/MissingGlyphCounter.h"
+#include "Editor/EditorLayout.h"
 #include <imgui.h>
 #include <cfloat>
 
@@ -14,9 +15,6 @@ namespace fang::editor
 {
 	namespace
 	{
-		/** @brief 初回に置く位置。左が予算、上がジョブシステム、右の列は描画統計とシェーダー。 */
-		constexpr ImVec2 FIRST_USE_POSITION{ 460.0f, 330.0f };
-
 		constexpr float WINDOW_MIN_WIDTH  = 400.0f;
 		constexpr float WINDOW_MAX_HEIGHT = 600.0f;
 		constexpr float ITEM_WIDTH        = 220.0f;
@@ -40,7 +38,7 @@ namespace fang::editor
 
 	void TuningPanel::BuildFrame()
 	{
-		ImGui::SetNextWindowPos(FIRST_USE_POSITION, ImGuiCond_FirstUseEver);
+		ApplyPanelPlacement(EnPanelSlot::Tuning);
 		ImGui::SetNextWindowSizeConstraints(ImVec2(WINDOW_MIN_WIDTH, 0.0f), ImVec2(FLT_MAX, WINDOW_MAX_HEIGHT));
 
 		if (!ImGui::Begin("調整値", nullptr, ImGuiWindowFlags_AlwaysAutoResize))

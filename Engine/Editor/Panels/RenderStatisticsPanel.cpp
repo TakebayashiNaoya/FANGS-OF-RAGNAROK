@@ -4,6 +4,7 @@
  */
 #include "Pch.h"
 #include "Editor/Panels/RenderStatisticsPanel.h"
+#include "Editor/EditorLayout.h"
 #include <imgui.h>
 #include <algorithm>
 #include <cstring>
@@ -15,9 +16,6 @@ namespace fang::editor
 	{
 		/** @brief 「レンダリング統計」ウィンドウの最小幅。自動サイズだけだと日本語ラベルの末尾が切れる。 */
 		constexpr float WINDOW_MIN_WIDTH = 420.0f;
-
-		/** @brief 初回に置く位置。既定のままだとジョブシステムウィンドウに重なる。 */
-		constexpr ImVec2 FIRST_USE_POSITION{ 900.0f, 60.0f };
 
 #if FANG_ENABLE_PROFILER
 		/** @brief パス名の右に ms を置く桁。名前の長さがまちまちでも数字の頭が揃うように固定する。 */
@@ -105,7 +103,7 @@ namespace fang::editor
 		PushTimingSamples(renderStatistics);
 #endif
 
-		ImGui::SetNextWindowPos(FIRST_USE_POSITION, ImGuiCond_FirstUseEver);
+		ApplyPanelPlacement(EnPanelSlot::RenderStatistics);
 		ImGui::SetNextWindowSizeConstraints(ImVec2(WINDOW_MIN_WIDTH, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
 
 		if (!ImGui::Begin("レンダリング統計", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
