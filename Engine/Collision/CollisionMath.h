@@ -35,6 +35,13 @@ namespace fang
 		return (value < minimum) ? minimum : ((value > maximum) ? maximum : value);
 	}
 
+	/** @brief 2 つの箱が 3 軸すべてで重なっているか。境界が触れているだけでも重なりとする。 */
+	[[nodiscard]] FANG_FORCEINLINE bool OverlapsOnAllAxes(const Aabb& left, const Aabb& right)
+	{
+		return left.min.x <= right.max.x && right.min.x <= left.max.x && left.min.y <= right.max.y &&
+			   right.min.y <= left.max.y && left.min.z <= right.max.z && right.min.z <= left.max.z;
+	}
+
 	/** @brief 線分 pointA〜pointB のうち target に最も近い位置を 0〜1 で返す。線分が潰れていれば 0。 */
 	[[nodiscard]] inline float ClosestParameterOnSegment(
 		const Vector3& pointA,

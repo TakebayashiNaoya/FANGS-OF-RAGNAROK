@@ -419,14 +419,15 @@ namespace fang
 			return false;
 		}
 
-		m_proxies  = NewArray<ColliderProxy>(allocator, desc.maxColliderCount);
-		m_bounds   = NewArray<Aabb>(allocator, desc.maxColliderCount);
-		m_pairs    = NewArray<ColliderPair>(allocator, desc.maxPairCount);
-		m_contacts = NewArray<Contact>(allocator, desc.maxContactCount);
+		m_proxies    = NewArray<ColliderProxy>(allocator, desc.maxColliderCount);
+		m_bounds     = NewArray<Aabb>(allocator, desc.maxColliderCount);
+		m_pairs      = NewArray<ColliderPair>(allocator, desc.maxPairCount);
+		m_contacts   = NewArray<Contact>(allocator, desc.maxContactCount);
+		m_broadphase = CreateBroadphase(allocator, desc.broadphaseType);
 
-		const bool hasAllBuffers =
-			m_proxies != nullptr && m_bounds != nullptr && m_pairs != nullptr && m_contacts != nullptr;
-		if (!hasAllBuffers || !m_sweepAndPruneBroadphase.Initialize(allocator, desc.maxColliderCount))
+		const bool hasAllBuffers = m_proxies != nullptr && m_bounds != nullptr && m_pairs != nullptr &&
+								   m_contacts != nullptr && m_broadphase != nullptr;
+		if (!hasAllBuffers || !m_broadphase->Initialize(allocator, desc.maxColliderCount))
 		{
 			FANG_LOG_ERROR(Collision, "CollisionWorld の置き場を確保できなかった");
 
@@ -435,12 +436,17 @@ namespace fang
 			DeleteArray(allocator, m_pairs, desc.maxPairCount);
 			DeleteArray(allocator, m_bounds, desc.maxColliderCount);
 			DeleteArray(allocator, m_proxies, desc.maxColliderCount);
-			m_sweepAndPruneBroadphase.Shutdown();
+			if (m_broadphase != nullptr)
+			{
+				m_broadphase->Shutdown();
+			}
+			DestroyBroadphase(allocator, m_broadphase);
 
-			m_contacts = nullptr;
-			m_pairs    = nullptr;
-			m_bounds   = nullptr;
-			m_proxies  = nullptr;
+			m_contacts   = nullptr;
+			m_pairs      = nullptr;
+			m_bounds     = nullptr;
+			m_proxies    = nullptr;
+			m_broadphase = nullptr;
 			return false;
 		}
 
@@ -471,17 +477,19 @@ namespace fang
 			return;
 		}
 
-		m_sweepAndPruneBroadphase.Shutdown();
+		m_broadphase->Shutdown();
+		DestroyBroadphase(*m_allocator, m_broadphase);
 
 		DeleteArray(*m_allocator, m_contacts, m_maxContactCount);
 		DeleteArray(*m_allocator, m_pairs, m_maxPairCount);
 		DeleteArray(*m_allocator, m_bounds, m_maxColliderCount);
 		DeleteArray(*m_allocator, m_proxies, m_maxColliderCount);
 
-		m_contacts = nullptr;
-		m_pairs    = nullptr;
-		m_bounds   = nullptr;
-		m_proxies  = nullptr;
+		m_contacts   = nullptr;
+		m_pairs      = nullptr;
+		m_bounds     = nullptr;
+		m_proxies    = nullptr;
+		m_broadphase = nullptr;
 
 		m_allocator        = nullptr;
 		m_maxColliderCount = 0;
