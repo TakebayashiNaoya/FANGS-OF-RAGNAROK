@@ -7,17 +7,11 @@
 #include "AI/AI.h"
 #include "Core/Math/Matrix4x4.h"
 #include "Core/Math/Vector3.h"
+#include "Scene/CharacterBase.h"
 #include "Scene/MeleeSwing.h"
 #include "Scene/Scene.h"
 #include "CollisionAttribute.h"
 #include <span>
-
-
-namespace fang
-{
-	class CollisionWorld;
-	class HeightmapTerrain;
-} // namespace fang
 
 
 namespace fang::game
@@ -58,9 +52,10 @@ namespace fang::game
 	 * @brief 雑魚 1 体ぶんの感知・追跡・移動・接地を進める振る舞い。
 	 * @details 攻撃も HP も持たない。パッドを触らず、センサー ➡ ブラックボード ➡ 意思決定 ➡ エフェクターの
 	 *          順で 1 フレームを進める。見た目は狼と共有の歩行ポーズをそのまま指す
-	 *          （重いデータは Game 側の WolfModel が持つ）。
+	 *          （重いデータは Game 側の WolfModel が持つ）。位置・向き・当たり判定・地形は
+	 *          CharacterBase（基底）の持ち物。
 	 */
-	class EnemyController final : public IComponent
+	class EnemyController final : public CharacterBase
 	{
 	public:
 		/** @brief 共有する調整値と、Game 側が持ち続ける資源への借用。 */
@@ -69,29 +64,25 @@ namespace fang::game
 			/** @brief 感知・追跡の調整値。複数体で共有するので値で持たない。 */
 			const EnemyParameter* parameter = nullptr;
 
-			/** @brief 当たり判定の入れ物。作れなかったときだけ nullptr（押し出しと感知を飛ばす）。 */
-			CollisionWorld* collisionWorld = nullptr;
-
-			/** @brief 接地の高さの問い合わせ先。読めていなければ nullptr（y = 0 に立つ）。 */
-			const HeightmapTerrain* terrain = nullptr;
-
 			/** @brief 追いかける相手（今の操作対象）。Game が 1 か所で持ち替えるので、値では持たない。 */
-			const GameObjectHandle* targetHandle = nullptr;
+			const Actor* target = nullptr;
 
 			/** @brief 狼と共有する歩行ポーズ。空なら SetSkinningMatrices を呼ばない。 */
 			std::span<const Matrix4x4> skinningMatricesStorage;
 		};
 
-		EnemyController(const Dependencies& dependencies, const Vector3& initialPosition);
+		EnemyController(
+			const Dependencies&     dependencies,
+			CollisionWorld*         collisionWorld,
+			const HeightmapTerrain* terrain,
+			const Vector3&          initialPosition
+		);
 
-		void Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene) override;
+		void Update(float deltaTimeSeconds, Actor self) override;
 
 
 	private:
 		Dependencies m_dependencies;
-
-		Vector3 m_position; /**< 足元のワールド座標。y は常に 0（接地は Update の中で足す）。 */
-		float   m_facingRadians = 0.0f;
 
 		AgentBlackboard m_blackboard;
 		EnPursuitState  m_state = EnPursuitState::Idle;
@@ -99,4 +90,9 @@ namespace fang::game
 		/** @brief 牙の振り 1 本ぶんの状態。 */
 		MeleeSwingState m_swingState;
 	};
+
+	static_assert(
+		sizeof(EnemyController) + Scene::BEHAVIOR_HEADROOM_SIZE <= Scene::BEHAVIOR_BLOCK_SIZE,
+		"EnemyController がブロックの余白を食い潰した。BEHAVIOR_BLOCK_SIZE の引き上げとセットで考えること"
+	);
 } // namespace fang::game

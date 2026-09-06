@@ -35,11 +35,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\AabbTests.cpp" />
+    <ClCompile Include="Source\ActorTests.cpp" />
     <ClCompile Include="Source\AnimationPlaybackTests.cpp" />
     <ClCompile Include="Source\AssetPathTests.cpp" />
     <ClCompile Include="Source\BroadphaseComparisonTests.cpp" />
     <ClCompile Include="Source\BroadphaseTests.cpp" />
+    <ClCompile Include="Source\CharacterBaseTests.cpp" />
     <ClCompile Include="Source\CharacterControllerTests.cpp" />
+    <ClCompile Include="Source\CharacterCreationTests.cpp" />
     <ClCompile Include="Source\CollisionBudgetTests.cpp" />
     <ClCompile Include="Source\CollisionDebugLineTests.cpp" />
     <ClCompile Include="Source\CollisionMathTests.cpp" />

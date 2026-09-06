@@ -183,12 +183,12 @@ namespace fang
 		for (uint32_t index = 0; index < m_maxObjectCount; ++index)
 		{
 			m_freeIndices[index]                        = m_maxObjectCount - 1 - index;
-			m_parentIndices[index]                      = GameObjectHandle::INVALID_INDEX;
-			m_firstChildIndices[index]                  = GameObjectHandle::INVALID_INDEX;
-			m_nextSiblingIndices[index]                 = GameObjectHandle::INVALID_INDEX;
-			m_meshRendererComponentIndexByObject[index] = GameObjectHandle::INVALID_INDEX;
-			m_colliderComponentIndexByObject[index]     = GameObjectHandle::INVALID_INDEX;
-			m_healthComponentIndexByObject[index]       = GameObjectHandle::INVALID_INDEX;
+			m_parentIndices[index]                      = ActorHandle::INVALID_INDEX;
+			m_firstChildIndices[index]                  = ActorHandle::INVALID_INDEX;
+			m_nextSiblingIndices[index]                 = ActorHandle::INVALID_INDEX;
+			m_meshRendererComponentIndexByObject[index] = ActorHandle::INVALID_INDEX;
+			m_colliderComponentIndexByObject[index]     = ActorHandle::INVALID_INDEX;
+			m_healthComponentIndexByObject[index]       = ActorHandle::INVALID_INDEX;
 		}
 		m_freeIndexCount = m_maxObjectCount;
 
@@ -295,12 +295,12 @@ namespace fang
 	}
 
 
-	GameObjectHandle Scene::CreateObject()
+	ActorHandle Scene::CreateObject()
 	{
 		if (m_freeIndexCount == 0)
 		{
 			FANG_LOG_WARNING(Scene, "オブジェクトの上限（{}）に達したので作れなかった", m_maxObjectCount);
-			return GameObjectHandle{};
+			return ActorHandle{};
 		}
 
 		const uint32_t index = m_freeIndices[--m_freeIndexCount];
@@ -308,11 +308,11 @@ namespace fang
 		m_isActive[index]       = true;
 		m_pendingDestroy[index] = false;
 
-		return GameObjectHandle{ index, m_generations[index] };
+		return ActorHandle{ index, m_generations[index] };
 	}
 
 
-	void Scene::DestroyObject(GameObjectHandle handle)
+	void Scene::DestroyObject(ActorHandle handle)
 	{
 		if (!IsValid(handle) || m_pendingDestroy[handle.index])
 		{
@@ -333,7 +333,7 @@ namespace fang
 			m_pendingDestroyIndices[m_pendingDestroyCount] = index;
 			++m_pendingDestroyCount;
 
-			for (uint32_t child = m_firstChildIndices[index]; child != GameObjectHandle::INVALID_INDEX;
+			for (uint32_t child = m_firstChildIndices[index]; child != ActorHandle::INVALID_INDEX;
 				 child          = m_nextSiblingIndices[child])
 			{
 				m_indexStack[stackTop] = child;
@@ -343,7 +343,7 @@ namespace fang
 	}
 
 
-	bool Scene::IsValid(GameObjectHandle handle) const
+	bool Scene::IsValid(ActorHandle handle) const
 	{
 		return handle.IsValid() && handle.index < m_maxObjectCount && m_isActive[handle.index] &&
 			   m_generations[handle.index] == handle.generation;
@@ -376,8 +376,8 @@ namespace fang
 				continue;
 			}
 
-			const GameObjectHandle ownerHandle{ record.ownerIndex, m_generations[record.ownerIndex] };
-			record.instance->Update(deltaTimeSeconds, ownerHandle, *this);
+			const ActorHandle ownerHandle{ record.ownerIndex, m_generations[record.ownerIndex] };
+			record.instance->Update(deltaTimeSeconds, Actor{ *this, ownerHandle });
 		}
 
 		// 4. 破棄の予約を反映する（子リストから外し、コンポーネントと振る舞いを畳み、世代を進める）。
@@ -395,9 +395,9 @@ namespace fang
 			m_pendingDestroy[index] = false;
 			++m_generations[index];
 
-			m_parentIndices[index]      = GameObjectHandle::INVALID_INDEX;
-			m_firstChildIndices[index]  = GameObjectHandle::INVALID_INDEX;
-			m_nextSiblingIndices[index] = GameObjectHandle::INVALID_INDEX;
+			m_parentIndices[index]      = ActorHandle::INVALID_INDEX;
+			m_firstChildIndices[index]  = ActorHandle::INVALID_INDEX;
+			m_nextSiblingIndices[index] = ActorHandle::INVALID_INDEX;
 			m_localMatrices[index]      = Matrix4x4{};
 
 			m_freeIndices[m_freeIndexCount] = index;
@@ -410,7 +410,7 @@ namespace fang
 		uint32_t stackTop = 0;
 		for (uint32_t index = 0; index < m_maxObjectCount; ++index)
 		{
-			if (m_isActive[index] && m_parentIndices[index] == GameObjectHandle::INVALID_INDEX)
+			if (m_isActive[index] && m_parentIndices[index] == ActorHandle::INVALID_INDEX)
 			{
 				m_indexStack[stackTop] = index;
 				++stackTop;
@@ -423,11 +423,11 @@ namespace fang
 			const uint32_t index       = m_indexStack[stackTop];
 			const uint32_t parentIndex = m_parentIndices[index];
 
-			m_worldMatrices[index] = (parentIndex == GameObjectHandle::INVALID_INDEX)
+			m_worldMatrices[index] = (parentIndex == ActorHandle::INVALID_INDEX)
 										 ? m_localMatrices[index]
 										 : Multiply(m_localMatrices[index], m_worldMatrices[parentIndex]);
 
-			for (uint32_t child = m_firstChildIndices[index]; child != GameObjectHandle::INVALID_INDEX;
+			for (uint32_t child = m_firstChildIndices[index]; child != ActorHandle::INVALID_INDEX;
 				 child          = m_nextSiblingIndices[child])
 			{
 				m_indexStack[stackTop] = child;
@@ -459,7 +459,7 @@ namespace fang
 	}
 
 
-	bool Scene::SetLocalMatrix(GameObjectHandle handle, const Matrix4x4& localMatrix)
+	bool Scene::SetLocalMatrix(ActorHandle handle, const Matrix4x4& localMatrix)
 	{
 		if (!IsValid(handle))
 		{
@@ -479,7 +479,7 @@ namespace fang
 	}
 
 
-	bool Scene::SetLocalTransform(GameObjectHandle handle, const Vector3& position, float rotationYRadians)
+	bool Scene::SetLocalTransform(ActorHandle handle, const Vector3& position, float rotationYRadians)
 	{
 		Matrix4x4 localMatrix = MakeRotationYMatrix(rotationYRadians);
 		localMatrix.m[3][0]   = position.x;
@@ -490,7 +490,7 @@ namespace fang
 	}
 
 
-	Matrix4x4 Scene::GetLocalMatrix(GameObjectHandle handle) const
+	Matrix4x4 Scene::GetLocalMatrix(ActorHandle handle) const
 	{
 		if (!IsValid(handle))
 		{
@@ -501,7 +501,7 @@ namespace fang
 	}
 
 
-	Matrix4x4 Scene::GetWorldMatrix(GameObjectHandle handle) const
+	Matrix4x4 Scene::GetWorldMatrix(ActorHandle handle) const
 	{
 		if (!IsValid(handle))
 		{
@@ -512,7 +512,7 @@ namespace fang
 	}
 
 
-	bool Scene::SetParent(GameObjectHandle handle, GameObjectHandle parent)
+	bool Scene::SetParent(ActorHandle handle, ActorHandle parent)
 	{
 		if (!IsValid(handle))
 		{
@@ -528,7 +528,7 @@ namespace fang
 			}
 
 			// 先祖をたどって自分に出会ったら輪ができる。
-			for (uint32_t ancestor = m_parentIndices[parent.index]; ancestor != GameObjectHandle::INVALID_INDEX;
+			for (uint32_t ancestor = m_parentIndices[parent.index]; ancestor != ActorHandle::INVALID_INDEX;
 				 ancestor          = m_parentIndices[ancestor])
 			{
 				if (ancestor == handle.index)
@@ -548,41 +548,41 @@ namespace fang
 		}
 		else
 		{
-			m_parentIndices[handle.index]      = GameObjectHandle::INVALID_INDEX;
-			m_nextSiblingIndices[handle.index] = GameObjectHandle::INVALID_INDEX;
+			m_parentIndices[handle.index]      = ActorHandle::INVALID_INDEX;
+			m_nextSiblingIndices[handle.index] = ActorHandle::INVALID_INDEX;
 		}
 
 		return true;
 	}
 
 
-	GameObjectHandle Scene::GetParent(GameObjectHandle handle) const
+	ActorHandle Scene::GetParent(ActorHandle handle) const
 	{
 		if (!IsValid(handle))
 		{
-			return GameObjectHandle{};
+			return ActorHandle{};
 		}
 
 		const uint32_t parentIndex = m_parentIndices[handle.index];
-		if (parentIndex == GameObjectHandle::INVALID_INDEX)
+		if (parentIndex == ActorHandle::INVALID_INDEX)
 		{
-			return GameObjectHandle{};
+			return ActorHandle{};
 		}
 
-		return GameObjectHandle{ parentIndex, m_generations[parentIndex] };
+		return ActorHandle{ parentIndex, m_generations[parentIndex] };
 	}
 
 
 	void Scene::RemoveFromParentChildList(uint32_t index)
 	{
 		const uint32_t parentIndex = m_parentIndices[index];
-		if (parentIndex == GameObjectHandle::INVALID_INDEX)
+		if (parentIndex == ActorHandle::INVALID_INDEX)
 		{
 			return;
 		}
 
 		uint32_t* link = &m_firstChildIndices[parentIndex];
-		while (*link != GameObjectHandle::INVALID_INDEX)
+		while (*link != ActorHandle::INVALID_INDEX)
 		{
 			if (*link == index)
 			{
@@ -595,9 +595,9 @@ namespace fang
 	}
 
 
-	bool Scene::AddMeshRendererComponent(GameObjectHandle handle, const MeshRendererComponent& component)
+	bool Scene::AddMeshRendererComponent(ActorHandle handle, const MeshRendererComponent& component)
 	{
-		if (!IsValid(handle) || m_meshRendererComponentIndexByObject[handle.index] != GameObjectHandle::INVALID_INDEX)
+		if (!IsValid(handle) || m_meshRendererComponentIndexByObject[handle.index] != ActorHandle::INVALID_INDEX)
 		{
 			return false;
 		}
@@ -612,7 +612,7 @@ namespace fang
 	}
 
 
-	MeshRendererComponent* Scene::GetMeshRendererComponent(GameObjectHandle handle)
+	MeshRendererComponent* Scene::GetMeshRendererComponent(ActorHandle handle)
 	{
 		if (!IsValid(handle))
 		{
@@ -620,11 +620,11 @@ namespace fang
 		}
 
 		const uint32_t denseIndex = m_meshRendererComponentIndexByObject[handle.index];
-		return (denseIndex == GameObjectHandle::INVALID_INDEX) ? nullptr : &m_meshRendererComponents[denseIndex];
+		return (denseIndex == ActorHandle::INVALID_INDEX) ? nullptr : &m_meshRendererComponents[denseIndex];
 	}
 
 
-	const MeshRendererComponent* Scene::GetMeshRendererComponent(GameObjectHandle handle) const
+	const MeshRendererComponent* Scene::GetMeshRendererComponent(ActorHandle handle) const
 	{
 		if (!IsValid(handle))
 		{
@@ -632,13 +632,13 @@ namespace fang
 		}
 
 		const uint32_t denseIndex = m_meshRendererComponentIndexByObject[handle.index];
-		return (denseIndex == GameObjectHandle::INVALID_INDEX) ? nullptr : &m_meshRendererComponents[denseIndex];
+		return (denseIndex == ActorHandle::INVALID_INDEX) ? nullptr : &m_meshRendererComponents[denseIndex];
 	}
 
 
-	bool Scene::AddColliderComponent(GameObjectHandle handle, const ColliderComponent& component)
+	bool Scene::AddColliderComponent(ActorHandle handle, const ColliderComponent& component)
 	{
-		if (!IsValid(handle) || m_colliderComponentIndexByObject[handle.index] != GameObjectHandle::INVALID_INDEX)
+		if (!IsValid(handle) || m_colliderComponentIndexByObject[handle.index] != ActorHandle::INVALID_INDEX)
 		{
 			return false;
 		}
@@ -653,7 +653,7 @@ namespace fang
 	}
 
 
-	ColliderComponent* Scene::GetColliderComponent(GameObjectHandle handle)
+	ColliderComponent* Scene::GetColliderComponent(ActorHandle handle)
 	{
 		if (!IsValid(handle))
 		{
@@ -661,11 +661,11 @@ namespace fang
 		}
 
 		const uint32_t denseIndex = m_colliderComponentIndexByObject[handle.index];
-		return (denseIndex == GameObjectHandle::INVALID_INDEX) ? nullptr : &m_colliderComponents[denseIndex];
+		return (denseIndex == ActorHandle::INVALID_INDEX) ? nullptr : &m_colliderComponents[denseIndex];
 	}
 
 
-	const ColliderComponent* Scene::GetColliderComponent(GameObjectHandle handle) const
+	const ColliderComponent* Scene::GetColliderComponent(ActorHandle handle) const
 	{
 		if (!IsValid(handle))
 		{
@@ -673,13 +673,13 @@ namespace fang
 		}
 
 		const uint32_t denseIndex = m_colliderComponentIndexByObject[handle.index];
-		return (denseIndex == GameObjectHandle::INVALID_INDEX) ? nullptr : &m_colliderComponents[denseIndex];
+		return (denseIndex == ActorHandle::INVALID_INDEX) ? nullptr : &m_colliderComponents[denseIndex];
 	}
 
 
-	bool Scene::AddHealthComponent(GameObjectHandle handle, const HealthComponent& component)
+	bool Scene::AddHealthComponent(ActorHandle handle, const HealthComponent& component)
 	{
-		if (!IsValid(handle) || m_healthComponentIndexByObject[handle.index] != GameObjectHandle::INVALID_INDEX)
+		if (!IsValid(handle) || m_healthComponentIndexByObject[handle.index] != ActorHandle::INVALID_INDEX)
 		{
 			return false;
 		}
@@ -694,7 +694,7 @@ namespace fang
 	}
 
 
-	HealthComponent* Scene::GetHealthComponent(GameObjectHandle handle)
+	HealthComponent* Scene::GetHealthComponent(ActorHandle handle)
 	{
 		if (!IsValid(handle))
 		{
@@ -702,11 +702,11 @@ namespace fang
 		}
 
 		const uint32_t denseIndex = m_healthComponentIndexByObject[handle.index];
-		return (denseIndex == GameObjectHandle::INVALID_INDEX) ? nullptr : &m_healthComponents[denseIndex];
+		return (denseIndex == ActorHandle::INVALID_INDEX) ? nullptr : &m_healthComponents[denseIndex];
 	}
 
 
-	const HealthComponent* Scene::GetHealthComponent(GameObjectHandle handle) const
+	const HealthComponent* Scene::GetHealthComponent(ActorHandle handle) const
 	{
 		if (!IsValid(handle))
 		{
@@ -714,12 +714,12 @@ namespace fang
 		}
 
 		const uint32_t denseIndex = m_healthComponentIndexByObject[handle.index];
-		return (denseIndex == GameObjectHandle::INVALID_INDEX) ? nullptr : &m_healthComponents[denseIndex];
+		return (denseIndex == ActorHandle::INVALID_INDEX) ? nullptr : &m_healthComponents[denseIndex];
 	}
 
 
 #if FANG_ENABLE_SCENE_VALIDATION
-	uint32_t Scene::GetTransformWriteCount(GameObjectHandle handle) const
+	uint32_t Scene::GetTransformWriteCount(ActorHandle handle) const
 	{
 		if (!IsValid(handle))
 		{
@@ -731,24 +731,30 @@ namespace fang
 #endif
 
 
-	GameObjectHandle Scene::GetHandleFromIndex(uint32_t index) const
+	ActorHandle Scene::GetHandleFromIndex(uint32_t index) const
 	{
 		if (index >= m_maxObjectCount || !m_isActive[index])
 		{
-			return GameObjectHandle{};
+			return ActorHandle{};
 		}
 
-		return GameObjectHandle{ index, m_generations[index] };
+		return ActorHandle{ index, m_generations[index] };
 	}
 
 
-	bool Scene::IsPendingDestroy(GameObjectHandle handle) const
+	Actor Scene::GetActorFromIndex(uint32_t index)
+	{
+		return Actor{ *this, GetHandleFromIndex(index) };
+	}
+
+
+	bool Scene::IsPendingDestroy(ActorHandle handle) const
 	{
 		return IsValid(handle) && m_pendingDestroy[handle.index];
 	}
 
 
-	void* Scene::AllocateBehaviorBlock(GameObjectHandle handle, uint32_t* outBlockIndex)
+	void* Scene::AllocateBehaviorBlock(ActorHandle handle, uint32_t* outBlockIndex)
 	{
 		if (!IsValid(handle))
 		{
@@ -768,7 +774,7 @@ namespace fang
 	}
 
 
-	void Scene::RegisterBehavior(GameObjectHandle handle, IComponent* instance, uint32_t blockIndex)
+	void Scene::RegisterBehavior(ActorHandle handle, IComponent* instance, uint32_t blockIndex)
 	{
 		m_behaviorRecords[m_behaviorRecordCount] = BehaviorRecord{
 			.ownerIndex = handle.index,
@@ -804,7 +810,7 @@ namespace fang
 	void Scene::RemoveMeshRendererComponentIfPresent(uint32_t index)
 	{
 		const uint32_t denseIndex = m_meshRendererComponentIndexByObject[index];
-		if (denseIndex == GameObjectHandle::INVALID_INDEX)
+		if (denseIndex == ActorHandle::INVALID_INDEX)
 		{
 			return;
 		}
@@ -815,7 +821,7 @@ namespace fang
 		m_meshRendererComponentOwners[denseIndex] = m_meshRendererComponentOwners[lastIndex];
 		m_meshRendererComponentIndexByObject[m_meshRendererComponentOwners[denseIndex]] = denseIndex;
 
-		m_meshRendererComponentIndexByObject[index] = GameObjectHandle::INVALID_INDEX;
+		m_meshRendererComponentIndexByObject[index] = ActorHandle::INVALID_INDEX;
 		--m_meshRendererComponentCount;
 	}
 
@@ -823,7 +829,7 @@ namespace fang
 	void Scene::RemoveColliderComponentIfPresent(uint32_t index)
 	{
 		const uint32_t denseIndex = m_colliderComponentIndexByObject[index];
-		if (denseIndex == GameObjectHandle::INVALID_INDEX)
+		if (denseIndex == ActorHandle::INVALID_INDEX)
 		{
 			return;
 		}
@@ -834,7 +840,7 @@ namespace fang
 		m_colliderComponentOwners[denseIndex]                                   = m_colliderComponentOwners[lastIndex];
 		m_colliderComponentIndexByObject[m_colliderComponentOwners[denseIndex]] = denseIndex;
 
-		m_colliderComponentIndexByObject[index] = GameObjectHandle::INVALID_INDEX;
+		m_colliderComponentIndexByObject[index] = ActorHandle::INVALID_INDEX;
 		--m_colliderComponentCount;
 	}
 
@@ -842,7 +848,7 @@ namespace fang
 	void Scene::RemoveHealthComponentIfPresent(uint32_t index)
 	{
 		const uint32_t denseIndex = m_healthComponentIndexByObject[index];
-		if (denseIndex == GameObjectHandle::INVALID_INDEX)
+		if (denseIndex == ActorHandle::INVALID_INDEX)
 		{
 			return;
 		}
@@ -853,12 +859,12 @@ namespace fang
 		m_healthComponentOwners[denseIndex]                                 = m_healthComponentOwners[lastIndex];
 		m_healthComponentIndexByObject[m_healthComponentOwners[denseIndex]] = denseIndex;
 
-		m_healthComponentIndexByObject[index] = GameObjectHandle::INVALID_INDEX;
+		m_healthComponentIndexByObject[index] = ActorHandle::INVALID_INDEX;
 		--m_healthComponentCount;
 	}
 
 
-	bool Scene::SetSkinningMatrices(GameObjectHandle handle, std::span<const Matrix4x4> matrices)
+	bool Scene::SetSkinningMatrices(ActorHandle handle, std::span<const Matrix4x4> matrices)
 	{
 		if (!IsValid(handle))
 		{
@@ -870,7 +876,7 @@ namespace fang
 	}
 
 
-	std::span<const Matrix4x4> Scene::GetSkinningMatrices(GameObjectHandle handle) const
+	std::span<const Matrix4x4> Scene::GetSkinningMatrices(ActorHandle handle) const
 	{
 		if (!IsValid(handle))
 		{
@@ -982,9 +988,9 @@ namespace fang
 	}
 
 
-	GameObjectHandle FindFirstLiving(const Scene& scene, std::span<const GameObjectHandle> handles)
+	ActorHandle FindFirstLiving(const Scene& scene, std::span<const ActorHandle> handles)
 	{
-		for (const GameObjectHandle& handle : handles)
+		for (const ActorHandle& handle : handles)
 		{
 			if (scene.IsValid(handle))
 			{
@@ -992,14 +998,14 @@ namespace fang
 			}
 		}
 
-		return GameObjectHandle{};
+		return ActorHandle{};
 	}
 
 
-	uint32_t CountLiving(const Scene& scene, std::span<const GameObjectHandle> handles)
+	uint32_t CountLiving(const Scene& scene, std::span<const ActorHandle> handles)
 	{
 		uint32_t livingCount = 0;
-		for (const GameObjectHandle& handle : handles)
+		for (const ActorHandle& handle : handles)
 		{
 			if (scene.IsValid(handle))
 			{

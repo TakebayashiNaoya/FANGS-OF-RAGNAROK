@@ -129,9 +129,7 @@ namespace fang::game
 
 				for (size_t index = 0; index < WOLF_COUNT; ++index)
 				{
-					WolfController* controller = nullptr;
-
-					const GameObjectHandle handle = CreateWolfObject(
+					const CharacterCreateResult<WolfController> result = CreateWolfObject(
 						m_scene,
 						m_wolf,
 						m_wolfMovementParameter,
@@ -140,13 +138,12 @@ namespace fang::game
 						m_collisionWorld,
 						m_terrain,
 						WOLF_POSITIONS[index],
-						0.0f,
-						&controller
+						0.0f
 					);
 
-					if (handle.IsValid())
+					if (result.actor.IsValid())
 					{
-						(void)m_wolfManager.Add(handle, controller);
+						(void)m_wolfManager.Add(result.actor, result.behavior);
 					}
 				}
 
@@ -162,7 +159,7 @@ namespace fang::game
 
 				// 生死を数え直し、操作対象を選び直す。振る舞いのポインタを誰かが触るより前に呼ぶ
 				// （撃破された狼のポインタが 1 フレームも残らないようにするため）。
-				const WolfManagerUpdateResult wolfManagerResult = m_wolfManager.Update(m_scene);
+				const WolfManagerUpdateResult wolfManagerResult = m_wolfManager.Update();
 				if (wolfManagerResult.didWipeOut)
 				{
 					FANG_LOG_INFO(Game, "狼が全滅した");
@@ -211,13 +208,8 @@ namespace fang::game
 				{
 					controlledWolf->SetFrameInput(context.gamepad, cameraYawRadians);
 
-					// 湧きは前フレームのワールド行列を見る（当たり判定と同じ 1 フレーム遅れ、ADR-034）。
-					const Matrix4x4 controlledWolfWorld = m_scene.GetWorldMatrix(*m_wolfManager.GetControlledHandle());
-					const Vector3   controlledWolfPosition{
-						controlledWolfWorld.m[3][0],
-						controlledWolfWorld.m[3][1],
-						controlledWolfWorld.m[3][2],
-					};
+					// 湧きは前フレームのワールド位置を見る（当たり判定と同じ 1 フレーム遅れ、ADR-034）。
+					const Vector3 controlledWolfPosition = m_wolfManager.GetControlledActor()->GetWorldPosition();
 
 					// 全滅中は呼ばない ➡ 狼が居なければ湧かない。標的はポインタ渡しなので、既に湧いている
 					// 雑魚も次に湧く雑魚も WolfManager が選び直した操作対象へ同じフレームで移る。
@@ -229,7 +221,7 @@ namespace fang::game
 							.sharedModel    = &m_wolf,
 							.collisionWorld = m_collisionWorld,
 							.terrain        = m_terrain,
-							.targetHandle   = m_wolfManager.GetControlledHandle(),
+							.target         = m_wolfManager.GetControlledActor(),
 						}
 					);
 				}
@@ -261,12 +253,11 @@ namespace fang::game
 				// 移動が反映済み。カメラは俯角を付けた円錐面を周る。水平半径は距離 × cos(俯角)、高さは
 				// 距離 × sin(俯角)。水平のままだと周回の途中で丘に潜るので、俯角で視点を持ち上げてある。
 				// 全滅中は操作対象が居ないので、最後に居た位置に留める
-				// （無効なハンドルの GetWorldMatrix は単位行列 ➡ そのまま使うと原点へ飛ぶ）。
+				// （無効な Actor の GetWorldPosition は原点 ➡ そのまま使うと原点へ飛ぶ）。
 				if (controlledWolf != nullptr)
 				{
-					const Matrix4x4 wolfWorld = m_scene.GetWorldMatrix(*m_wolfManager.GetControlledHandle());
-					const Vector3   wolfPosition{ wolfWorld.m[3][0], wolfWorld.m[3][1], wolfWorld.m[3][2] };
-					m_lastCameraTarget = wolfPosition + m_cameraFollowParameter.targetOffset;
+					const Vector3 wolfPosition = m_wolfManager.GetControlledActor()->GetWorldPosition();
+					m_lastCameraTarget         = wolfPosition + m_cameraFollowParameter.targetOffset;
 				}
 				const Vector3 cameraTarget = m_lastCameraTarget;
 

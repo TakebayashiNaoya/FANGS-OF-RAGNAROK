@@ -4,7 +4,6 @@
  */
 #include "Wolf.h"
 #include "Collision/CollisionShapes.h"
-#include "Collision/CollisionWorld.h"
 #include "Core/Platform/AssetPath.h"
 #include "RHI/GraphicsDevice.h"
 #include "Resource/DdsImage.h"
@@ -209,29 +208,13 @@ namespace fang::game
 	}
 
 
-	GameObjectHandle CreateWolfObject(
-		Scene&                       scene,
-		WolfModel&                   model,
-		const WolfMovementParameter& parameter,
-		const MeleeSwingParameter&   swingParameter,
-		const HealthComponent&       healthComponent,
-		CollisionWorld*              collisionWorld,
-		const HeightmapTerrain*      terrain,
-		const Vector3&               initialPosition,
-		float                        initialFacingRadians,
-		WolfController**             outController
-	)
+	CharacterDesc MakeCharacterDesc(const WolfModel& model, uint32_t attributeMask, const HealthComponent& health)
 	{
-		const GameObjectHandle handle = scene.CreateObject();
-		if (!handle.IsValid())
-		{
-			FANG_LOG_ERROR(Game, "狼のオブジェクトを作れなかった（Scene の上限）");
-			return handle;
-		}
+		CharacterDesc desc;
 
 		if (model.mesh.IsValid())
 		{
-			const MeshRendererComponent meshRendererComponent{
+			desc.renderer = MeshRendererComponent{
 				.mesh        = model.mesh,
 				.localBounds = model.localBounds,
 				.baseColor   = model.baseColor,
@@ -245,23 +228,33 @@ namespace fang::game
 				.castsShadow = true,
 				.isVisible   = true,
 			};
-			(void)scene.AddMeshRendererComponent(handle, meshRendererComponent);
-
-			// 狼は四つ足なので、体を包むカプセルのほうが箱より当たりが素直。WOLF を足して雑魚の攻撃の掃引に出す。
-			const ColliderComponent colliderComponent{
-				.shapeType     = EnShapeType::Capsule,
-				.localBounds   = model.localBounds,
-				.isEnabled     = true,
-				.attributeMask = COLLISION_ATTRIBUTE_CHARACTER | COLLISION_ATTRIBUTE_WOLF,
-			};
-			(void)scene.AddColliderComponent(handle, colliderComponent);
 		}
 
-		(void)scene.AddHealthComponent(handle, healthComponent);
+		// 狼も雑魚も四つ足なので、体を包むカプセルのほうが箱より当たりが素直。
+		desc.shapeType     = EnShapeType::Capsule;
+		desc.attributeMask = attributeMask;
+		desc.health        = health;
+
+		return desc;
+	}
+
+
+	CharacterCreateResult<WolfController> CreateWolfObject(
+		Scene&                       scene,
+		WolfModel&                   model,
+		const WolfMovementParameter& parameter,
+		const MeleeSwingParameter&   swingParameter,
+		const HealthComponent&       healthComponent,
+		CollisionWorld*              collisionWorld,
+		const HeightmapTerrain*      terrain,
+		const Vector3&               initialPosition,
+		float                        initialFacingRadians
+	)
+	{
+		const CharacterDesc desc =
+			MakeCharacterDesc(model, COLLISION_ATTRIBUTE_CHARACTER | COLLISION_ATTRIBUTE_WOLF, healthComponent);
 
 		const WolfController::Dependencies dependencies{
-			.collisionWorld      = collisionWorld,
-			.terrain             = terrain,
 			.isSkinned           = model.isSkinned,
 			.animation           = model.isSkinned ? &model.animation : nullptr,
 			.playback            = model.isSkinned ? &model.playback : nullptr,
@@ -270,24 +263,16 @@ namespace fang::game
 				model.isSkinned ? std::span<Matrix4x4>(model.skinningMatrices) : std::span<Matrix4x4>{},
 		};
 
-		WolfController* controller = scene.AddBehavior<WolfController>(
-			handle,
+		return CreateCharacter<WolfController>(
+			scene,
+			desc,
 			parameter,
 			swingParameter,
 			dependencies,
+			collisionWorld,
+			terrain,
 			initialPosition,
 			initialFacingRadians
 		);
-		if (controller == nullptr)
-		{
-			FANG_LOG_ERROR(Game, "狼の振る舞いを作れなかった（Scene の振る舞い上限）");
-		}
-
-		if (outController != nullptr)
-		{
-			*outController = controller;
-		}
-
-		return handle;
 	}
 } // namespace fang::game

@@ -48,7 +48,7 @@ namespace
 	public:
 		TestEnemyController(
 			fang::CollisionWorld*            world,
-			fang::GameObjectHandle           target,
+			fang::ActorHandle                target,
 			const fang::PerceptionParameter& perceptionParameter,
 			const fang::PursuitParameter&    pursuitParameter,
 			const fang::Vector3&             initialPosition
@@ -61,14 +61,14 @@ namespace
 		{
 		}
 
-		void Update(float deltaTimeSeconds, fang::GameObjectHandle self, fang::Scene& scene) override
+		void Update(float deltaTimeSeconds, fang::Actor self) override
 		{
-			fang::Vector3 targetPosition;
-			const bool    hasTarget = scene.IsValid(m_target);
+			const fang::Actor target = self.GetActorFromHandle(m_target);
+			fang::Vector3     targetPosition;
+			const bool        hasTarget = target.IsValid();
 			if (hasTarget)
 			{
-				const fang::Matrix4x4 targetWorld = scene.GetWorldMatrix(m_target);
-				targetPosition = fang::Vector3{ targetWorld.m[3][0], targetWorld.m[3][1], targetWorld.m[3][2] };
+				targetPosition = target.GetWorldPosition();
 			}
 
 			fang::PerceptionResult perception;
@@ -78,8 +78,8 @@ namespace
 					.selfPosition      = m_position,
 					.selfFacingRadians = 0.0f,
 					.targetPosition    = targetPosition,
-					.selfUserIndex     = self.index,
-					.targetUserIndex   = m_target.index,
+					.selfUserIndex     = self.GetIndex(),
+					.targetUserIndex   = target.GetIndex(),
 				};
 				perception = fang::Sense(*m_world, m_perceptionParameter, input);
 			}
@@ -93,16 +93,16 @@ namespace
 				(m_world != nullptr) ? m_world->GetContacts() : std::span<const fang::Contact>{};
 
 			const fang::ContactMoveResult moveResult =
-				fang::MoveWithContacts(m_position, intent.desiredDelta, contacts, self.index);
+				fang::MoveWithContacts(m_position, intent.desiredDelta, contacts, self.GetIndex());
 			m_position = moveResult.position;
 
-			(void)scene.SetLocalTransform(self, m_position, 0.0f);
+			(void)self.SetTransform(m_position, 0.0f);
 		}
 
 
 	private:
 		fang::CollisionWorld*     m_world = nullptr;
-		fang::GameObjectHandle    m_target;
+		fang::ActorHandle         m_target;
 		fang::PerceptionParameter m_perceptionParameter;
 		fang::PursuitParameter    m_pursuitParameter;
 
@@ -137,7 +137,7 @@ TEST_CASE("EnemyEncounter: 32体まで湧かせて600フレーム回してもヒ
 	fang::FrameAllocator frameAllocator;
 	CHECK(frameAllocator.Initialize(fang::HeapAllocator::GetInstance(), 64 * 1024, "Test"));
 
-	const fang::GameObjectHandle target = scene.CreateObject();
+	const fang::ActorHandle target = scene.CreateObject();
 
 	fang::SpawnScheduler scheduler;
 	fang::SpawnParameter spawnParameter{};
@@ -157,7 +157,7 @@ TEST_CASE("EnemyEncounter: 32体まで湧かせて600フレーム回してもヒ
 			scheduler.Update(deltaTimeSeconds, aliveCount, fang::Vector3{}, spawnParameter);
 		if (request.shouldSpawn)
 		{
-			const fang::GameObjectHandle handle = scene.CreateObject();
+			const fang::ActorHandle handle = scene.CreateObject();
 			if (handle.IsValid())
 			{
 				fang::IComponent* behavior = scene.AddBehavior<TestEnemyController>(

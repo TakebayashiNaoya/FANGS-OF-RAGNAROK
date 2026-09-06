@@ -8,8 +8,6 @@
 #include "Collision/CollisionWorld.h"
 #include "Core/Log/Assert.h"
 #include "Core/Math/Matrix4x4.h"
-#include "Resource/HeightmapTerrain.h"
-#include "Scene/CharacterController.h"
 #include "CollisionAttribute.h"
 #include "MeleeDamage.h"
 
@@ -20,14 +18,19 @@ namespace fang::game
 		const WolfMovementParameter& parameter,
 		const MeleeSwingParameter&   swingParameter,
 		const Dependencies&          dependencies,
+		CollisionWorld*              collisionWorld,
+		const HeightmapTerrain*      terrain,
 		const Vector3&               initialPosition,
 		float                        initialFacingRadians
 	)
-		: m_parameter(parameter)
+		: CharacterBase(
+			  GroundDependencies{ .collisionWorld = collisionWorld, .terrain = terrain },
+			  initialPosition,
+			  initialFacingRadians
+		  )
+		, m_parameter(parameter)
 		, m_swingParameter(swingParameter)
 		, m_dependencies(dependencies)
-		, m_position(initialPosition)
-		, m_facingRadians(initialFacingRadians)
 	{
 	}
 
@@ -51,23 +54,23 @@ namespace fang::game
 	}
 
 
-	void WolfController::Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene)
+	void WolfController::Update(float deltaTimeSeconds, Actor self)
 	{
-		// 1. 振り(操作する狼のみ)。移動より前に置く ➡ m_position はまだ前フレームに SetLocalTransform で
-		//    書いた位置のまま。掃引が見る登録も前フレームのもの(ADR-034) ➡ 牙と相手が同じ瞬間の世界で揃う。
-		if (m_isControlled && m_dependencies.collisionWorld != nullptr)
+		// 1. 振り(操作する狼のみ)。移動より前に置く ➡ position はまだ前フレームに書いた位置のまま。
+		//    掃引が見る登録も前フレームのもの(ADR-034) ➡ 牙と相手が同じ瞬間の世界で揃う。
+		if (m_isControlled && GetCollisionWorld() != nullptr)
 		{
 			const MeleeSwingInput swingInput{
-				.selfPosition        = m_position,
-				.selfFacingRadians   = m_facingRadians,
+				.selfPosition        = GetPosition(),
+				.selfFacingRadians   = GetFacingRadians(),
 				.isAttackRequested   = m_isAttackRequested,
-				.selfUserIndex       = self.index,
+				.selfUserIndex       = self.GetIndex(),
 				.targetAttributeMask = COLLISION_ATTRIBUTE_ENEMY,
 			};
 
 			SweepHit               hits[MAX_MELEE_SWING_HIT_COUNT];
 			const MeleeSwingResult swingResult = StepMeleeSwing(
-				*m_dependencies.collisionWorld,
+				*GetCollisionWorld(),
 				m_swingParameter,
 				swingInput,
 				deltaTimeSeconds,
@@ -76,7 +79,7 @@ namespace fang::game
 			);
 
 			ApplyMeleeHits(
-				scene,
+				self,
 				std::span<const SweepHit>(hits, swingResult.newHitCount),
 				m_swingParameter.attackPower
 			);
@@ -86,11 +89,6 @@ namespace fang::game
 
 		if (m_isControlled)
 		{
-			// 前フレームの接触から押し出しつつ、進みたい量を壁に沿わせて足す。当たり判定が無ければ接触なし。
-			const std::span<const Contact> contacts = (m_dependencies.collisionWorld != nullptr)
-														  ? m_dependencies.collisionWorld->GetContacts()
-														  : std::span<const Contact>{};
-
 			const Vector3 desiredDelta = MakeMoveDelta(
 				m_moveStick,
 				m_cameraYawRadians,
@@ -98,15 +96,14 @@ namespace fang::game
 				deltaTimeSeconds
 			);
 
-			const ContactMoveResult moveResult = MoveWithContacts(m_position, desiredDelta, contacts, self.index);
-			m_position                         = moveResult.position;
+			// 前フレームの接触から押し出しつつ、進みたい量を壁に沿わせて足す。当たり判定が無ければ接触なし。
+			const Vector3 appliedDelta = MovePosition(desiredDelta, self.GetIndex());
 
-			appliedSpeed = Length(moveResult.appliedDelta) / (deltaTimeSeconds > 0.0f ? deltaTimeSeconds : 1.0f);
-			if (LengthSquared(moveResult.appliedDelta) > 0.0f)
+			appliedSpeed = Length(appliedDelta) / (deltaTimeSeconds > 0.0f ? deltaTimeSeconds : 1.0f);
+			if (LengthSquared(appliedDelta) > 0.0f)
 			{
-				m_facingRadians = TurnTowards(
-					m_facingRadians,
-					GetYawFromDirection(moveResult.appliedDelta),
+				TurnFacingTowards(
+					GetYawFromDirection(appliedDelta),
 					m_parameter.turnSpeedRadiansPerSecond * deltaTimeSeconds
 				);
 			}
@@ -114,17 +111,7 @@ namespace fang::game
 
 		// 足裏はローカル y = 0 ➡ 地表の高さを Y へ足すだけで接地する。GetHeightAt は範囲外を端の高さへ
 		// クランプするので、狼が地形の外へ出ても高さが未定義にならない。
-		float groundHeight = 0.0f;
-		if (m_dependencies.terrain != nullptr)
-		{
-			groundHeight = m_dependencies.terrain->GetHeightAt(m_position.x, m_position.z);
-		}
-
-		(void)scene.SetLocalTransform(
-			self,
-			Vector3{ m_position.x, m_position.y + groundHeight, m_position.z },
-			m_facingRadians
-		);
+		WriteTransform(self);
 
 		if (m_dependencies.isSkinned && m_dependencies.animation != nullptr && m_dependencies.animation->IsReady())
 		{
@@ -142,7 +129,7 @@ namespace fang::game
 			}
 
 			// 操作していない狼は再生を進めず、共有の置き場をそのまま指す ➡ 同じポーズで歩いて見える。
-			(void)scene.SetSkinningMatrices(self, m_dependencies.skinningMatricesStorage);
+			(void)self.SetSkinningMatrices(m_dependencies.skinningMatricesStorage);
 		}
 	}
 } // namespace fang::game

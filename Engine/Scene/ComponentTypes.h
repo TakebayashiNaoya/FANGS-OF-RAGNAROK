@@ -10,13 +10,11 @@
 #include "Core/Reflection/Reflection.h"
 #include "RHI/RHIHandles.h"
 #include "Renderer/MeshRenderer.h"
+#include "Scene/Actor.h"
 
 
 namespace fang
 {
-	class Scene;
-	struct GameObjectHandle;
-
 	/**
 	 * @brief マテリアルの調整値。
 	 * @details FANG_REFLECT 付きの POD。JSON はまだ読めないので既定値はコード内（03 コーディング規約 14）。
@@ -123,12 +121,11 @@ namespace fang
 
 		/**
 		 * @brief 1 フレームぶん進める。
-		 * @param self  この振る舞いを持つオブジェクト。Transform や他のコンポーネントを触るときに使う。
-		 * @param scene 呼び出し元の Scene。
+		 * @param self この振る舞いを持つオブジェクトへの窓。Transform や他のコンポーネントを触るときに使う。
 		 * @details Scene::Update が更新ジョブの中から呼ぶ。呼ばれる本数は Update の入口で固定されるので、
 		 *          この中で AddBehavior したものは次の周から、DestroyObject したものはその周のうちに
 		 *          呼ばれなくなる。
 		 */
-		virtual void Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene) = 0;
+		virtual void Update(float deltaTimeSeconds, Actor self) = 0;
 	};
 } // namespace fang

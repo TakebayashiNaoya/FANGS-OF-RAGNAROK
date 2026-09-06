@@ -9,7 +9,7 @@
 
 namespace fang::game
 {
-	bool WolfManager::Add(GameObjectHandle handle, WolfController* controller)
+	bool WolfManager::Add(Actor actor, WolfController* controller)
 	{
 		if (m_count >= MAX_WOLF_COUNT)
 		{
@@ -17,7 +17,7 @@ namespace fang::game
 			return false;
 		}
 
-		m_handles[m_count]     = handle;
+		m_actors[m_count]      = actor;
 		m_controllers[m_count] = controller;
 		++m_count;
 
@@ -25,16 +25,16 @@ namespace fang::game
 	}
 
 
-	WolfManagerUpdateResult WolfManager::Update(const Scene& scene)
+	WolfManagerUpdateResult WolfManager::Update()
 	{
 		// 1. 死んだ席を捨てる。解放済みのポインタが 1 フレームも残らないよう、誰かが触るより前に行う。
 		//    並び順を保ったまま詰める(EnemyManager の生存数え直しと同じ形)。
 		uint32_t aliveSeatCount = 0;
 		for (uint32_t index = 0; index < m_count; ++index)
 		{
-			if (scene.IsValid(m_handles[index]))
+			if (m_actors[index].IsValid())
 			{
-				m_handles[aliveSeatCount]     = m_handles[index];
+				m_actors[aliveSeatCount]      = m_actors[index];
 				m_controllers[aliveSeatCount] = m_controllers[index];
 				++aliveSeatCount;
 			}
@@ -42,18 +42,19 @@ namespace fang::game
 		m_count = aliveSeatCount;
 
 		// 2. 操作対象を選び直す。席の並びがそのまま引き継ぎの順になる。
-		const std::span<const GameObjectHandle> handles(m_handles.data(), m_count);
-		const GameObjectHandle                  selectedHandle = FindFirstLiving(scene, handles);
+		const std::span<const Actor> actors(m_actors.data(), m_count);
+		const Actor*                 selectedActor = FindFirstLiving(actors);
 
 		// 3. 選ばれた席が変わったら、その振る舞いへ伝える。
-		if (selectedHandle != m_controlledHandle)
+		const ActorHandle selectedHandle = (selectedActor != nullptr) ? selectedActor->GetHandle() : ActorHandle{};
+		if (selectedHandle != m_controlledActor.GetHandle())
 		{
-			m_controlledHandle = selectedHandle;
-			m_controlledWolf   = nullptr;
+			m_controlledActor = (selectedActor != nullptr) ? *selectedActor : Actor{};
+			m_controlledWolf  = nullptr;
 
 			for (uint32_t index = 0; index < m_count; ++index)
 			{
-				if (m_handles[index] == selectedHandle)
+				if (m_actors[index].GetHandle() == selectedHandle)
 				{
 					m_controlledWolf = m_controllers[index];
 					break;
@@ -67,7 +68,7 @@ namespace fang::game
 		}
 
 		// 4. 全滅の立ち上がりを検知する。
-		const uint32_t aliveCount = CountLiving(scene, handles);
+		const uint32_t aliveCount = CountLiving(actors);
 		const bool     didWipeOut = aliveCount == 0 && !m_wasWipedOut;
 		m_wasWipedOut             = aliveCount == 0;
 

@@ -16,7 +16,7 @@ TEST_CASE("EnemyDefeat: 32席を埋めて10席壊すと、Scene::IsValidで数�
 	fang::Scene scene;
 	CHECK(scene.Initialize(fang::HeapAllocator::GetInstance(), fang::SceneDesc{ .maxObjectCount = 40 }));
 
-	std::vector<fang::GameObjectHandle> handles;
+	std::vector<fang::ActorHandle> handles;
 	for (int index = 0; index < 32; ++index)
 	{
 		handles.push_back(scene.CreateObject());
@@ -29,7 +29,7 @@ TEST_CASE("EnemyDefeat: 32席を埋めて10席壊すと、Scene::IsValidで数�
 	scene.Update(0.0f);
 
 	uint32_t aliveCount = 0;
-	for (const fang::GameObjectHandle& handle : handles)
+	for (const fang::ActorHandle& handle : handles)
 	{
 		if (scene.IsValid(handle))
 		{

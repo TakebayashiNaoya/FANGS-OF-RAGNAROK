@@ -158,7 +158,7 @@ namespace fang::game
 
 		for (const GltfSceneInstance& instance : instances)
 		{
-			const GameObjectHandle handle = scene.CreateObject();
+			const ActorHandle handle = scene.CreateObject();
 			if (!handle.IsValid())
 			{
 				FANG_LOG_WARNING(

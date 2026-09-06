@@ -16,7 +16,7 @@ TEST_CASE("Scene: 生成すると即座に有効になり、破棄は Update ま
 		return;
 	}
 
-	const fang::GameObjectHandle handle = scene.CreateObject();
+	const fang::ActorHandle handle = scene.CreateObject();
 	CHECK(handle.IsValid());
 	CHECK(scene.IsValid(handle));
 	CHECK(scene.GetActiveObjectCount() == 1);
@@ -41,12 +41,12 @@ TEST_CASE("Scene: 壊したハンドルで触っても、後から作った別�
 		return;
 	}
 
-	const fang::GameObjectHandle oldHandle = scene.CreateObject();
+	const fang::ActorHandle oldHandle = scene.CreateObject();
 	scene.DestroyObject(oldHandle);
 	scene.Update(0.0f);
 
 	// 同じ席が再利用されても、世代が進んでいるので古いハンドルは別物として扱われる。
-	const fang::GameObjectHandle newHandle = scene.CreateObject();
+	const fang::ActorHandle newHandle = scene.CreateObject();
 	CHECK(newHandle.index == oldHandle.index);
 	CHECK(newHandle.generation != oldHandle.generation);
 
@@ -69,7 +69,7 @@ TEST_CASE("Scene: 上限に達したら無効なハンドルを返す")
 	CHECK(scene.CreateObject().IsValid());
 	CHECK(scene.CreateObject().IsValid());
 
-	const fang::GameObjectHandle overflowHandle = scene.CreateObject();
+	const fang::ActorHandle overflowHandle = scene.CreateObject();
 	CHECK_FALSE(overflowHandle.IsValid());
 	CHECK_FALSE(scene.IsValid(overflowHandle));
 	CHECK(scene.GetActiveObjectCount() == 2);
@@ -103,14 +103,14 @@ TEST_CASE("Scene: 全部壊しても落ちない")
 		return;
 	}
 
-	fang::GameObjectHandle handles[8];
-	for (fang::GameObjectHandle& handle : handles)
+	fang::ActorHandle handles[8];
+	for (fang::ActorHandle& handle : handles)
 	{
 		handle = scene.CreateObject();
 		CHECK(handle.IsValid());
 	}
 
-	for (const fang::GameObjectHandle& handle : handles)
+	for (const fang::ActorHandle& handle : handles)
 	{
 		scene.DestroyObject(handle);
 	}
@@ -119,7 +119,7 @@ TEST_CASE("Scene: 全部壊しても落ちない")
 	CHECK(scene.GetActiveObjectCount() == 0);
 
 	// 空いた席を全部作り直せる ➡ 空き番号の管理が破棄で壊れていない。
-	for (fang::GameObjectHandle& handle : handles)
+	for (fang::ActorHandle& handle : handles)
 	{
 		handle = scene.CreateObject();
 		CHECK(handle.IsValid());
@@ -139,9 +139,9 @@ TEST_CASE("FindFirstLiving: 先頭を壊した後は2番目を返す")
 		return;
 	}
 
-	const fang::GameObjectHandle first  = scene.CreateObject();
-	const fang::GameObjectHandle second = scene.CreateObject();
-	const fang::GameObjectHandle handles[]{ first, second };
+	const fang::ActorHandle first  = scene.CreateObject();
+	const fang::ActorHandle second = scene.CreateObject();
+	const fang::ActorHandle handles[]{ first, second };
 
 	CHECK(fang::FindFirstLiving(scene, handles) == first);
 
@@ -168,9 +168,9 @@ TEST_CASE("CountLiving: 生きているものの数を数え、全滅で0にな�
 		return;
 	}
 
-	const fang::GameObjectHandle first  = scene.CreateObject();
-	const fang::GameObjectHandle second = scene.CreateObject();
-	const fang::GameObjectHandle handles[]{ first, second };
+	const fang::ActorHandle first  = scene.CreateObject();
+	const fang::ActorHandle second = scene.CreateObject();
+	const fang::ActorHandle handles[]{ first, second };
 
 	CHECK(fang::CountLiving(scene, handles) == 2);
 
