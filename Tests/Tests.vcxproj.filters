@@ -30,6 +30,9 @@
     <ClCompile Include="Source\BroadphaseTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\CharacterBaseTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\CharacterControllerTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
