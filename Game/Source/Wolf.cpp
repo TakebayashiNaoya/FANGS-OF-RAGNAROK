@@ -11,7 +11,7 @@
 #include "Resource/GltfMesh.h"
 #include "CollisionAttribute.h"
 #include "GameLog.h"
-#include "WolfBehavior.h"
+#include "WolfController.h"
 #include <span>
 #include <string>
 
@@ -219,7 +219,7 @@ namespace fang::game
 		const HeightmapTerrain*      terrain,
 		const Vector3&               initialPosition,
 		float                        initialFacingRadians,
-		WolfBehavior**               outBehavior
+		WolfController**             outController
 	)
 	{
 		const GameObjectHandle handle = scene.CreateObject();
@@ -259,7 +259,7 @@ namespace fang::game
 
 		(void)scene.AddHealthComponent(handle, healthComponent);
 
-		const WolfBehavior::Dependencies dependencies{
+		const WolfController::Dependencies dependencies{
 			.collisionWorld      = collisionWorld,
 			.terrain             = terrain,
 			.isSkinned           = model.isSkinned,
@@ -270,7 +270,7 @@ namespace fang::game
 				model.isSkinned ? std::span<Matrix4x4>(model.skinningMatrices) : std::span<Matrix4x4>{},
 		};
 
-		WolfBehavior* behavior = scene.AddBehavior<WolfBehavior>(
+		WolfController* controller = scene.AddBehavior<WolfController>(
 			handle,
 			parameter,
 			swingParameter,
@@ -278,14 +278,14 @@ namespace fang::game
 			initialPosition,
 			initialFacingRadians
 		);
-		if (behavior == nullptr)
+		if (controller == nullptr)
 		{
 			FANG_LOG_ERROR(Game, "狼の振る舞いを作れなかった（Scene の振る舞い上限）");
 		}
 
-		if (outBehavior != nullptr)
+		if (outController != nullptr)
 		{
-			*outBehavior = behavior;
+			*outController = controller;
 		}
 
 		return handle;

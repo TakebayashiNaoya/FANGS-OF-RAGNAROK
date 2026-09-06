@@ -84,9 +84,9 @@
     <ClInclude Include="Source\MeleeDamage.h" />
     <ClInclude Include="Source\Stage.h" />
     <ClInclude Include="Source\Wolf.h" />
-    <ClInclude Include="Source\WolfBehavior.h" />
+    <ClInclude Include="Source\WolfController.h" />
+    <ClInclude Include="Source\WolfManager.h" />
     <ClInclude Include="Source\WolfMovementParameter.h" />
-    <ClInclude Include="Source\WolfPack.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Enemy.cpp" />
@@ -96,8 +96,8 @@
     <ClCompile Include="Source\MeleeDamage.cpp" />
     <ClCompile Include="Source\Stage.cpp" />
     <ClCompile Include="Source\Wolf.cpp" />
-    <ClCompile Include="Source\WolfBehavior.cpp" />
-    <ClCompile Include="Source\WolfPack.cpp" />
+    <ClCompile Include="Source\WolfController.cpp" />
+    <ClCompile Include="Source\WolfManager.cpp" />
     <ClCompile Include="Source\UWP\MainUWP.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->

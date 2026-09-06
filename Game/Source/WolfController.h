@@ -1,5 +1,5 @@
 ﻿/**
- * @file WolfBehavior.h
+ * @file WolfController.h
  * @brief 狼 1 体ぶんの移動・接地・アニメーションを進める振る舞い。
  */
 #pragma once
@@ -32,7 +32,7 @@ namespace fang::game
 	 *          重いデータ（SkeletalAnimation・逆バインド行列・スキニング行列の置き場）は Game 側の WolfModel が
 	 *          持ち、ここではポインタと span だけを借りる ➡ Scene::BEHAVIOR_BLOCK_SIZE に収まる。
 	 */
-	class WolfBehavior final : public IComponent
+	class WolfController final : public IComponent
 	{
 	public:
 		/** @brief WolfModel など、Game 側が持ち続ける資源への借用。 */
@@ -68,9 +68,9 @@ namespace fang::game
 		 * @param initialPosition    足元のワールド座標。y は接地で決まるので 0 でよい。
 		 * @param initialFacingRadians 初期の向き。0 = +X。
 		 * @details 生成した時点では操作対象ではない（初期位置に立ったまま、共有スキニング行列だけを毎フレーム
-		 *          書き直す）。操作対象にするかどうかは WolfPack が SetControlled で決める。
+		 *          書き直す）。操作対象にするかどうかは WolfManager が SetControlled で決める。
 		 */
-		WolfBehavior(
+		WolfController(
 			const WolfMovementParameter& parameter,
 			const MeleeSwingParameter&   swingParameter,
 			const Dependencies&          dependencies,

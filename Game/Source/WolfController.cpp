@@ -1,8 +1,8 @@
 ﻿/**
- * @file WolfBehavior.cpp
+ * @file WolfController.cpp
  * @brief 狼 1 体ぶんの移動・接地・アニメーションを進める振る舞い。
  */
-#include "WolfBehavior.h"
+#include "WolfController.h"
 #include "Animation/AnimationPlayback.h"
 #include "Animation/SkeletalAnimation.h"
 #include "Collision/CollisionWorld.h"
@@ -16,7 +16,7 @@
 
 namespace fang::game
 {
-	WolfBehavior::WolfBehavior(
+	WolfController::WolfController(
 		const WolfMovementParameter& parameter,
 		const MeleeSwingParameter&   swingParameter,
 		const Dependencies&          dependencies,
@@ -32,7 +32,7 @@ namespace fang::game
 	}
 
 
-	void WolfBehavior::SetControlled(bool isControlled)
+	void WolfController::SetControlled(bool isControlled)
 	{
 		m_isControlled = isControlled;
 		if (isControlled)
@@ -43,7 +43,7 @@ namespace fang::game
 	}
 
 
-	void WolfBehavior::SetFrameInput(const GamepadState& gamepad, float cameraYawRadians)
+	void WolfController::SetFrameInput(const GamepadState& gamepad, float cameraYawRadians)
 	{
 		m_moveStick         = GetLeftStick(gamepad);
 		m_cameraYawRadians  = cameraYawRadians;
@@ -51,7 +51,7 @@ namespace fang::game
 	}
 
 
-	void WolfBehavior::Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene)
+	void WolfController::Update(float deltaTimeSeconds, GameObjectHandle self, Scene& scene)
 	{
 		// 1. 振り(操作する狼のみ)。移動より前に置く ➡ m_position はまだ前フレームに SetLocalTransform で
 		//    書いた位置のまま。掃引が見る登録も前フレームのもの(ADR-034) ➡ 牙と相手が同じ瞬間の世界で揃う。

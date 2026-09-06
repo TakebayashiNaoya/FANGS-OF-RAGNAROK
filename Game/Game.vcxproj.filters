@@ -40,13 +40,13 @@
     <ClInclude Include="Source\Wolf.h">
       <Filter>Source</Filter>
     </ClInclude>
-    <ClInclude Include="Source\WolfBehavior.h">
+    <ClInclude Include="Source\WolfController.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\WolfManager.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="Source\WolfMovementParameter.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\WolfPack.h">
       <Filter>Source</Filter>
     </ClInclude>
   </ItemGroup>
@@ -72,10 +72,10 @@
     <ClCompile Include="Source\Wolf.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="Source\WolfBehavior.cpp">
+    <ClCompile Include="Source\WolfController.cpp">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="Source\WolfPack.cpp">
+    <ClCompile Include="Source\WolfManager.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="Source\Windows\Main.cpp">

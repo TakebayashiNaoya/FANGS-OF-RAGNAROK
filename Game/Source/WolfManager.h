@@ -1,5 +1,5 @@
 ﻿/**
- * @file WolfPack.h
+ * @file WolfManager.h
  * @brief 狼の席と、今どれを操作しているかを 1 か所で持つ入れ物。
  */
 #pragma once
@@ -11,10 +11,10 @@
 
 namespace fang::game
 {
-	class WolfBehavior;
+	class WolfController;
 
 	/** @brief 1 フレームぶんの答え。 */
-	struct WolfPackUpdateResult
+	struct WolfManagerUpdateResult
 	{
 		uint32_t aliveCount = 0;
 		bool     didWipeOut = false; /**< このフレームに全滅した。立ち上がりの 1 回だけ true。 */
@@ -27,36 +27,36 @@ namespace fang::game
 	 *          使う前に必ず Scene::IsValid を通す（ADR-038）。
 	 * @threading 更新ジョブ 1 本から。
 	 */
-	class WolfPack
+	class WolfManager
 	{
 	public:
 		/** @brief 席の数。GameRules 1 の 9 匹まで入る大きさ。今 Game が作るのは 2 体。 */
 		static constexpr uint32_t MAX_WOLF_COUNT = 9;
 
 		/** @brief 生成した狼を席に加える。上限を超えたら false（何もしない）。 */
-		[[nodiscard]] bool Add(GameObjectHandle handle, WolfBehavior* behavior);
+		[[nodiscard]] bool Add(GameObjectHandle handle, WolfController* controller);
 
 		/**
 		 * @brief 生死を数え直し、操作対象を選び直す。
 		 * @details 周の頭で、振る舞いのポインタを誰かが触るより前に呼ぶこと。撃破された狼の
 		 *          ポインタはここで捨てる（ブロックは前の周の破棄反映で解放済み）。
 		 */
-		WolfPackUpdateResult Update(const Scene& scene);
+		WolfManagerUpdateResult Update(const Scene& scene);
 
 		/** @brief 今の操作対象。生きていなければ無効なハンドルを指す。雑魚の標的に渡す。 */
 		[[nodiscard]] const GameObjectHandle* GetControlledHandle() const { return &m_controlledHandle; }
 
 		/** @brief 今の操作対象の振る舞い。生きていなければ nullptr。 */
-		[[nodiscard]] WolfBehavior* GetControlledBehavior() const { return m_controlledBehavior; }
+		[[nodiscard]] WolfController* GetControlledWolf() const { return m_controlledWolf; }
 
 
 	private:
 		std::array<GameObjectHandle, MAX_WOLF_COUNT> m_handles;
-		std::array<WolfBehavior*, MAX_WOLF_COUNT>    m_behaviors{};
+		std::array<WolfController*, MAX_WOLF_COUNT>  m_controllers{};
 		uint32_t                                     m_count = 0;
 
 		GameObjectHandle m_controlledHandle;
-		WolfBehavior*    m_controlledBehavior = nullptr;
-		bool             m_wasWipedOut        = false;
+		WolfController*  m_controlledWolf = nullptr;
+		bool             m_wasWipedOut    = false;
 	};
 } // namespace fang::game
