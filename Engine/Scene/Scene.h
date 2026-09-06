@@ -61,6 +61,13 @@ namespace fang
 		 */
 		static constexpr size_t BEHAVIOR_BLOCK_SIZE = 256;
 
+		/**
+		 * @brief 振る舞いのブロックに残しておく余白（バイト）。
+		 * @details 箱いっぱいまで使うと、次に 1 フィールド足した人が BEHAVIOR_BLOCK_SIZE の引き上げごと踏む。
+		 *          個々の振る舞いは自分の宣言のそばでこれを含めて確かめる。
+		 */
+		static constexpr size_t BEHAVIOR_HEADROOM_SIZE = 16;
+
 		Scene() = default;
 		~Scene();
 
