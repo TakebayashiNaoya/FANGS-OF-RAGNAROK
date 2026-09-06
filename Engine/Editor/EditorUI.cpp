@@ -261,6 +261,7 @@ namespace fang::editor
 	{
 		// TODO: ヒエラルキー・インスペクタ・コンソールに置き換える。
 		// 自動サイズだけだと日本語ラベルの末尾が切れるので下限を決めておく。
+		// ImGui はクリップ矩形からはみ出したグリフを丸ごと消すので、この下限が溢れを防いでいる。
 		ImGui::SetNextWindowSizeConstraints(ImVec2(ENGINE_INFO_WINDOW_MIN_WIDTH, 0.0f), ImVec2(FLT_MAX, FLT_MAX));
 
 		if (!ImGui::Begin("エンジン情報", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
@@ -286,7 +287,6 @@ namespace fang::editor
 
 		ImGui::Separator();
 
-		// FIXME: Checkbox のラベル末尾が全角の「）」だとその 1 文字だけ描かれない。ImGui::Text では出る。
 		ImGui::Checkbox("ImGui のデモを表示", &m_isDemoWindowVisible);
 
 		ImGui::End();
