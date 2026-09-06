@@ -66,6 +66,14 @@ namespace fang
 		/** @brief 今生きているオブジェクトの数。テストと監視用。 */
 		[[nodiscard]] uint32_t GetActiveObjectCount() const { return m_maxObjectCount - m_freeIndexCount; }
 
+#if FANG_ENABLE_SCENE_VALIDATION
+		/** @brief 直近の 1 フレームに Transform を 2 回以上書かれたオブジェクトの数。1 以上なら規約違反。 */
+		[[nodiscard]] uint32_t GetDuplicateTransformWriteCount() const { return m_duplicateTransformWriteCount; }
+
+		/** @brief 今の窓でそのオブジェクトの Transform が書かれた回数。255 で頭打ち。 */
+		[[nodiscard]] uint32_t GetTransformWriteCount(GameObjectHandle handle) const;
+#endif
+
 
 	public:
 		/**
@@ -283,6 +291,14 @@ namespace fang
 
 		Matrix4x4* m_localMatrices = nullptr; /**< Transform の実体。ワールド行列は毎フレーム作り直す。 */
 		Matrix4x4* m_worldMatrices = nullptr; /**< 直近の Update が作った、根からの積算。 */
+
+#if FANG_ENABLE_SCENE_VALIDATION
+		/** @brief 今の窓で Transform を書かれた回数。255 で頭打ち。窓は Update の末尾〜末尾（1 フレーム丸ごと）。 */
+		uint8_t* m_localMatrixWriteCounts = nullptr;
+
+		/** @brief 直近の Update の末尾で数え直した、2 回以上書かれたオブジェクトの数。 */
+		uint32_t m_duplicateTransformWriteCount = 0;
+#endif
 
 		/** @brief 親のスロット番号。GameObjectHandle::INVALID_INDEX ならルート。 */
 		uint32_t* m_parentIndices = nullptr;

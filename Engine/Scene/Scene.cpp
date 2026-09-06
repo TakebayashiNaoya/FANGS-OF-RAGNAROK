@@ -10,6 +10,7 @@
 #include "Core/Memory/Allocator.h"
 #include "Core/Memory/FrameAllocator.h"
 #include "Scene/SceneLog.h"
+#include <cstring>
 
 
 FANG_DEFINE_LOG_CATEGORY(Scene);
@@ -66,6 +67,9 @@ namespace fang
 		m_pendingDestroyIndices = NewArray<uint32_t>(allocator, desc.maxObjectCount);
 		m_localMatrices         = NewArray<Matrix4x4>(allocator, desc.maxObjectCount);
 		m_worldMatrices         = NewArray<Matrix4x4>(allocator, desc.maxObjectCount);
+#if FANG_ENABLE_SCENE_VALIDATION
+		m_localMatrixWriteCounts = NewArray<uint8_t>(allocator, desc.maxObjectCount);
+#endif
 		m_parentIndices         = NewArray<uint32_t>(allocator, desc.maxObjectCount);
 		m_firstChildIndices     = NewArray<uint32_t>(allocator, desc.maxObjectCount);
 		m_nextSiblingIndices    = NewArray<uint32_t>(allocator, desc.maxObjectCount);
@@ -95,14 +99,18 @@ namespace fang
 		const bool hasAllBuffers =
 			m_generations != nullptr && m_isActive != nullptr && m_pendingDestroy != nullptr &&
 			m_freeIndices != nullptr && m_pendingDestroyIndices != nullptr && m_localMatrices != nullptr &&
-			m_worldMatrices != nullptr && m_parentIndices != nullptr && m_firstChildIndices != nullptr &&
-			m_nextSiblingIndices != nullptr && m_indexStack != nullptr && m_skinningMatricesSpans != nullptr &&
-			m_meshRendererComponents != nullptr && m_meshRendererComponentOwners != nullptr &&
-			m_meshRendererComponentIndexByObject != nullptr && m_colliderComponents != nullptr &&
-			m_colliderComponentOwners != nullptr && m_colliderComponentIndexByObject != nullptr &&
-			m_healthComponents != nullptr && m_healthComponentOwners != nullptr &&
-			m_healthComponentIndexByObject != nullptr && (!hasCapacityForBehaviors || m_behaviorBlocks != nullptr) &&
-			m_freeBehaviorBlockIndices != nullptr && m_behaviorRecords != nullptr;
+			m_worldMatrices != nullptr &&
+#if FANG_ENABLE_SCENE_VALIDATION
+			m_localMatrixWriteCounts != nullptr &&
+#endif
+			m_parentIndices != nullptr && m_firstChildIndices != nullptr && m_nextSiblingIndices != nullptr &&
+			m_indexStack != nullptr && m_skinningMatricesSpans != nullptr && m_meshRendererComponents != nullptr &&
+			m_meshRendererComponentOwners != nullptr && m_meshRendererComponentIndexByObject != nullptr &&
+			m_colliderComponents != nullptr && m_colliderComponentOwners != nullptr &&
+			m_colliderComponentIndexByObject != nullptr && m_healthComponents != nullptr &&
+			m_healthComponentOwners != nullptr && m_healthComponentIndexByObject != nullptr &&
+			(!hasCapacityForBehaviors || m_behaviorBlocks != nullptr) && m_freeBehaviorBlockIndices != nullptr &&
+			m_behaviorRecords != nullptr;
 		if (!hasAllBuffers)
 		{
 			FANG_LOG_ERROR(Scene, "Scene の入れ物を確保できなかった");
@@ -124,6 +132,9 @@ namespace fang
 			DeleteArray(allocator, m_nextSiblingIndices, desc.maxObjectCount);
 			DeleteArray(allocator, m_firstChildIndices, desc.maxObjectCount);
 			DeleteArray(allocator, m_parentIndices, desc.maxObjectCount);
+#if FANG_ENABLE_SCENE_VALIDATION
+			DeleteArray(allocator, m_localMatrixWriteCounts, desc.maxObjectCount);
+#endif
 			DeleteArray(allocator, m_worldMatrices, desc.maxObjectCount);
 			DeleteArray(allocator, m_localMatrices, desc.maxObjectCount);
 			DeleteArray(allocator, m_pendingDestroyIndices, desc.maxObjectCount);
@@ -149,13 +160,16 @@ namespace fang
 			m_nextSiblingIndices                 = nullptr;
 			m_firstChildIndices                  = nullptr;
 			m_parentIndices                      = nullptr;
-			m_worldMatrices                      = nullptr;
-			m_localMatrices                      = nullptr;
-			m_pendingDestroyIndices              = nullptr;
-			m_freeIndices                        = nullptr;
-			m_pendingDestroy                     = nullptr;
-			m_isActive                           = nullptr;
-			m_generations                        = nullptr;
+#if FANG_ENABLE_SCENE_VALIDATION
+			m_localMatrixWriteCounts = nullptr;
+#endif
+			m_worldMatrices         = nullptr;
+			m_localMatrices         = nullptr;
+			m_pendingDestroyIndices = nullptr;
+			m_freeIndices           = nullptr;
+			m_pendingDestroy        = nullptr;
+			m_isActive              = nullptr;
+			m_generations           = nullptr;
 			return false;
 		}
 
@@ -226,6 +240,9 @@ namespace fang
 		DeleteArray(*m_allocator, m_nextSiblingIndices, m_maxObjectCount);
 		DeleteArray(*m_allocator, m_firstChildIndices, m_maxObjectCount);
 		DeleteArray(*m_allocator, m_parentIndices, m_maxObjectCount);
+#if FANG_ENABLE_SCENE_VALIDATION
+		DeleteArray(*m_allocator, m_localMatrixWriteCounts, m_maxObjectCount);
+#endif
 		DeleteArray(*m_allocator, m_worldMatrices, m_maxObjectCount);
 		DeleteArray(*m_allocator, m_localMatrices, m_maxObjectCount);
 		DeleteArray(*m_allocator, m_pendingDestroyIndices, m_maxObjectCount);
@@ -251,13 +268,16 @@ namespace fang
 		m_nextSiblingIndices                 = nullptr;
 		m_firstChildIndices                  = nullptr;
 		m_parentIndices                      = nullptr;
-		m_worldMatrices                      = nullptr;
-		m_localMatrices                      = nullptr;
-		m_pendingDestroyIndices              = nullptr;
-		m_freeIndices                        = nullptr;
-		m_pendingDestroy                     = nullptr;
-		m_isActive                           = nullptr;
-		m_generations                        = nullptr;
+#if FANG_ENABLE_SCENE_VALIDATION
+		m_localMatrixWriteCounts = nullptr;
+#endif
+		m_worldMatrices         = nullptr;
+		m_localMatrices         = nullptr;
+		m_pendingDestroyIndices = nullptr;
+		m_freeIndices           = nullptr;
+		m_pendingDestroy        = nullptr;
+		m_isActive              = nullptr;
+		m_generations           = nullptr;
 
 		m_maxObjectCount             = 0;
 		m_freeIndexCount             = 0;
@@ -268,7 +288,10 @@ namespace fang
 		m_freeBehaviorBlockCount     = 0;
 		m_behaviorRecordCount        = 0;
 		m_maxBehaviorCount           = 0;
-		m_allocator                  = nullptr;
+#if FANG_ENABLE_SCENE_VALIDATION
+		m_duplicateTransformWriteCount = 0;
+#endif
+		m_allocator = nullptr;
 	}
 
 
@@ -411,6 +434,28 @@ namespace fang
 				++stackTop;
 			}
 		}
+
+#if FANG_ENABLE_SCENE_VALIDATION
+		// 6. Transform の書き手が 1 人だけだったかを数え直す。
+		//    窓は「前回のこの判定〜今回のこの判定」= 1 フレーム丸ごと。Update の外（MinionSpawner や Stage の
+		//    ロード時配置）で書いた分もこの窓に入るよう、入口ではなく末尾で判定してから 0 に戻す。
+		m_duplicateTransformWriteCount = 0;
+		for (uint32_t index = 0; index < m_maxObjectCount; ++index)
+		{
+			const uint8_t writeCount = m_localMatrixWriteCounts[index];
+			if (writeCount >= 2)
+			{
+				++m_duplicateTransformWriteCount;
+				FANG_LOG_WARNING(
+					Scene,
+					"オブジェクト {} の Transform をこのフレームに {} 回書いた。書けるのは 1 人だけ",
+					index,
+					writeCount
+				);
+			}
+		}
+		std::memset(m_localMatrixWriteCounts, 0, m_maxObjectCount);
+#endif
 	}
 
 
@@ -422,6 +467,14 @@ namespace fang
 		}
 
 		m_localMatrices[handle.index] = localMatrix;
+
+#if FANG_ENABLE_SCENE_VALIDATION
+		if (m_localMatrixWriteCounts[handle.index] < 255)
+		{
+			++m_localMatrixWriteCounts[handle.index];
+		}
+#endif
+
 		return true;
 	}
 
@@ -663,6 +716,19 @@ namespace fang
 		const uint32_t denseIndex = m_healthComponentIndexByObject[handle.index];
 		return (denseIndex == GameObjectHandle::INVALID_INDEX) ? nullptr : &m_healthComponents[denseIndex];
 	}
+
+
+#if FANG_ENABLE_SCENE_VALIDATION
+	uint32_t Scene::GetTransformWriteCount(GameObjectHandle handle) const
+	{
+		if (!IsValid(handle))
+		{
+			return 0;
+		}
+
+		return m_localMatrixWriteCounts[handle.index];
+	}
+#endif
 
 
 	GameObjectHandle Scene::GetHandleFromIndex(uint32_t index) const
