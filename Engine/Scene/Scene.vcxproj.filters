@@ -8,6 +8,7 @@
     <ClInclude Include="ActorHandle.h" />
     <ClInclude Include="CharacterBase.h" />
     <ClInclude Include="CharacterController.h" />
+    <ClInclude Include="CharacterDesc.h" />
     <ClInclude Include="ComponentTypes.h" />
     <ClInclude Include="MeleeSwing.h" />
     <ClInclude Include="Pch.h" />
@@ -18,6 +19,7 @@
     <ClCompile Include="Actor.cpp" />
     <ClCompile Include="CharacterBase.cpp" />
     <ClCompile Include="CharacterController.cpp" />
+    <ClCompile Include="CharacterDesc.cpp" />
     <ClCompile Include="ComponentTypes.cpp" />
     <ClCompile Include="MeleeSwing.cpp" />
     <ClCompile Include="Pch.cpp" />
