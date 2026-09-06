@@ -33,6 +33,7 @@
     <ClInclude Include="CharacterController.h" />
     <ClInclude Include="CharacterDesc.h" />
     <ClInclude Include="ComponentTypes.h" />
+    <ClInclude Include="ItemDrop.h" />
     <ClInclude Include="LevelGrowth.h" />
     <ClInclude Include="MeleeSwing.h" />
     <ClInclude Include="Pch.h" />
@@ -46,6 +47,7 @@
     <ClCompile Include="CharacterController.cpp" />
     <ClCompile Include="CharacterDesc.cpp" />
     <ClCompile Include="ComponentTypes.cpp" />
+    <ClCompile Include="ItemDrop.cpp" />
     <ClCompile Include="LevelGrowth.cpp" />
     <ClCompile Include="MeleeSwing.cpp" />
     <ClCompile Include="Pch.cpp">
