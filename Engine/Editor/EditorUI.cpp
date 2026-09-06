@@ -138,6 +138,12 @@ namespace fang::editor
 			return false;
 		}
 
+		if (!m_tuningPanel.Initialize())
+		{
+			FANG_LOG_ERROR(Editor, "調整値のパネルを作れなかった");
+			return false;
+		}
+
 #if FANG_ENABLE_HOT_RELOAD
 		if (!m_shaderReloadPanel.Initialize(context.shaderReloadStatus))
 		{
@@ -163,6 +169,7 @@ namespace fang::editor
 		m_shaderReloadPanel.Shutdown();
 #endif
 
+		m_tuningPanel.Shutdown();
 		m_renderStatisticsPanel.Shutdown();
 		m_jobSystemPanel.Shutdown();
 		m_budgetPanel.Shutdown();
@@ -191,6 +198,7 @@ namespace fang::editor
 		m_jobSystemPanel.BuildFrame(deltaTimeSeconds, m_framePipeline->GetFrameIndex());
 		m_renderStatisticsPanel.BuildFrame(deltaTimeSeconds, renderStatistics);
 		m_budgetPanel.BuildFrame();
+		m_tuningPanel.BuildFrame();
 
 #if FANG_ENABLE_HOT_RELOAD
 		m_shaderReloadPanel.BuildFrame();
