@@ -254,6 +254,141 @@ TEST_CASE("ItemDrop: つまみが寿命0・上限0・割合0でも落ちず無�
 }
 
 
+TEST_CASE("IsItemReadyForPickup: 待ち0.5秒・寿命15秒で29周はfalse、30周でtrueになる")
+{
+	fang::ItemDropParameter parameter;
+	parameter.lifetimeSeconds    = 15.0f;
+	parameter.pickupDelaySeconds = 0.5f;
+
+	std::array<float, 1> remainingSeconds{ parameter.lifetimeSeconds };
+
+	uint32_t readyFrame = 0;
+	for (uint32_t frame = 1; frame <= 60; ++frame)
+	{
+		(void)fang::StepItemLifetimes(remainingSeconds, 1.0f / 60.0f);
+		if (fang::IsItemReadyForPickup(parameter, remainingSeconds[0]))
+		{
+			readyFrame = frame;
+			break;
+		}
+	}
+
+	CHECK(readyFrame >= 30);
+}
+
+
+TEST_CASE("IsItemReadyForPickup: 待ち0なら1周目でtrue(今より悪化しない)")
+{
+	fang::ItemDropParameter parameter;
+	parameter.lifetimeSeconds    = 15.0f;
+	parameter.pickupDelaySeconds = 0.0f;
+
+	std::array<float, 1> remainingSeconds{ parameter.lifetimeSeconds };
+	(void)fang::StepItemLifetimes(remainingSeconds, 1.0f / 60.0f);
+
+	CHECK(fang::IsItemReadyForPickup(parameter, remainingSeconds[0]));
+}
+
+
+TEST_CASE("IsItemReadyForPickup: 待ちが寿命より大きいと一度もtrueにならず寿命で消える(無限ループしない)")
+{
+	fang::ItemDropParameter parameter;
+	parameter.lifetimeSeconds    = 15.0f;
+	parameter.pickupDelaySeconds = 20.0f;
+
+	std::array<float, 1> remainingSeconds{ parameter.lifetimeSeconds };
+
+	bool everReady = false;
+	for (uint32_t frame = 0; frame < 15 * 60 + 5; ++frame)
+	{
+		const uint32_t expiredMask = fang::StepItemLifetimes(remainingSeconds, 1.0f / 60.0f);
+		if (fang::IsItemReadyForPickup(parameter, remainingSeconds[0]))
+		{
+			everReady = true;
+		}
+		if (expiredMask != 0)
+		{
+			break;
+		}
+	}
+
+	CHECK_FALSE(everReady);
+	CHECK(remainingSeconds[0] == doctest::Approx(0.0f));
+}
+
+
+TEST_CASE("IsItemReadyForPickup: 空き席(残り0)は常にfalse")
+{
+	fang::ItemDropParameter parameter;
+	CHECK_FALSE(fang::IsItemReadyForPickup(parameter, 0.0f));
+}
+
+
+TEST_CASE("ComputeItemDisplayMatrix: 浮かせる高さぶんだけYが上がり、XZは接地位置のまま")
+{
+	fang::ItemDropParameter parameter;
+	parameter.hoverHeightCentimeters = 30.0f;
+
+	const fang::Vector3   ground{ 10.0f, 5.0f, -3.0f };
+	const fang::Matrix4x4 matrix = fang::ComputeItemDisplayMatrix(parameter, ground, 0.0);
+
+	CHECK(matrix.m[3][0] == doctest::Approx(10.0f));
+	CHECK(matrix.m[3][1] == doctest::Approx(35.0f));
+	CHECK(matrix.m[3][2] == doctest::Approx(-3.0f));
+}
+
+
+TEST_CASE("ComputeItemDisplayMatrix: 高さ0なら地面にめり込まない(接地のまま)")
+{
+	fang::ItemDropParameter parameter;
+	parameter.hoverHeightCentimeters = 0.0f;
+
+	const fang::Vector3   ground{ 0.0f, 12.0f, 0.0f };
+	const fang::Matrix4x4 matrix = fang::ComputeItemDisplayMatrix(parameter, ground, 0.0);
+
+	CHECK(matrix.m[3][1] == doctest::Approx(12.0f));
+}
+
+
+TEST_CASE("ComputeItemDisplayMatrix: 経過0.25秒(毎秒1回転)で90度回る")
+{
+	fang::ItemDropParameter parameter;
+	parameter.rotationsPerSecond = 1.0f;
+	parameter.displayScale       = 1.5f;
+
+	const fang::Matrix4x4 matrix = fang::ComputeItemDisplayMatrix(parameter, fang::Vector3{}, 0.25);
+
+	CHECK(matrix.m[0][0] == doctest::Approx(0.0f).epsilon(0.01));
+	CHECK(matrix.m[0][2] == doctest::Approx(1.5f));
+}
+
+
+TEST_CASE("ComputeItemDisplayMatrix: 見た目の倍率が回転前(経過0秒)の対角に掛かる")
+{
+	fang::ItemDropParameter parameter;
+	parameter.displayScale = 1.5f;
+
+	const fang::Matrix4x4 matrix = fang::ComputeItemDisplayMatrix(parameter, fang::Vector3{}, 0.0);
+
+	CHECK(matrix.m[0][0] == doctest::Approx(1.5f));
+	CHECK(matrix.m[2][2] == doctest::Approx(1.5f));
+}
+
+
+TEST_CASE("ComputeItemDisplayMatrix: 位相を積み上げないので0.5秒と1000.5秒で同じ行列になる")
+{
+	fang::ItemDropParameter parameter;
+
+	const fang::Matrix4x4 matrixEarly = fang::ComputeItemDisplayMatrix(parameter, fang::Vector3{}, 0.5);
+	const fang::Matrix4x4 matrixLate  = fang::ComputeItemDisplayMatrix(parameter, fang::Vector3{}, 1000.5);
+
+	CHECK(matrixEarly.m[0][0] == doctest::Approx(matrixLate.m[0][0]));
+	CHECK(matrixEarly.m[0][2] == doctest::Approx(matrixLate.m[0][2]));
+	CHECK(matrixEarly.m[2][0] == doctest::Approx(matrixLate.m[2][0]));
+	CHECK(matrixEarly.m[2][2] == doctest::Approx(matrixLate.m[2][2]));
+}
+
+
 TEST_CASE("ItemDrop: 1000体ぶんの撃破と8席の出し入れを回してもクラッシュせず値が壊れない")
 {
 	// ItemDropParameter / ItemBag はどちらも int32_t と float だけの POD で、この 3 関数はどれも

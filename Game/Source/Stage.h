@@ -33,6 +33,14 @@ namespace fang::game
 	struct StageModel
 	{
 		std::vector<rhi::TextureHandle> textures;
+
+		/**
+		 * @brief 専用アセットが無い物の見た目に貸す静的メッシュ(MarkerPyramid)。
+		 * @details ステージが読めない・名前のメッシュが無い・GPU へ載らない、のどれでも無効のまま。
+		 *          借りる側は無効なら見た目無しで動く(ADR-062)。寿命は MeshRenderer::Shutdown が持つ。
+		 */
+		MeshId placeholderMesh;
+		Aabb   placeholderLocalBounds;
 	};
 
 	/**

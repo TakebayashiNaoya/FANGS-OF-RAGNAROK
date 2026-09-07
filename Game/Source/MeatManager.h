@@ -20,14 +20,15 @@ namespace fang
 
 namespace fang::game
 {
-	struct WolfModel;
+	struct StageModel;
 
 	/**
-	 * @brief 場に出ている肉の席をまとめて持ち、寿命・回収・落下を進める係。
-	 * @details 肉に振る舞いは持たせない。8 席をまとめてここが見る。1 周の順は 寿命 ➡ 回収 ➡ 落下
+	 * @brief 場に出ている肉の席をまとめて持ち、寿命・回収・落下・姿勢を進める係。
+	 * @details 肉に振る舞いは持たせない。8 席をまとめてここが見る。1 周の順は 寿命 ➡ 回収 ➡ 落下 ➡ 姿勢
 	 *          （回収半径が牙の間合いより広いので、落下を先にすると倒したその周のうちに拾われて
 	 *          1 フレームも映らない）。距離の判定は席に写した位置で見る
-	 *          （Actor::GetWorldPosition は生成した周にはまだ原点を返すため）。
+	 *          （Actor::GetWorldPosition は生成した周にはまだ原点を返すため）。姿勢の段が全席の
+	 *          Transform を書く唯一の場所（ADR-041）。
 	 * @threading 更新ジョブ 1 本から。
 	 */
 	class MeatManager
@@ -39,15 +40,21 @@ namespace fang::game
 		/** @brief Game 側が持ち続ける資源への借用。 */
 		struct Dependencies
 		{
-			Scene*           scene       = nullptr;
-			const WolfModel* sharedModel = nullptr; /**< 肉のメッシュ。狼のモデルを縮めて流用する。 */
+			Scene* scene = nullptr;
+
+			/** @brief 借りるメッシュの持ち主。nullptr か placeholderMesh が無効なら、肉は見えないまま寿命と回収だけ動く。 */
+			const StageModel* stage = nullptr;
 
 			/** @brief 拾う側（今の操作対象）。全滅中は無効な Actor を指す。 */
 			const Actor* collector = nullptr;
 		};
 
+		/**
+		 * @param elapsedSeconds 起動からの絶対秒。回転の位相に使う(ADR-043)。
+		 */
 		void Update(
 			float                    deltaTimeSeconds,
+			double                   elapsedSeconds,
 			const ItemDropParameter& parameter,
 			WolfTeamItems*           teamItems,
 			const Dependencies&      dependencies
