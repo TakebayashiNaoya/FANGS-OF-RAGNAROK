@@ -48,6 +48,23 @@ namespace
 			fang::HeightmapTerrainDesc{ .totalWidth = 1000.0f, .totalDepth = 1000.0f, .heightScale = 100.0f }
 		));
 	}
+
+
+	/** @brief 狼の実寸の水平カプセル。中心線は体軸（X）、足元 position から地表 groundHeight ぶん持ち上げる。 */
+	fang::Capsule MakeWolfCapsule(const fang::Vector3& position, float groundHeight)
+	{
+		constexpr float CENTER_OFFSET_X     = 9.2f;   // ローカル箱 X の中心。
+		constexpr float CENTER_HEIGHT       = 53.1f;  // ローカル箱 Y の中心。
+		constexpr float RADIUS              = 18.15f; // Z の半幅。
+		constexpr float SEGMENT_HALF_LENGTH = 101.8f - RADIUS;
+
+		const float centerY = position.y + groundHeight + CENTER_HEIGHT;
+		return fang::Capsule{
+			.pointA = { position.x + CENTER_OFFSET_X - SEGMENT_HALF_LENGTH, centerY, position.z },
+			.pointB = { position.x + CENTER_OFFSET_X + SEGMENT_HALF_LENGTH, centerY, position.z },
+			.radius = RADIUS,
+		};
+	}
 } // namespace
 
 
@@ -176,4 +193,59 @@ TEST_CASE("CharacterBase: TurnFacingTowards は最大 maxStepRadians だけ向�
 TEST_CASE("CharacterBase: 大きさは CHARACTER_BASE_SIZE_LIMIT に収まる")
 {
 	CHECK(sizeof(fang::CharacterBase) <= fang::CHARACTER_BASE_SIZE_LIMIT);
+}
+
+
+TEST_CASE("CharacterBase: 接触しても足裏は地表に付いたまま")
+{
+	fang::HeightmapTerrain terrain;
+	BuildFlatTerrain(42.0f, &terrain);
+
+	fang::Scene scene;
+	CHECK(scene.Initialize(fang::HeapAllocator::GetInstance(), fang::SceneDesc{ .maxObjectCount = 4 }));
+
+	const fang::ActorHandle handle = scene.CreateObject();
+	const fang::Actor       actor(scene, handle);
+
+	fang::CollisionWorld world;
+	CHECK(world.Initialize(fang::HeapAllocator::GetInstance(), fang::CollisionWorldDesc{}));
+
+	constexpr uint32_t SELF_USER_INDEX  = 0;
+	constexpr uint32_t OTHER_USER_INDEX = 1;
+	constexpr float    SELF_GROUND      = 42.0f;
+	constexpr float    OTHER_GROUND     = SELF_GROUND + 20.0f; // 相手の中心を 20cm 高くする。
+
+	// 相手は自分と同じカプセルを +20cm（Z）へ置く。中心の距離は sqrt(20^2 + 20^2) = 28.284、
+	// 深さ = 半径の和(36.3) - 28.284 = 8.016、法線 y = 0.707。
+	const fang::ColliderProxy selfProxy{
+		.shape     = fang::MakeColliderShape(MakeWolfCapsule(fang::Vector3{}, SELF_GROUND)),
+		.userIndex = SELF_USER_INDEX,
+	};
+	const fang::ColliderProxy otherProxy{
+		.shape     = fang::MakeColliderShape(MakeWolfCapsule(fang::Vector3{ 0.0f, 0.0f, 20.0f }, OTHER_GROUND)),
+		.userIndex = OTHER_USER_INDEX,
+	};
+	const fang::ColliderProxy proxies[] = { selfProxy, otherProxy };
+	world.Update(proxies);
+	CHECK(world.GetContacts().size() >= 1);
+
+	TestCharacter character(
+		TestCharacter::GroundDependencies{ .collisionWorld = &world, .terrain = &terrain },
+		fang::Vector3{ 0.0f, 0.0f, 0.0f },
+		0.0f
+	);
+
+	character.MovePosition(fang::Vector3{}, SELF_USER_INDEX);
+	CHECK(character.GetPosition().y == doctest::Approx(0.0f));
+	// 押し出しは depth - PENETRATION_SKIN_CENTIMETERS = 8.016 - 0.5 = 7.516、向きは -Z。
+	CHECK(character.GetPosition().z == doctest::Approx(-7.51573f));
+
+	character.WriteTransform(actor);
+	scene.Update(0.0f);
+
+	// 16bit ハイトマップの量子化ぶんの誤差を許す（既存テストと同じ）。
+	CHECK(actor.GetWorldPosition().y == doctest::Approx(42.0f).epsilon(0.001));
+
+	world.Shutdown();
+	scene.Shutdown();
 }

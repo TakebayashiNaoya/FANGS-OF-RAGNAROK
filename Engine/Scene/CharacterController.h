@@ -21,7 +21,7 @@ namespace fang
 	 */
 	struct CharacterControllerState
 	{
-		Vector3 position;             /**< 足元のワールド座標。y は接地で決まる。 */
+		Vector3 position; /**< 足元のワールド座標。y は接地の前で常に 0。押し戻しは y を書かない（ADR-061）。 */
 		float   facingRadians = 0.0f; /**< 水平の向き。0 = +X（狼のモデルが向いている向き）。 */
 	};
 
@@ -32,7 +32,7 @@ namespace fang
 	 */
 	struct PenetrationSample
 	{
-		Vector3 normal;
+		Vector3 normal;       /**< 水平で長さ 1。縦は接地が決めるので押し戻しは縦を持たない（ADR-061）。 */
 		float   depth = 0.0f; /**< めり込みの深さ。0 以上。 */
 	};
 
@@ -53,6 +53,7 @@ namespace fang
 	 * @param userIndex  自分の登録番号。
 	 * @param outSamples 書き込み先。
 	 * @return 書いた件数。outSamples を使い切ったらそこで打ち切る。
+	 * @details 法線の縦成分を捨て、水平面で正規化する。水平成分が無ければ +X（自分が 1 つ目なら −X）。
 	 */
 	[[nodiscard]] uint32_t CollectPenetrations(
 		std::span<const Contact>     contacts,
@@ -82,8 +83,8 @@ namespace fang
 	/** @brief 接触を解いた後の位置と、実際に進めた量。 */
 	struct ContactMoveResult
 	{
-		Vector3 position;     /**< 押し出しと移動を反映した後。 */
-		Vector3 appliedDelta; /**< 壁へ食い込む成分を削った後の、実際に進んだ量。 */
+		Vector3 position;     /**< 押し出しと移動を反映した後。y は入力のまま動かない（ADR-061）。 */
+		Vector3 appliedDelta; /**< 壁へ食い込む成分を削った後の、実際に進んだ量。y は入力のまま動かない。 */
 	};
 
 	/**

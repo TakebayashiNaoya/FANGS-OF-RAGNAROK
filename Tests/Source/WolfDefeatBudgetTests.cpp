@@ -1,6 +1,6 @@
 ﻿/**
  * @file WolfDefeatBudgetTests.cpp
- * @brief 狼の被弾のヒープ確保と実機予算のテスト。32体の雑魚が狼を囲んで600フレーム振り続けても
+ * @brief 狼の被弾のヒープ確保と実機予算のテスト。32体の雑魚が狼を囲んで900フレーム振り続けても
  *        ヒープ確保が増えず、狼が撃破された後も落ちないこと、視線32本+牙33本(雑魚32+狼1)の掃引が
  *        実機予算の1割に収まる見込みを確かめる(EnemyDefeatBudgetTests と同じ流儀)。
  */
@@ -201,7 +201,7 @@ namespace
 } // namespace
 
 
-TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けてもヒープ確保が増えず、撃破後も落ちない")
+TEST_CASE("WolfDefeat: 32体が狼を囲んで900フレーム振り続けてもヒープ確保が増えず、撃破後も落ちない")
 {
 	CountingAllocator allocator;
 
@@ -281,7 +281,7 @@ TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けても�
 
 	const uint32_t allocationCountAfterSetup = allocator.GetAllocationCount();
 
-	for (int frame = 0; frame < 600; ++frame)
+	for (int frame = 0; frame < 900; ++frame)
 	{
 		constexpr float deltaTimeSeconds = 1.0f / 60.0f;
 
@@ -297,7 +297,10 @@ TEST_CASE("WolfDefeat: 32体が狼を囲んで600フレーム振り続けても�
 		world.Update(colliderProxies);
 	}
 
-	// 32体×攻撃力25、無敵0.5秒 ➡ 最短6秒(360フレーム)で倒れる計算(設計)。600フレームなら撃破される見込み。
+	// 32体×攻撃力25、無敵0.5秒 ➡ 最短6秒(360フレーム)で倒れる計算(設計)。
+	// 押し戻しを水平面だけで解くようにした後は、密集した雑魚どうしの押し合いがほどけるのに
+	// 数フレームかかるため実測711フレームで撃破される(ADR-061、狼どうしの接触で地面にめり込む設計.md)。
+	// 900フレームなら撃破される見込み。
 	CHECK_FALSE(scene.IsValid(wolf));
 
 	// 生きているオブジェクトは雑魚(最大32)だけ。狼が消えた分だけ減っている。

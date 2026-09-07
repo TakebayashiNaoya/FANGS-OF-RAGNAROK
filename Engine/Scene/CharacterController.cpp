@@ -21,6 +21,28 @@ namespace fang
 		/** @brief 進む向きを削り直す回数。1 周目で削った先が別の壁へ入ることがある。 */
 		constexpr int SLIDE_PASS_COUNT = 2;
 
+		/** @brief 水平成分が無い法線を倒す先。向きに意味は無く、決まっていることだけが要る。 */
+		constexpr Vector3 HORIZONTAL_FALLBACK_NORMAL{ 1.0f, 0.0f, 0.0f };
+
+
+		/**
+		 * @brief 接触の法線を水平面へ落として長さ 1 にする。
+		 * @details 押し戻しは水平面だけで解き、縦は接地が決める（ADR-061）。
+		 *          真上・真下からの接触は水平成分が 0 に近く、正規化すると発散する ➡ 既定の水平方向を返す。
+		 */
+		Vector3 MakeHorizontalNormal(const Vector3& normal)
+		{
+			const Vector3 horizontal{ normal.x, 0.0f, normal.z };
+
+			const float lengthSquared = LengthSquared(horizontal);
+			if (lengthSquared <= DEGENERATE_LENGTH_SQUARED)
+			{
+				return HORIZONTAL_FALLBACK_NORMAL;
+			}
+
+			return horizontal * (1.0f / std::sqrt(lengthSquared));
+		}
+
 
 		/** @brief 角度を -π 〜 π へ畳む。 */
 		float WrapRadians(float radians)
@@ -61,8 +83,11 @@ namespace fang
 			}
 
 			// 法線は 1 つ目から 2 つ目へ押す向き ➡ 自分が 1 つ目なら反転すると「自分を外へ出す向き」になる。
+			// 縦成分は捨てる。縦は接地の持ち物で、押し戻しが書いてよいのは水平だけ（ADR-061）。
+			const Vector3 outward = MakeHorizontalNormal(contact.normal);
+
 			outSamples[writtenCount] = PenetrationSample{
-				.normal = isFirst ? -contact.normal : contact.normal,
+				.normal = isFirst ? -outward : outward,
 				.depth  = contact.depth,
 			};
 			++writtenCount;
