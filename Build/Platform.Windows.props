@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Platform.Windows.props
+  Debug / Preview / Release（Win32 デスクトップ）。
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <FangPlatformDefines>FANG_PLATFORM_WINDOWS=1;FANG_PLATFORM_UWP=0;FANG_TARGET_XBOX=0;WIN32_LEAN_AND_MEAN;NOMINMAX;UNICODE;_UNICODE</FangPlatformDefines>
+  </PropertyGroup>
+
+</Project>

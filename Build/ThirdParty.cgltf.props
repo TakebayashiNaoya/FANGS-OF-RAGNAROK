@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ThirdParty.cgltf.props
+  cgltf（単一ヘッダ、MIT）。上流のファイルをそのまま置く。
+  実装は CGLTF_IMPLEMENTATION を定義した TU 1 本に閉じる（Resource\CgltfImplementation.cpp）。
+  /W4 /WX は緩めない。上流の警告はその TU が #pragma warning(push, 0) で囲んで抑える。
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(FangRoot)ThirdParty\cgltf;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+</Project>

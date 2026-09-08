@@ -1,0 +1,80 @@
+# ---- ビルド出力 ----
+/Bin/
+/Intermediate/
+
+# ---- Visual Studio ----
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.VC.opendb
+ipch/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.psess
+*.vsp
+*.vspx
+*.sap
+*.e2e
+*.binlog
+enc_temp_folder/
+
+# ---- コンパイル・リンクの生成物（出力先以外に出た場合の保険）----
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.ilk
+*.idb
+*.exp
+*.tlog
+*.lastbuildstate
+*.recipe
+*.FileListAbsolute.txt
+
+# ---- シェーダー ----
+# コンパイル済みシェーダー（実行時 / ビルド時生成）
+ShaderCache/
+*.cso
+
+# ---- 実行時生成 ----
+# ImGui がウィンドウ配置を書き出す
+imgui.ini
+Logs/
+SaveData/
+Screenshots/
+
+# ---- UWP パッケージ（署名鍵は秘密鍵なので厳禁）----
+*.pfx
+*.cer
+AppPackages/
+BundleArtifacts/
+Generated Files/
+*.appx
+*.msix
+*.appxsym
+*.msixsym
+
+# ---- ツール・スクリプト ----
+__pycache__/
+*.pyc
+*.nvuser
+
+# ---- OS ----
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# ---- 一時ファイル ----
+*.tmp
+*.bak
+*.swp
+*~
+~$*

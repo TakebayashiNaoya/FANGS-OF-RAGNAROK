@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ThirdParty.ozz.props
+  ozz-animation（MIT）を使う側の設定。Import するのは Animation だけ。
+  ozz の型は Animation の外へ出さないので、ほかのモジュールはこの props を Import しない。
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <ItemGroup>
+    <ProjectReference Include="$(FangRoot)ThirdParty\ozz\ozz.vcxproj" />
+  </ItemGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(FangRoot)ThirdParty\ozz\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+</Project>

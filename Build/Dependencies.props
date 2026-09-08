@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Dependencies.props
+  $(FangModuleDependencies)（例: Core;RHI）から、参照先モジュールのプロジェクト参照を作る。
+  依存を .vcxproj 側に 1 行で書けるようにするため。
+  include パスは Engine\ 1 本なので、宣言していないモジュールも include だけは通ってしまう。
+  依存漏れはリンク時（未解決の外部シンボル）に出る。
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <ItemGroup>
+    <FangDependency Include="$(FangModuleDependencies)" />
+    <ProjectReference Include="@(FangDependency->'$(FangRoot)Engine\%(Identity)\%(Identity).vcxproj')" />
+  </ItemGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <!-- include は "Core/Log/Log.h" のようにモジュール名から書くので、通すのは Engine\ だけでよい -->
+      <AdditionalIncludeDirectories>$(FangRoot)Engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+</Project>

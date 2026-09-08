@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Program.props
+  exe（Game / GameUWP / Tests / AssetBuilder）の共通設定。
+  ソースは Source\ 以下をワイルドカードで拾う。PCH は使わない（TU が少ないため）。
+  Microsoft.Cpp.props より前に Import すること。
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+  </PropertyGroup>
+
+  <Import Project="$(FangRoot)Build\Dependencies.props" />
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\Source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+</Project>
