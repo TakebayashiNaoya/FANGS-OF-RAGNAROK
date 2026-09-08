@@ -1,0 +1,74 @@
+# デスクトップ (x64) のビルドとテスト。
+# Xbox 構成 (DebugXbox / PreviewXbox / ReleaseXbox) は GDK が NDA 配布で公開ランナーに置けないため扱わない。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 同じブランチへ続けて push したときは古い実行を打ち切る。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # ローカルは Visual Studio 18 の v145 だが、ホストランナーには入っていない。
+  # ランナー側のツールセットへ切り替える。
+  # ローカルとコンパイラが違うため、/W4 + TreatWarningAsError で警告差分が出ることがある。
+  FANG_TOOLSET: v143
+  # ローカルの Visual Studio 18 同梱版に合わせて固定する。
+  # バージョンが違うと整形結果が変わり、整形済みのコードでも失敗する。
+  FANG_CLANG_FORMAT_VERSION: 22.1.3
+
+jobs:
+  verify:
+    name: 整形とプロジェクトファイルの検証
+    # 開発機と同じ土俵で見たいので Windows で動かす。
+    # 改行は .gitattributes の eol=crlf でどの OS でも CRLF になるため、そこは理由ではない。
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: clang-format を導入
+        run: pip install "clang-format==${{ env.FANG_CLANG_FORMAT_VERSION }}"
+
+      - name: 整形を検証
+        shell: bash
+        run: |
+          # ThirdParty は上流のまま置くので対象外。
+          git ls-files -z 'Engine/*.h' 'Engine/*.cpp' 'Tests/*.h' 'Tests/*.cpp' \
+            | xargs -0 clang-format --dry-run --Werror
+
+      # .vcxproj のファイル一覧は生成物。ディスクの中身とずれていたら 1 が返る。
+      - name: プロジェクトファイルの一覧を検証
+        run: python Tools/GenerateProjectFiles.py --check
+
+  build:
+    name: ビルド・テスト (${{ matrix.configuration }})
+    runs-on: windows-latest
+    strategy:
+      # 片方が落ちても、もう片方の結果を最後まで見たい。
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Preview, Release]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: ビルド
+        run: >
+          msbuild FangsOfRagnarok.sln
+          -p:Configuration=${{ matrix.configuration }}
+          -p:Platform=x64
+          -p:PlatformToolset=${{ env.FANG_TOOLSET }}
+          -m -nologo -v:m
+
+      # doctest は失敗した数を終了コードで返すので、そのままステップの成否になる。
+      - name: テスト
+        run: .\Bin\x64\${{ matrix.configuration }}\Tests.exe
