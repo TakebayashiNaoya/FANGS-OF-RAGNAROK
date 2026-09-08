@@ -25,6 +25,6 @@ Build/    全プロジェクト共通のビルド設定(.props)
 |---|---|
 | Debug | 開発用。アサート・ログ・エディタ入り |
 | Preview | 最適化あり + エディタ入り |
-| Release | 出荷相当 |
+| Release | リリース相当 |
 
 Xbox(UWP)向けは `DebugXbox` / `PreviewXbox` / `ReleaseXbox` を使う。
