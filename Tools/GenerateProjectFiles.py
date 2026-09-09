@@ -17,6 +17,13 @@ import os
 import sys
 import uuid
 
+# 出力を UTF-8 に固定する。
+# Windows の Python は端末の文字コードをそのまま使うので、日本語を含む行が
+# cp1252 の環境（GitHub Actions のランナー）で UnicodeEncodeError になる。
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
 
 ROOT_DIRECTORY = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
