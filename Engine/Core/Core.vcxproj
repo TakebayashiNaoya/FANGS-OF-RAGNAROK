@@ -32,6 +32,9 @@
     <ClInclude Include="Log\Assert.h" />
     <ClInclude Include="Log\Log.h" />
     <ClInclude Include="Log\PlatformLogSink.h" />
+    <ClInclude Include="Memory\Allocator.h" />
+    <ClInclude Include="Memory\HeapAllocator.h" />
+    <ClInclude Include="Memory\New.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Pch.cpp">
@@ -39,6 +42,9 @@
     </ClCompile>
     <ClCompile Include="Log\Assert.cpp" />
     <ClCompile Include="Log\Log.cpp" />
+    <ClCompile Include="Memory\Allocator.cpp" />
+    <ClCompile Include="Memory\HeapAllocator.cpp" />
+    <ClCompile Include="Memory\New.cpp" />
     <ClCompile Include="Windows\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Xbox\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' == 'true'" />
   </ItemGroup>

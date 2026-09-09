@@ -10,7 +10,13 @@
     <ClCompile Include="Source\CoreMacrosTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\HeapAllocatorTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Main.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\NewTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
