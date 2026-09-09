@@ -56,7 +56,7 @@ TEST_CASE("確保ヘッダは利用者ポインタの直前にある")
 	const fang::AllocationHeader& header = fang::ReadAllocationHeader(memory);
 	CHECK(header.allocator == &heap);
 	CHECK(header.size == 48);
-	CHECK(header.magic == fang::ALLOCATION_HEADER_MAGIC);
+	CHECK(fang::IsAllocationHeaderMagic(header.magic));
 
 	// 境界 64 では前置きが 64 まで伸びる。ヘッダはその末尾 16 バイトを使う。
 	CHECK(header.offsetToBlock == 64);
@@ -66,11 +66,17 @@ TEST_CASE("確保ヘッダは利用者ポインタの直前にある")
 }
 
 
-TEST_CASE("境界 16 では詰め物が出ない")
+TEST_CASE("前置きは境界の倍数で、確保ヘッダが必ず収まる")
 {
-	CHECK(fang::GetAllocationPrefixSize(16) == 16);
-	CHECK(fang::GetAllocationPrefixSize(32) == 32);
-	CHECK(fang::GetAllocationPrefixSize(64) == 64);
+	// 追跡を入れた構成では確保ヘッダの手前に追跡記録も並ぶので、実際の大きさは構成で変わる。
+	// 構成によらず守られるのはこの 2 つ。値そのものは MemoryLeakTests で見る。
+	const size_t alignments[] = { 16, 32, 64, 256, 4096 };
+	for (const size_t alignment : alignments)
+	{
+		const size_t prefixSize = fang::GetAllocationPrefixSize(alignment);
+		CHECK((prefixSize % alignment) == 0);
+		CHECK(prefixSize >= sizeof(fang::AllocationHeader));
+	}
 }
 
 

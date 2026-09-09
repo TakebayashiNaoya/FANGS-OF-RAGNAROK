@@ -9,6 +9,7 @@
 #include "Core/Memory/New.h"
 #include "Core/Log/PlatformLogSink.h"
 #include "Core/Memory/HeapAllocator.h"
+#include <intrin.h>
 #include <cstdio>
 #include <cstdlib>
 
@@ -60,28 +61,75 @@ namespace
 	}
 
 
-	/** @brief 既定のヒープから確保する。できなければ止める。 */
-	[[nodiscard]] void* AllocateFromDefaultHeapOrStop(size_t size, size_t alignment)
+	/**
+	 * @brief 名指ししたアロケータから確保して、呼び出し元を控える。できなければ止める。
+	 * @param location 配置形の new が既定引数で受け取った呼び出し元。
+	 */
+	[[nodiscard]] void* AllocateAtSiteOrStop(
+		fang::IAllocator&           allocator,
+		size_t                      size,
+		size_t                      alignment,
+		const std::source_location& location
+	)
 	{
-		return AllocateOrStop(fang::HeapAllocator::GetInstance(), size, alignment);
+		void* memory = AllocateOrStop(allocator, size, alignment);
+
+#if FANG_ENABLE_MEMORY_TRACKING
+		fang::SetAllocationSite(memory, location.file_name(), static_cast<uint32_t>(location.line()));
+#else
+		FANG_UNUSED(location);
+#endif
+
+		return memory;
+	}
+
+
+	/**
+	 * @brief 既定のヒープから確保して、呼び出し元を控える。できなければ止める。
+	 * @param returnAddress 呼ぶ側が _ReturnAddress() で取った値。
+	 *                      _ReturnAddress() は呼んだ関数の戻り番地を返すので、ここで取ると意味が変わる。
+	 *                      ➡引数で運ぶ。
+	 */
+	[[nodiscard]] void* AllocateFromDefaultHeapOrStop(size_t size, size_t alignment, const void* returnAddress)
+	{
+		void* memory = AllocateOrStop(fang::HeapAllocator::GetInstance(), size, alignment);
+
+#if FANG_ENABLE_MEMORY_TRACKING
+		fang::SetAllocationSite(memory, returnAddress);
+#else
+		FANG_UNUSED(returnAddress);
+#endif
+
+		return memory;
+	}
+
+
+	/** @brief 既定のヒープから確保して、呼び出し元を控える。失敗しても止めない（nothrow 形）。 */
+	[[nodiscard]] void* AllocateFromDefaultHeap(size_t size, size_t alignment, const void* returnAddress)
+	{
+		// nothrow の形は標準どおり nullptr を返す。止めるのは通常の形だけ。
+		void* memory = fang::HeapAllocator::GetInstance().Allocate(size, alignment);
+
+#if FANG_ENABLE_MEMORY_TRACKING
+		fang::SetAllocationSite(memory, returnAddress);
+#else
+		FANG_UNUSED(returnAddress);
+#endif
+
+		return memory;
 	}
 } // namespace
 
 
 void* operator new(size_t size, fang::IAllocator& allocator, std::source_location location)
 {
-	// 呼び出し元は追跡を入れる回で使う。今は捨てる。
-	FANG_UNUSED(location);
-
-	return AllocateOrStop(allocator, size, fang::IAllocator::DEFAULT_ALIGNMENT);
+	return AllocateAtSiteOrStop(allocator, size, fang::IAllocator::DEFAULT_ALIGNMENT, location);
 }
 
 
 void* operator new(size_t size, std::align_val_t alignment, fang::IAllocator& allocator, std::source_location location)
 {
-	FANG_UNUSED(location);
-
-	return AllocateOrStop(allocator, size, static_cast<size_t>(alignment));
+	return AllocateAtSiteOrStop(allocator, size, static_cast<size_t>(alignment), location);
 }
 
 
@@ -145,52 +193,54 @@ void operator delete[](
 
 // ここから下はグローバルの置き換え。アロケータを名指ししない確保は全部ここを通り、既定のヒープへ落ちる。
 
+// 以下の 8 つは互いに委譲しない。_ReturnAddress() は呼ばれた関数の戻り番地を返すので、
+// 1 段でも挟むと控えるのが利用者の行ではなく隣の operator new になる。
+
 void* operator new(size_t size)
 {
-	return AllocateFromDefaultHeapOrStop(size, fang::IAllocator::DEFAULT_ALIGNMENT);
+	return AllocateFromDefaultHeapOrStop(size, fang::IAllocator::DEFAULT_ALIGNMENT, _ReturnAddress());
 }
 
 
 void* operator new[](size_t size)
 {
-	return ::operator new(size);
+	return AllocateFromDefaultHeapOrStop(size, fang::IAllocator::DEFAULT_ALIGNMENT, _ReturnAddress());
 }
 
 
 void* operator new(size_t size, std::align_val_t alignment)
 {
-	return AllocateFromDefaultHeapOrStop(size, static_cast<size_t>(alignment));
+	return AllocateFromDefaultHeapOrStop(size, static_cast<size_t>(alignment), _ReturnAddress());
 }
 
 
 void* operator new[](size_t size, std::align_val_t alignment)
 {
-	return ::operator new(size, alignment);
+	return AllocateFromDefaultHeapOrStop(size, static_cast<size_t>(alignment), _ReturnAddress());
 }
 
 
 void* operator new(size_t size, const std::nothrow_t&) noexcept
 {
-	// nothrow の形は標準どおり nullptr を返す。止めるのは通常の形だけ。
-	return fang::HeapAllocator::GetInstance().Allocate(size, fang::IAllocator::DEFAULT_ALIGNMENT);
+	return AllocateFromDefaultHeap(size, fang::IAllocator::DEFAULT_ALIGNMENT, _ReturnAddress());
 }
 
 
-void* operator new[](size_t size, const std::nothrow_t& tag) noexcept
+void* operator new[](size_t size, const std::nothrow_t&) noexcept
 {
-	return ::operator new(size, tag);
+	return AllocateFromDefaultHeap(size, fang::IAllocator::DEFAULT_ALIGNMENT, _ReturnAddress());
 }
 
 
 void* operator new(size_t size, std::align_val_t alignment, const std::nothrow_t&) noexcept
 {
-	return fang::HeapAllocator::GetInstance().Allocate(size, static_cast<size_t>(alignment));
+	return AllocateFromDefaultHeap(size, static_cast<size_t>(alignment), _ReturnAddress());
 }
 
 
-void* operator new[](size_t size, std::align_val_t alignment, const std::nothrow_t& tag) noexcept
+void* operator new[](size_t size, std::align_val_t alignment, const std::nothrow_t&) noexcept
 {
-	return ::operator new(size, alignment, tag);
+	return AllocateFromDefaultHeap(size, static_cast<size_t>(alignment), _ReturnAddress());
 }
 
 

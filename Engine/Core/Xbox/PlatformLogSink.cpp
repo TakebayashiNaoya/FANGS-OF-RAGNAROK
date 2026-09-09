@@ -53,13 +53,19 @@ namespace fang
 	{
 		// OutputDebugStringA は null 終端が要るので詰め直す。
 		const std::string terminated(line);
-		::OutputDebugStringA(terminated.c_str());
+		WriteLogToPlatform(terminated.c_str());
+	}
+
+
+	void WriteLogToPlatform(const char* line)
+	{
+		::OutputDebugStringA(line);
 
 		// 関数ローカル static の初期化はスレッド安全。開けなければデバッガ出力だけになる。
 		static std::FILE* s_logFile = OpenStartupLog();
 		if (s_logFile != nullptr)
 		{
-			std::fputs(terminated.c_str(), s_logFile);
+			std::fputs(line, s_logFile);
 
 			// 直後に落ちても最後の行が残るよう、毎回フラッシュする。起動診断が目的なので速度より確実さ。
 			std::fflush(s_logFile);

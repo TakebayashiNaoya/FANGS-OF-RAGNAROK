@@ -77,8 +77,35 @@ namespace fang
 	};
 	static_assert(sizeof(AllocationHeader) == 16, "ヘッダは 16 バイトちょうどに収める");
 
-	/** @brief ヘッダが本物かを見分ける印。 */
+	/** @brief ヘッダが本物かを見分ける印。追跡記録は付いていない。 */
 	inline constexpr uint16_t ALLOCATION_HEADER_MAGIC = 0xFA16;
+
+	/** @brief 追跡記録が付いているブロックの印。 */
+	inline constexpr uint16_t ALLOCATION_HEADER_MAGIC_TRACKED = 0xFA17;
+
+	/** @brief どちらかの印かどうか。 */
+	[[nodiscard]] constexpr bool IsAllocationHeaderMagic(uint16_t magic)
+	{
+		return magic == ALLOCATION_HEADER_MAGIC || magic == ALLOCATION_HEADER_MAGIC_TRACKED;
+	}
+
+#if FANG_ENABLE_MEMORY_TRACKING
+	/**
+	 * @brief 確保 1 件の追跡記録。確保ヘッダのさらに手前に置く。
+	 * @details アロケータごとの双方向リストにつなぎ、壊すときに残っていればリークとして報告する。
+	 *          別に表を持たないのは、その表自身の確保が new を呼んで再帰するため。
+	 */
+	struct AllocationRecord
+	{
+		AllocationRecord* previous;      /**< 双方向リストの前。 */
+		AllocationRecord* next;          /**< 双方向リストの次。 */
+		const char*       fileName;      /**< new (allocator) で確保したときの呼び出し元。裸の new なら nullptr。 */
+		const void*       returnAddress; /**< 裸の new で確保したときの呼び出し元。名指しなら nullptr。 */
+		uint32_t          line;          /**< 呼び出し元の行。fileName が nullptr なら 0。 */
+		uint32_t          serialNumber;  /**< そのヒープで何件目の確保か。 */
+	};
+	static_assert(sizeof(AllocationRecord) == 40, "追跡記録は 40 バイトちょうどに収める");
+#endif
 
 	/** @brief 頼める境界の上限。ブロック先頭までの距離を 16 ビットに収めるため。 */
 	inline constexpr size_t MAXIMUM_ALLOCATION_ALIGNMENT = 32768;
@@ -88,11 +115,16 @@ namespace fang
 
 	/**
 	 * @brief ブロック先頭から利用者ポインタまでの距離。
-	 * @details ヘッダの大きさを境界の倍数へ切り上げた値。境界 16 なら 16 のまま。
+	 * @details 前置きに置くもの全部の大きさを、境界の倍数へ切り上げた値。
+	 *          追跡を入れた構成では確保ヘッダの手前に追跡記録も並ぶので、境界 16 でも 64 まで伸びる。
 	 */
 	[[nodiscard]] constexpr size_t GetAllocationPrefixSize(size_t alignment)
 	{
+#if FANG_ENABLE_MEMORY_TRACKING
+		return (sizeof(AllocationHeader) + sizeof(AllocationRecord) + alignment - 1) & ~(alignment - 1);
+#else
 		return (sizeof(AllocationHeader) + alignment - 1) & ~(alignment - 1);
+#endif
 	}
 
 	/**
@@ -101,9 +133,16 @@ namespace fang
 	 * @param allocator 取り出し元。Deallocate はここへ戻る。
 	 * @param size      利用者が頼んだバイト数。
 	 * @param alignment 利用者ポインタの境界。
+	 * @param hasRecord 追跡記録を付けたなら true。印が変わり、FindAllocationRecord が引けるようになる。
 	 * @threading 任意のスレッド。書き込むのは自分が取ったブロックの中だけ。
 	 */
-	[[nodiscard]] void* WriteAllocationHeader(void* block, IAllocator& allocator, size_t size, size_t alignment);
+	[[nodiscard]] void* WriteAllocationHeader(
+		void*       block,
+		IAllocator& allocator,
+		size_t      size,
+		size_t      alignment,
+		bool        hasRecord
+	);
 
 	/**
 	 * @brief 利用者ポインタの直前からヘッダを読む。
@@ -121,4 +160,29 @@ namespace fang
 	 * @threading 任意のスレッド。
 	 */
 	void ReturnToAllocator(void* userPointer);
+
+#if FANG_ENABLE_MEMORY_TRACKING
+	/**
+	 * @brief 利用者ポインタから追跡記録を引く。
+	 * @details 記録が付いていないブロックを渡したら nullptr を返す。印で見分ける。
+	 * @threading 任意のスレッド。
+	 */
+	[[nodiscard]] AllocationRecord* FindAllocationRecord(void* userPointer);
+
+	/**
+	 * @brief 確保 1 件に呼び出し元のファイルと行を書き込む。
+	 * @details 確保した直後に、呼び出し元を知っている層から呼ぶ。
+	 *          記録の中の自分の 1 件しか触らないので、リストの錠は要らない。
+	 *          記録が付いていないブロックを渡したら何もしない。
+	 * @threading 任意のスレッド。
+	 */
+	void SetAllocationSite(void* userPointer, const char* fileName, uint32_t line);
+
+	/**
+	 * @brief 確保 1 件に呼び出し元の戻り番地を書き込む。
+	 * @details 名指ししない裸の new から呼ぶ。ファイルと行は分からないので番地だけ残す。
+	 * @threading 任意のスレッド。
+	 */
+	void SetAllocationSite(void* userPointer, const void* returnAddress);
+#endif
 } // namespace fang

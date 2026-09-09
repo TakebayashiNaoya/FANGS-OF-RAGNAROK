@@ -47,6 +47,14 @@ namespace fang
 	 */
 	void ForEachHeap(void (*visitor)(HeapAllocator& heap, void* userData), void* userData);
 
+	/**
+	 * @brief 既定のヒープと、壊し忘れた名前付きヒープのリークを報告する。
+	 * @return リークの件数。
+	 * @details 終了処理の一番最後から呼ぶ。既定のヒープは静的な物の破棄と混ざるので、止めずに警告だけ出す。
+	 * @threading 任意のスレッド。
+	 */
+	uint64_t ReportAllHeapLeaks();
+
 
 	/**
 	 * @brief 名前を持つ汎用ヒープ。
@@ -75,6 +83,14 @@ namespace fang
 
 		[[nodiscard]] AllocatorStatistics GetStatistics() const override;
 
+		/**
+		 * @brief まだ返っていない確保を報告する。
+		 * @return リークの件数。
+		 * @details 追跡を入れていない構成では、生きている件数だけを報告して呼び出し元は分からない。
+		 * @threading 任意のスレッド。回っている間はそのヒープの確保を止める。
+		 */
+		[[nodiscard]] uint64_t ReportLeaks() const;
+
 
 	private:
 		/**
@@ -92,6 +108,14 @@ namespace fang
 		/** @brief 使用量の最高水位を上げる。他のスレッドがもっと高い水位を書いていたらそちらを残す。 */
 		void UpdatePeakBytes(uint64_t usedBytes);
 
+#if FANG_ENABLE_MEMORY_TRACKING
+		/** @brief 追跡記録を生存リストの先頭へつなぐ。 */
+		void LinkAllocationRecord(AllocationRecord* record);
+
+		/** @brief 追跡記録を生存リストから外す。 */
+		void UnlinkAllocationRecord(AllocationRecord* record);
+#endif
+
 
 	private:
 		const char*    m_name;               /**< 人が読む名前。 */
@@ -101,6 +125,13 @@ namespace fang
 		std::atomic<uint64_t> m_peakBytes            = 0; /**< 使用量の最高水位。 */
 		std::atomic<uint64_t> m_liveAllocationCount  = 0; /**< 今生きている件数。 */
 		std::atomic<uint64_t> m_totalAllocationCount = 0; /**< 起動からの累計。 */
+
+#if FANG_ENABLE_MEMORY_TRACKING
+		AllocationRecord* m_liveListHead = nullptr; /**< まだ返っていない確保の双方向リスト。 */
+
+		/** @brief 生存リストを触る間の錠。ReportLeaks は const なので mutable にしてある。 */
+		mutable std::atomic_flag m_liveListLock{};
+#endif
 
 		friend HeapAllocator& CreateHeap(const char* name);
 		friend void           DestroyHeap(HeapAllocator& heap);

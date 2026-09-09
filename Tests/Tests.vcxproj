@@ -34,6 +34,7 @@
     <ClCompile Include="Source\CoreMacrosTests.cpp" />
     <ClCompile Include="Source\HeapAllocatorTests.cpp" />
     <ClCompile Include="Source\Main.cpp" />
+    <ClCompile Include="Source\MemoryLeakTests.cpp" />
     <ClCompile Include="Source\NewTests.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->

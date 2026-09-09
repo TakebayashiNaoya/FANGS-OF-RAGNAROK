@@ -16,6 +16,9 @@
     <ClCompile Include="Source\Main.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="Source\MemoryLeakTests.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
     <ClCompile Include="Source\NewTests.cpp">
       <Filter>Source</Filter>
     </ClCompile>
