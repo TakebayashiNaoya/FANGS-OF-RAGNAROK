@@ -35,6 +35,7 @@
     <ClInclude Include="Memory\Allocator.h" />
     <ClInclude Include="Memory\HeapAllocator.h" />
     <ClInclude Include="Memory\New.h" />
+    <ClInclude Include="Platform\Thread.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Pch.cpp">
@@ -46,7 +47,9 @@
     <ClCompile Include="Memory\HeapAllocator.cpp" />
     <ClCompile Include="Memory\New.cpp" />
     <ClCompile Include="Windows\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' != 'true'" />
+    <ClCompile Include="Windows\Thread.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Xbox\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' == 'true'" />
+    <ClCompile Include="Xbox\Thread.cpp" Condition="'$(FangIsXbox)' == 'true'" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 

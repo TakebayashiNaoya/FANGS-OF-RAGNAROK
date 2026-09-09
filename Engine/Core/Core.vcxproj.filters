@@ -8,6 +8,9 @@
     <Filter Include="Memory">
       <UniqueIdentifier>{58048B6A-1DFE-FE0C-EC79-0A2C552BA159}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Platform">
+      <UniqueIdentifier>{1AF1CC7D-074F-0F72-515B-765610B2536A}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Windows">
       <UniqueIdentifier>{19C5FCE6-0536-1AA4-7EBB-59879FAD8342}</UniqueIdentifier>
     </Filter>
@@ -37,6 +40,9 @@
     <ClInclude Include="Memory\New.h">
       <Filter>Memory</Filter>
     </ClInclude>
+    <ClInclude Include="Platform\Thread.h">
+      <Filter>Platform</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Pch.cpp" />
@@ -58,7 +64,13 @@
     <ClCompile Include="Windows\PlatformLogSink.cpp">
       <Filter>Windows</Filter>
     </ClCompile>
+    <ClCompile Include="Windows\Thread.cpp">
+      <Filter>Windows</Filter>
+    </ClCompile>
     <ClCompile Include="Xbox\PlatformLogSink.cpp">
+      <Filter>Xbox</Filter>
+    </ClCompile>
+    <ClCompile Include="Xbox\Thread.cpp">
       <Filter>Xbox</Filter>
     </ClCompile>
   </ItemGroup>
