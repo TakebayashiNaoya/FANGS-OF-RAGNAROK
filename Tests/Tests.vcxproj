@@ -32,7 +32,10 @@
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
     <ClCompile Include="Source\CoreMacrosTests.cpp" />
+    <ClCompile Include="Source\HeapAllocatorTests.cpp" />
     <ClCompile Include="Source\Main.cpp" />
+    <ClCompile Include="Source\MemoryLeakTests.cpp" />
+    <ClCompile Include="Source\NewTests.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 

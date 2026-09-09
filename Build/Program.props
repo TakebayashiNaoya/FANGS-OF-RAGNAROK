@@ -18,6 +18,12 @@
       <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\Source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <Link>
+      <!-- グローバルの new / delete を置き換えている翻訳単位を、参照の有無に関係なくリンクへ取り込む。
+           取り込まれないと CRT のものが黙って使われ、統計も実行中の確保の検査も静かに嘘になる。
+           x64 の C シンボルは装飾が付かないので名前をそのまま書ける。 -->
+      <AdditionalOptions>/INCLUDE:FangGlobalNewAnchor %(AdditionalOptions)</AdditionalOptions>
+    </Link>
   </ItemDefinitionGroup>
 
 </Project>

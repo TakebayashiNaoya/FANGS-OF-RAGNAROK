@@ -14,6 +14,12 @@ namespace fang
 	{
 		// OutputDebugStringA は null 終端が要るので詰め直す。
 		const std::string terminated(line);
-		::OutputDebugStringA(terminated.c_str());
+		WriteLogToPlatform(terminated.c_str());
+	}
+
+
+	void WriteLogToPlatform(const char* line)
+	{
+		::OutputDebugStringA(line);
 	}
 } // namespace fang

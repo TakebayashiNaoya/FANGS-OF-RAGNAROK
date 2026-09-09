@@ -9,7 +9,10 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <AdditionalIncludeDirectories>$(FangRoot)ThirdParty\doctest;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>DOCTEST_CONFIG_NO_EXCEPTIONS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- DOCTEST_CONFIG_USE_STD_HEADERS: doctest は既定で std::ostream などを自分で前方宣言する。
+           その後に <string_view> のような標準ヘッダが来ると、実体を知らないまま operator<< を定義しに行って壊れる。
+           本物の宣言を読ませて衝突をなくす -->
+      <PreprocessorDefinitions>DOCTEST_CONFIG_NO_EXCEPTIONS;DOCTEST_CONFIG_USE_STD_HEADERS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <!-- doctest が std::tuple を前方宣言するため（C5285）。/W4 /WX は緩めない -->
       <DisableSpecificWarnings>5285;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
