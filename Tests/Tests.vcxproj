@@ -33,9 +33,14 @@
   <ItemGroup>
     <ClCompile Include="Source\CoreMacrosTests.cpp" />
     <ClCompile Include="Source\HeapAllocatorTests.cpp" />
+    <ClCompile Include="Source\JobSystemStressTests.cpp" />
+    <ClCompile Include="Source\JobSystemTests.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\MemoryLeakTests.cpp" />
     <ClCompile Include="Source\NewTests.cpp" />
+    <ClCompile Include="Source\ParallelForTests.cpp" />
+    <ClCompile Include="Source\ThreadTests.cpp" />
+    <ClCompile Include="Source\WorkStealingDequeTests.cpp" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 

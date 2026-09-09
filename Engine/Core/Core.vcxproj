@@ -29,24 +29,32 @@
     <ClInclude Include="CoreLog.h" />
     <ClInclude Include="CoreMacros.h" />
     <ClInclude Include="Pch.h" />
+    <ClInclude Include="Job\JobCounter.h" />
+    <ClInclude Include="Job\JobSystem.h" />
+    <ClInclude Include="Job\ParallelFor.h" />
+    <ClInclude Include="Job\WorkStealingDeque.h" />
     <ClInclude Include="Log\Assert.h" />
     <ClInclude Include="Log\Log.h" />
     <ClInclude Include="Log\PlatformLogSink.h" />
     <ClInclude Include="Memory\Allocator.h" />
     <ClInclude Include="Memory\HeapAllocator.h" />
     <ClInclude Include="Memory\New.h" />
+    <ClInclude Include="Platform\Thread.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Job\JobSystem.cpp" />
     <ClCompile Include="Log\Assert.cpp" />
     <ClCompile Include="Log\Log.cpp" />
     <ClCompile Include="Memory\Allocator.cpp" />
     <ClCompile Include="Memory\HeapAllocator.cpp" />
     <ClCompile Include="Memory\New.cpp" />
     <ClCompile Include="Windows\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' != 'true'" />
+    <ClCompile Include="Windows\Thread.cpp" Condition="'$(FangIsXbox)' != 'true'" />
     <ClCompile Include="Xbox\PlatformLogSink.cpp" Condition="'$(FangIsXbox)' == 'true'" />
+    <ClCompile Include="Xbox\Thread.cpp" Condition="'$(FangIsXbox)' == 'true'" />
   </ItemGroup>
   <!-- FANG_FILES_END -->
 
