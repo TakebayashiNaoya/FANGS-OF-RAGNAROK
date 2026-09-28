@@ -151,7 +151,12 @@ namespace fang
 		}
 
 		const uint64_t leakCount = heap.ReportLeaks();
-		FANG_ASSERT(leakCount == 0, "リークを残したままヒープを壊そうとした: {}", heap.GetName());
+		if (leakCount != 0)
+		{
+			// 壊したヒープを残った確保の delete が呼びに来ると、原因から遠い場所で壊れる。
+			// 一覧は ReportLeaks が出し終えているので、ここでは止めるだけ。
+			FANG_FATAL("ヒープ \"{}\" にリークを {} 件残したまま壊そうとした", heap.GetName(), leakCount);
+		}
 
 		delete &heap;
 	}
@@ -194,10 +199,15 @@ namespace fang
 
 	void* HeapAllocator::Allocate(size_t size, size_t alignment)
 	{
-		const size_t prefixSize = GetAllocationPrefixSize(alignment);
+		const size_t effectiveAlignment = ValidateAllocationRequest(*this, size, alignment);
+		const size_t prefixSize         = GetAllocationPrefixSize(effectiveAlignment);
+
+		// 占めている量は前置きと頼まれた量の合計。
+		// 大きさは 32 ビット、前置きは境界の上限以下に収まっているので、足しても溢れない。
+		const size_t occupiedBytes = prefixSize + size;
 
 		// _aligned_malloc は 2 のべき乗の境界しか受け取らない。前置きの分を足して取る。
-		void* block = ::_aligned_malloc(prefixSize + size, alignment);
+		void* block = ::_aligned_malloc(occupiedBytes, effectiveAlignment);
 		if (block == nullptr)
 		{
 			return nullptr;
@@ -205,10 +215,10 @@ namespace fang
 
 		const uint64_t previousTotalCount = m_totalAllocationCount.fetch_add(1, std::memory_order_relaxed);
 		m_liveAllocationCount.fetch_add(1, std::memory_order_relaxed);
-		UpdatePeakBytes(m_usedBytes.fetch_add(size, std::memory_order_relaxed) + size);
+		UpdatePeakBytes(m_usedBytes.fetch_add(occupiedBytes, std::memory_order_relaxed) + occupiedBytes);
 
 #if FANG_ENABLE_MEMORY_TRACKING
-		void* userPointer = WriteAllocationHeader(block, *this, size, alignment, true);
+		void* userPointer = WriteAllocationHeader(block, *this, size, effectiveAlignment, true);
 
 		// 呼び出し元はここでは分からない。知っている層が後から SetAllocationSite で書く。
 		AllocationRecord* record = FindAllocationRecord(userPointer);
@@ -223,7 +233,7 @@ namespace fang
 #else
 		FANG_UNUSED(previousTotalCount);
 
-		return WriteAllocationHeader(block, *this, size, alignment, false);
+		return WriteAllocationHeader(block, *this, size, effectiveAlignment, false);
 #endif
 	}
 
@@ -237,7 +247,16 @@ namespace fang
 
 		// 解放してからでは読めないので、先にヘッダを読む。
 		const AllocationHeader& header = ReadAllocationHeader(memory);
-		FANG_ASSERT(header.allocator == this, "確保したときと違うヒープへ返している");
+		if (header.allocator != this)
+		{
+			// 進めると別のアロケータの確保をこのヒープの統計から引き、CRT へ別の形のブロックを返す。
+			// 相手が生きている保証は無いので、相手の名前は読まない。
+			FANG_FATAL("ヒープ \"{}\" へ、別のアロケータで取った確保を返そうとした", m_name);
+		}
+
+		// 確保で足した「前置き + 大きさ」と同じ値になる。
+		// 前置きの大きさは切り上げ後の境界で決まり、その値が offsetToBlock に入っている。
+		const uint64_t occupiedBytes = static_cast<uint64_t>(header.offsetToBlock) + header.size;
 
 #if FANG_ENABLE_MEMORY_TRACKING
 		AllocationRecord* record = FindAllocationRecord(memory);
@@ -247,7 +266,7 @@ namespace fang
 		}
 #endif
 
-		m_usedBytes.fetch_sub(header.size, std::memory_order_relaxed);
+		m_usedBytes.fetch_sub(occupiedBytes, std::memory_order_relaxed);
 		m_liveAllocationCount.fetch_sub(1, std::memory_order_relaxed);
 
 		::_aligned_free(static_cast<unsigned char*>(memory) - header.offsetToBlock);
@@ -275,8 +294,10 @@ namespace fang
 		uint64_t leakBytes = 0;
 		for (const AllocationRecord* record = m_liveListHead; record != nullptr; record = record->next)
 		{
+			// 合計は占めている量で数え、usedBytes と揃える。
+			const AllocationHeader* header = GetHeaderFromRecord(record);
 			++leakCount;
-			leakBytes += GetHeaderFromRecord(record)->size;
+			leakBytes += static_cast<uint64_t>(header->offsetToBlock) + header->size;
 		}
 
 		if (leakCount == 0)
@@ -288,13 +309,14 @@ namespace fang
 		std::snprintf(
 			line,
 			sizeof(line),
-			"[Core][Warning] ヒープ \"%s\" にリークが %llu 件ある。合計 %llu バイト\n",
+			"[Core][Warning] ヒープ \"%s\" にリークが %llu 件ある。合計 %llu バイト（前置き込み）\n",
 			m_name,
 			static_cast<unsigned long long>(leakCount),
 			static_cast<unsigned long long>(leakBytes)
 		);
 		WriteReportLine(line);
 
+		// 1 件ずつの行は頼まれた量のまま出す。new した型の大きさと突き合わせる手がかりにするため。
 		for (const AllocationRecord* record = m_liveListHead; record != nullptr; record = record->next)
 		{
 			const uint32_t size = GetHeaderFromRecord(record)->size;
@@ -335,8 +357,8 @@ namespace fang
 			std::snprintf(
 				line,
 				sizeof(line),
-				"[Core][Warning] ヒープ \"%s\" にリークが %llu 件ある。合計 %llu バイト（呼び出し元は Debug "
-				"でだけ出る）\n",
+				"[Core][Warning] ヒープ \"%s\" にリークが %llu 件ある。合計 %llu バイト（前置き込み。"
+				"呼び出し元は Debug でだけ出る）\n",
 				m_name,
 				static_cast<unsigned long long>(leakCount),
 				static_cast<unsigned long long>(m_usedBytes.load(std::memory_order_relaxed))
