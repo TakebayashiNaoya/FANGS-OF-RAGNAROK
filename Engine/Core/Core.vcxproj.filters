@@ -37,6 +37,9 @@
     <ClInclude Include="Memory\New.h">
       <Filter>Memory</Filter>
     </ClInclude>
+    <ClInclude Include="Memory\StackAllocator.h">
+      <Filter>Memory</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Pch.cpp" />
@@ -53,6 +56,9 @@
       <Filter>Memory</Filter>
     </ClCompile>
     <ClCompile Include="Memory\New.cpp">
+      <Filter>Memory</Filter>
+    </ClCompile>
+    <ClCompile Include="Memory\StackAllocator.cpp">
       <Filter>Memory</Filter>
     </ClCompile>
     <ClCompile Include="Windows\PlatformLogSink.cpp">

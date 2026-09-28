@@ -36,7 +36,7 @@ namespace
 		std::snprintf(
 			line,
 			sizeof(line),
-			"[Core][Fatal] メモリを確保できない。ヒープ=%s 要求=%zu 境界=%zu\n",
+			"[Core][Fatal] メモリを確保できない。アロケータ=%s 要求=%zu 境界=%zu\n",
 			allocator.GetName(),
 			size,
 			alignment
