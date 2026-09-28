@@ -152,7 +152,13 @@ TEST_CASE("印まで戻すと印より後の確保がまとめて無くなる")
 	{
 		fang::StackAllocator stack{ "印", heap, 4096 };
 
-		CHECK(stack.Allocate(16) != nullptr);
+		void* first = stack.Allocate(16);
+		CHECK(first != nullptr);
+
+		// 印そのものの値と比べると、印が間違った値を返しても通ってしまう。
+		// 印を取る前の統計を別に控えて、そこへ戻ったかを見る。
+		const fang::AllocatorStatistics beforeMarker = stack.GetStatistics();
+		CHECK(beforeMarker.liveAllocationCount == 1);
 		const fang::StackMarker marker = stack.GetMarker();
 
 		CHECK(stack.Allocate(16) != nullptr);
@@ -161,10 +167,14 @@ TEST_CASE("印まで戻すと印より後の確保がまとめて無くなる")
 
 		stack.FreeToMarker(marker);
 
-		CHECK(stack.GetStatistics().usedBytes == marker.top);
-		CHECK(stack.GetStatistics().liveAllocationCount == marker.liveAllocationCount);
+		const fang::AllocatorStatistics restored = stack.GetStatistics();
+		CHECK(restored.usedBytes == beforeMarker.usedBytes);
+		CHECK(restored.liveAllocationCount == beforeMarker.liveAllocationCount);
 
-		stack.FreeAll();
+		// 印より前の確保は残っていて、先端にあるので普通に返せる。
+		stack.Deallocate(first);
+		CHECK(stack.IsEmpty());
+		CHECK(stack.GetStatistics().usedBytes == 0);
 	}
 
 	fang::DestroyHeap(heap);
@@ -392,6 +402,8 @@ TEST_CASE("統計は先端の位置で数える")
 		CHECK(after.liveAllocationCount == before.liveAllocationCount + 1);
 		CHECK(after.totalAllocationCount == before.totalAllocationCount + 1);
 
+		// 取った直後は、最高水位が今の使用量まで上がっている。
+		CHECK(after.peakBytes == after.usedBytes);
 		const uint64_t peakAfterAllocate = after.peakBytes;
 
 		stack.Deallocate(memory);
@@ -399,6 +411,13 @@ TEST_CASE("統計は先端の位置で数える")
 		CHECK(returned.usedBytes - before.usedBytes == 0);
 		CHECK(returned.peakBytes == peakAfterAllocate);
 		CHECK(returned.liveAllocationCount == before.liveAllocationCount);
+
+		// 前より小さく取り直しても、最高水位は下がらない。
+		void* smaller = stack.Allocate(16);
+		CHECK(smaller != nullptr);
+		CHECK(stack.GetStatistics().usedBytes < peakAfterAllocate);
+		CHECK(stack.GetStatistics().peakBytes == peakAfterAllocate);
+		stack.Deallocate(smaller);
 	}
 
 	fang::DestroyHeap(heap);
