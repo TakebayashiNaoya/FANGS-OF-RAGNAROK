@@ -59,7 +59,7 @@ TEST_CASE("16 未満の境界でも 16 の倍数の番地が返る")
 
 		// 前置きも境界 16 のときと同じ大きさになる。
 		CHECK(fang::ReadAllocationHeader(memory).offsetToBlock == fang::GetAllocationPrefixSize(16));
-		CHECK(heap.GetStatistics().usedBytes == 8);
+		CHECK(heap.GetStatistics().usedBytes == fang::GetAllocationPrefixSize(16) + 8);
 
 		heap.Deallocate(memory);
 		CHECK(heap.GetStatistics().usedBytes == 0);
@@ -110,13 +110,16 @@ TEST_CASE("統計は確保で増えて解放で戻る")
 	CHECK(heap.GetStatistics().usedBytes == 0);
 	CHECK(heap.GetStatistics().totalAllocationCount == 0);
 
+	// 使用量は占めている量で数えるので、1 件ごとに前置きが乗る。
+	const uint64_t prefixSize = fang::GetAllocationPrefixSize(16);
+
 	void* first = heap.Allocate(1000);
-	CHECK(heap.GetStatistics().usedBytes == 1000);
+	CHECK(heap.GetStatistics().usedBytes == prefixSize + 1000);
 	CHECK(heap.GetStatistics().liveAllocationCount == 1);
 
 	void* second = heap.Allocate(500);
-	CHECK(heap.GetStatistics().usedBytes == 1500);
-	CHECK(heap.GetStatistics().peakBytes == 1500);
+	CHECK(heap.GetStatistics().usedBytes == 2 * prefixSize + 1500);
+	CHECK(heap.GetStatistics().peakBytes == 2 * prefixSize + 1500);
 
 	heap.Deallocate(second);
 	heap.Deallocate(first);
@@ -126,8 +129,23 @@ TEST_CASE("統計は確保で増えて解放で戻る")
 	CHECK(statistics.liveAllocationCount == 0);
 
 	// 最高水位と累計は戻らない。減った後の山の高さを覚えておくため。
-	CHECK(statistics.peakBytes == 1500);
+	CHECK(statistics.peakBytes == 2 * prefixSize + 1500);
 	CHECK(statistics.totalAllocationCount == 2);
+
+	fang::DestroyHeap(heap);
+}
+
+
+TEST_CASE("使用量は境界の詰め物も数える")
+{
+	fang::HeapAllocator& heap = fang::CreateHeap("詰め物");
+
+	void* memory = heap.Allocate(100, 4096);
+	CHECK(memory != nullptr);
+	CHECK(heap.GetStatistics().usedBytes == fang::GetAllocationPrefixSize(4096) + 100);
+
+	heap.Deallocate(memory);
+	CHECK(heap.GetStatistics().usedBytes == 0);
 
 	fang::DestroyHeap(heap);
 }

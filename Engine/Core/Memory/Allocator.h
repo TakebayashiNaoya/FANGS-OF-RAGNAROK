@@ -11,11 +11,16 @@
 
 namespace fang
 {
-	/** @brief アロケータの使われ具合。 */
+	/**
+	 * @brief アロケータの使われ具合。
+	 * @details 量はどれも占めている量で数える。
+	 *          前置き（確保ヘッダ・追跡記録・詰め物）と、利用者が頼んだバイト数の合計。
+	 *          裏の CRT が内部で余分に取る分は見えないので含まない。
+	 */
 	struct AllocatorStatistics
 	{
-		uint64_t usedBytes;            /**< 今生きている量。 */
-		uint64_t peakBytes;            /**< 使用量の最高水位。 */
+		uint64_t usedBytes;            /**< 今占めている量。 */
+		uint64_t peakBytes;            /**< 占めている量の最高水位。 */
 		uint64_t liveAllocationCount;  /**< 今生きている件数。 */
 		uint64_t totalAllocationCount; /**< 起動からの累計。フレームの中の差分を見る検査に使う。 */
 	};
