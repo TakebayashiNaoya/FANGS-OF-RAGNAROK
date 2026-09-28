@@ -194,10 +194,11 @@ namespace fang
 
 	void* HeapAllocator::Allocate(size_t size, size_t alignment)
 	{
-		const size_t prefixSize = GetAllocationPrefixSize(alignment);
+		const size_t effectiveAlignment = ValidateAllocationRequest(*this, size, alignment);
+		const size_t prefixSize         = GetAllocationPrefixSize(effectiveAlignment);
 
 		// _aligned_malloc は 2 のべき乗の境界しか受け取らない。前置きの分を足して取る。
-		void* block = ::_aligned_malloc(prefixSize + size, alignment);
+		void* block = ::_aligned_malloc(prefixSize + size, effectiveAlignment);
 		if (block == nullptr)
 		{
 			return nullptr;
@@ -208,7 +209,7 @@ namespace fang
 		UpdatePeakBytes(m_usedBytes.fetch_add(size, std::memory_order_relaxed) + size);
 
 #if FANG_ENABLE_MEMORY_TRACKING
-		void* userPointer = WriteAllocationHeader(block, *this, size, alignment, true);
+		void* userPointer = WriteAllocationHeader(block, *this, size, effectiveAlignment, true);
 
 		// 呼び出し元はここでは分からない。知っている層が後から SetAllocationSite で書く。
 		AllocationRecord* record = FindAllocationRecord(userPointer);
@@ -223,7 +224,7 @@ namespace fang
 #else
 		FANG_UNUSED(previousTotalCount);
 
-		return WriteAllocationHeader(block, *this, size, alignment, false);
+		return WriteAllocationHeader(block, *this, size, effectiveAlignment, false);
 #endif
 	}
 

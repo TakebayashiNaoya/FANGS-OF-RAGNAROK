@@ -31,6 +31,7 @@
 
   <!-- FANG_FILES_BEGIN 自動生成。Tools\GenerateProjectFiles.py が書き換える。手で編集しない -->
   <ItemGroup>
+    <ClCompile Include="Source\AllocatorTests.cpp" />
     <ClCompile Include="Source\CoreMacrosTests.cpp" />
     <ClCompile Include="Source\HeapAllocatorTests.cpp" />
     <ClCompile Include="Source\Main.cpp" />

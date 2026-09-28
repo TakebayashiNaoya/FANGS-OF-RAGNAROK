@@ -46,6 +46,29 @@ TEST_CASE("頼んだ境界に載ったポインタが返る")
 }
 
 
+TEST_CASE("16 未満の境界でも 16 の倍数の番地が返る")
+{
+	fang::HeapAllocator& heap = fang::CreateHeap("小さい境界");
+
+	const size_t alignments[] = { 1, 2, 4, 8 };
+	for (const size_t alignment : alignments)
+	{
+		void* memory = heap.Allocate(8, alignment);
+		CHECK(memory != nullptr);
+		CHECK((reinterpret_cast<uintptr_t>(memory) % 16) == 0);
+
+		// 前置きも境界 16 のときと同じ大きさになる。
+		CHECK(fang::ReadAllocationHeader(memory).offsetToBlock == fang::GetAllocationPrefixSize(16));
+		CHECK(heap.GetStatistics().usedBytes == 8);
+
+		heap.Deallocate(memory);
+		CHECK(heap.GetStatistics().usedBytes == 0);
+	}
+
+	fang::DestroyHeap(heap);
+}
+
+
 TEST_CASE("確保ヘッダは利用者ポインタの直前にある")
 {
 	fang::HeapAllocator& heap = fang::CreateHeap("ヘッダ");

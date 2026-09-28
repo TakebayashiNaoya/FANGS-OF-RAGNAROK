@@ -61,13 +61,10 @@ namespace fang
 	void* StackAllocator::Allocate(size_t size, size_t alignment)
 	{
 		AssertOwnerThread();
-		FANG_ASSERT(alignment != 0 && (alignment & (alignment - 1)) == 0, "境界が 2 のべき乗でない: {}", alignment);
-		FANG_ASSERT(alignment <= MAXIMUM_ALLOCATION_ALIGNMENT, "境界が大きすぎる: {}", alignment);
-		FANG_ASSERT(size <= MAXIMUM_ALLOCATION_SIZE, "1 件が大きすぎる: {}", size);
 
-		// ① 16 未満の境界は 16 に切り上げる。
-		//    確保ヘッダはポインタを含むので 8 の倍数の番地に要り、前置きの大きさの計算も 16 以上を前提にしている。
-		const size_t effectiveAlignment = alignment < DEFAULT_ALIGNMENT ? DEFAULT_ALIGNMENT : alignment;
+		// ① 頼み方を検査し、配置に使う境界を決める。
+		//    16 未満は 16 に切り上がる。
+		const size_t effectiveAlignment = ValidateAllocationRequest(*this, size, alignment);
 
 		// ② 利用者ポインタの位置を決める。
 		//    前置きは境界の倍数なので、利用者ポインタが載ればブロック先頭も載る。
