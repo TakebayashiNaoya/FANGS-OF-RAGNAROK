@@ -151,7 +151,12 @@ namespace fang
 		}
 
 		const uint64_t leakCount = heap.ReportLeaks();
-		FANG_ASSERT(leakCount == 0, "リークを残したままヒープを壊そうとした: {}", heap.GetName());
+		if (leakCount != 0)
+		{
+			// 壊したヒープを残った確保の delete が呼びに来ると、原因から遠い場所で壊れる。
+			// 一覧は ReportLeaks が出し終えているので、ここでは止めるだけ。
+			FANG_FATAL("ヒープ \"{}\" にリークを {} 件残したまま壊そうとした", heap.GetName(), leakCount);
+		}
 
 		delete &heap;
 	}
@@ -238,7 +243,12 @@ namespace fang
 
 		// 解放してからでは読めないので、先にヘッダを読む。
 		const AllocationHeader& header = ReadAllocationHeader(memory);
-		FANG_ASSERT(header.allocator == this, "確保したときと違うヒープへ返している");
+		if (header.allocator != this)
+		{
+			// 進めると別のアロケータの確保をこのヒープの統計から引き、CRT へ別の形のブロックを返す。
+			// 相手が生きている保証は無いので、相手の名前は読まない。
+			FANG_FATAL("ヒープ \"{}\" へ、別のアロケータで取った確保を返そうとした", m_name);
+		}
 
 #if FANG_ENABLE_MEMORY_TRACKING
 		AllocationRecord* record = FindAllocationRecord(memory);

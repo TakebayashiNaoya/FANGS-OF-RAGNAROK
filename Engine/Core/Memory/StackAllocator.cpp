@@ -120,7 +120,11 @@ namespace fang
 		}
 
 		const AllocationHeader& header = ReadAllocationHeader(memory);
-		FANG_ASSERT(header.allocator == this, "確保したときと違うスタックへ返している");
+		if (header.allocator != this)
+		{
+			// 進めると、別のアロケータの確保の位置で先端を書き換えて壊す。
+			FANG_FATAL("スタック \"{}\" へ、別のアロケータで取った確保を返そうとした", m_name);
+		}
 
 		// ① 先端にある確保だけ返せる。
 		//    この 1 件の終わりが先端と一致するかを見る。
