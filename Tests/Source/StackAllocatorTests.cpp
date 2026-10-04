@@ -367,7 +367,7 @@ TEST_CASE("取り出し元からは 1 塊しか取らず壊すと返す")
 		fang::StackAllocator stack{ "1 塊", heap, capacity };
 
 		CHECK(heap.GetStatistics().liveAllocationCount == before.liveAllocationCount + 1);
-		CHECK(heap.GetStatistics().usedBytes - before.usedBytes == capacity);
+		CHECK(heap.GetStatistics().usedBytes - before.usedBytes == fang::GetAllocationPrefixSize(16) + capacity);
 
 		CHECK(stack.Allocate(16) != nullptr);
 		CHECK(stack.Allocate(32) != nullptr);
@@ -381,6 +381,7 @@ TEST_CASE("取り出し元からは 1 塊しか取らず壊すと返す")
 	}
 
 	CHECK(heap.GetStatistics().liveAllocationCount == before.liveAllocationCount);
+	CHECK(heap.GetStatistics().usedBytes == before.usedBytes);
 
 	fang::DestroyHeap(heap);
 }

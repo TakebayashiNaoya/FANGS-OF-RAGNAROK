@@ -11,11 +11,16 @@
 
 namespace fang
 {
-	/** @brief アロケータの使われ具合。 */
+	/**
+	 * @brief アロケータの使われ具合。
+	 * @details 量はどれも占めている量で数える。
+	 *          前置き（確保ヘッダ・追跡記録・詰め物）と、利用者が頼んだバイト数の合計。
+	 *          裏の CRT が内部で余分に取る分は見えないので含まない。
+	 */
 	struct AllocatorStatistics
 	{
-		uint64_t usedBytes;            /**< 今生きている量。 */
-		uint64_t peakBytes;            /**< 使用量の最高水位。 */
+		uint64_t usedBytes;            /**< 今占めている量。 */
+		uint64_t peakBytes;            /**< 占めている量の最高水位。 */
 		uint64_t liveAllocationCount;  /**< 今生きている件数。 */
 		uint64_t totalAllocationCount; /**< 起動からの累計。フレームの中の差分を見る検査に使う。 */
 	};
@@ -23,6 +28,7 @@ namespace fang
 	/**
 	 * @brief アロケータのインターフェース。
 	 * @details メモリはすべてこの実装の中から取る。
+	 *          Allocate の実装は、先頭で ValidateAllocationRequest を呼び、返った境界で配置すること。
 	 *          Deallocate で本当に返すアロケータは、利用者ポインタの直前に AllocationHeader を置くこと。
 	 *          置かないアロケータ（フレームアロケータのように解放を捨てるもの）は、Deallocate を何もしない実装にする。
 	 * @threading 実装ごとに違う。派生クラスの @threading を見ること。
@@ -48,7 +54,9 @@ namespace fang
 		/**
 		 * @brief 確保する。
 		 * @param size      利用者が使えるバイト数。
-		 * @param alignment 返すアドレスの境界。2 のべき乗であること。
+		 * @param alignment 返すアドレスの境界。
+		 *                  2 のべき乗で MAXIMUM_ALLOCATION_ALIGNMENT 以下であること。
+		 *                  16 未満は 16 に切り上げて扱う。
 		 * @return 利用者ポインタ。失敗したら nullptr。
 		 */
 		[[nodiscard]] virtual void* Allocate(size_t size, size_t alignment = DEFAULT_ALIGNMENT) = 0;
@@ -112,6 +120,22 @@ namespace fang
 
 	/** @brief 1 件で頼めるバイト数の上限。ヘッダの size を 32 ビットに収めるため。 */
 	inline constexpr size_t MAXIMUM_ALLOCATION_SIZE = 0xFFFFFFFFu;
+
+	/**
+	 * @brief 確保の頼み方を検査し、配置に使う境界を返す。
+	 * @param allocator 頼まれた側。止めるときのログに名前を出す。
+	 * @param size      利用者が頼んだバイト数。
+	 * @param alignment 利用者が頼んだ境界。
+	 * @return 配置に使う境界。
+	 *         16 未満は 16 に切り上げ、16 以上はそのまま返す。
+	 * @details 境界が 0 か 2 のべき乗でない、境界が MAXIMUM_ALLOCATION_ALIGNMENT を超える、
+	 *          大きさが MAXIMUM_ALLOCATION_SIZE を超える、のどれかなら全構成で致命的エラーで止める。
+	 *          どれも呼ぶ側の誤りで、進めると確保ヘッダに切り詰めた値が入るか、確保できないという嘘のログで止まるため。
+	 *          16 未満を切り上げるのは、確保ヘッダがポインタを含むので 8 の倍数の番地に要り、
+	 *          追跡記録の位置の計算も 16 以上を前提にしているため。
+	 * @threading 任意のスレッド。
+	 */
+	[[nodiscard]] size_t ValidateAllocationRequest(const IAllocator& allocator, size_t size, size_t alignment);
 
 	/**
 	 * @brief ブロック先頭から利用者ポインタまでの距離。
