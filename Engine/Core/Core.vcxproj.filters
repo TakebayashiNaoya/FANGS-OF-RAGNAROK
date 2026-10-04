@@ -5,9 +5,6 @@
     <Filter Include="Log">
       <UniqueIdentifier>{2799DCE6-3CA6-2EA9-7019-4FDF53099B59}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Memory">
-      <UniqueIdentifier>{58048B6A-1DFE-FE0C-EC79-0A2C552BA159}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Windows">
       <UniqueIdentifier>{19C5FCE6-0536-1AA4-7EBB-59879FAD8342}</UniqueIdentifier>
     </Filter>
@@ -28,18 +25,6 @@
     <ClInclude Include="Log\PlatformLogSink.h">
       <Filter>Log</Filter>
     </ClInclude>
-    <ClInclude Include="Memory\Allocator.h">
-      <Filter>Memory</Filter>
-    </ClInclude>
-    <ClInclude Include="Memory\HeapAllocator.h">
-      <Filter>Memory</Filter>
-    </ClInclude>
-    <ClInclude Include="Memory\New.h">
-      <Filter>Memory</Filter>
-    </ClInclude>
-    <ClInclude Include="Memory\StackAllocator.h">
-      <Filter>Memory</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Pch.cpp" />
@@ -48,18 +33,6 @@
     </ClCompile>
     <ClCompile Include="Log\Log.cpp">
       <Filter>Log</Filter>
-    </ClCompile>
-    <ClCompile Include="Memory\Allocator.cpp">
-      <Filter>Memory</Filter>
-    </ClCompile>
-    <ClCompile Include="Memory\HeapAllocator.cpp">
-      <Filter>Memory</Filter>
-    </ClCompile>
-    <ClCompile Include="Memory\New.cpp">
-      <Filter>Memory</Filter>
-    </ClCompile>
-    <ClCompile Include="Memory\StackAllocator.cpp">
-      <Filter>Memory</Filter>
     </ClCompile>
     <ClCompile Include="Windows\PlatformLogSink.cpp">
       <Filter>Windows</Filter>
