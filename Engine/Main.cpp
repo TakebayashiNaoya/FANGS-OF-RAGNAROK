@@ -1,14 +1,17 @@
 ﻿#include "Core/Memory/Memory.h"
 #include <iostream>
-#include <cstdlib>
+
 
 int main()
 {
 	Memory memory;
-	void* ptr1 = memory.GetMemoryPtr(64);
-	void* ptr2 = memory.GetMemoryPtr(32);
+	void* ptr1 = memory.MallocMemoryPtr(64);
 	std::cout << "合計メモリサイズ:" << memory.GetTotalMemorySize() << std::endl;
-	std::free(ptr1);
-	std::free(ptr2);
+	void* ptr2 = memory.MallocMemoryPtr(32);
+	std::cout << "合計メモリサイズ:" << memory.GetTotalMemorySize() << std::endl;
+	memory.FreeMemoryPtr(ptr1);
+	std::cout << "合計メモリサイズ:" << memory.GetTotalMemorySize() << std::endl;
+	memory.FreeMemoryPtr(ptr2);
+	std::cout << "合計メモリサイズ:" << memory.GetTotalMemorySize() << std::endl;
 	return 0;
 }
