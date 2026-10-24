@@ -13,18 +13,19 @@ namespace
 #else
 	constexpr size_t HEADER_SIZE = 16;
 #endif // _DEBUG
+}
 
 
-	struct Header
-	{
-		size_t size; // メモリブロックのサイズ
+struct Memory::Header
+{
+	size_t size; // メモリブロックのサイズ
 
 #ifdef _DEBUG
-		Header* next;	  // 次のメモリブロックへのポインタ
-		Header* previous; // 前のメモリブロックへのポインタ
+	// A→B→C順に確保した場合、B の next は A 、previous は C を指す。
+	Header* next;     // 一つ前に確保したメモリブロックへのポインタ
+	Header* previous; // 次に確保したメモリブロックへのポインタ
 #endif // _DEBUG
-	};
-}
+};
 
 
 void* Memory::MallocMemory(size_t size)

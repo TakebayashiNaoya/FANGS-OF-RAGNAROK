@@ -36,6 +36,13 @@ public:
 
 
 private:
+	struct Header;
+#ifdef _DEBUG
+	Header* m_head = nullptr; // 最後に確保したメモリブロックの先頭
+#endif // _DEBUG
+
+
+private:
 	size_t m_size  = 0; // 合計メモリサイズ
 	size_t m_count = 0; // 確保したメモリの数
 };
