@@ -14,21 +14,28 @@ public:
 	 * @param size 確保するメモリのサイズ
 	 * @return 確保したメモリのポインタ
 	 */
-	void* MallocMemoryPtr(size_t size);
+	void* MallocMemory(size_t size);
 
 	/**
 	 * @brief メモリを解放する
 	 * @param ptr 解放するメモリのポインタ
 	 */
-	void FreeMemoryPtr(void* ptr);
+	void FreeMemory(void* ptr);
 
 	/**
 	 * @brief 合計メモリサイズを取得する
 	 * @return 合計メモリサイズ
 	 */
-	inline const size_t GetTotalMemorySize() const { return m_size; }
+	inline size_t GetTotalMemorySize() const { return m_size; }
+
+	/**
+	 * @brief 確保したメモリの数を取得する
+	 * @return 確保したメモリの数
+	 */
+	inline size_t GetMemoryCount() const { return m_count; }
 
 
 private:
-	size_t m_size = 0;
+	size_t m_size  = 0; // 合計メモリサイズ
+	size_t m_count = 0; // 確保したメモリの数
 };

@@ -12,7 +12,7 @@ namespace
 }
 
 
-void* Memory::MallocMemoryPtr(size_t size)
+void* Memory::MallocMemory(size_t size)
 {
 	// メモリを確保する際に、ヘッダーサイズ分の余裕を持たせる
 	void* ptr = std::malloc(size + HEADER_SIZE);
@@ -26,12 +26,14 @@ void* Memory::MallocMemoryPtr(size_t size)
 	ptr = static_cast<std::byte*>(ptr) + HEADER_SIZE;
 	// 合計メモリサイズを更新する
 	m_size += size;
+	// 確保したメモリの数を更新する
+	m_count++;
 
 	return ptr;
 }
 
 
-void Memory::FreeMemoryPtr(void* ptr)
+void Memory::FreeMemory(void* ptr)
 {
 	if (ptr == nullptr)	return;
 
@@ -41,6 +43,8 @@ void Memory::FreeMemoryPtr(void* ptr)
 	size_t size = *static_cast<size_t*>(block);
 	// 合計メモリサイズを更新する
 	m_size -= size;
+	// 確保したメモリの数を更新する
+	m_count--;
 	// メモリを解放する
 	std::free(block);
 }
