@@ -21,7 +21,7 @@ struct Memory::Header
 	size_t size; // メモリブロックのサイズ
 
 #ifdef _DEBUG
-	// A→B→C順に確保した場合、B の next は A 、previous は C を指す。
+	// A→B→C順に確保した場合、B の next は A 、previous は C を指す
 	Header* next;     // 一つ前に確保したメモリブロックへのポインタ
 	Header* previous; // 次に確保したメモリブロックへのポインタ
 #endif // _DEBUG
@@ -45,6 +45,20 @@ void* Memory::MallocMemory(size_t size)
 	// 確保したメモリの数を更新する
 	m_count++;
 
+#ifdef _DEBUG
+	// 一番最初のメモリブロックの場合、m_head は nullptr なので、if 文でチェックする
+	// 今のメモリブロックの previous は、新しく確保したメモリブロックを指す
+	if (m_head != nullptr) {
+		m_head->previous = header;
+	}
+	// 今のメモリブロックを新しく確保したメモリブロックの next に設定する
+	header->next = m_head;
+	// 新しく確保したメモリブロックを m_head に設定する
+	m_head = header;
+	// 新しく確保したメモリブロックの previous は nullptr にしておく
+	m_head->previous = nullptr;
+#endif // _DEBUG
+
 	return ptr;
 }
 
@@ -61,6 +75,22 @@ void Memory::FreeMemory(void* ptr)
 	m_size -= size;
 	// 確保したメモリの数を更新する
 	m_count--;
+
+#ifdef _DEBUG
+	Header* header = static_cast<Header*>(block);
+	// メモリブロックの前後のリンクを更新する
+	if (header->next != nullptr) {
+		header->next->previous = header->previous;
+	}
+	if (header->previous != nullptr) {
+		header->previous->next = header->next;
+	}
+	// 今解放しようとしているメモリブロックの先頭が m_head である場合、m_head を一つ前に更新する
+	if (m_head == header) {
+		m_head = header->next;
+	}
+#endif // _DEBUG
+
 	// メモリを解放する
 	std::free(block);
 }
