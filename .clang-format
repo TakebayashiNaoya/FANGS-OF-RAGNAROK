@@ -45,7 +45,7 @@ BraceWrapping:
   SplitEmptyNamespace: true
 # クラス内の短い関数（アクセサ）は 1 行のまま。クラス外の関数は空でない限り展開する
 AllowShortFunctionsOnASingleLine: Inline
-AllowShortIfStatementsOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: WithoutElse
 AllowShortLoopsOnASingleLine: false
 AllowShortBlocksOnASingleLine: Empty
 AllowShortLambdasOnASingleLine: All
