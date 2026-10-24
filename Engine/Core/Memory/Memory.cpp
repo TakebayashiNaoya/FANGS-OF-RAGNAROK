@@ -8,7 +8,22 @@
 
 namespace
 {
+#ifdef _DEBUG
+	constexpr size_t HEADER_SIZE = 32;
+#else
 	constexpr size_t HEADER_SIZE = 16;
+#endif // _DEBUG
+
+
+	struct Header
+	{
+		size_t size; // メモリブロックのサイズ
+
+#ifdef _DEBUG
+		Header* next;	  // 次のメモリブロックへのポインタ
+		Header* previous; // 前のメモリブロックへのポインタ
+#endif // _DEBUG
+	};
 }
 
 
@@ -20,8 +35,8 @@ void* Memory::MallocMemory(size_t size)
 	if (ptr == nullptr)	return nullptr;
 
 	// ヘッダーにサイズ情報を格納する
-	size_t* header = static_cast<size_t*>(ptr);
-	*header = size;
+	Header* header = static_cast<Header*>(ptr);
+	header->size = size;
 	// ヘッダーの後ろのメモリ領域を返す
 	ptr = static_cast<std::byte*>(ptr) + HEADER_SIZE;
 	// 合計メモリサイズを更新する
@@ -40,7 +55,7 @@ void Memory::FreeMemory(void* ptr)
 	// ヘッダーの前のメモリ領域を取得する
 	void* block = static_cast<std::byte*>(ptr) - HEADER_SIZE;
 	// ヘッダーに格納されたサイズ情報を取得する
-	size_t size = *static_cast<size_t*>(block);
+	size_t size = static_cast<Header*>(block)->size;
 	// 合計メモリサイズを更新する
 	m_size -= size;
 	// 確保したメモリの数を更新する
