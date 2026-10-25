@@ -6,6 +6,10 @@
 #include <cstddef>
 
 
+/**
+ * @brief メモリ管理クラス
+ * @details 解放し忘れが見えなくなるため、破棄しても残っているメモリブロックは解放しない。
+ */
 class Memory
 {
 public:
