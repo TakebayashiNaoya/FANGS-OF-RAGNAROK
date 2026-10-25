@@ -10,11 +10,15 @@
 
 namespace
 {
-	constexpr const wchar_t* WINDOW_CLASS_NAME = L"FangsOfRagnarok_MainWindow";
-	constexpr const wchar_t* WINDOW_TITLE      = L"Fangs of Ragnarok";
-	constexpr int            WINDOW_WIDTH      = 800;
-	constexpr int            WINDOW_HEIGHT     = 600;
+	constexpr const wchar_t* WINDOW_CLASS_NAME = L"FangsOfRagnarok_MainWindow"; // ウィンドウクラス名
+	constexpr const wchar_t* WINDOW_TITLE      = L"Fangs of Ragnarok";          // ウィンドウ上部に表示されるタイトル
+	constexpr int            WINDOW_WIDTH      = 800;                           // 枠を含んだウィンドウ幅
+	constexpr int            WINDOW_HEIGHT     = 600;                           // 枠を含んだウィンドウ高さ
 
+	/**
+	 * @brief WM_DESTROY の場合はループを抜ける指示を出し、それ以外の場合はWindowsの既定の処理に任せる
+	 * @return WM_DESTROY の場合は 0 を返し、それ以外の場合は DefWindowProcW の戻り値を返す
+	 */
 	LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		switch (message)
@@ -65,6 +69,22 @@ int main()
 	}
 
 	ShowWindow(window, SW_SHOW);
+
+	MSG message{};
+	bool running = true;
+	while (running)
+	{
+		while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+		{
+			if (message.message == WM_QUIT) {
+				running = false;
+				break;
+			}
+			TranslateMessage(&message);
+			DispatchMessageW(&message);
+		}
+	}
+
 
 	Memory memory;
 	void* ptr1 = memory.MallocMemory(64);
