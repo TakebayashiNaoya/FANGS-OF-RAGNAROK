@@ -14,6 +14,18 @@ namespace
 	constexpr const wchar_t* WINDOW_TITLE      = L"Fangs of Ragnarok";
 	constexpr int            WINDOW_WIDTH      = 800;
 	constexpr int            WINDOW_HEIGHT     = 600;
+
+	LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
+	{
+		switch (message)
+		{
+		case WM_DESTROY:
+			PostQuitMessage(0);
+			return 0;
+		default:
+			return DefWindowProcW(window, message, wParam, lParam);
+		}
+	}
 }
 
 
@@ -22,7 +34,7 @@ int main()
 	HINSTANCE instance = GetModuleHandleW(nullptr);
 	WNDCLASSEXW windowClass{};
 	windowClass.cbSize        = sizeof(WNDCLASSEXW);
-	windowClass.lpfnWndProc   = DefWindowProcW;
+	windowClass.lpfnWndProc   = WindowProcedure;
 	windowClass.hInstance     = instance;
 	windowClass.lpszClassName = WINDOW_CLASS_NAME;
 	ATOM atom = RegisterClassExW(&windowClass);
