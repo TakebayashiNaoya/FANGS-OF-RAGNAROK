@@ -52,7 +52,7 @@ void* Memory::MallocMemory(size_t size)
 	// メモリを確保する際に、ヘッダーサイズ分の余裕を持たせる
 	void* block = std::malloc(size + HEADER_SIZE);
 
-	if (block == nullptr)	return nullptr;
+	if (block == nullptr) return nullptr;
 
 	// ヘッダーにサイズ情報を格納する
 	Header* header = static_cast<Header*>(block);
