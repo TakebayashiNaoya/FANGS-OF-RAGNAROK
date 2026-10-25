@@ -1,6 +1,8 @@
 # FANGS OF RAGNAROK — EditorConfig
 # 規約のうち「機械的に強制できる部分」はここに置く。
 # Visual Studio は保存時にこの設定を適用する（インデント・改行・文字コード・C++ 整形）。
+# trim_trailing_whitespace は保存時には効かない。
+# Ctrl+K, Ctrl+D で整形すると効く。
 root = true
 
 # ---- 全ファイル共通 ----
