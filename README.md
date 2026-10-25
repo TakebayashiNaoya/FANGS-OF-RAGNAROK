@@ -7,25 +7,8 @@
 
 ## 現在の状態
 
-Core(ログとアサート)と Tests の骨組みを置いたところ。
-Core は 6 構成すべてでビルドが通り、Tests は Windows の 3 構成で走る。
+コードとビルド設定をいったん外し、下の層から作り直している。
+最初はメモリ確保(`malloc` を包むところ)から始め、Windows x64 のコンソール exe 1 本で進める。
+Xbox(UWP)向けの構成は、実機で動かす段で足す。
 
-## 構成(予定)
-
-```
-Engine/   モジュールごとの静的ライブラリ(Core / RHI / Renderer / Editor など)
-Game/     ゲーム本体(Win32 / UWP のエントリポイント)
-Tools/    アセットビルダなどの補助ツール
-Tests/    テスト
-Build/    全プロジェクト共通のビルド設定(.props)
-```
-
-## ビルド構成
-
-| 構成 | 用途 |
-|---|---|
-| Debug | 開発用。アサート・ログ・エディタ入り |
-| Preview | 最適化あり + エディタ入り |
-| Release | リリース相当 |
-
-Xbox(UWP)向けは `DebugXbox` / `PreviewXbox` / `ReleaseXbox` を使う。
+設計は `docs/design/` にある(`ClassDiagram.drawio` と `README.md`)。

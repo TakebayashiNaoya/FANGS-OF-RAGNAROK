@@ -1,6 +1,7 @@
 # ---- ビルド出力 ----
 /Bin/
 /Intermediate/
+x64/
 
 # ---- Visual Studio ----
 .vs/
