@@ -5,6 +5,7 @@
 #include "Memory.h"
 #include <cstdlib>
 #include <iostream>
+#include <cstdint>
 
 
 namespace
@@ -45,6 +46,9 @@ void Memory::PrintRemainingBlocks() const
 
 void* Memory::MallocMemory(size_t size)
 {
+	// ヘッダーを含めた合計サイズが size_t 型の最大値を超える場合 nullptr を返す
+	if (size > SIZE_MAX - HEADER_SIZE) return nullptr;
+
 	// メモリを確保する際に、ヘッダーサイズ分の余裕を持たせる
 	void* ptr = std::malloc(size + HEADER_SIZE);
 
