@@ -23,9 +23,9 @@ public:
 
 	/**
 	 * @brief メモリを解放する
-	 * @param ptr 解放するメモリのポインタ
+	 * @param data 解放するメモリのポインタ
 	 */
-	void FreeMemory(void* ptr);
+	void FreeMemory(void* data);
 
 	/**
 	 * @brief 合計メモリサイズを取得する

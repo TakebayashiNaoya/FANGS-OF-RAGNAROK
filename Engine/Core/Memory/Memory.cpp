@@ -50,15 +50,15 @@ void* Memory::MallocMemory(size_t size)
 	if (size > SIZE_MAX - HEADER_SIZE) return nullptr;
 
 	// メモリを確保する際に、ヘッダーサイズ分の余裕を持たせる
-	void* ptr = std::malloc(size + HEADER_SIZE);
+	void* block = std::malloc(size + HEADER_SIZE);
 
-	if (ptr == nullptr)	return nullptr;
+	if (block == nullptr)	return nullptr;
 
 	// ヘッダーにサイズ情報を格納する
-	Header* header = static_cast<Header*>(ptr);
+	Header* header = static_cast<Header*>(block);
 	header->size = size;
 	// ヘッダーの後ろのメモリ領域を返す
-	ptr = static_cast<std::byte*>(ptr) + HEADER_SIZE;
+	void* data = static_cast<std::byte*>(block) + HEADER_SIZE;
 	// 合計メモリサイズを更新する
 	m_size += size;
 	// 確保したメモリの数を更新する
@@ -78,16 +78,16 @@ void* Memory::MallocMemory(size_t size)
 	m_head->previous = nullptr;
 #endif // _DEBUG
 
-	return ptr;
+	return data;
 }
 
 
-void Memory::FreeMemory(void* ptr)
+void Memory::FreeMemory(void* data)
 {
-	if (ptr == nullptr)	return;
+	if (data == nullptr)	return;
 
 	// ヘッダーの前のメモリ領域を取得する
-	void* block = static_cast<std::byte*>(ptr) - HEADER_SIZE;
+	void* block = static_cast<std::byte*>(data) - HEADER_SIZE;
 	// ヘッダーに格納されたサイズ情報を取得する
 	size_t size = static_cast<Header*>(block)->size;
 	// 合計メモリサイズを更新する
