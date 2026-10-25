@@ -4,6 +4,7 @@
  */
 #include "Memory.h"
 #include <cstdlib>
+#include <iostream>
 
 
 namespace
@@ -26,6 +27,20 @@ struct Memory::Header
 	Header* previous; // 次に確保したメモリブロックへのポインタ
 #endif // _DEBUG
 };
+
+
+void Memory::PrintRemainingBlocks() const
+{
+#ifdef _DEBUG
+	Header* current = m_head;
+	while (current != nullptr) {
+		const void* block = current;
+		const void* data = static_cast<const std::byte*>(block) + HEADER_SIZE;
+		std::cout << "メモリアドレス: " << data << " (メモリサイズ: " << current->size << ")" << std::endl;
+		current = current->next;
+	}
+#endif // _DEBUG
+}
 
 
 void* Memory::MallocMemory(size_t size)

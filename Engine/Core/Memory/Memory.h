@@ -10,6 +10,11 @@ class Memory
 {
 public:
 	/**
+	 * @brief メモリ上に残っているメモリブロックの情報を出力する
+	 */
+	void PrintRemainingBlocks() const;
+
+	/**
 	 * @brief メモリを確保する
 	 * @param size 確保するメモリのサイズ
 	 * @return 確保したメモリのポインタ
