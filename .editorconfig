@@ -24,7 +24,7 @@ indent_style = tab
 indent_size = 4
 tab_width = 4
 
-# Visual Studio の C++ 整形（EditorConfig 拡張キー）。.clang-format と同じ結果になるよう合わせてある。
+# Visual Studio の C++ 整形（EditorConfig 拡張キー）。
 cpp_indent_braces = false
 cpp_indent_multi_line_relative_to = innermost_parenthesis
 cpp_indent_within_parentheses = indent
