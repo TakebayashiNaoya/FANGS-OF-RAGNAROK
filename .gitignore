@@ -46,13 +46,13 @@ ShaderCache/
 *.cso
 
 # ---- 実行時生成 ----
-# ImGui がウィンドウ配置を書き出す
+# ImGuiがウィンドウ配置を書き出す
 imgui.ini
 Logs/
 SaveData/
 Screenshots/
 
-# ---- UWP パッケージ（署名鍵は秘密鍵なので厳禁）----
+# ---- UWPパッケージ（署名鍵は秘密鍵なので厳禁）----
 *.pfx
 *.cer
 AppPackages/

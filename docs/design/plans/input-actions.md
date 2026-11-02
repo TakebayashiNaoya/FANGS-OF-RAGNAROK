@@ -1,24 +1,24 @@
-# 入力のアクション化(図の 8・9 ページを更新)
+# 入力のアクション化(図の8・9ページを更新)
 
 要件: `docs/design/plans/input-actions-requirements.md`
 
 ## 結論
 
-- ゲームのコードは**アクション**で書く(`actions.Get(Action::Roll).IsTapped()`)。どのボタンやキーがそのアクションかは `actions.json` に書く
-- パッドのボタンは**位置の名前**(`Gamepad/South` など)で呼ぶ。画面の表示(A か ×)は、最後に使ったパッドの機種で切り替える
-- プレイヤーが変えた割り当ては、既定(`actions.json`)との**差分だけ**をユーザー設定に保存する(Unity の binding override と同じ)
+- ゲームのコードは**アクション**で書く(`actions.Get(Action::Roll).IsTapped()`)。どのボタンやキーがそのアクションかは`actions.json`に書く
+- パッドのボタンは**位置の名前**(`Gamepad/South`など)で呼ぶ。画面の表示(Aか ×)は、最後に使ったパッドの機種で切り替える
+- プレイヤーが変えた割り当ては、既定(`actions.json`)との**差分だけ**をユーザー設定に保存する(Unityのbinding overrideと同じ)
 
 ## 1. 何が変わるか
 
 | | 今 | 変更後 |
 |---|---|---|
-| ゲームが読むもの | `ControlState`(仮想パッド) | `ActionSet` の `ActionState` |
+| ゲームが読むもの | `ControlState`(仮想パッド) | `ActionSet`の`ActionState` |
 | JSON | `keybindings.json`:パッドのボタン → キー | `actions.json`:アクション → パッドのボタン・キー |
 | パッドのボタン名 | A / B / X / Y | South / East / West / North(表示は機種ごと) |
-| 割り当ての変更 | JSON を書き換える | キー割り当て画面で変え、差分を保存 |
-| PC のパッド | XInput | SDL3(Xbox のパッドと DualSense) |
+| 割り当ての変更 | JSONを書き換える | キー割り当て画面で変え、差分を保存 |
+| PCのパッド | XInput | SDL3(XboxのパッドとDualSense) |
 
-- CharacterCommand から先は変わらない。PlayerController がボタンの代わりにアクションを読むだけ
+- CharacterCommandから先は変わらない。PlayerControllerがボタンの代わりにアクションを読むだけ
 
 ## 2. データ形式
 
@@ -46,8 +46,8 @@
 
 - パッドのボタン名:`South / East / West / North`、`LeftShoulder / RightShoulder`、`LeftTrigger / RightTrigger`、`LeftStick / RightStick`、`LeftStickPress / RightStickPress`、`DPad`、`Start / Select`
 - 修飾キー付き(`Shift+Mouse/Left`)は既存どおり優先する
-- 矢印キーでの視点操作は `Look` に常に入れておく(既存の KeyboardOnly プロファイルの代わり。プロファイルの切り替えはなくす)
-- 割り当て画面で変えられるのは、`Gameplay` マップの Button のアクションの「パッド用 1 つ」と「キーボード・マウス用 1 つ」。Vector2(移動・視点)と UI のマップは変えない
+- 矢印キーでの視点操作は`Look`に常に入れておく(既存のKeyboardOnlyプロファイルの代わり。プロファイルの切り替えはなくす)
+- 割り当て画面で変えられるのは、`Gameplay`マップのButtonのアクションの「パッド用1つ」と「キーボード・マウス用1つ」。Vector2(移動・視点)とUIのマップは変えない
 
 ユーザー設定(`input_overrides.json`、プレイヤーが変えたところだけ):
 
@@ -55,7 +55,7 @@
 { "Gameplay/Roll": { "keyboard": "Keyboard/LeftAlt" } }
 ```
 
-- 保存先は PC がユーザーのアプリデータ、Xbox がアプリのローカルフォルダ
+- 保存先はPCがユーザーのアプリデータ、Xboxがアプリのローカルフォルダ
 
 ## 3. クラス
 
@@ -80,39 +80,39 @@ GamepadReader (プラットフォーム別)
   PC   : SDL3。Xbox のパッドも DualSense も同じ GamepadState(位置の名前)に読む
 ```
 
-- `Look` は既存の `GetLookDelta` と同じく、スティック(速さ × dt)とマウス(移動量)を合算する
-- `ControlState` と `KeyBindings` / `PadBinding` はなくなる(役目は ActionSet と actions.json に移る)
-- 操作を受け付ける画面(メニュー・キー割り当て画面など。`UIScreen::capturesInput` が true)が出ている間だけ `UI` のマップに切り替える。HUD は false なので、プレイ中は `Gameplay` のまま。UI のボタン操作は `Submit` / `Cancel` / `Navigate` を読む(マウスのクリックは既存どおり)
+- `Look`は既存の`GetLookDelta`と同じく、スティック(速さ × dt)とマウス(移動量)を合算する
+- `ControlState`と`KeyBindings` / `PadBinding`はなくなる(役目はActionSetとactions.jsonに移る)
+- 操作を受け付ける画面(メニュー・キー割り当て画面など。`UIScreen::capturesInput`がtrue)が出ている間だけ`UI`のマップに切り替える。HUDはfalseなので、プレイ中は`Gameplay`のまま。UIのボタン操作は`Submit` / `Cancel` / `Navigate`を読む(マウスのクリックは既存どおり)
 
 ## 4. キー割り当て画面
 
-- ゲーム側の `KeyConfigScreen`(5 ページ目の UIScreen)。アクションの一覧に、パッドとキーボードの割り当てを並べて表示する(表示は `GetBindingDisplay`)
-- 項目を選ぶと `BeginRebind(player, action, DeviceKind)`。InputManager は次に押されたそのデバイスのボタン・キーを新しい割り当てにする
+- ゲーム側の`KeyConfigScreen`(5ページ目のUIScreen)。アクションの一覧に、パッドとキーボードの割り当てを並べて表示する(表示は`GetBindingDisplay`)
+- 項目を選ぶと`BeginRebind(player, action, DeviceKind)`。InputManagerは次に押されたそのデバイスのボタン・キーを新しい割り当てにする
   - 他のアクションと重なったら、そのアクションと入れ替える
-  - Escape(パッドは Start)で取り消す
-- 画面を閉じるときに `SaveOverrides()`。起動時に `LoadOverrides()` で既定の上に重ねる
+  - Escape(パッドはStart)で取り消す
+- 画面を閉じるときに`SaveOverrides()`。起動時に`LoadOverrides()`で既定の上に重ねる
 - 「既定に戻す」は差分を消すだけ
 
 ## 5. 画面のボタン表示
 
-- `GetBindingDisplay` は、割り当てのパスと「最後に使ったパッドの機種」から表示を決める
-  - `Gamepad/South` → Xbox なら「A」、PlayStation なら「×」
+- `GetBindingDisplay`は、割り当てのパスと「最後に使ったパッドの機種」から表示を決める
+  - `Gamepad/South` → Xboxなら「A」、PlayStationなら「×」
   - `Keyboard/Space` → 「Space」
-- 機種の判別は GamepadReader が行う(SDL3 はパッドの種類を返す。Xbox 版は常に Xbox)
+- 機種の判別はGamepadReaderが行う(SDL3はパッドの種類を返す。Xbox版は常にXbox)
 
 ## 6. 他のページとのつながり
 
 | ページ | 変更 |
 |---|---|
-| 8 入力 | InputManager の作り替え。ControlState / KeyBindings / PadBinding を ActionSet / ActionState / InputBinding に置き換え。SetProfile と KeyboardOnly プロファイルは削除。GamepadReader の PC を SDL3 に。keybindings.json の例を actions.json に |
-| 9 操作 | PlayerController は `GetActions()` を読む(`IsTapped(B) → roll` を `Roll.IsTapped() → roll` に) |
-| 5 UI | KeyConfigScreen を例として追加。UIScreen に `capturesInput` を追加。UI の操作は UI マップのアクションを読む |
+| 8入力 | InputManagerの作り替え。ControlState / KeyBindings / PadBindingをActionSet / ActionState / InputBindingに置き換え。SetProfileとKeyboardOnlyプロファイルは削除。GamepadReaderのPCをSDL3に。keybindings.jsonの例をactions.jsonに |
+| 9操作 | PlayerControllerは`GetActions()`を読む(`IsTapped(B) → roll`を`Roll.IsTapped() → roll`に) |
+| 5 UI | KeyConfigScreenを例として追加。UIScreenに`capturesInput`を追加。UIの操作はUIマップのアクションを読む |
 
 ## 7. 検討した案
 
 | 案 | 却下理由 |
 |---|---|
 | 今の仮想パッドのまま、キーボードの割り当てだけ画面で変える | ゲームのコードにボタン名が残り、パッドの割り当てを変えられない |
-| ボタン名を A / B / X / Y のまま使う | PS では × が A になり、表示との対応が分かりにくい。新しいエンジン(Unreal・Unity・SDL3)は位置の名前 |
+| ボタン名をA / B / X / Yのまま使う | PSでは × がAになり、表示との対応が分かりにくい。新しいエンジン(Unreal・Unity・SDL3)は位置の名前 |
 | 割り当てを丸ごとユーザー設定に保存する | ゲームの更新で既定を変えたとき、古い設定が新しいアクションを隠す。差分だけなら既定の変更が反映される |
-| PC も Windows.Gaming.Input で読む | DualSense に対応していない |
+| PCもWindows.Gaming.Inputで読む | DualSenseに対応していない |

@@ -23,7 +23,7 @@ struct Memory::Header
 	size_t size; // メモリブロックのサイズ
 
 #ifdef _DEBUG
-	// A→B→C順に確保した場合、B の next は A 、previous は C を指す
+	// A→B→C順に確保した場合、BのnextはA、previousはCを指す
 	Header* next;     // 一つ前に確保したメモリブロックへのポインタ
 	Header* previous; // 次に確保したメモリブロックへのポインタ
 #endif // _DEBUG
@@ -46,7 +46,7 @@ void Memory::PrintRemainingBlocks() const
 
 void* Memory::MallocMemory(size_t size)
 {
-	// ヘッダーを含めた合計サイズが size_t 型の最大値を超える場合 nullptr を返す
+	// ヘッダーを含めた合計サイズがsize_t型の最大値を超える場合nullptrを返す
 	if (size > SIZE_MAX - HEADER_SIZE) return nullptr;
 
 	// メモリを確保する際に、ヘッダーサイズ分の余裕を持たせる
@@ -65,16 +65,16 @@ void* Memory::MallocMemory(size_t size)
 	m_count++;
 
 #ifdef _DEBUG
-	// 一番最初のメモリブロックの場合、m_head は nullptr なので、if 文でチェックする
-	// 今のメモリブロックの previous は、新しく確保したメモリブロックを指す
+	// 一番最初のメモリブロックの場合、m_headはnullptrなので、if文でチェックする
+	// 今のメモリブロックのpreviousは、新しく確保したメモリブロックを指す
 	if (m_head != nullptr) {
 		m_head->previous = header;
 	}
-	// 今のメモリブロックを新しく確保したメモリブロックの next に設定する
+	// 今のメモリブロックを新しく確保したメモリブロックのnextに設定する
 	header->next = m_head;
-	// 新しく確保したメモリブロックを m_head に設定する
+	// 新しく確保したメモリブロックをm_headに設定する
 	m_head = header;
-	// 新しく確保したメモリブロックの previous は nullptr にしておく
+	// 新しく確保したメモリブロックのpreviousはnullptrにしておく
 	m_head->previous = nullptr;
 #endif // _DEBUG
 
@@ -104,7 +104,7 @@ void Memory::FreeMemory(void* data)
 	if (header->previous != nullptr) {
 		header->previous->next = header->next;
 	}
-	// 今解放しようとしているメモリブロックの先頭が m_head である場合、m_head を一つ前に更新する
+	// 今解放しようとしているメモリブロックの先頭がm_headである場合、m_headを一つ前に更新する
 	if (m_head == header) {
 		m_head = header->next;
 	}
