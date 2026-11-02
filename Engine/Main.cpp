@@ -19,8 +19,8 @@ namespace
 	constexpr float MAX_DELTA_TIME = 1.0f / 30.0f;
 
 	/**
-	 * @brief WM_DESTROY の場合はループを抜ける指示を出し、それ以外の場合はWindowsの既定の処理に任せる
-	 * @return WM_DESTROY の場合は 0 を返し、それ以外の場合は DefWindowProcW の戻り値を返す
+	 * @brief WM_DESTROYの場合はループを抜ける指示を出し、それ以外の場合はWindowsの既定の処理に任せる
+	 * @return WM_DESTROYの場合は0を返し、それ以外の場合はDefWindowProcWの戻り値を返す
 	 */
 	LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 	{

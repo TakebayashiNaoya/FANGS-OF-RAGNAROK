@@ -1,8 +1,8 @@
 # FANGS OF RAGNAROK — EditorConfig
 # 規約のうち「機械的に強制できる部分」はここに置く。
-# Visual Studio は保存時にこの設定を適用する（インデント・改行・文字コード・C++ 整形）。
-# trim_trailing_whitespace は保存時には効かない。
-# Ctrl+K, Ctrl+D で整形すると効く。
+# Visual Studioは保存時にこの設定を適用する（インデント・改行・文字コード・C++整形）。
+# trim_trailing_whitespaceは保存時には効かない。
+# Ctrl+K, Ctrl+Dで整形すると効く。
 root = true
 
 # ---- 全ファイル共通 ----
@@ -16,15 +16,15 @@ indent_size = 4
 tab_width = 4
 
 # ---- C/C++ ----
-# MSVC が日本語コメントを正しく解釈できるよう BOM 付き UTF-8 にする（/utf-8 に依存しない）。
-# インデントはタブ（幅 4）。
+# MSVCが日本語コメントを正しく解釈できるようBOM付きUTF-8にする（/utf-8に依存しない）。
+# インデントはタブ（幅4）。
 [*.{h,hpp,inl,c,cpp,cxx}]
 charset = utf-8-bom
 indent_style = tab
 indent_size = 4
 tab_width = 4
 
-# Visual Studio の C++ 整形（EditorConfig 拡張キー）。
+# Visual StudioのC++整形（EditorConfig拡張キー）。
 cpp_indent_braces = false
 cpp_indent_multi_line_relative_to = innermost_parenthesis
 cpp_indent_within_parentheses = indent
@@ -85,32 +85,32 @@ cpp_space_around_ternary_operator = insert
 cpp_wrap_preserve_blocks = one_liners
 
 # ---- シェーダー ----
-# DXC / FXC の両方で安全なように BOM なし。
+# DXC / FXCの両方で安全なようにBOMなし。
 [*.{hlsl,hlsli,fx,fxh}]
 charset = utf-8
 indent_style = tab
 indent_size = 4
 tab_width = 4
 
-# C++ と HLSL の共有ヘッダ（定数バッファの構造体）も FXC が読むので BOM なし。
-# MSVC 側は /utf-8（Common.props）が付いているので BOM が無くても日本語コメントを正しく読む。
+# C++とHLSLの共有ヘッダ（定数バッファの構造体）もFXCが読むのでBOMなし。
+# MSVC側は /utf-8（Common.props）が付いているのでBOMが無くても日本語コメントを正しく読む。
 [Engine/**/Shaders/*.h]
 charset = utf-8
 
-# ---- MSBuild / ソリューション（VS が生成する形式に合わせる）----
+# ---- MSBuild / ソリューション（VSが生成する形式に合わせる）----
 [*.{sln,vcxproj,vcxproj.filters,props,targets}]
 charset = utf-8-bom
 indent_style = space
 indent_size = 2
 trim_trailing_whitespace = false
 
-# ---- データ・設定（YAML はタブ不可、JSON/XML も VS 生成物に合わせてスペース）----
+# ---- データ・設定（YAMLはタブ不可、JSON/XMLもVS生成物に合わせてスペース）----
 [*.{json,yml,yaml,xml}]
 indent_style = space
 indent_size = 2
 
 [*.md]
-# Markdown は末尾スペース 2 個が改行の意味を持つので消さない
+# Markdownは末尾スペース2個が改行の意味を持つので消さない
 indent_style = space
 trim_trailing_whitespace = false
 
