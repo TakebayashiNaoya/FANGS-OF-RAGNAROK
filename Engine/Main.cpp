@@ -6,6 +6,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <chrono>
+#include <d3d12.h>
+#include <wrl/client.h>
 #include "Core/Memory/Memory.h"
 
 
@@ -75,6 +77,37 @@ int main()
 	}
 
 	ShowWindow(window, SW_SHOW);
+
+
+	//==========================================================
+	// 描画処理
+	//==========================================================
+	// D3D12デバイスの作成
+	Microsoft::WRL::ComPtr<ID3D12Device> device;
+	auto createDeviceResult = D3D12CreateDevice(
+		nullptr,
+		D3D_FEATURE_LEVEL_11_0,
+		IID_PPV_ARGS(&device)
+	);
+
+	if (FAILED(createDeviceResult)) {
+		std::cerr << "D3D12デバイスの作成に失敗しました。" << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	// D3D12コマンドキューの作成
+	D3D12_COMMAND_QUEUE_DESC commandQueueDescription{};
+	commandQueueDescription.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue;
+	auto createCommandQueueResult = device->CreateCommandQueue(
+		&commandQueueDescription,
+		IID_PPV_ARGS(&commandQueue)
+	);
+
+	if (FAILED(createCommandQueueResult)) {
+		std::cerr << "D3D12コマンドキューの作成に失敗しました。" << std::endl;
+		return EXIT_FAILURE;
+	}
 
 
 	//==========================================================
