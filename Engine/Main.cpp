@@ -5,6 +5,7 @@
 #include <Windows.h>
 #include <cstdlib>
 #include <iostream>
+#include <chrono>
 #include "Core/Memory/Memory.h"
 
 
@@ -12,8 +13,10 @@ namespace
 {
 	constexpr const wchar_t* WINDOW_CLASS_NAME = L"FangsOfRagnarok_MainWindow"; // ウィンドウクラス名
 	constexpr const wchar_t* WINDOW_TITLE      = L"Fangs of Ragnarok";          // ウィンドウ上部に表示されるタイトル
-	constexpr int            WINDOW_WIDTH      = 800;                           // 枠を含んだウィンドウ幅
-	constexpr int            WINDOW_HEIGHT     = 600;                           // 枠を含んだウィンドウ高さ
+	constexpr int            WINDOW_WIDTH      = 800;
+	constexpr int            WINDOW_HEIGHT     = 600;
+
+	constexpr float MAX_DELTA_TIME = 1.0f / 30.0f;
 
 	/**
 	 * @brief WM_DESTROY の場合はループを抜ける指示を出し、それ以外の場合はWindowsの既定の処理に任せる
@@ -35,6 +38,9 @@ namespace
 
 int main()
 {
+	//==========================================================
+	// ウィンドウの作成
+	//==========================================================
 	HINSTANCE instance = GetModuleHandleW(nullptr);
 	WNDCLASSEXW windowClass{};
 	windowClass.cbSize        = sizeof(WNDCLASSEXW);
@@ -70,7 +76,12 @@ int main()
 
 	ShowWindow(window, SW_SHOW);
 
+
+	//==========================================================
+	// メインループ
+	//==========================================================
 	MSG message{};
+	auto previousFrameTime = std::chrono::steady_clock::now();
 	bool running = true;
 	while (running)
 	{
@@ -83,6 +94,14 @@ int main()
 			TranslateMessage(&message);
 			DispatchMessageW(&message);
 		}
+
+		// 時間の更新処理
+		auto currentFrameTime = std::chrono::steady_clock::now();
+		float deltaTime = std::chrono::duration<float>(currentFrameTime - previousFrameTime).count();
+		if (deltaTime > MAX_DELTA_TIME) {
+			deltaTime = MAX_DELTA_TIME;
+		}
+		previousFrameTime = currentFrameTime;
 	}
 
 
