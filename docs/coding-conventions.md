@@ -22,6 +22,7 @@
 - 名前は中身と合わせる。返り値の型を名前に書かない(`MallocMemoryPtr`ではなく`MallocMemory`)。
 - ポインタの変数名には、何を指すかを書く。ポインタであることは型でわかる(`ptr`ではなく、mallocが返した先頭なら`block`、呼ぶ側に返す番地なら`data`)。
 - 同じものを指す変数は、関数が違っても同じ名前にする。
+- 返り値を受ける変数は、呼んだ関数の名前に`Result`を付ける。APIの印と版の番号は落とす(`D3D12CreateDevice`➡`createDeviceResult`、`CreateDXGIFactory2`➡`createFactoryResult`)。
 
 ## 型
 
@@ -29,6 +30,8 @@
 - 大きさと個数は`size_t`。
 - 値で返すゲッターの返り値に`const`を付けない。意味を持つのは参照やポインタで返すときだけ。
 - ポインタの判定は`nullptr`と比べて書く(`if (m_head != nullptr)`)。`if (m_head)`でも動くが、比べて書けば整数や`bool`の判定と見分けがつく。
+- 右辺から型が読めないときは型を書く(`HRESULT presentResult = swapChain->Present(1, 0);`)。読めるときは`auto`でよい(`auto currentFrameTime = std::chrono::steady_clock::now();`)。
+  `auto`の型はコンパイルのときに決まるため、実行の速さは変わらない。
 
 ## 置き場所
 
@@ -51,7 +54,7 @@
 
 ## ifの書き方
 
-- 早期リターンだけは1行で書く(`if (block == nullptr) return nullptr;`)。
+- 早期リターンと、ループを抜ける`break`だけは1行で書く(`if (block == nullptr) return nullptr;`、`if (running == false) break;`)。
 - それ以外は中身を別の行に書き、`{`と`}`で囲む。処理を1行に並べると横に長くなって読みにくいため。
 - 中身が5行までなら`{`を条件式と同じ行に置く。6行以上なら`{`も別の行に置く。
 
