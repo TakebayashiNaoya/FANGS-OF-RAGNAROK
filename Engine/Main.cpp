@@ -8,6 +8,7 @@
 #include <chrono>
 #include <d3d12.h>
 #include <wrl/client.h>
+#include <dxgi1_6.h>
 #include "Core/Memory/Memory.h"
 
 
@@ -84,7 +85,7 @@ int main()
 	//==========================================================
 	// D3D12デバイスの作成
 	Microsoft::WRL::ComPtr<ID3D12Device> device;
-	auto createDeviceResult = D3D12CreateDevice(
+	HRESULT createDeviceResult = D3D12CreateDevice(
 		nullptr,
 		D3D_FEATURE_LEVEL_11_0,
 		IID_PPV_ARGS(&device)
@@ -99,13 +100,54 @@ int main()
 	D3D12_COMMAND_QUEUE_DESC commandQueueDescription{};
 	commandQueueDescription.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue;
-	auto createCommandQueueResult = device->CreateCommandQueue(
+	HRESULT createCommandQueueResult = device->CreateCommandQueue(
 		&commandQueueDescription,
 		IID_PPV_ARGS(&commandQueue)
 	);
 
 	if (FAILED(createCommandQueueResult)) {
 		std::cerr << "D3D12コマンドキューの作成に失敗しました。" << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	// DXGIファクトリの作成
+	Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
+	HRESULT createFactoryResult = CreateDXGIFactory2(
+		0,
+		IID_PPV_ARGS(&factory)
+	);
+
+	if (FAILED(createFactoryResult)) {
+		std::cerr << "DXGIファクトリの作成に失敗しました。" << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	// DXGIスワップチェーンの作成
+	// ※WINDOW_WIDTHとWINDOW_HEIGHTはウィンドウ全体のサイズであり、クライアント領域のサイズではないため、GetClientRectで取得する
+	RECT clientRectangle{};
+	GetClientRect(window, &clientRectangle);
+
+	DXGI_SWAP_CHAIN_DESC1 swapChainDescription{};
+	swapChainDescription.Width            = clientRectangle.right - clientRectangle.left;
+	swapChainDescription.Height           = clientRectangle.bottom - clientRectangle.top;
+	swapChainDescription.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+	swapChainDescription.SampleDesc.Count = 1;
+	swapChainDescription.BufferUsage      = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	swapChainDescription.BufferCount      = 2;
+	swapChainDescription.SwapEffect       = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+
+	Microsoft::WRL::ComPtr<IDXGISwapChain1> swapChain;
+	HRESULT createSwapChainResult = factory->CreateSwapChainForHwnd(
+		commandQueue.Get(),
+		window,
+		&swapChainDescription,
+		nullptr,
+		nullptr,
+		&swapChain
+	);
+
+	if (FAILED(createSwapChainResult)) {
+		std::cerr << "DXGIスワップチェーンの作成に失敗しました。" << std::endl;
 		return EXIT_FAILURE;
 	}
 
@@ -128,6 +170,9 @@ int main()
 			DispatchMessageW(&message);
 		}
 
+		// ウィンドウが閉じられた場合はループを抜ける
+		if (running == false) break;
+
 		// 時間の更新処理
 		auto currentFrameTime = std::chrono::steady_clock::now();
 		float deltaTime = std::chrono::duration<float>(currentFrameTime - previousFrameTime).count();
@@ -135,6 +180,13 @@ int main()
 			deltaTime = MAX_DELTA_TIME;
 		}
 		previousFrameTime = currentFrameTime;
+
+		// 画面を差し替える
+		HRESULT presentResult = swapChain->Present(1, 0);
+		if (FAILED(presentResult)) {
+			std::cerr << "DXGIスワップチェーンの表示に失敗しました。" << std::endl;
+			return EXIT_FAILURE;
+		}
 	}
 
 
