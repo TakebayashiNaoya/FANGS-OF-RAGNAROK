@@ -18,17 +18,23 @@
 - 同じ役割の型はProjectBeastの名前を借りる。
 - シングルトンの取得は`GetInstance()`。
 - 定数は大文字のスネークケース(`HEADER_SIZE`)。
+- ローカル変数は小文字で始める(`device`、`swapChainDescription`)。大文字で始まる型や関数と見分けるため。
 - メンバ変数は`m_`から始める(`m_size`)。
 - 名前は中身と合わせる。返り値の型を名前に書かない(`MallocMemoryPtr`ではなく`MallocMemory`)。
 - ポインタの変数名には、何を指すかを書く。ポインタであることは型でわかる(`ptr`ではなく、mallocが返した先頭なら`block`、呼ぶ側に返す番地なら`data`)。
 - 同じものを指す変数は、関数が違っても同じ名前にする。
+- 返り値を受ける変数は、呼んだ関数の名前に`Result`を付ける。APIの印と版の番号は落とす(`D3D12CreateDevice`➡`createDeviceResult`、`CreateDXGIFactory2`➡`createFactoryResult`)。
+  同じ名前の関数を別のオブジェクトで呼ぶときは、何のかを足す(`commandAllocator->Reset()`➡`resetCommandAllocatorResult`)。
 
 ## 型
 
 - メンバを外から直接読み書きしてよいデータの入れ物は`struct`、`private`なメンバを関数で守るものは`class`。
 - 大きさと個数は`size_t`。
+- 構造体の変数は`{}`を付けて宣言する(`DXGI_SWAP_CHAIN_DESC1 swapChainDescription{};`)。欄を書き忘れたときに、でたらめな値が残らないようにするため。
 - 値で返すゲッターの返り値に`const`を付けない。意味を持つのは参照やポインタで返すときだけ。
 - ポインタの判定は`nullptr`と比べて書く(`if (m_head != nullptr)`)。`if (m_head)`でも動くが、比べて書けば整数や`bool`の判定と見分けがつく。
+- 右辺から型が読めないときは型を書く(`HRESULT presentResult = swapChain->Present(1, 0);`)。読めるときは`auto`でよい(`auto currentFrameTime = std::chrono::steady_clock::now();`)。
+  `auto`の型はコンパイルのときに決まるため、実行の速さは変わらない。
 
 ## 置き場所
 
@@ -51,7 +57,7 @@
 
 ## ifの書き方
 
-- 早期リターンだけは1行で書く(`if (block == nullptr) return nullptr;`)。
+- 早期リターンと、ループを抜ける`break`だけは1行で書く(`if (block == nullptr) return nullptr;`、`if (running == false) break;`)。
 - それ以外は中身を別の行に書き、`{`と`}`で囲む。処理を1行に並べると横に長くなって読みにくいため。
 - 中身が5行までなら`{`を条件式と同じ行に置く。6行以上なら`{`も別の行に置く。
 
@@ -63,6 +69,12 @@
 - 文が2つ以上のコメントは「。」で改行する。
 - 名詞で終わる行末コメント(`// 合計メモリサイズ`)には「。」を付けない。
 - 日本語の文の中では、数字や英単語の前後に空白を入れない(`// size_t型の最大値`、`1/30秒`)。Markdownの文書とコミットメッセージも同じ。
+
+## コミットメッセージ
+
+- 件名は「領域: 〜した」の形で書く(`Engine: D3D12のDeviceとCommandQueueを作った`)。領域は`Core`、`Engine`、`Docs`のどれか。
+- 本文も過去形で書き、そのコミットで変えたことだけを書く。
+- PRのタイトルも件名と同じ形にする。
 
 ## 決めていないこと
 
