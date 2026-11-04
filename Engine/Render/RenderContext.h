@@ -7,6 +7,7 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 #include <dxgi1_6.h>
+#include "Core/Noncopyable.h"
 
 
 namespace render
@@ -15,8 +16,9 @@ namespace render
 	 * @brief DeviceなどGPUを動かすためのオブジェクトを持ち、GPUに命令を渡して画面に出すクラス
 	 * @details シーンとビューはRendererが持ち、このクラスはシーンとビューを知らない。
 	 *          Rendererに入れると、シーンを足すときにGPUの部分をまた外へ出すことになるため層を分ける。
+	 *          生のHANDLEを持っておりコピーすると同じイベントを2回閉じてしまうためコピー禁止。
 	 */
-	class RenderContext
+	class RenderContext : private core::Noncopyable
 	{
 	public:
 		/**
