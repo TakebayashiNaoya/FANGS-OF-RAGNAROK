@@ -13,9 +13,11 @@
   <ItemGroup>
     <ClCompile Include="Core\Memory\Memory.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Render\RenderContext.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\Memory\Memory.h" />
+    <ClInclude Include="Render\RenderContext.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
