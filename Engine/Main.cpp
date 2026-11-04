@@ -354,7 +354,7 @@ int main()
 	CloseHandle(fenceEvent);
 
 
-	Memory memory;
+	core::Memory memory;
 	void* ptr1 = memory.MallocMemory(64);
 	std::cout << "合計メモリサイズ:" << memory.GetTotalMemorySize() << std::endl;
 	std::cout << "確保したメモリの数:" << memory.GetMemoryCount() << std::endl;
