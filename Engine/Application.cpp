@@ -4,6 +4,7 @@
  */
 #include "Application.h"
 #include <iostream>
+#include <chrono>
 
 
 namespace
@@ -43,6 +44,36 @@ bool Application::Initialize()
 
 bool Application::Run()
 {
+	MSG message{};
+	auto previousFrameTime = std::chrono::steady_clock::now();
+	bool running = true;
+	while (running)
+	{
+		while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+		{
+			if (message.message == WM_QUIT) {
+				running = false;
+				break;
+			}
+			TranslateMessage(&message);
+			DispatchMessageW(&message);
+		}
+
+		// ウィンドウが閉じられた場合はループを抜ける
+		if (running == false) break;
+
+		// 時間の更新処理
+		auto currentFrameTime = std::chrono::steady_clock::now();
+		float deltaTime = std::chrono::duration<float>(currentFrameTime - previousFrameTime).count();
+		if (deltaTime > MAX_DELTA_TIME) {
+			deltaTime = MAX_DELTA_TIME;
+		}
+		previousFrameTime = currentFrameTime;
+
+		// 描画処理
+		if (m_renderContext.RenderFrame() == false) return false;
+	}
+
 	return true;
 }
 
