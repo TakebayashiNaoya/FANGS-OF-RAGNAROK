@@ -8,6 +8,16 @@
 
 namespace render
 {
+	RenderContext::~RenderContext()
+	{
+		// m_fenceEventは最後に作るため、これがなければGPUに渡した処理もない
+		if (m_fenceEvent == nullptr) return;
+
+		WaitForGpu();
+		CloseHandle(m_fenceEvent);
+	}
+
+
 	bool RenderContext::Initialize(HWND window)
 	{
 		if (CreateDevice() == false)                  return false;
@@ -18,6 +28,66 @@ namespace render
 		if (CreateFence() == false)                   return false;
 
 		return true;
+	}
+
+
+	bool RenderContext::RenderFrame()
+	{
+		// レンダーターゲットビューの取得
+		UINT backBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
+		D3D12_CPU_DESCRIPTOR_HANDLE renderTargetViewDescriptorHandle{};
+		renderTargetViewDescriptorHandle.ptr = m_renderTargetViewDescriptorHeapHandle.ptr + backBufferIndex * m_descriptorHandleIncrementSize;
+
+		// コマンドアロケータのリセット
+		HRESULT resetCommandAllocatorResult = m_commandAllocator->Reset();
+		if (FAILED(resetCommandAllocatorResult)) {
+			std::cerr << "コマンドアロケータのリセットに失敗しました。" << std::endl;
+			return false;
+		}
+		// コマンドリストのリセット
+		HRESULT resetCommandListResult = m_commandList->Reset(m_commandAllocator.Get(), nullptr);
+		if (FAILED(resetCommandListResult)) {
+			std::cerr << "コマンドリストのリセットに失敗しました。" << std::endl;
+			return false;
+		}
+
+		// 今描くバッファをPRESENTからRENDER_TARGETへ
+		D3D12_RESOURCE_BARRIER resourceBarrier{};
+		resourceBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		resourceBarrier.Transition.pResource   = m_swapChainBufferResources[backBufferIndex].Get();
+		resourceBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+		resourceBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		m_commandList->ResourceBarrier(1, &resourceBarrier);
+
+		// レンダーターゲットのクリア
+		const float clearColor[4] = { 0.0f, 0.2f, 0.4f, 1.0f };
+		m_commandList->ClearRenderTargetView(renderTargetViewDescriptorHandle, clearColor, 0, nullptr);
+
+		// 今描いたバッファをRENDER_TARGETからPRESENTへ
+		resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		resourceBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PRESENT;
+		m_commandList->ResourceBarrier(1, &resourceBarrier);
+
+		// コマンドリストのクローズ
+		HRESULT closeCommandListResult = m_commandList->Close();
+		if (FAILED(closeCommandListResult)) {
+			std::cerr << "コマンドリストのクローズに失敗しました。" << std::endl;
+			return false;
+		}
+
+		// コマンドリストの実行
+		ID3D12CommandList* commandLists[] = { m_commandList.Get() };
+		m_commandQueue->ExecuteCommandLists(1, commandLists);
+
+		// 画面を差し替える
+		HRESULT presentResult = m_swapChain->Present(1, 0);
+		if (FAILED(presentResult)) {
+			std::cerr << "DXGIスワップチェーンの表示に失敗しました。" << std::endl;
+			return false;
+		}
+
+		return WaitForGpu();
 	}
 
 
@@ -186,6 +256,26 @@ namespace render
 			std::cerr << "フェンスイベントの作成に失敗しました。" << std::endl;
 			return false;
 		}
+
+		return true;
+	}
+
+
+	bool RenderContext::WaitForGpu()
+	{
+		m_fenceValue++;
+		HRESULT signalResult = m_commandQueue->Signal(m_fence.Get(), m_fenceValue);
+		if (FAILED(signalResult)) {
+			std::cerr << "フェンスのシグナル送信に失敗しました。" << std::endl;
+			return false;
+		}
+		HRESULT setEventOnCompletionResult = m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent);
+		if (FAILED(setEventOnCompletionResult)) {
+			std::cerr << "フェンスのイベント設定に失敗しました。" << std::endl;
+			return false;
+		}
+		WaitForSingleObject(m_fenceEvent, INFINITE);
+
 		return true;
 	}
 } // namespace render

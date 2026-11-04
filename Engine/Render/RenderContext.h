@@ -20,11 +20,22 @@ namespace render
 	{
 	public:
 		/**
+		 * @brief GPUの処理が終わるのを待ってから破棄する
+		 */
+		~RenderContext();
+
+		/**
 		 * @brief 描画に使うGPUのオブジェクトを作る
 		 * @param window スワップチェーンの描画先のウィンドウ
 		 * @return 全部作れたらtrue、1つでも失敗したらfalse
 		 */
 		bool Initialize(HWND window);
+
+		/**
+		 * @brief 1フレーム分描画する
+		 * @return 描画に成功したらtrue、失敗したらfalse
+		 */
+		bool RenderFrame();
 
 
 	private:
@@ -64,6 +75,12 @@ namespace render
 		 * @return フェンスの作成に成功したらtrue、失敗したらfalse
 		 */
 		bool CreateFence();
+
+		/**
+		 * @brief GPUの処理が完了するまで待機する
+		 * @return GPUの処理が完了したらtrue、失敗したらfalse
+		 */
+		bool WaitForGpu();
 
 
 	private:
