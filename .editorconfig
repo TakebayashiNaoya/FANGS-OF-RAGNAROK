@@ -94,7 +94,7 @@ tab_width = 4
 
 # C++とHLSLの共有ヘッダ（定数バッファの構造体）もFXCが読むのでBOMなし。
 # MSVC側は /utf-8（Common.props）が付いているのでBOMが無くても日本語コメントを正しく読む。
-[Engine/**/Shaders/*.h]
+[FangEngine/**/Shaders/*.h]
 charset = utf-8
 
 # ---- MSBuild / ソリューション（VSが生成する形式に合わせる）----
