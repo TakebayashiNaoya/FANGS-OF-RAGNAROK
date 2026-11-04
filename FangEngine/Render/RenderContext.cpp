@@ -39,13 +39,13 @@ namespace fangEngine::render
 		renderTargetViewDescriptorHandle.ptr = m_renderTargetViewDescriptorHeapHandle.ptr + backBufferIndex * m_descriptorHandleIncrementSize;
 
 		// コマンドアロケータのリセット
-		HRESULT resetCommandAllocatorResult = m_commandAllocator->Reset();
+		HRESULT resetCommandAllocatorResult = m_commandAllocators[backBufferIndex]->Reset();
 		if (FAILED(resetCommandAllocatorResult)) {
 			std::cerr << "コマンドアロケータのリセットに失敗しました。" << std::endl;
 			return false;
 		}
 		// コマンドリストのリセット
-		HRESULT resetCommandListResult = m_commandList->Reset(m_commandAllocator.Get(), nullptr);
+		HRESULT resetCommandListResult = m_commandList->Reset(m_commandAllocators[backBufferIndex].Get(), nullptr);
 		if (FAILED(resetCommandListResult)) {
 			std::cerr << "コマンドリストのリセットに失敗しました。" << std::endl;
 			return false;
@@ -214,18 +214,24 @@ namespace fangEngine::render
 
 	bool RenderContext::CreateCommandAllocatorAndList()
 	{
-		// コマンドアロケータの作成
-		HRESULT createCommandAllocatorResult = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator));
-		if (FAILED(createCommandAllocatorResult)) {
-			std::cerr << "コマンドアロケータの作成に失敗しました。" << std::endl;
-			return false;
+		for (int allocatorIndex = 0; allocatorIndex < RENDER_TARGET_COUNT; ++allocatorIndex)
+		{
+			// コマンドアロケータの作成
+			HRESULT createCommandAllocatorResult = m_device->CreateCommandAllocator(
+				D3D12_COMMAND_LIST_TYPE_DIRECT,
+				IID_PPV_ARGS(&m_commandAllocators[allocatorIndex])
+			);
+			if (FAILED(createCommandAllocatorResult)) {
+				std::cerr << "コマンドアロケータの作成に失敗しました。" << std::endl;
+				return false;
+			}
 		}
 
 		// コマンドリストの作成
 		HRESULT createCommandListResult = m_device->CreateCommandList(
 			0,
 			D3D12_COMMAND_LIST_TYPE_DIRECT,
-			m_commandAllocator.Get(),
+			m_commandAllocators[0].Get(),
 			nullptr,
 			IID_PPV_ARGS(&m_commandList)
 		);

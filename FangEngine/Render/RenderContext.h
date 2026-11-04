@@ -97,7 +97,7 @@ namespace fangEngine::render
 		D3D12_CPU_DESCRIPTOR_HANDLE                  m_renderTargetViewDescriptorHeapHandle{};
 		UINT                                         m_descriptorHandleIncrementSize = 0;
 
-		Microsoft::WRL::ComPtr<ID3D12CommandAllocator>    m_commandAllocator;
+		Microsoft::WRL::ComPtr<ID3D12CommandAllocator>    m_commandAllocators[RENDER_TARGET_COUNT];
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 
 		Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
