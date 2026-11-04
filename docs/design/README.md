@@ -56,6 +56,16 @@ ProjectBeastをもとに、エンジンとゲームをきちんと分けて作�
 ## 4. 描画（4ページ目）
 
 - 案C：ゲーム側は`RenderContext`に触らない。コマンドを積み、`RenderThread`が実行する。
+- `RenderContext`はGPUに直接触る下の層にする。Device、Queue、SwapChain、RTV、Allocator、CommandList、Fenceを持つ。
+  - `Renderer`はシーンとビューをまとめる上の層で、シーンを描くときに作る。➡`Renderer`に今のコードを入れると、シーンを足すときにGPUの部分をまた外へ出すことになるため、層を分ける。
+- 描画は次の順で作る。
+  1. `Main.cpp`の描画を、動きを変えずに`RenderContext`へ移す。Allocatorは1つのままにする。➡移す作業と動きを変える作業を分けるため。
+  2. ウィンドウとループを`Application`へ移す。
+  3. Allocatorをバッファの数だけ持ち、CPUとGPUを重ねる。1フレームの時間はCPUとGPUの足し算から、遅いほうの時間になる。➡定数バッファのように毎フレーム書くものの置き場所を、三角形より先に作るため。
+  4. ImGuiを入れ、`Memory`の一覧と1フレームのmsとFPSを出す。ImGuiは自分のシェーダーを持つため、三角形より先に動かせる。
+  5. シェーダーと三角形を描く。
+  6. 処理が増えたら、区間ごとのmsをImGuiに足す。
+- ウィンドウの大きさの変更（`WM_SIZE`、`ResizeBuffers`）と描く解像度は、まだ決めない。今のバッファは作ったときの大きさのままで、DXGIが引き伸ばして映す。➡解像度で中身が変わるものを書くときに決める。
 - `RenderScene`は保持方式にし、全ビューで共有する。
   - ModelRenderはStartでプロキシを登録し、動いたときだけ`UpdateTransform`を呼ぶ。
   - 行列は`SceneBuffer<T>`のダブルバッファで持つ。入れ替えた直後に、直前フレームのdirty分を書く側へコピーする。
@@ -64,8 +74,8 @@ ProjectBeastをもとに、エンジンとゲームをきちんと分けて作�
 - 2つ目のカメラの用途：キャラクターの3Dプレビュー（`Preview`レイヤー、RenderTexture）と、画面分割。
 - GPUの計測はPIXで行う。
   - 描画の最小形ではコードを触らない。exeをPIXから起動してGPUキャプチャを取る。
-  - 描画をクラスに分けるときに、`PIXBeginEvent` / `PIXEndEvent`で区間に名前を付ける。マーカーはフラグで切り替え、Releaseには入れない。
-  - TODO: フラグの名前と、有効にする構成は分けるときに決める。
+  - 三角形のあと、パスが2つ以上になったら、`PIXBeginEvent` / `PIXEndEvent`で区間に名前を付ける。マーカーはフラグで切り替え、Releaseには入れない。➡今のEventsは6行で、名前がなくても読めるため。
+  - TODO: フラグの名前と、有効にする構成は入れるときに決める。
 
 ## 5. UI（5ページ目）
 
