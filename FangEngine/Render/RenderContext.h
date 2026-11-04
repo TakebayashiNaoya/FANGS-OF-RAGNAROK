@@ -10,7 +10,7 @@
 #include "Core/Noncopyable.h"
 
 
-namespace render
+namespace fangEngine::render
 {
 	/**
 	 * @brief DeviceなどGPUを動かすためのオブジェクトを持ち、GPUに命令を渡して画面に出すクラス
@@ -104,4 +104,4 @@ namespace render
 		UINT64                              m_fenceValue = 0;
 		HANDLE                              m_fenceEvent = nullptr;
 	};
-} // namespace render
+} // namespace fangEngine::render

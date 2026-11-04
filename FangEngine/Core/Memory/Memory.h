@@ -6,7 +6,7 @@
 #include <cstddef>
 
 
-namespace core
+namespace fangEngine::core
 {
 	/**
 	 * @brief メモリ管理クラス
@@ -57,4 +57,4 @@ namespace core
 		size_t m_size  = 0; // 合計メモリサイズ
 		size_t m_count = 0; // 確保したメモリの数
 	};
-} // namespace core
+} // namespace fangEngine::core

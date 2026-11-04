@@ -10,11 +10,11 @@
 
 int main()
 {
-	Application application;
+	fangEngine::Application application;
 	if (application.Initialize() == false) return EXIT_FAILURE;
 	if (application.Run() == false)        return EXIT_FAILURE;
 
-	core::Memory memory;
+	fangEngine::core::Memory memory;
 	void* ptr1 = memory.MallocMemory(64);
 	std::cout << "合計メモリサイズ:" << memory.GetTotalMemorySize() << std::endl;
 	std::cout << "確保したメモリの数:" << memory.GetMemoryCount() << std::endl;
