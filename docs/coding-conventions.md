@@ -43,12 +43,14 @@
   中身を書き換えても、その.hをincludeするファイルがコンパイルし直しにならない。
 - 使うものは、そのファイルで直接includeする。ほかのヘッダーがたまたま読み込んでいるものに頼らない。
   対になる.hがincludeしているものは、.cppで書き直さない。
-- `Engine`直下のフォルダごとに、フォルダ名を小文字にした名前空間で包む(`core::Memory`、`render::RenderContext`)。
+- `FangEngine`のコードは`fangEngine`の名前空間で包み、その中で直下のフォルダごとに、フォルダ名を小文字にした名前空間で包む(`fangEngine::core::Memory`、`fangEngine::render::RenderContext`)。
   どの層のクラスかをコードから読めるようにするため。`Core/Memory`のように深いフォルダでも、名前空間は増やさない。
+  直下のファイルは`fangEngine`だけで包む(`fangEngine::Application`)。
+- 2段の名前空間は`namespace fangEngine::render`と1行で書く。字下げが2段にならないようにするため。
 
 ## Debugだけのコード
 
-- 判定は`_DEBUG`で行う(`Engine.vcxproj`がDebug構成で定義する。`DEBUG`は定義されていない)。
+- 判定は`_DEBUG`で行う(`FangEngine.vcxproj`がDebug構成で定義する。`DEBUG`は定義されていない)。
 - 判定は1か所に集める。値が違うだけなら、名前を1つにして値だけを`#ifdef`で書き分け、使う行には`#ifdef`を書かない。
   使う行ごとに書き分けると、囲み漏れが起きる。
 - `#endif`には、短いブロックでも`// _DEBUG`を付ける。ブロックは後から伸び、伸ばすときに付け足すのを忘れるため。
