@@ -5,6 +5,9 @@
     <ClCompile Include="Core\Memory\Memory.cpp">
       <Filter>Core\Memory</Filter>
     </ClCompile>
+    <ClCompile Include="Render\RenderContext.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -13,10 +16,16 @@
     <Filter Include="Core\Memory">
       <UniqueIdentifier>{1e129c8a-1865-46e8-b550-22b904951da2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Render">
+      <UniqueIdentifier>{dfb629e9-1142-4859-a992-2dceb4e47427}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\Memory\Memory.h">
       <Filter>Core\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\RenderContext.h">
+      <Filter>Render</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
