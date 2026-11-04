@@ -69,15 +69,18 @@ namespace render
 	private:
 		static constexpr int RENDER_TARGET_COUNT = 2;
 
-		Microsoft::WRL::ComPtr<ID3D12Device>              m_device;
-		Microsoft::WRL::ComPtr<ID3D12CommandQueue>        m_commandQueue;
-		Microsoft::WRL::ComPtr<IDXGISwapChain3>           m_swapChain;
-		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>      m_renderTargetViewDescriptorHeap;
-		Microsoft::WRL::ComPtr<ID3D12Resource>            m_swapChainBufferResources[RENDER_TARGET_COUNT];
-		D3D12_CPU_DESCRIPTOR_HANDLE                       m_renderTargetViewDescriptorHeapHandle{};
-		UINT                                              m_descriptorHandleIncrementSize = 0;
+		Microsoft::WRL::ComPtr<ID3D12Device>       m_device;
+		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
+		Microsoft::WRL::ComPtr<IDXGISwapChain3>    m_swapChain;
+
+		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_renderTargetViewDescriptorHeap;
+		Microsoft::WRL::ComPtr<ID3D12Resource>       m_swapChainBufferResources[RENDER_TARGET_COUNT];
+		D3D12_CPU_DESCRIPTOR_HANDLE                  m_renderTargetViewDescriptorHeapHandle{};
+		UINT                                         m_descriptorHandleIncrementSize = 0;
+
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator>    m_commandAllocator;
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
+
 		Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
 		UINT64                              m_fenceValue = 0;
 		HANDLE                              m_fenceEvent = nullptr;
