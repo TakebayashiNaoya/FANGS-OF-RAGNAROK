@@ -8,7 +8,7 @@
 #include <cstdint>
 
 
-namespace core
+namespace fangEngine::core
 {
 	namespace
 	{
@@ -115,4 +115,4 @@ namespace core
 		// メモリを解放する
 		std::free(block);
 	}
-} // namespace core
+} // namespace fangEngine::core

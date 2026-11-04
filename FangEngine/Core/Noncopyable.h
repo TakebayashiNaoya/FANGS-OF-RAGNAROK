@@ -5,7 +5,7 @@
 #pragma once
 
 
-namespace core
+namespace fangEngine::core
 {
 	/**
 	 * @brief 継承したクラスのコピーを禁止する
@@ -21,4 +21,4 @@ namespace core
 		Noncopyable() = default;
 		~Noncopyable() = default;
 	};
-} // namespace core
+} // namespace fangEngine::core

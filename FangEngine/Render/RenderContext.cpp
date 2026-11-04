@@ -6,7 +6,7 @@
 #include <iostream>
 
 
-namespace render
+namespace fangEngine::render
 {
 	RenderContext::~RenderContext()
 	{
@@ -278,4 +278,4 @@ namespace render
 
 		return true;
 	}
-} // namespace render
+} // namespace fangEngine::render
