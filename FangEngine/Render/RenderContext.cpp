@@ -42,6 +42,9 @@ namespace fangEngine::render
 		// GPUが読んでいる途中にResetすると、コマンドが上書きされるため、Resetの前に待つ。
 		if (WaitForFenceValue(m_frameFenceValues[m_backBufferIndex]) == false) return false;
 
+		// 待ちを除いたCPUの処理時間を測り始める
+		m_frameStartTime = std::chrono::steady_clock::now();
+
 		// コマンドアロケータのリセット
 		HRESULT resetCommandAllocatorResult = m_commandAllocators[m_backBufferIndex]->Reset();
 		if (FAILED(resetCommandAllocatorResult)) {
@@ -96,6 +99,10 @@ namespace fangEngine::render
 		// コマンドリストの実行
 		ID3D12CommandList* commandLists[] = { m_commandList.Get() };
 		m_commandQueue->ExecuteCommandLists(1, commandLists);
+
+		// 画面の待ちが入らないように、Presentの前で測り終える
+		auto frameEndTime = std::chrono::steady_clock::now();
+		m_cpuFrameMilliseconds = std::chrono::duration<float, std::milli>(frameEndTime - m_frameStartTime).count();
 
 		// 画面を差し替える
 		HRESULT presentResult = m_swapChain->Present(1, 0);

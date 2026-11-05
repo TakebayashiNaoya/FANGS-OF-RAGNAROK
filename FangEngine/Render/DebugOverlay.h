@@ -38,10 +38,11 @@ namespace fangEngine::render
 		bool Initialize(HWND window, RenderContext& renderContext);
 
 		/**
-		 * @brief 窓を組み立ててコマンドリストに積む
+		 * @brief メニューバーを組み立ててコマンドリストに積む
 		 * @param commandList 描画に使うコマンドリスト
+		 * @param cpuFrameMilliseconds 直前のフレームのCPU処理の時間(ミリ秒)
 		 */
-		void Render(ID3D12GraphicsCommandList* commandList);
+		void Render(ID3D12GraphicsCommandList* commandList, float cpuFrameMilliseconds);
 
 		/**
 		 * @brief WindowsのメッセージをImGuiへ渡す

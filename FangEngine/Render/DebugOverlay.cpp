@@ -99,7 +99,7 @@ namespace fangEngine::render
 	}
 
 
-	void DebugOverlay::Render(ID3D12GraphicsCommandList* commandList)
+	void DebugOverlay::Render(ID3D12GraphicsCommandList* commandList, float cpuFrameMilliseconds)
 	{
 		// ImGuiのフレームを始める
 		ImGui_ImplDX12_NewFrame();
@@ -112,6 +112,7 @@ namespace fangEngine::render
 		if (ImGui::BeginMainMenuBar()) {
 			ImGui::Text("FPS: %.1f", framesPerSecond);
 			ImGui::Text(ToImGuiText(u8"1フレーム: %.2f ms"), frameTimeMilliseconds);
+			ImGui::Text(ToImGuiText(u8"CPU処理: %.2f ms"), cpuFrameMilliseconds);
 			ImGui::EndMainMenuBar();
 		}
 
