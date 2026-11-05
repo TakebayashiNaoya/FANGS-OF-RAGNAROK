@@ -165,7 +165,7 @@ namespace fangEngine::render
 		DXGI_SWAP_CHAIN_DESC1 swapChainDescription{};
 		swapChainDescription.Width            = clientRectangle.right - clientRectangle.left;
 		swapChainDescription.Height           = clientRectangle.bottom - clientRectangle.top;
-		swapChainDescription.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+		swapChainDescription.Format           = RENDER_TARGET_FORMAT;
 		swapChainDescription.SampleDesc.Count = 1;
 		swapChainDescription.BufferUsage      = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		swapChainDescription.BufferCount      = RENDER_TARGET_COUNT;

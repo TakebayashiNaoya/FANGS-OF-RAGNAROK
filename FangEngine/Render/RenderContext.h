@@ -21,6 +21,11 @@ namespace fangEngine::render
 	class RenderContext : private core::Noncopyable
 	{
 	public:
+		static constexpr int         RENDER_TARGET_COUNT  = 2;
+		static constexpr DXGI_FORMAT RENDER_TARGET_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+
+	public:
 		/**
 		 * @brief GPUの処理が終わるのを待ってから破棄する
 		 */
@@ -44,6 +49,24 @@ namespace fangEngine::render
 		 * @return 成功したらtrue、失敗したらfalse
 		 */
 		bool EndFrame();
+
+		/**
+		 * @brief デバイスを取得する
+		 * @return デバイスのポインタ
+		 */
+		inline ID3D12Device* GetDevice() const { return m_device.Get(); }
+
+		/**
+		 * @brief コマンドキューを取得する
+		 * @return コマンドキューのポインタ
+		 */
+		inline ID3D12CommandQueue* GetCommandQueue() const { return m_commandQueue.Get(); }
+
+		/**
+		 * @brief コマンドリストを取得する
+		 * @return コマンドリストのポインタ
+		 */
+		inline ID3D12GraphicsCommandList* GetCommandList() const { return m_commandList.Get(); }
 
 
 	private:
@@ -105,8 +128,6 @@ namespace fangEngine::render
 
 
 	private:
-		static constexpr int RENDER_TARGET_COUNT = 2;
-
 		Microsoft::WRL::ComPtr<ID3D12Device>       m_device;
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
 		Microsoft::WRL::ComPtr<IDXGISwapChain3>    m_swapChain;
