@@ -8,6 +8,9 @@
     <ClCompile Include="Render\RenderContext.cpp">
       <Filter>Render</Filter>
     </ClCompile>
+    <ClCompile Include="Render\DebugOverlay.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="..\ThirdParty\imgui\imgui.cpp">
       <Filter>ThirdParty\imgui</Filter>
@@ -50,6 +53,9 @@
       <Filter>Core\Memory</Filter>
     </ClInclude>
     <ClInclude Include="Render\RenderContext.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\DebugOverlay.h">
       <Filter>Render</Filter>
     </ClInclude>
     <ClInclude Include="Application.h" />
