@@ -73,7 +73,8 @@ namespace fangEngine
 			previousFrameTime = currentFrameTime;
 
 			// 描画処理
-			if (m_renderContext.RenderFrame() == false) return false;
+			if (m_renderContext.BeginFrame() == false) return false;
+			if (m_renderContext.EndFrame() == false)   return false;
 		}
 
 		return true;

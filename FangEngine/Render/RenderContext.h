@@ -34,10 +34,16 @@ namespace fangEngine::render
 		bool Initialize(HWND window);
 
 		/**
-		 * @brief 1フレーム分描画する
-		 * @return 描画に成功したらtrue、失敗したらfalse
+		 * @brief 1フレームの描画開始処理を行う
+		 * @return 成功したらtrue、失敗したらfalse
 		 */
-		bool RenderFrame();
+		bool BeginFrame();
+
+		/**
+		 * @brief 1フレームの描画終了処理を行う
+		 * @return 成功したらtrue、失敗したらfalse
+		 */
+		bool EndFrame();
 
 
 	private:
@@ -109,6 +115,7 @@ namespace fangEngine::render
 		Microsoft::WRL::ComPtr<ID3D12Resource>       m_swapChainBufferResources[RENDER_TARGET_COUNT];
 		D3D12_CPU_DESCRIPTOR_HANDLE                  m_renderTargetViewDescriptorHeapHandle{};
 		UINT                                         m_descriptorHandleIncrementSize = 0;
+		UINT                                         m_backBufferIndex = 0;                           // 現在描画中のバッファのインデックス
 
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator>    m_commandAllocators[RENDER_TARGET_COUNT];
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
