@@ -5,19 +5,67 @@
 #include "DebugOverlay.h"
 #include <iostream>
 #include "RenderContext.h"
+#include "imgui.h"
+#include "backends/imgui_impl_win32.h"
+#include "backends/imgui_impl_dx12.h"
 
 
 namespace fangEngine::render
 {
 	namespace
 	{
-		constexpr UINT SHADER_RESOURCE_VIEW_DESCRIPTOR_COUNT = 64;
+		constexpr UINT SHADER_RESOURCE_VIEW_DESCRIPTOR_COUNT = 64; // ImGuiのサンプルと同じ数。今使うのはフォントの分だけ。
+
+		constexpr const char* FONT_PATH = "C:/Windows/Fonts/meiryo.ttc";
+		constexpr float       FONT_SIZE = 18.0f;
 	}
 
 
 	bool DebugOverlay::Initialize(HWND window, RenderContext& renderContext)
 	{
-		return CreateShaderResourceViewDescriptorHeap(renderContext.GetDevice());
+		// ディスクリプタヒープの作成
+		if (CreateShaderResourceViewDescriptorHeap(renderContext.GetDevice()) == false) return false;
+
+		// ImGui本体の初期化
+		ImGui::CreateContext();
+		ImGui::StyleColorsDark();
+
+		// 日本語フォントの読み込み。失敗しても既定のフォントで動かす。
+		ImFontConfig fontConfig{};
+		fontConfig.Flags |= ImFontFlags_NoLoadError;
+		ImGui::GetIO().Fonts->AddFontFromFileTTF(FONT_PATH, FONT_SIZE, &fontConfig);
+
+		// Win32側の初期化
+		if (ImGui_ImplWin32_Init(window) == false) {
+			std::cerr << "ImGui_ImplWin32_Initに失敗しました。" << std::endl;
+			return false;
+		}
+
+		// ImGui_ImplDX12_Initの引数に渡す構造体を作る
+		ImGui_ImplDX12_InitInfo initInfo{};
+		initInfo.Device               = renderContext.GetDevice();
+		initInfo.CommandQueue         = renderContext.GetCommandQueue();
+		initInfo.NumFramesInFlight    = RenderContext::RENDER_TARGET_COUNT;
+		initInfo.RTVFormat            = RenderContext::RENDER_TARGET_FORMAT;
+		initInfo.DSVFormat            = DXGI_FORMAT_UNKNOWN;
+		initInfo.SrvDescriptorHeap    = m_shaderResourceViewDescriptorHeap.Get();
+		initInfo.UserData             = this;
+		initInfo.SrvDescriptorAllocFn = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE* gpuHandle)
+			{
+				static_cast<DebugOverlay*>(info->UserData)->AllocateDescriptor(cpuHandle, gpuHandle);
+			};
+		initInfo.SrvDescriptorFreeFn  = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE)
+			{
+				static_cast<DebugOverlay*>(info->UserData)->FreeDescriptor(cpuHandle);
+			};
+
+		// D3D12側の初期化
+		if (ImGui_ImplDX12_Init(&initInfo) == false) {
+			std::cerr << "ImGui_ImplDX12_Initに失敗しました。" << std::endl;
+			return false;
+		}
+
+		return true;
 	}
 
 
