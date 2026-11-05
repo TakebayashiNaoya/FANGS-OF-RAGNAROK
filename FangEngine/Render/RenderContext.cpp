@@ -38,6 +38,10 @@ namespace fangEngine::render
 		D3D12_CPU_DESCRIPTOR_HANDLE renderTargetViewDescriptorHandle{};
 		renderTargetViewDescriptorHandle.ptr = m_renderTargetViewDescriptorHeapHandle.ptr + backBufferIndex * m_descriptorHandleIncrementSize;
 
+		// このアロケータのコマンドをGPUが終えるのを待つ。
+		// GPUが読んでいる途中にResetすると、コマンドが上書きされるため、Resetの前に待つ。
+		if (WaitForFenceValue(m_frameFenceValues[backBufferIndex]) == false) return false;
+
 		// コマンドアロケータのリセット
 		HRESULT resetCommandAllocatorResult = m_commandAllocators[backBufferIndex]->Reset();
 		if (FAILED(resetCommandAllocatorResult)) {
@@ -87,7 +91,12 @@ namespace fangEngine::render
 			return false;
 		}
 
-		return WaitForGpu();
+		// フェンスのシグナル送信
+		if (SignalFence() == false) return false;
+		// このアロケータの最後のSignalの値を保存する。Resetの前にここまで待つ。
+		m_frameFenceValues[backBufferIndex] = m_fenceValue;
+
+		return true;
 	}
 
 
@@ -267,6 +276,20 @@ namespace fangEngine::render
 	}
 
 
+	bool RenderContext::SignalFence()
+	{
+		// 新しい番号を発行して、Queueの最後に積む。GPUが前の処理を全部終えるとここへ届く。
+		m_fenceValue++;
+		HRESULT signalResult = m_commandQueue->Signal(m_fence.Get(), m_fenceValue);
+		if (FAILED(signalResult)) {
+			std::cerr << "フェンスのシグナル送信に失敗しました。" << std::endl;
+			return false;
+		}
+
+		return true;
+	}
+
+
 	bool RenderContext::WaitForFenceValue(UINT64 fenceValue)
 	{
 		// GPUがもう届いているなら待たない
@@ -288,13 +311,7 @@ namespace fangEngine::render
 
 	bool RenderContext::WaitForGpu()
 	{
-		// 新しい番号を発行して、Queueの最後に積む。GPUが前の処理を全部終えるとここへ届く。
-		m_fenceValue++;
-		HRESULT signalResult = m_commandQueue->Signal(m_fence.Get(), m_fenceValue);
-		if (FAILED(signalResult)) {
-			std::cerr << "フェンスのシグナル送信に失敗しました。" << std::endl;
-			return false;
-		}
+		if (SignalFence() == false) return false;
 
 		return WaitForFenceValue(m_fenceValue);
 	}

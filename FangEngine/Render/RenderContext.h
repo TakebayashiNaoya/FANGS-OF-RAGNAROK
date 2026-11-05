@@ -79,6 +79,12 @@ namespace fangEngine::render
 		bool CreateFence();
 
 		/**
+		 * @brief 新しい番号を発行してQueueの最後に積む
+		 * @return フェンスのシグナル送信に成功したらtrue、失敗したらfalse
+		 */
+		bool SignalFence();
+
+		/**
 		 * @brief フェンスの値がGPUの処理が終わった値になるまで待機する
 		 * @param fenceValue 待つフェンスの値
 		 * @return GPUの処理が完了したらtrue、失敗したらfalse
