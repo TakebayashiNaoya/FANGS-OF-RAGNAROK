@@ -21,6 +21,18 @@ namespace fangEngine::render
 	}
 
 
+	DebugOverlay::~DebugOverlay()
+	{
+		// 初期化が終わっていない場合は、動いていないものを終わらせないため何もしない
+		if (m_initialized == false) return;
+
+		// 初期化の逆の順に終わらせる
+		ImGui_ImplDX12_Shutdown();
+		ImGui_ImplWin32_Shutdown();
+		ImGui::DestroyContext();
+	}
+
+
 	bool DebugOverlay::Initialize(HWND window, RenderContext& renderContext)
 	{
 		// ディスクリプタヒープの作成
@@ -64,6 +76,9 @@ namespace fangEngine::render
 			std::cerr << "ImGui_ImplDX12_Initに失敗しました。" << std::endl;
 			return false;
 		}
+
+		// 初期化が最後まで終わったらtrueにする
+		m_initialized = true;
 
 		return true;
 	}

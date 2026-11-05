@@ -25,6 +25,11 @@ namespace fangEngine::render
 	{
 	public:
 		/**
+		 * @brief デバッグ用オーバーレイ描画クラスを破棄する
+		 */
+		~DebugOverlay();
+
+		/**
 		 * @brief ImGuiを動かすためのオブジェクトを作る
 		 * @param window ImGuiが入力を受け取るウィンドウ
 		 * @param renderContext 描画に使うGPUのオブジェクトを持つRenderContext
@@ -60,5 +65,7 @@ namespace fangEngine::render
 
 		std::vector<UINT> m_freeDescriptorIndices;             // 空いている番号の一覧
 		UINT              m_descriptorHandleIncrementSize = 0; // ディスクリプタ1つ分の大きさ
+
+		bool m_initialized = false; // Initializeが最後まで終わったらtrue
 	};
 } // namespace fangEngine::render
