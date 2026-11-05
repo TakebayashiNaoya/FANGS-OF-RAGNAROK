@@ -63,6 +63,10 @@ ProjectBeastをもとに、エンジンとゲームをきちんと分けて作�
   2. ウィンドウとループを`Application`へ移す。
   3. Allocatorをバッファの数だけ持ち、CPUとGPUを重ねる。1フレームの時間はCPUとGPUの足し算から、遅いほうの時間になる。➡定数バッファのように毎フレーム書くものの置き場所を、三角形より先に作るため。
   4. ImGuiを入れ、`Memory`の一覧と1フレームのmsとFPSを出す。ImGuiは自分のシェーダーを持つため、三角形より先に動かせる。
+     - ImGuiは`ThirdParty/imgui/`にコピーして入れる。➡`git clone`だけでビルドできるようにするため。
+     - `RenderFrame`を`BeginFrame`と`EndFrame`に分け、その間で描く。➡三角形も同じ場所に入るため。
+     - ImGuiは`render::DebugOverlay`に閉じ込める。➡GPUの層の`RenderContext`が、`Memory`や画面の中身を知らないようにするため。
+     - 窓の文字は日本語にする。今はWindowsのメイリオを読む。➡Xboxにはないため、UWPの構成を作るときに配布できるフォントへ替える。
   5. シェーダーと三角形を描く。
   6. 処理が増えたら、区間ごとのmsをImGuiに足す。
 - ウィンドウの大きさの変更（`WM_SIZE`、`ResizeBuffers`）と描く解像度は、まだ決めない。今のバッファは作ったときの大きさのままで、DXGIが引き伸ばして映す。➡解像度で中身が変わるものを書くときに決める。
