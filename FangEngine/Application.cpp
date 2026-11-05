@@ -24,6 +24,9 @@ namespace fangEngine
 		 */
 		LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 		{
+			// ImGuiが使ったメッセージは、ここで終わりにする
+			if (render::DebugOverlay::HandleMessage(window, message, wParam, lParam)) return true;
+
 			switch (message)
 			{
 			case WM_DESTROY:

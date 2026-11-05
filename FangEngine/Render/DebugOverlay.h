@@ -43,6 +43,12 @@ namespace fangEngine::render
 		 */
 		void Render(ID3D12GraphicsCommandList* commandList);
 
+		/**
+		 * @brief WindowsのメッセージをImGuiへ渡す
+		 * @return ImGuiが使ったらtrue
+		 */
+		static bool HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
+
 
 	private:
 		/**

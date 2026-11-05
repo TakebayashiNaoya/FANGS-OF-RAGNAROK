@@ -10,6 +10,9 @@
 #include "backends/imgui_impl_dx12.h"
 
 
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+
 namespace fangEngine::render
 {
 	namespace
@@ -18,6 +21,8 @@ namespace fangEngine::render
 
 		constexpr const char* FONT_PATH = "C:/Windows/Fonts/meiryo.ttc";
 		constexpr float       FONT_SIZE = 18.0f;
+
+		constexpr float MILLISECONDS_PER_SECOND = 1000.0f;
 
 		/**
 		 * @brief UTF-8の文字列をImGuiが受け取る型に変える
@@ -101,13 +106,14 @@ namespace fangEngine::render
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
 
-		// 窓の中身を組み立てる
+		// メニューバーの中身を組み立てる
 		const float framesPerSecond       = ImGui::GetIO().Framerate;
-		const float frameTimeMilliseconds = 1000.0f / framesPerSecond;
-		ImGui::Begin(ToImGuiText(u8"デバッグ情報"));
-		ImGui::Text("FPS: %.1f", framesPerSecond);
-		ImGui::Text(ToImGuiText(u8"1フレーム: %.2f ms"), frameTimeMilliseconds);
-		ImGui::End();
+		const float frameTimeMilliseconds = MILLISECONDS_PER_SECOND / framesPerSecond;
+		if (ImGui::BeginMainMenuBar()) {
+			ImGui::Text("FPS: %.1f", framesPerSecond);
+			ImGui::Text(ToImGuiText(u8"1フレーム: %.2f ms"), frameTimeMilliseconds);
+			ImGui::EndMainMenuBar();
+		}
 
 		// 組み立てた内容を描画データにする
 		ImGui::Render();
@@ -116,6 +122,12 @@ namespace fangEngine::render
 		ID3D12DescriptorHeap* descriptorHeaps[] = { m_shaderResourceViewDescriptorHeap.Get() };
 		commandList->SetDescriptorHeaps(1, descriptorHeaps);
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
+	}
+
+
+	bool DebugOverlay::HandleMessage(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
+	{
+		return ImGui_ImplWin32_WndProcHandler(window, message, wParam, lParam) != 0;
 	}
 
 
