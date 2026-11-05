@@ -38,14 +38,18 @@ namespace fangEngine::render
 		D3D12_CPU_DESCRIPTOR_HANDLE renderTargetViewDescriptorHandle{};
 		renderTargetViewDescriptorHandle.ptr = m_renderTargetViewDescriptorHeapHandle.ptr + backBufferIndex * m_descriptorHandleIncrementSize;
 
+		// このアロケータのコマンドをGPUが終えるのを待つ。
+		// GPUが読んでいる途中にResetすると、コマンドが上書きされるため、Resetの前に待つ。
+		if (WaitForFenceValue(m_frameFenceValues[backBufferIndex]) == false) return false;
+
 		// コマンドアロケータのリセット
-		HRESULT resetCommandAllocatorResult = m_commandAllocator->Reset();
+		HRESULT resetCommandAllocatorResult = m_commandAllocators[backBufferIndex]->Reset();
 		if (FAILED(resetCommandAllocatorResult)) {
 			std::cerr << "コマンドアロケータのリセットに失敗しました。" << std::endl;
 			return false;
 		}
 		// コマンドリストのリセット
-		HRESULT resetCommandListResult = m_commandList->Reset(m_commandAllocator.Get(), nullptr);
+		HRESULT resetCommandListResult = m_commandList->Reset(m_commandAllocators[backBufferIndex].Get(), nullptr);
 		if (FAILED(resetCommandListResult)) {
 			std::cerr << "コマンドリストのリセットに失敗しました。" << std::endl;
 			return false;
@@ -87,7 +91,12 @@ namespace fangEngine::render
 			return false;
 		}
 
-		return WaitForGpu();
+		// フェンスのシグナル送信
+		if (SignalFence() == false) return false;
+		// このアロケータの最後のSignalの値を保存する。Resetの前にここまで待つ。
+		m_frameFenceValues[backBufferIndex] = m_fenceValue;
+
+		return true;
 	}
 
 
@@ -214,18 +223,24 @@ namespace fangEngine::render
 
 	bool RenderContext::CreateCommandAllocatorAndList()
 	{
-		// コマンドアロケータの作成
-		HRESULT createCommandAllocatorResult = m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator));
-		if (FAILED(createCommandAllocatorResult)) {
-			std::cerr << "コマンドアロケータの作成に失敗しました。" << std::endl;
-			return false;
+		for (int allocatorIndex = 0; allocatorIndex < RENDER_TARGET_COUNT; ++allocatorIndex)
+		{
+			// コマンドアロケータの作成
+			HRESULT createCommandAllocatorResult = m_device->CreateCommandAllocator(
+				D3D12_COMMAND_LIST_TYPE_DIRECT,
+				IID_PPV_ARGS(&m_commandAllocators[allocatorIndex])
+			);
+			if (FAILED(createCommandAllocatorResult)) {
+				std::cerr << "コマンドアロケータの作成に失敗しました。" << std::endl;
+				return false;
+			}
 		}
 
 		// コマンドリストの作成
 		HRESULT createCommandListResult = m_device->CreateCommandList(
 			0,
 			D3D12_COMMAND_LIST_TYPE_DIRECT,
-			m_commandAllocator.Get(),
+			m_commandAllocators[0].Get(),
 			nullptr,
 			IID_PPV_ARGS(&m_commandList)
 		);
@@ -261,21 +276,43 @@ namespace fangEngine::render
 	}
 
 
-	bool RenderContext::WaitForGpu()
+	bool RenderContext::SignalFence()
 	{
+		// 新しい番号を発行して、Queueの最後に積む。GPUが前の処理を全部終えるとここへ届く。
 		m_fenceValue++;
 		HRESULT signalResult = m_commandQueue->Signal(m_fence.Get(), m_fenceValue);
 		if (FAILED(signalResult)) {
 			std::cerr << "フェンスのシグナル送信に失敗しました。" << std::endl;
 			return false;
 		}
-		HRESULT setEventOnCompletionResult = m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent);
+
+		return true;
+	}
+
+
+	bool RenderContext::WaitForFenceValue(UINT64 fenceValue)
+	{
+		// GPUがもう届いているなら待たない
+		if (m_fence->GetCompletedValue() >= fenceValue) return true;
+
+		// 届いたらm_fenceEventを立てるよう頼む
+		HRESULT setEventOnCompletionResult = m_fence->SetEventOnCompletion(fenceValue, m_fenceEvent);
 		if (FAILED(setEventOnCompletionResult)) {
 			std::cerr << "フェンスのイベント設定に失敗しました。" << std::endl;
 			return false;
 		}
+
+		// 合図が立つまでCPUを止める
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 
 		return true;
+	}
+
+
+	bool RenderContext::WaitForGpu()
+	{
+		if (SignalFence() == false) return false;
+
+		return WaitForFenceValue(m_fenceValue);
 	}
 } // namespace fangEngine::render

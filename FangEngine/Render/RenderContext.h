@@ -79,6 +79,19 @@ namespace fangEngine::render
 		bool CreateFence();
 
 		/**
+		 * @brief 新しい番号を発行してQueueの最後に積む
+		 * @return フェンスのシグナル送信に成功したらtrue、失敗したらfalse
+		 */
+		bool SignalFence();
+
+		/**
+		 * @brief フェンスの値がGPUの処理が終わった値になるまで待機する
+		 * @param fenceValue 待つフェンスの値
+		 * @return GPUの処理が完了したらtrue、失敗したらfalse
+		 */
+		bool WaitForFenceValue(UINT64 fenceValue);
+
+		/**
 		 * @brief GPUの処理が完了するまで待機する
 		 * @return GPUの処理が完了したらtrue、失敗したらfalse
 		 */
@@ -97,11 +110,12 @@ namespace fangEngine::render
 		D3D12_CPU_DESCRIPTOR_HANDLE                  m_renderTargetViewDescriptorHeapHandle{};
 		UINT                                         m_descriptorHandleIncrementSize = 0;
 
-		Microsoft::WRL::ComPtr<ID3D12CommandAllocator>    m_commandAllocator;
+		Microsoft::WRL::ComPtr<ID3D12CommandAllocator>    m_commandAllocators[RENDER_TARGET_COUNT];
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 
-		Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
-		UINT64                              m_fenceValue = 0;
-		HANDLE                              m_fenceEvent = nullptr;
+		Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;                                      // GPUが届いた番号を持つ
+		UINT64                              m_frameFenceValues[RENDER_TARGET_COUNT] = {}; // Allocatorごとの最後のSignalの値。Resetの前にここまで待つ。
+		UINT64                              m_fenceValue = 0;                             // CPUが最後に発行した番号
+		HANDLE                              m_fenceEvent = nullptr;                       // 番号に届いたときにCPUを起こす合図
 	};
 } // namespace fangEngine::render
