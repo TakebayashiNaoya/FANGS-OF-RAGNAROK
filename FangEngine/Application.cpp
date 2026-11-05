@@ -36,11 +36,20 @@ namespace fangEngine
 	}
 
 
+	Application::~Application()
+	{
+		// DebugOverlayが捨てるものをGPUが読み終えるのを待つ
+		m_renderContext.WaitForGpu();
+	}
+
+
 	bool Application::Initialize()
 	{
 		HWND window = CreateMainWindow();
 		if (window == nullptr) return false;
-		return m_renderContext.Initialize(window);
+		if (m_renderContext.Initialize(window) == false)                 return false;
+		if (m_debugOverlay.Initialize(window, m_renderContext) == false) return false;
+		return true;
 	}
 
 
@@ -72,8 +81,11 @@ namespace fangEngine
 			}
 			previousFrameTime = currentFrameTime;
 
-			// 描画処理
+			// 描画の開始
 			if (m_renderContext.BeginFrame() == false) return false;
+			// デバッグ情報の描画
+			m_debugOverlay.Render(m_renderContext.GetCommandList());
+			// 描画の終了
 			if (m_renderContext.EndFrame() == false)   return false;
 		}
 

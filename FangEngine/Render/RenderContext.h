@@ -51,6 +51,12 @@ namespace fangEngine::render
 		bool EndFrame();
 
 		/**
+		 * @brief GPUの処理が完了するまで待機する
+		 * @return GPUの処理が完了したらtrue、失敗したらfalse
+		 */
+		bool WaitForGpu();
+
+		/**
 		 * @brief デバイスを取得する
 		 * @return デバイスのポインタ
 		 */
@@ -119,12 +125,6 @@ namespace fangEngine::render
 		 * @return GPUの処理が完了したらtrue、失敗したらfalse
 		 */
 		bool WaitForFenceValue(UINT64 fenceValue);
-
-		/**
-		 * @brief GPUの処理が完了するまで待機する
-		 * @return GPUの処理が完了したらtrue、失敗したらfalse
-		 */
-		bool WaitForGpu();
 
 
 	private:

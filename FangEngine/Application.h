@@ -5,6 +5,7 @@
 #pragma once
 #include <Windows.h>
 #include "Render/RenderContext.h"
+#include "Render/DebugOverlay.h"
 
 
 namespace fangEngine
@@ -15,6 +16,11 @@ namespace fangEngine
 	class Application
 	{
 	public:
+		/**
+		 * @brief GPUの処理が終わるのを待ってから破棄する
+		 */
+		~Application();
+
 		/**
 		 * @brief ウィンドウと各サブシステムを作る
 		 * @return 全部作成できた場合はtrue、1つでも失敗した場合はfalse
@@ -38,5 +44,6 @@ namespace fangEngine
 
 	private:
 		render::RenderContext m_renderContext;
+		render::DebugOverlay  m_debugOverlay; // RenderContextのDeviceを使うため、先に壊れるように下に置く
 	};
 } // namespace fangEngine

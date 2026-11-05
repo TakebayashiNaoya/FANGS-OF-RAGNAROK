@@ -105,8 +105,8 @@ namespace fangEngine::render
 		const float framesPerSecond       = ImGui::GetIO().Framerate;
 		const float frameTimeMilliseconds = 1000.0f / framesPerSecond;
 		ImGui::Begin(ToImGuiText(u8"デバッグ情報"));
-		ImGui::Text(ToImGuiText(u8"1フレーム: %.2f ms"), frameTimeMilliseconds);
 		ImGui::Text("FPS: %.1f", framesPerSecond);
+		ImGui::Text(ToImGuiText(u8"1フレーム: %.2f ms"), frameTimeMilliseconds);
 		ImGui::End();
 
 		// 組み立てた内容を描画データにする

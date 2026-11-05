@@ -113,6 +113,17 @@ namespace fangEngine::render
 	}
 
 
+	bool RenderContext::WaitForGpu()
+	{
+		// m_fenceEventは最後に作るため、これがなければGPUに渡した処理もない
+		if (m_fenceEvent == nullptr) return true;
+
+		if (SignalFence() == false) return false;
+
+		return WaitForFenceValue(m_fenceValue);
+	}
+
+
 	bool RenderContext::CreateDevice()
 	{
 		HRESULT createDeviceResult = D3D12CreateDevice(
@@ -319,13 +330,5 @@ namespace fangEngine::render
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 
 		return true;
-	}
-
-
-	bool RenderContext::WaitForGpu()
-	{
-		if (SignalFence() == false) return false;
-
-		return WaitForFenceValue(m_fenceValue);
 	}
 } // namespace fangEngine::render
