@@ -37,6 +37,12 @@ namespace fangEngine::render
 		 */
 		bool Initialize(HWND window, RenderContext& renderContext);
 
+		/**
+		 * @brief 窓を組み立ててコマンドリストに積む
+		 * @param commandList 描画に使うコマンドリスト
+		 */
+		void Render(ID3D12GraphicsCommandList* commandList);
+
 
 	private:
 		/**

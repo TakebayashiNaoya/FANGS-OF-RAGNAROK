@@ -18,6 +18,16 @@ namespace fangEngine::render
 
 		constexpr const char* FONT_PATH = "C:/Windows/Fonts/meiryo.ttc";
 		constexpr float       FONT_SIZE = 18.0f;
+
+		/**
+		 * @brief UTF-8の文字列をImGuiが受け取る型に変える
+		 * @param text UTF-8の文字列
+		 * @return ImGuiに渡せる文字列
+		 */
+		const char* ToImGuiText(const char8_t* text)
+		{
+			return reinterpret_cast<const char*>(text);
+		}
 	}
 
 
@@ -81,6 +91,31 @@ namespace fangEngine::render
 		m_initialized = true;
 
 		return true;
+	}
+
+
+	void DebugOverlay::Render(ID3D12GraphicsCommandList* commandList)
+	{
+		// ImGuiのフレームを始める
+		ImGui_ImplDX12_NewFrame();
+		ImGui_ImplWin32_NewFrame();
+		ImGui::NewFrame();
+
+		// 窓の中身を組み立てる
+		const float framesPerSecond       = ImGui::GetIO().Framerate;
+		const float frameTimeMilliseconds = 1000.0f / framesPerSecond;
+		ImGui::Begin(ToImGuiText(u8"デバッグ情報"));
+		ImGui::Text(ToImGuiText(u8"1フレーム: %.2f ms"), frameTimeMilliseconds);
+		ImGui::Text("FPS: %.1f", framesPerSecond);
+		ImGui::End();
+
+		// 組み立てた内容を描画データにする
+		ImGui::Render();
+
+		// 描画データをコマンドリストに積む
+		ID3D12DescriptorHeap* descriptorHeaps[] = { m_shaderResourceViewDescriptorHeap.Get() };
+		commandList->SetDescriptorHeaps(1, descriptorHeaps);
+		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), commandList);
 	}
 
 
