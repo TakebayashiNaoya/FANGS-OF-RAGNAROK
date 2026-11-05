@@ -6,6 +6,7 @@
 #include <Windows.h>
 #include <d3d12.h>
 #include <wrl/client.h>
+#include <vector>
 #include "Core/Noncopyable.h"
 
 
@@ -40,8 +41,24 @@ namespace fangEngine::render
 		 */
 		bool CreateShaderResourceViewDescriptorHeap(ID3D12Device* device);
 
+		/**
+		 * @brief ディスクリプタを割り当てる
+		 * @param cpuHandle CPU側のディスクリプタハンドル
+		 * @param gpuHandle GPU側のディスクリプタハンドル
+		 */
+		void AllocateDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE* gpuHandle);
+
+		/**
+		 * @brief ディスクリプタを解放する
+		 * @param cpuHandle CPU側のディスクリプタハンドル
+		 */
+		void FreeDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle);
+
 
 	private:
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_shaderResourceViewDescriptorHeap;
+
+		std::vector<UINT> m_freeDescriptorIndices;             // 空いている番号の一覧
+		UINT              m_descriptorHandleIncrementSize = 0; // ディスクリプタ1つ分の大きさ
 	};
 } // namespace fangEngine::render
