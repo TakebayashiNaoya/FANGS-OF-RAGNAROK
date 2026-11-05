@@ -267,21 +267,35 @@ namespace fangEngine::render
 	}
 
 
+	bool RenderContext::WaitForFenceValue(UINT64 fenceValue)
+	{
+		// GPUがもう届いているなら待たない
+		if (m_fence->GetCompletedValue() >= fenceValue) return true;
+
+		// 届いたらm_fenceEventを立てるよう頼む
+		HRESULT setEventOnCompletionResult = m_fence->SetEventOnCompletion(fenceValue, m_fenceEvent);
+		if (FAILED(setEventOnCompletionResult)) {
+			std::cerr << "フェンスのイベント設定に失敗しました。" << std::endl;
+			return false;
+		}
+
+		// 合図が立つまでCPUを止める
+		WaitForSingleObject(m_fenceEvent, INFINITE);
+
+		return true;
+	}
+
+
 	bool RenderContext::WaitForGpu()
 	{
+		// 新しい番号を発行して、Queueの最後に積む。GPUが前の処理を全部終えるとここへ届く。
 		m_fenceValue++;
 		HRESULT signalResult = m_commandQueue->Signal(m_fence.Get(), m_fenceValue);
 		if (FAILED(signalResult)) {
 			std::cerr << "フェンスのシグナル送信に失敗しました。" << std::endl;
 			return false;
 		}
-		HRESULT setEventOnCompletionResult = m_fence->SetEventOnCompletion(m_fenceValue, m_fenceEvent);
-		if (FAILED(setEventOnCompletionResult)) {
-			std::cerr << "フェンスのイベント設定に失敗しました。" << std::endl;
-			return false;
-		}
-		WaitForSingleObject(m_fenceEvent, INFINITE);
 
-		return true;
+		return WaitForFenceValue(m_fenceValue);
 	}
 } // namespace fangEngine::render
