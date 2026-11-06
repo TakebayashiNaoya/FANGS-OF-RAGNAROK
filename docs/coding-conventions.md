@@ -49,12 +49,12 @@
   直下のファイルは`fangEngine`だけで包む(`fangEngine::Application`)。
 - 2段の名前空間は`namespace fangEngine::render`と1行で書く。字下げが2段にならないようにするため。
 
-## Debugだけのコード
+## 開発用のコード
 
-- 判定は`_DEBUG`で行う(`FangEngine.vcxproj`がDebug構成で定義する。`DEBUG`は定義されていない)。
+- 判定は`FANG_DEBUG_OR_PROFILE`で行う(`FangEngine.vcxproj`がDebugとProfileの構成で定義する)。`_DEBUG`はProfileで定義されないため使わない。
 - 判定は1か所に集める。値が違うだけなら、名前を1つにして値だけを`#ifdef`で書き分け、使う行には`#ifdef`を書かない。
   使う行ごとに書き分けると、囲み漏れが起きる。
-- `#endif`には、短いブロックでも`// _DEBUG`を付ける。ブロックは後から伸び、伸ばすときに付け足すのを忘れるため。
+- `#endif`には、短いブロックでも`// FANG_DEBUG_OR_PROFILE`を付ける。ブロックは後から伸び、伸ばすときに付け足すのを忘れるため。
 
 ## クラスの形
 
