@@ -60,9 +60,9 @@ namespace fangEngine::core
 
 	private:
 		struct Header;
-#ifdef _DEBUG
+#ifdef FANG_DEBUG_OR_PROFILE
 		Header* m_head = nullptr; // 最後に確保したメモリブロックの先頭
-#endif // _DEBUG
+#endif // FANG_DEBUG_OR_PROFILE
 
 
 	private:
