@@ -8,6 +8,7 @@
 #include "imgui.h"
 #include "backends/imgui_impl_win32.h"
 #include "backends/imgui_impl_dx12.h"
+#include "Core/Memory/Memory.h"
 
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -99,7 +100,7 @@ namespace fangEngine::render
 	}
 
 
-	void DebugOverlay::Render(ID3D12GraphicsCommandList* commandList, float cpuFrameMilliseconds)
+	void DebugOverlay::Render(ID3D12GraphicsCommandList* commandList, float cpuFrameMilliseconds, const core::Memory& memory)
 	{
 		// ImGuiのフレームを始める
 		ImGui_ImplDX12_NewFrame();
@@ -109,10 +110,20 @@ namespace fangEngine::render
 		// メニューバーの中身を組み立てる
 		const float framesPerSecond       = ImGui::GetIO().Framerate;
 		const float frameTimeMilliseconds = MILLISECONDS_PER_SECOND / framesPerSecond;
-		if (ImGui::BeginMainMenuBar()) {
+		if (ImGui::BeginMainMenuBar())
+		{
 			ImGui::Text("FPS: %.1f", framesPerSecond);
 			ImGui::Text(ToImGuiText(u8"1フレーム: %.2f ms"), frameTimeMilliseconds);
 			ImGui::Text(ToImGuiText(u8"CPU処理: %.2f ms"), cpuFrameMilliseconds);
+			if (ImGui::BeginMenu(ToImGuiText(u8"メモリ"))) {
+				ImGui::Text(ToImGuiText(u8"メモリ数: %zu"), memory.GetMemoryCount());
+				ImGui::Text(ToImGuiText(u8"メモリサイズ: %zu bytes"), memory.GetTotalMemorySize());
+				ImGui::Separator();
+				for (const core::Memory::BlockInformation& block : memory.GetRemainingBlocks()) {
+					ImGui::Text(ToImGuiText(u8"%p: %zu bytes"), block.data, block.size);
+				}
+				ImGui::EndMenu();
+			}
 			ImGui::EndMainMenuBar();
 		}
 

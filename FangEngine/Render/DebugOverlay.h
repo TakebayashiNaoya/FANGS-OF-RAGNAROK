@@ -10,6 +10,13 @@
 #include "Core/Noncopyable.h"
 
 
+// 前方宣言
+namespace fangEngine::core
+{
+	class Memory;
+} // namespace fangEngine::core
+
+
 namespace fangEngine::render
 {
 	// 前方宣言
@@ -41,8 +48,9 @@ namespace fangEngine::render
 		 * @brief メニューバーを組み立ててコマンドリストに積む
 		 * @param commandList 描画に使うコマンドリスト
 		 * @param cpuFrameMilliseconds 直前のフレームのCPU処理の時間(ミリ秒)
+		 * @param memory メモリ管理クラス
 		 */
-		void Render(ID3D12GraphicsCommandList* commandList, float cpuFrameMilliseconds);
+		void Render(ID3D12GraphicsCommandList* commandList, float cpuFrameMilliseconds, const core::Memory& memory);
 
 		/**
 		 * @brief WindowsのメッセージをImGuiへ渡す
