@@ -4,7 +4,6 @@
  */
 #include "Memory.h"
 #include <cstdlib>
-#include <iostream>
 #include <cstdint>
 
 
@@ -32,17 +31,21 @@ namespace fangEngine::core
 	};
 
 
-	void Memory::PrintRemainingBlocks() const
+	std::vector<Memory::BlockInformation> Memory::GetRemainingBlocks() const
 	{
+		std::vector<BlockInformation> blocks;
+
 #ifdef _DEBUG
 		Header* current = m_head;
 		while (current != nullptr) {
 			const void* block = current;
 			const void* data = static_cast<const std::byte*>(block) + HEADER_SIZE;
-			std::cout << "メモリアドレス: " << data << " (メモリサイズ: " << current->size << ")" << std::endl;
+			blocks.push_back({ data, current->size });
 			current = current->next;
 		}
 #endif // _DEBUG
+
+		return blocks;
 	}
 
 
