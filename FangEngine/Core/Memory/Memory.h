@@ -20,6 +20,7 @@ namespace fangEngine::core
 		{
 			const void* data; // 呼ぶ側へ返したアドレス
 			size_t      size;
+			const char* tag;
 		};
 
 
@@ -33,9 +34,10 @@ namespace fangEngine::core
 		/**
 		 * @brief メモリを確保する
 		 * @param size 確保するメモリのサイズ
+		 * @param tag 文字列リテラルを渡す
 		 * @return 確保したメモリのポインタ
 		 */
-		void* MallocMemory(size_t size);
+		void* MallocMemory(size_t size, const char* tag);
 
 		/**
 		 * @brief メモリを解放する

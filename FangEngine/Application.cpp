@@ -53,8 +53,8 @@ namespace fangEngine
 	bool Application::Initialize()
 	{
 		// Memoryの一覧を確認するためにメモリを確保する
-		m_firstBlock  = m_memory.MallocMemory(64);
-		m_secondBlock = m_memory.MallocMemory(32);
+		m_firstBlock  = m_memory.MallocMemory(64, "Application");
+		m_secondBlock = m_memory.MallocMemory(32, "Application");
 
 		HWND window = CreateMainWindow();
 		if (window == nullptr) return false;

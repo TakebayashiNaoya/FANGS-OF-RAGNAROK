@@ -115,15 +115,18 @@ namespace fangEngine::render
 			ImGui::Text("FPS: %.1f", framesPerSecond);
 			ImGui::Text(ToImGuiText(u8"1フレーム: %.2f ms"), frameTimeMilliseconds);
 			ImGui::Text(ToImGuiText(u8"CPU処理: %.2f ms"), cpuFrameMilliseconds);
-			if (ImGui::BeginMenu(ToImGuiText(u8"メモリ"))) {
+
+			if (ImGui::BeginMenu(ToImGuiText(u8"メモリ")))
+			{
 				ImGui::Text(ToImGuiText(u8"メモリ数: %zu"), memory.GetMemoryCount());
 				ImGui::Text(ToImGuiText(u8"メモリサイズ: %zu bytes"), memory.GetTotalMemorySize());
 				ImGui::Separator();
 				for (const core::Memory::BlockInformation& block : memory.GetRemainingBlocks()) {
-					ImGui::Text(ToImGuiText(u8"%p: %zu bytes"), block.data, block.size);
+					ImGui::Text(ToImGuiText(u8"%p: %zu bytes (%s)"), block.data, block.size, block.tag);
 				}
 				ImGui::EndMenu();
 			}
+
 			ImGui::EndMainMenuBar();
 		}
 
