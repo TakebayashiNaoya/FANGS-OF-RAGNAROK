@@ -43,7 +43,7 @@ namespace fangEngine::render
 		if (WaitForFenceValue(m_frameFenceValues[m_backBufferIndex]) == false) return false;
 
 		// 待ちを除いたCPUの処理時間を測り始める
-		m_frameStartTime = std::chrono::steady_clock::now();
+		m_cpuProfiler.BeginFrame();
 
 		// コマンドアロケータのリセット
 		HRESULT resetCommandAllocatorResult = m_commandAllocators[m_backBufferIndex]->Reset();
@@ -101,8 +101,7 @@ namespace fangEngine::render
 		m_commandQueue->ExecuteCommandLists(1, commandLists);
 
 		// 画面の待ちが入らないように、Presentの前で測り終える
-		auto frameEndTime = std::chrono::steady_clock::now();
-		m_cpuFrameMilliseconds = std::chrono::duration<float, std::milli>(frameEndTime - m_frameStartTime).count();
+		m_cpuProfiler.EndFrame();
 
 		// 画面を差し替える
 		HRESULT presentResult = m_swapChain->Present(1, 0);

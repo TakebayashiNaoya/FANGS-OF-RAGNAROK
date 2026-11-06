@@ -7,8 +7,8 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 #include <dxgi1_6.h>
-#include <chrono>
 #include "Core/Noncopyable.h"
+#include "CpuProfiler.h"
 
 
 namespace fangEngine::render
@@ -79,7 +79,7 @@ namespace fangEngine::render
 		 * @brief 直前のフレームのCPU処理の時間を取得する
 		 * @return 待ちを除いたCPU処理の時間(ms)
 		 */
-		inline float GetCpuFrameMilliseconds() const { return m_cpuFrameMilliseconds; }
+		inline float GetCpuFrameMilliseconds() const { return m_cpuProfiler.GetFrameMilliseconds(); }
 
 
 	private:
@@ -153,7 +153,6 @@ namespace fangEngine::render
 		UINT64                              m_fenceValue = 0;                             // CPUが最後に発行した番号
 		HANDLE                              m_fenceEvent = nullptr;                       // 番号に届いたときにCPUを起こす合図
 
-		std::chrono::steady_clock::time_point m_frameStartTime;              // 待ちのあとでCPUの処理を始めた時刻
-		float                                 m_cpuFrameMilliseconds = 0.0f; // 直前のフレームのCPU処理の時間
+		CpuProfiler m_cpuProfiler; // 待ちを除いたCPUの処理時間を測る
 	};
 } // namespace fangEngine::render
