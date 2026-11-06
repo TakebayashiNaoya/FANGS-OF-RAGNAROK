@@ -43,15 +43,24 @@ namespace fangEngine
 	{
 		// DebugOverlayが捨てるものをGPUが読み終えるのを待つ
 		m_renderContext.WaitForGpu();
+
+		// メモリを解放する
+		m_memory.FreeMemory(m_firstBlock);
+		m_memory.FreeMemory(m_secondBlock);
 	}
 
 
 	bool Application::Initialize()
 	{
+		// Memoryの一覧を確認するためにメモリを確保する
+		m_firstBlock  = m_memory.MallocMemory(64);
+		m_secondBlock = m_memory.MallocMemory(32);
+
 		HWND window = CreateMainWindow();
 		if (window == nullptr) return false;
 		if (m_renderContext.Initialize(window) == false)                 return false;
 		if (m_debugOverlay.Initialize(window, m_renderContext) == false) return false;
+
 		return true;
 	}
 

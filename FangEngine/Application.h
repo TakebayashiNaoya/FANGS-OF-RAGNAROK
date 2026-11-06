@@ -6,6 +6,7 @@
 #include <Windows.h>
 #include "Render/RenderContext.h"
 #include "Render/DebugOverlay.h"
+#include "Core/Memory/Memory.h"
 
 
 namespace fangEngine
@@ -45,5 +46,9 @@ namespace fangEngine
 	private:
 		render::RenderContext m_renderContext;
 		render::DebugOverlay  m_debugOverlay; // RenderContextのDeviceを使うため、先に壊れるように下に置く
+
+		core::Memory m_memory;
+		void*        m_firstBlock  = nullptr; // 確認用に確保した64バイトのブロック
+		void*        m_secondBlock = nullptr; // 確認用に確保した32バイトのブロック
 	};
 } // namespace fangEngine
