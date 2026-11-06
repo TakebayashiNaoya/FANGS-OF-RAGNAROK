@@ -11,11 +11,11 @@ namespace fangEngine::core
 {
 	namespace
 	{
-#ifdef _DEBUG
+#ifdef FANG_DEBUG_OR_PROFILE
 		constexpr size_t HEADER_SIZE = 32;
 #else
 		constexpr size_t HEADER_SIZE = 16;
-#endif // _DEBUG
+#endif // FANG_DEBUG_OR_PROFILE
 	}
 
 
@@ -23,13 +23,13 @@ namespace fangEngine::core
 	{
 		size_t size; // メモリブロックのサイズ
 
-#ifdef _DEBUG
+#ifdef FANG_DEBUG_OR_PROFILE
 		// A→B→C順に確保した場合、BのnextはA、previousはCを指す
 		Header* next;     // 一つ前に確保したメモリブロックへのポインタ
 		Header* previous; // 次に確保したメモリブロックへのポインタ
 
 		const char* tag;  // メモリブロックのタグ
-#endif // _DEBUG
+#endif // FANG_DEBUG_OR_PROFILE
 	};
 
 
@@ -37,7 +37,7 @@ namespace fangEngine::core
 	{
 		std::vector<BlockInformation> blocks;
 
-#ifdef _DEBUG
+#ifdef FANG_DEBUG_OR_PROFILE
 		Header* current = m_head;
 		while (current != nullptr) {
 			const void* block = current;
@@ -45,7 +45,7 @@ namespace fangEngine::core
 			blocks.push_back({ data, current->size, current->tag });
 			current = current->next;
 		}
-#endif // _DEBUG
+#endif // FANG_DEBUG_OR_PROFILE
 
 		return blocks;
 	}
@@ -72,7 +72,7 @@ namespace fangEngine::core
 		// 確保したメモリの数を更新する
 		m_count++;
 
-#ifdef _DEBUG
+#ifdef FANG_DEBUG_OR_PROFILE
 		// メモリブロックのタグを格納する
 		header->tag = tag;
 
@@ -87,7 +87,7 @@ namespace fangEngine::core
 		m_head = header;
 		// 新しく確保したメモリブロックのpreviousはnullptrにしておく
 		m_head->previous = nullptr;
-#endif // _DEBUG
+#endif // FANG_DEBUG_OR_PROFILE
 
 		return data;
 	}
@@ -106,7 +106,7 @@ namespace fangEngine::core
 		// 確保したメモリの数を更新する
 		m_count--;
 
-#ifdef _DEBUG
+#ifdef FANG_DEBUG_OR_PROFILE
 		Header* header = static_cast<Header*>(block);
 		// メモリブロックの前後のリンクを更新する
 		if (header->next != nullptr) {
@@ -119,7 +119,7 @@ namespace fangEngine::core
 		if (m_head == header) {
 			m_head = header->next;
 		}
-#endif // _DEBUG
+#endif // FANG_DEBUG_OR_PROFILE
 
 		// メモリを解放する
 		std::free(block);
