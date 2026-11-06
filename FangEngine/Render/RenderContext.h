@@ -7,6 +7,7 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 #include <dxgi1_6.h>
+#include <chrono>
 #include "Core/Noncopyable.h"
 
 
@@ -21,6 +22,11 @@ namespace fangEngine::render
 	class RenderContext : private core::Noncopyable
 	{
 	public:
+		static constexpr int         RENDER_TARGET_COUNT  = 2;
+		static constexpr DXGI_FORMAT RENDER_TARGET_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+
+	public:
 		/**
 		 * @brief GPUの処理が終わるのを待ってから破棄する
 		 */
@@ -34,10 +40,46 @@ namespace fangEngine::render
 		bool Initialize(HWND window);
 
 		/**
-		 * @brief 1フレーム分描画する
-		 * @return 描画に成功したらtrue、失敗したらfalse
+		 * @brief 1フレームの描画開始処理を行う
+		 * @return 成功したらtrue、失敗したらfalse
 		 */
-		bool RenderFrame();
+		bool BeginFrame();
+
+		/**
+		 * @brief 1フレームの描画終了処理を行う
+		 * @return 成功したらtrue、失敗したらfalse
+		 */
+		bool EndFrame();
+
+		/**
+		 * @brief GPUの処理が完了するまで待機する
+		 * @return GPUの処理が完了したらtrue、失敗したらfalse
+		 */
+		bool WaitForGpu();
+
+		/**
+		 * @brief デバイスを取得する
+		 * @return デバイスのポインタ
+		 */
+		inline ID3D12Device* GetDevice() const { return m_device.Get(); }
+
+		/**
+		 * @brief コマンドキューを取得する
+		 * @return コマンドキューのポインタ
+		 */
+		inline ID3D12CommandQueue* GetCommandQueue() const { return m_commandQueue.Get(); }
+
+		/**
+		 * @brief コマンドリストを取得する
+		 * @return コマンドリストのポインタ
+		 */
+		inline ID3D12GraphicsCommandList* GetCommandList() const { return m_commandList.Get(); }
+
+		/**
+		 * @brief 直前のフレームのCPU処理の時間を取得する
+		 * @return 待ちを除いたCPU処理の時間(ms)
+		 */
+		inline float GetCpuFrameMilliseconds() const { return m_cpuFrameMilliseconds; }
 
 
 	private:
@@ -91,16 +133,8 @@ namespace fangEngine::render
 		 */
 		bool WaitForFenceValue(UINT64 fenceValue);
 
-		/**
-		 * @brief GPUの処理が完了するまで待機する
-		 * @return GPUの処理が完了したらtrue、失敗したらfalse
-		 */
-		bool WaitForGpu();
-
 
 	private:
-		static constexpr int RENDER_TARGET_COUNT = 2;
-
 		Microsoft::WRL::ComPtr<ID3D12Device>       m_device;
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> m_commandQueue;
 		Microsoft::WRL::ComPtr<IDXGISwapChain3>    m_swapChain;
@@ -109,6 +143,7 @@ namespace fangEngine::render
 		Microsoft::WRL::ComPtr<ID3D12Resource>       m_swapChainBufferResources[RENDER_TARGET_COUNT];
 		D3D12_CPU_DESCRIPTOR_HANDLE                  m_renderTargetViewDescriptorHeapHandle{};
 		UINT                                         m_descriptorHandleIncrementSize = 0;
+		UINT                                         m_backBufferIndex = 0;                           // 現在描画中のバッファのインデックス
 
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator>    m_commandAllocators[RENDER_TARGET_COUNT];
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
@@ -117,5 +152,8 @@ namespace fangEngine::render
 		UINT64                              m_frameFenceValues[RENDER_TARGET_COUNT] = {}; // Allocatorごとの最後のSignalの値。Resetの前にここまで待つ。
 		UINT64                              m_fenceValue = 0;                             // CPUが最後に発行した番号
 		HANDLE                              m_fenceEvent = nullptr;                       // 番号に届いたときにCPUを起こす合図
+
+		std::chrono::steady_clock::time_point m_frameStartTime;              // 待ちのあとでCPUの処理を始めた時刻
+		float                                 m_cpuFrameMilliseconds = 0.0f; // 直前のフレームのCPU処理の時間
 	};
 } // namespace fangEngine::render

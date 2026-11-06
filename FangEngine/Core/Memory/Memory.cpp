@@ -4,7 +4,6 @@
  */
 #include "Memory.h"
 #include <cstdlib>
-#include <iostream>
 #include <cstdint>
 
 
@@ -28,25 +27,32 @@ namespace fangEngine::core
 		// A→B→C順に確保した場合、BのnextはA、previousはCを指す
 		Header* next;     // 一つ前に確保したメモリブロックへのポインタ
 		Header* previous; // 次に確保したメモリブロックへのポインタ
+
+		const char* tag;  // メモリブロックのタグ
 #endif // _DEBUG
 	};
 
 
-	void Memory::PrintRemainingBlocks() const
+	std::vector<Memory::BlockInformation> Memory::GetRemainingBlocks() const
 	{
+		std::vector<BlockInformation> blocks;
+
 #ifdef _DEBUG
 		Header* current = m_head;
 		while (current != nullptr) {
 			const void* block = current;
 			const void* data = static_cast<const std::byte*>(block) + HEADER_SIZE;
-			std::cout << "メモリアドレス: " << data << " (メモリサイズ: " << current->size << ")" << std::endl;
+			blocks.push_back({ data, current->size, current->tag });
 			current = current->next;
 		}
 #endif // _DEBUG
+
+		return blocks;
 	}
 
 
-	void* Memory::MallocMemory(size_t size)
+
+	void* Memory::MallocMemory(size_t size, const char* tag)
 	{
 		// ヘッダーを含めた合計サイズがsize_t型の最大値を超える場合nullptrを返す
 		if (size > SIZE_MAX - HEADER_SIZE) return nullptr;
@@ -67,6 +73,9 @@ namespace fangEngine::core
 		m_count++;
 
 #ifdef _DEBUG
+		// メモリブロックのタグを格納する
+		header->tag = tag;
+
 		// 一番最初のメモリブロックの場合、m_headはnullptrなので、if文でチェックする
 		// 今のメモリブロックのpreviousは、新しく確保したメモリブロックを指す
 		if (m_head != nullptr) {

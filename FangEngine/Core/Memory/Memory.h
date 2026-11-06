@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <cstddef>
+#include <vector>
 
 
 namespace fangEngine::core
@@ -15,17 +16,28 @@ namespace fangEngine::core
 	class Memory
 	{
 	public:
+		struct BlockInformation
+		{
+			const void* data; // 呼ぶ側へ返したアドレス
+			size_t      size;
+			const char* tag;
+		};
+
+
+	public:
 		/**
-		 * @brief メモリ上に残っているメモリブロックの情報を出力する
+		 * @brief 確保されたメモリブロックの情報を取得する
+		 * @return 確保されたメモリブロックの情報
 		 */
-		void PrintRemainingBlocks() const;
+		std::vector<BlockInformation> GetRemainingBlocks() const;
 
 		/**
 		 * @brief メモリを確保する
 		 * @param size 確保するメモリのサイズ
+		 * @param tag 文字列リテラルを渡す
 		 * @return 確保したメモリのポインタ
 		 */
-		void* MallocMemory(size_t size);
+		void* MallocMemory(size_t size, const char* tag);
 
 		/**
 		 * @brief メモリを解放する

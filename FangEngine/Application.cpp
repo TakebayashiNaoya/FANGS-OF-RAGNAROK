@@ -24,6 +24,9 @@ namespace fangEngine
 		 */
 		LRESULT CALLBACK WindowProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 		{
+			// ImGuiが使ったメッセージは、ここで終わりにする
+			if (render::DebugOverlay::HandleMessage(window, message, wParam, lParam)) return true;
+
 			switch (message)
 			{
 			case WM_DESTROY:
@@ -36,11 +39,29 @@ namespace fangEngine
 	}
 
 
+	Application::~Application()
+	{
+		// DebugOverlayが捨てるものをGPUが読み終えるのを待つ
+		m_renderContext.WaitForGpu();
+
+		// メモリを解放する
+		m_memory.FreeMemory(m_firstBlock);
+		m_memory.FreeMemory(m_secondBlock);
+	}
+
+
 	bool Application::Initialize()
 	{
+		// Memoryの一覧を確認するためにメモリを確保する
+		m_firstBlock  = m_memory.MallocMemory(64, "Application");
+		m_secondBlock = m_memory.MallocMemory(32, "Application");
+
 		HWND window = CreateMainWindow();
 		if (window == nullptr) return false;
-		return m_renderContext.Initialize(window);
+		if (m_renderContext.Initialize(window) == false)                 return false;
+		if (m_debugOverlay.Initialize(window, m_renderContext) == false) return false;
+
+		return true;
 	}
 
 
@@ -72,8 +93,12 @@ namespace fangEngine
 			}
 			previousFrameTime = currentFrameTime;
 
-			// 描画処理
-			if (m_renderContext.RenderFrame() == false) return false;
+			// 描画の開始
+			if (m_renderContext.BeginFrame() == false) return false;
+			// デバッグ情報の描画
+			m_debugOverlay.Render(m_renderContext.GetCommandList(), m_renderContext.GetCpuFrameMilliseconds(), m_memory);
+			// 描画の終了
+			if (m_renderContext.EndFrame() == false)   return false;
 		}
 
 		return true;

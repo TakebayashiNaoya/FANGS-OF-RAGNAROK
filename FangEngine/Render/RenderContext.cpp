@@ -31,25 +31,28 @@ namespace fangEngine::render
 	}
 
 
-	bool RenderContext::RenderFrame()
+	bool RenderContext::BeginFrame()
 	{
 		// レンダーターゲットビューの取得
-		UINT backBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
+		m_backBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
 		D3D12_CPU_DESCRIPTOR_HANDLE renderTargetViewDescriptorHandle{};
-		renderTargetViewDescriptorHandle.ptr = m_renderTargetViewDescriptorHeapHandle.ptr + backBufferIndex * m_descriptorHandleIncrementSize;
+		renderTargetViewDescriptorHandle.ptr = m_renderTargetViewDescriptorHeapHandle.ptr + m_backBufferIndex * m_descriptorHandleIncrementSize;
 
 		// このアロケータのコマンドをGPUが終えるのを待つ。
 		// GPUが読んでいる途中にResetすると、コマンドが上書きされるため、Resetの前に待つ。
-		if (WaitForFenceValue(m_frameFenceValues[backBufferIndex]) == false) return false;
+		if (WaitForFenceValue(m_frameFenceValues[m_backBufferIndex]) == false) return false;
+
+		// 待ちを除いたCPUの処理時間を測り始める
+		m_frameStartTime = std::chrono::steady_clock::now();
 
 		// コマンドアロケータのリセット
-		HRESULT resetCommandAllocatorResult = m_commandAllocators[backBufferIndex]->Reset();
+		HRESULT resetCommandAllocatorResult = m_commandAllocators[m_backBufferIndex]->Reset();
 		if (FAILED(resetCommandAllocatorResult)) {
 			std::cerr << "コマンドアロケータのリセットに失敗しました。" << std::endl;
 			return false;
 		}
 		// コマンドリストのリセット
-		HRESULT resetCommandListResult = m_commandList->Reset(m_commandAllocators[backBufferIndex].Get(), nullptr);
+		HRESULT resetCommandListResult = m_commandList->Reset(m_commandAllocators[m_backBufferIndex].Get(), nullptr);
 		if (FAILED(resetCommandListResult)) {
 			std::cerr << "コマンドリストのリセットに失敗しました。" << std::endl;
 			return false;
@@ -58,7 +61,7 @@ namespace fangEngine::render
 		// 今描くバッファをPRESENTからRENDER_TARGETへ
 		D3D12_RESOURCE_BARRIER resourceBarrier{};
 		resourceBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		resourceBarrier.Transition.pResource   = m_swapChainBufferResources[backBufferIndex].Get();
+		resourceBarrier.Transition.pResource   = m_swapChainBufferResources[m_backBufferIndex].Get();
 		resourceBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 		resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 		resourceBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_RENDER_TARGET;
@@ -68,7 +71,20 @@ namespace fangEngine::render
 		const float clearColor[4] = { 0.0f, 0.2f, 0.4f, 1.0f };
 		m_commandList->ClearRenderTargetView(renderTargetViewDescriptorHandle, clearColor, 0, nullptr);
 
+		// レンダーターゲットビューをセットする
+		m_commandList->OMSetRenderTargets(1, &renderTargetViewDescriptorHandle, FALSE, nullptr);
+
+		return true;
+	}
+
+
+	bool RenderContext::EndFrame()
+	{
 		// 今描いたバッファをRENDER_TARGETからPRESENTへ
+		D3D12_RESOURCE_BARRIER resourceBarrier{};
+		resourceBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		resourceBarrier.Transition.pResource   = m_swapChainBufferResources[m_backBufferIndex].Get();
+		resourceBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 		resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		resourceBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PRESENT;
 		m_commandList->ResourceBarrier(1, &resourceBarrier);
@@ -84,6 +100,10 @@ namespace fangEngine::render
 		ID3D12CommandList* commandLists[] = { m_commandList.Get() };
 		m_commandQueue->ExecuteCommandLists(1, commandLists);
 
+		// 画面の待ちが入らないように、Presentの前で測り終える
+		auto frameEndTime = std::chrono::steady_clock::now();
+		m_cpuFrameMilliseconds = std::chrono::duration<float, std::milli>(frameEndTime - m_frameStartTime).count();
+
 		// 画面を差し替える
 		HRESULT presentResult = m_swapChain->Present(1, 0);
 		if (FAILED(presentResult)) {
@@ -94,9 +114,20 @@ namespace fangEngine::render
 		// フェンスのシグナル送信
 		if (SignalFence() == false) return false;
 		// このアロケータの最後のSignalの値を保存する。Resetの前にここまで待つ。
-		m_frameFenceValues[backBufferIndex] = m_fenceValue;
+		m_frameFenceValues[m_backBufferIndex] = m_fenceValue;
 
 		return true;
+	}
+
+
+	bool RenderContext::WaitForGpu()
+	{
+		// m_fenceEventは最後に作るため、これがなければGPUに渡した処理もない
+		if (m_fenceEvent == nullptr) return true;
+
+		if (SignalFence() == false) return false;
+
+		return WaitForFenceValue(m_fenceValue);
 	}
 
 
@@ -152,7 +183,7 @@ namespace fangEngine::render
 		DXGI_SWAP_CHAIN_DESC1 swapChainDescription{};
 		swapChainDescription.Width            = clientRectangle.right - clientRectangle.left;
 		swapChainDescription.Height           = clientRectangle.bottom - clientRectangle.top;
-		swapChainDescription.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
+		swapChainDescription.Format           = RENDER_TARGET_FORMAT;
 		swapChainDescription.SampleDesc.Count = 1;
 		swapChainDescription.BufferUsage      = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		swapChainDescription.BufferCount      = RENDER_TARGET_COUNT;
@@ -306,13 +337,5 @@ namespace fangEngine::render
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 
 		return true;
-	}
-
-
-	bool RenderContext::WaitForGpu()
-	{
-		if (SignalFence() == false) return false;
-
-		return WaitForFenceValue(m_fenceValue);
 	}
 } // namespace fangEngine::render
