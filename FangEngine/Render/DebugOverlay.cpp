@@ -16,6 +16,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 
 namespace fangEngine::render
 {
+#ifdef FANG_DEBUG_OR_PROFILE
 	namespace
 	{
 		constexpr UINT SHADER_RESOURCE_VIEW_DESCRIPTOR_COUNT = 64; // ImGuiのサンプルと同じ数。今使うのはフォントの分だけ。
@@ -193,4 +194,14 @@ namespace fangEngine::render
 		UINT descriptorIndex = static_cast<UINT>((cpuHandle.ptr - m_shaderResourceViewDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr) / m_descriptorHandleIncrementSize);
 		m_freeDescriptorIndices.push_back(descriptorIndex);
 	}
+
+#else
+
+	// Releaseビルドではデバッグ用オーバーレイは使わないため、何もしない関数を用意する
+	DebugOverlay::~DebugOverlay() {}
+	bool DebugOverlay::Initialize(HWND, RenderContext&) { return true; }
+	void DebugOverlay::Render(ID3D12GraphicsCommandList*, float, const core::Memory&) {}
+	bool DebugOverlay::HandleMessage(HWND, UINT, WPARAM, LPARAM) { return false; }
+
+#endif // FANG_DEBUG_OR_PROFILE
 } // namespace fangEngine::render
