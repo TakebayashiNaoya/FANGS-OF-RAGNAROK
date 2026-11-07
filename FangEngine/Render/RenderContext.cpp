@@ -27,6 +27,8 @@ namespace fangEngine::render
 		if (CreateCommandAllocatorAndList() == false) return false;
 		if (CreateFence() == false)                   return false;
 
+		if (m_gpuProfiler.Initialize(m_device.Get(), m_commandQueue.Get()) == false) return false;
+
 		return true;
 	}
 
@@ -43,7 +45,7 @@ namespace fangEngine::render
 		if (WaitForFenceValue(m_frameFenceValues[m_backBufferIndex]) == false) return false;
 
 		// 待ちを除いたCPUの処理時間を測り始める
-		m_frameStartTime = std::chrono::steady_clock::now();
+		m_cpuProfiler.BeginFrame();
 
 		// コマンドアロケータのリセット
 		HRESULT resetCommandAllocatorResult = m_commandAllocators[m_backBufferIndex]->Reset();
@@ -57,6 +59,9 @@ namespace fangEngine::render
 			std::cerr << "コマンドリストのリセットに失敗しました。" << std::endl;
 			return false;
 		}
+
+		// 2フレーム前の結果を読み、このフレームのGPU処理の計測を始める
+		m_gpuProfiler.BeginFrame(m_commandList.Get(), m_backBufferIndex);
 
 		// 今描くバッファをPRESENTからRENDER_TARGETへ
 		D3D12_RESOURCE_BARRIER resourceBarrier{};
@@ -89,6 +94,9 @@ namespace fangEngine::render
 		resourceBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PRESENT;
 		m_commandList->ResourceBarrier(1, &resourceBarrier);
 
+		// GPUの処理時間を測り終える
+		m_gpuProfiler.EndFrame(m_commandList.Get(), m_backBufferIndex);
+
 		// コマンドリストのクローズ
 		HRESULT closeCommandListResult = m_commandList->Close();
 		if (FAILED(closeCommandListResult)) {
@@ -101,8 +109,7 @@ namespace fangEngine::render
 		m_commandQueue->ExecuteCommandLists(1, commandLists);
 
 		// 画面の待ちが入らないように、Presentの前で測り終える
-		auto frameEndTime = std::chrono::steady_clock::now();
-		m_cpuFrameMilliseconds = std::chrono::duration<float, std::milli>(frameEndTime - m_frameStartTime).count();
+		m_cpuProfiler.EndFrame();
 
 		// 画面を差し替える
 		HRESULT presentResult = m_swapChain->Present(1, 0);

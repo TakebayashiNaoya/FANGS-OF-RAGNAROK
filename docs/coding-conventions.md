@@ -15,6 +15,7 @@
 ## 命名
 
 - 識別子は略さない(`previous`、`Initialize`、`position`)。略しても通じるかを毎回考えずに済むようにするため。`ptr`や`prev`のような広く通じる略語も例外にしない。
+  例外として、`_DESC`の型のローカル変数は型名に合わせて`Desc`で終える(`D3D12_QUERY_HEAP_DESC`➡`queryHeapDesc`)。型名に同じ略があり、読み方に迷わないため。
   例外はウィンドウプロシージャの`wParam`と`lParam`だけ。中身がメッセージごとに変わり、合う名前を1つに決められないため。意味のある名前は、メッセージを受けて中身を取り出すところで付ける(`WM_SIZE`なら`width`)。
 - 同じ役割の型はProjectBeastの名前を借りる。
 - シングルトンの取得は`GetInstance()`。
@@ -24,7 +25,8 @@
 - 名前は中身と合わせる。返り値の型を名前に書かない(`MallocMemoryPtr`ではなく`MallocMemory`)。
 - ポインタの変数名には、何を指すかを書く。ポインタであることは型でわかる(`ptr`ではなく、mallocが返した先頭なら`block`、呼ぶ側に返す番地なら`data`)。
 - 同じものを指す変数は、関数が違っても同じ名前にする。
-- 返り値を受ける変数は、呼んだ関数の名前に`Result`を付ける。APIの印と版の番号は落とす(`D3D12CreateDevice`➡`createDeviceResult`、`CreateDXGIFactory2`➡`createFactoryResult`)。
+- 返り値を受ける変数は、関数の中に1つだけなら`result`と書く。何の結果かは呼ぶ行で読めるため。
+  2つ以上あるときは、呼んだ関数の名前に`Result`を付ける。APIの印と版の番号は落とす(`D3D12CreateDevice`➡`createDeviceResult`、`CreateDXGIFactory2`➡`createFactoryResult`)。
   同じ名前の関数を別のオブジェクトで呼ぶときは、何のかを足す(`commandAllocator->Reset()`➡`resetCommandAllocatorResult`)。
 
 ## 型

@@ -72,6 +72,12 @@ ProjectBeastをもとに、エンジンとゲームをきちんと分けて作�
      - 一覧とImGuiの切り替えは、`_DEBUG`から`FANG_DEBUG_OR_PROFILE`へ替える。➡Profileでは`_DEBUG`が定義されないため。
      - Releaseの`DebugOverlay`は中身が空の関数にする。➡`Application`の呼ぶ行に判定を書かず、切り替えを1か所に集めるため。
   6. GPUのタイムスタンプを取り、GPUの処理時間をImGuiに足す。➡三角形の重さをすぐ見るため。
+     - `steady_clock`ではGPUの処理時間を測れない。➡CPUの時計で読めるのは指示を渡した時刻までのため、GPUが書いたタイムスタンプを読む。
+     - 計測は`render::CpuProfiler`と`render::GpuProfiler`に閉じ込め、`RenderContext`が持つ。➡`RenderContext`に直接書くと、`FANG_DEBUG_OR_PROFILE`の判定が散らばるため。
+     - Releaseの2つのクラスは中身が空の関数にする。➡`DebugOverlay`と同じで、呼ぶ行に判定を書かないため。今のCPUの計測はReleaseでも動いているため、ここで止める。
+     - 親クラスは作らず、関数の名前だけそろえる。➡`RenderContext`は2つを別の場所で呼ぶため、まとめて扱う場所がない。引数までそろえると、番号を2か所で持つことになる。
+     - タイムスタンプはフレームの先頭と末尾の2個を取る。Query Heapと読み戻しのバッファは2個×番号2つの4個ぶん持つ。
+     - 読むのは、同じ番号のFenceを`BeginFrame`で待ったあとにする。➡GPUがまだ実行していないフレームの時刻は読めないため、窓に出るのは2フレーム前の値になる。
   7. シェーダーと三角形を描く。
   8. 処理が増えたら、区間ごとのmsをImGuiに足す。
 - ウィンドウの大きさの変更（`WM_SIZE`、`ResizeBuffers`）と描く解像度は、まだ決めない。今のバッファは作ったときの大きさのままで、DXGIが引き伸ばして映す。➡解像度で中身が変わるものを書くときに決める。
