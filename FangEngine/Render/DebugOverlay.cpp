@@ -102,7 +102,7 @@ namespace fangEngine::render
 	}
 
 
-	void DebugOverlay::Render(ID3D12GraphicsCommandList* commandList, float cpuFrameMilliseconds, const core::Memory& memory)
+	void DebugOverlay::Render(ID3D12GraphicsCommandList* commandList, float cpuFrameMilliseconds, float gpuFrameMilliseconds, const core::Memory& memory)
 	{
 		// ImGuiのフレームを始める
 		ImGui_ImplDX12_NewFrame();
@@ -117,6 +117,7 @@ namespace fangEngine::render
 			ImGui::Text("FPS: %.1f", framesPerSecond);
 			ImGui::Text(ToImGuiText(u8"1フレーム: %.2f ms"), frameTimeMilliseconds);
 			ImGui::Text(ToImGuiText(u8"CPU処理: %.2f ms"), cpuFrameMilliseconds);
+			ImGui::Text(ToImGuiText(u8"GPU処理: %.2f ms"), gpuFrameMilliseconds);
 
 			if (ImGui::BeginMenu(ToImGuiText(u8"メモリ")))
 			{
@@ -201,7 +202,7 @@ namespace fangEngine::render
 	// Releaseビルドではデバッグ用オーバーレイは使わないため、何もしない関数を用意する
 	DebugOverlay::~DebugOverlay() {}
 	bool DebugOverlay::Initialize(HWND, RenderContext&) { return true; }
-	void DebugOverlay::Render(ID3D12GraphicsCommandList*, float, const core::Memory&) {}
+	void DebugOverlay::Render(ID3D12GraphicsCommandList*, float, float, const core::Memory&) {}
 	bool DebugOverlay::HandleMessage(HWND, UINT, WPARAM, LPARAM) { return false; }
 
 #endif // FANG_DEBUG_OR_PROFILE

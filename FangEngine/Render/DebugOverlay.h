@@ -48,9 +48,10 @@ namespace fangEngine::render
 		 * @brief メニューバーを組み立ててコマンドリストに積む
 		 * @param commandList 描画に使うコマンドリスト
 		 * @param cpuFrameMilliseconds 直前のフレームのCPU処理の時間(ミリ秒)
+		 * @param gpuFrameMilliseconds 2フレーム前のGPU処理の時間(ミリ秒)
 		 * @param memory メモリ管理クラス
 		 */
-		void Render(ID3D12GraphicsCommandList* commandList, float cpuFrameMilliseconds, const core::Memory& memory);
+		void Render(ID3D12GraphicsCommandList* commandList, float cpuFrameMilliseconds, float gpuFrameMilliseconds, const core::Memory& memory);
 
 		/**
 		 * @brief WindowsのメッセージをImGuiへ渡す

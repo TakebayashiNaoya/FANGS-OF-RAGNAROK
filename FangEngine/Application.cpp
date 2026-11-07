@@ -96,7 +96,7 @@ namespace fangEngine
 			// 描画の開始
 			if (m_renderContext.BeginFrame() == false) return false;
 			// デバッグ情報の描画
-			m_debugOverlay.Render(m_renderContext.GetCommandList(), m_renderContext.GetCpuFrameMilliseconds(), m_memory);
+			m_debugOverlay.Render(m_renderContext.GetCommandList(), m_renderContext.GetCpuFrameMilliseconds(), m_renderContext.GetGpuFrameMilliseconds(), m_memory);
 			// 描画の終了
 			if (m_renderContext.EndFrame() == false)   return false;
 		}
