@@ -9,6 +9,7 @@
 #include <dxgi1_6.h>
 #include "Core/Noncopyable.h"
 #include "CpuProfiler.h"
+#include "GpuProfiler.h"
 
 
 namespace fangEngine::render
@@ -80,6 +81,12 @@ namespace fangEngine::render
 		 * @return 待ちを除いたCPU処理の時間(ms)
 		 */
 		inline float GetCpuFrameMilliseconds() const { return m_cpuProfiler.GetFrameMilliseconds(); }
+
+		/**
+		 * @brief 2フレーム前のGPU処理の時間を取得する
+		 * @return GPUの処理の時間(ms)
+		 */
+		inline float GetGpuFrameMilliseconds() const { return m_gpuProfiler.GetFrameMilliseconds(); }
 
 
 	private:
@@ -154,5 +161,6 @@ namespace fangEngine::render
 		HANDLE                              m_fenceEvent = nullptr;                       // 番号に届いたときにCPUを起こす合図
 
 		CpuProfiler m_cpuProfiler; // 待ちを除いたCPUの処理時間を測る
+		GpuProfiler m_gpuProfiler; // GPUの処理時間を測る
 	};
 } // namespace fangEngine::render

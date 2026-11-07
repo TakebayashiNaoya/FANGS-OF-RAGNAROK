@@ -27,6 +27,8 @@ namespace fangEngine::render
 		if (CreateCommandAllocatorAndList() == false) return false;
 		if (CreateFence() == false)                   return false;
 
+		if (m_gpuProfiler.Initialize(m_device.Get(), m_commandQueue.Get()) == false) return false;
+
 		return true;
 	}
 
@@ -58,6 +60,9 @@ namespace fangEngine::render
 			return false;
 		}
 
+		// 2フレーム前の結果を読み、このフレームのGPU処理の計測を始める
+		m_gpuProfiler.BeginFrame(m_commandList.Get(), m_backBufferIndex);
+
 		// 今描くバッファをPRESENTからRENDER_TARGETへ
 		D3D12_RESOURCE_BARRIER resourceBarrier{};
 		resourceBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -88,6 +93,9 @@ namespace fangEngine::render
 		resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		resourceBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PRESENT;
 		m_commandList->ResourceBarrier(1, &resourceBarrier);
+
+		// GPUの処理時間を測り終える
+		m_gpuProfiler.EndFrame(m_commandList.Get(), m_backBufferIndex);
 
 		// コマンドリストのクローズ
 		HRESULT closeCommandListResult = m_commandList->Close();
