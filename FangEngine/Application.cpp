@@ -3,8 +3,8 @@
  * @brief アプリケーションクラスの実装
  */
 #include "Application.h"
-#include <iostream>
 #include <chrono>
+#include "Core/Log.h"
 
 
 namespace fangEngine
@@ -116,7 +116,7 @@ namespace fangEngine
 		ATOM atom = RegisterClassExW(&windowClass);
 
 		if (atom == 0) {
-			std::cerr << "ウィンドウクラスの登録に失敗しました。" << std::endl;
+			core::LogError(L"ウィンドウクラスの登録に失敗しました。");
 			return nullptr;
 		}
 
@@ -136,7 +136,7 @@ namespace fangEngine
 		);
 
 		if (window == nullptr) {
-			std::cerr << "ウィンドウの作成に失敗しました。" << std::endl;
+			core::LogError(L"ウィンドウの作成に失敗しました。");
 			return nullptr;
 		}
 

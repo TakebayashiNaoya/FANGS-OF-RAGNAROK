@@ -3,11 +3,11 @@
  * @brief デバッグ用オーバーレイ描画クラスの実装
  */
 #include "DebugOverlay.h"
-#include <iostream>
 #include "RenderContext.h"
 #include "imgui.h"
 #include "backends/imgui_impl_win32.h"
 #include "backends/imgui_impl_dx12.h"
+#include "Core/Log.h"
 #include "Core/Memory/Memory.h"
 
 
@@ -67,7 +67,7 @@ namespace fangEngine::render
 
 		// Win32側の初期化
 		if (ImGui_ImplWin32_Init(window) == false) {
-			std::cerr << "ImGui_ImplWin32_Initに失敗しました。" << std::endl;
+			core::LogError(L"ImGui_ImplWin32_Initに失敗しました。");
 			return false;
 		}
 
@@ -91,7 +91,7 @@ namespace fangEngine::render
 
 		// D3D12側の初期化
 		if (ImGui_ImplDX12_Init(&initInfo) == false) {
-			std::cerr << "ImGui_ImplDX12_Initに失敗しました。" << std::endl;
+			core::LogError(L"ImGui_ImplDX12_Initに失敗しました。");
 			return false;
 		}
 
@@ -161,10 +161,7 @@ namespace fangEngine::render
 			&descriptorHeapDesc,
 			IID_PPV_ARGS(&m_shaderResourceViewDescriptorHeap)
 		);
-		if (FAILED(result)) {
-			std::cerr << "シェーダーリソースビュー用のディスクリプタヒープの作成に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(result, L"シェーダーリソースビュー用のディスクリプタヒープの作成に失敗しました。")) return false;
 
 		// ディスクリプタの増分サイズを取得
 		m_descriptorHandleIncrementSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);

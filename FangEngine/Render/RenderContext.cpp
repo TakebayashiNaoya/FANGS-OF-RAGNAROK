@@ -3,7 +3,7 @@
  * @brief レンダーコンテキストクラスの実装
  */
 #include "RenderContext.h"
-#include <iostream>
+#include "Core/Log.h"
 
 
 namespace fangEngine::render
@@ -49,16 +49,10 @@ namespace fangEngine::render
 
 		// コマンドアロケータのリセット
 		HRESULT resetCommandAllocatorResult = m_commandAllocators[m_backBufferIndex]->Reset();
-		if (FAILED(resetCommandAllocatorResult)) {
-			std::cerr << "コマンドアロケータのリセットに失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(resetCommandAllocatorResult, L"コマンドアロケータのリセットに失敗しました。")) return false;
 		// コマンドリストのリセット
 		HRESULT resetCommandListResult = m_commandList->Reset(m_commandAllocators[m_backBufferIndex].Get(), nullptr);
-		if (FAILED(resetCommandListResult)) {
-			std::cerr << "コマンドリストのリセットに失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(resetCommandListResult, L"コマンドリストのリセットに失敗しました。")) return false;
 
 		// 2フレーム前の結果を読み、このフレームのGPU処理の計測を始める
 		m_gpuProfiler.BeginFrame(m_commandList.Get(), m_backBufferIndex);
@@ -87,10 +81,7 @@ namespace fangEngine::render
 
 		// コマンドリストのクローズ
 		HRESULT closeCommandListResult = m_commandList->Close();
-		if (FAILED(closeCommandListResult)) {
-			std::cerr << "コマンドリストのクローズに失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(closeCommandListResult, L"コマンドリストのクローズに失敗しました。")) return false;
 
 		// コマンドリストの実行
 		ID3D12CommandList* commandLists[] = { m_commandList.Get() };
@@ -101,10 +92,7 @@ namespace fangEngine::render
 
 		// 画面を差し替える
 		HRESULT presentResult = m_swapChain->Present(1, 0);
-		if (FAILED(presentResult)) {
-			std::cerr << "DXGIスワップチェーンの表示に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(presentResult, L"DXGIスワップチェーンの表示に失敗しました。")) return false;
 
 		// フェンスのシグナル送信
 		if (SignalFence() == false) return false;
@@ -133,10 +121,7 @@ namespace fangEngine::render
 			D3D_FEATURE_LEVEL_11_0,
 			IID_PPV_ARGS(&m_device)
 		);
-		if (FAILED(result)) {
-			std::cerr << "D3D12デバイスの作成に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(result, L"D3D12デバイスの作成に失敗しました。")) return false;
 		return true;
 	}
 
@@ -149,10 +134,7 @@ namespace fangEngine::render
 			&commandQueueDesc,
 			IID_PPV_ARGS(&m_commandQueue)
 		);
-		if (FAILED(result)) {
-			std::cerr << "D3D12コマンドキューの作成に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(result, L"D3D12コマンドキューの作成に失敗しました。")) return false;
 		return true;
 	}
 
@@ -165,10 +147,7 @@ namespace fangEngine::render
 			0,
 			IID_PPV_ARGS(&factory)
 		);
-		if (FAILED(createFactoryResult)) {
-			std::cerr << "DXGIファクトリの作成に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(createFactoryResult, L"DXGIファクトリの作成に失敗しました。")) return false;
 
 		// DXGIスワップチェーンの作成
 		// ウィンドウ全体ではなくクライアント領域の大きさで作るため、GetClientRectで取得する
@@ -193,17 +172,11 @@ namespace fangEngine::render
 			nullptr,
 			&createdSwapChain
 		);
-		if (FAILED(createSwapChainResult)) {
-			std::cerr << "DXGIスワップチェーンの作成に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(createSwapChainResult, L"DXGIスワップチェーンの作成に失敗しました。")) return false;
 
 		// CreateSwapChainForHwndの引数はIDXGISwapChain1だが、GetCurrentBackBufferIndexを使うためにIDXGISwapChain3に変換する
 		HRESULT asResult = createdSwapChain.As(&m_swapChain);
-		if (FAILED(asResult)) {
-			std::cerr << "DXGIスワップチェーンの変換に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(asResult, L"DXGIスワップチェーンの変換に失敗しました。")) return false;
 
 		return true;
 	}
@@ -221,10 +194,7 @@ namespace fangEngine::render
 			&descriptorHeapDesc,
 			IID_PPV_ARGS(&m_renderTargetViewDescriptorHeap)
 		);
-		if (FAILED(createDescriptorHeapResult)) {
-			std::cerr << "レンダーターゲットビュー用のディスクリプタヒープの作成に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(createDescriptorHeapResult, L"レンダーターゲットビュー用のディスクリプタヒープの作成に失敗しました。")) return false;
 
 		// レンダーターゲットビューの作成
 		m_renderTargetViewDescriptorHeapHandle = m_renderTargetViewDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
@@ -232,10 +202,7 @@ namespace fangEngine::render
 		for (int renderTargetIndex = 0; renderTargetIndex < RENDER_TARGET_COUNT; ++renderTargetIndex)
 		{
 			HRESULT getBufferResult = m_swapChain->GetBuffer(renderTargetIndex, IID_PPV_ARGS(&m_swapChainBufferResources[renderTargetIndex]));
-			if (FAILED(getBufferResult)) {
-				std::cerr << "スワップチェーンのバッファの取得に失敗しました。" << std::endl;
-				return false;
-			}
+			if (core::LogIfFailed(getBufferResult, L"スワップチェーンのバッファの取得に失敗しました。")) return false;
 			m_device->CreateRenderTargetView(
 				m_swapChainBufferResources[renderTargetIndex].Get(),
 				nullptr,
@@ -256,10 +223,7 @@ namespace fangEngine::render
 				D3D12_COMMAND_LIST_TYPE_DIRECT,
 				IID_PPV_ARGS(&m_commandAllocators[allocatorIndex])
 			);
-			if (FAILED(createCommandAllocatorResult)) {
-				std::cerr << "コマンドアロケータの作成に失敗しました。" << std::endl;
-				return false;
-			}
+			if (core::LogIfFailed(createCommandAllocatorResult, L"コマンドアロケータの作成に失敗しました。")) return false;
 		}
 
 		// コマンドリストの作成
@@ -270,16 +234,10 @@ namespace fangEngine::render
 			nullptr,
 			IID_PPV_ARGS(&m_commandList)
 		);
-		if (FAILED(createCommandListResult)) {
-			std::cerr << "コマンドリストの作成に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(createCommandListResult, L"コマンドリストの作成に失敗しました。")) return false;
 		// 作成直後のリストは書き込み中であり、その最中にリセットを呼ぶとエラーになるため、Closeを呼んで書き込み中を解除する
 		HRESULT closeCommandListResult = m_commandList->Close();
-		if (FAILED(closeCommandListResult)) {
-			std::cerr << "コマンドリストのクローズに失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(closeCommandListResult, L"コマンドリストのクローズに失敗しました。")) return false;
 
 		return true;
 	}
@@ -288,13 +246,10 @@ namespace fangEngine::render
 	bool RenderContext::CreateFence()
 	{
 		HRESULT result = m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence));
-		if (FAILED(result)) {
-			std::cerr << "フェンスの作成に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(result, L"フェンスの作成に失敗しました。")) return false;
 		m_fenceEvent = CreateEventW(nullptr, FALSE, FALSE, nullptr);
 		if (m_fenceEvent == nullptr) {
-			std::cerr << "フェンスイベントの作成に失敗しました。" << std::endl;
+			core::LogError(L"フェンスイベントの作成に失敗しました。");
 			return false;
 		}
 
@@ -307,10 +262,7 @@ namespace fangEngine::render
 		// 新しい番号を発行して、Queueの最後に積む。GPUが前の処理を全部終えるとここへ届く。
 		m_fenceValue++;
 		HRESULT result = m_commandQueue->Signal(m_fence.Get(), m_fenceValue);
-		if (FAILED(result)) {
-			std::cerr << "フェンスのシグナル送信に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(result, L"フェンスのシグナル送信に失敗しました。")) return false;
 
 		return true;
 	}
@@ -323,10 +275,7 @@ namespace fangEngine::render
 
 		// 届いたらm_fenceEventを立てるよう頼む
 		HRESULT result = m_fence->SetEventOnCompletion(fenceValue, m_fenceEvent);
-		if (FAILED(result)) {
-			std::cerr << "フェンスのイベント設定に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(result, L"フェンスのイベント設定に失敗しました。")) return false;
 
 		// 合図が立つまでCPUを止める
 		WaitForSingleObject(m_fenceEvent, INFINITE);

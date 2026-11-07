@@ -3,8 +3,8 @@
  * @brief GPUの処理時間を計測するクラスの実装
  */
 #include "GpuProfiler.h"
-#include <iostream>
 #include "RenderContext.h"
+#include "Core/Log.h"
 
 
 namespace fangEngine::render
@@ -26,10 +26,7 @@ namespace fangEngine::render
 		if (CreateReadbackBuffer(device) == false) return false;
 
 		HRESULT result = commandQueue->GetTimestampFrequency(&m_timestampFrequency);
-		if (FAILED(result)) {
-			std::cerr << "GPUの時計の速さの取得に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(result, L"GPUの時計の速さの取得に失敗しました。")) return false;
 
 		return true;
 	}
@@ -69,10 +66,7 @@ namespace fangEngine::render
 		queryHeapDesc.Count = TIMESTAMP_COUNT;
 
 		HRESULT result = device->CreateQueryHeap(&queryHeapDesc, IID_PPV_ARGS(&m_queryHeap));
-		if (FAILED(result)) {
-			std::cerr << "クエリヒープの作成に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(result, L"クエリヒープの作成に失敗しました。")) return false;
 
 		return true;
 	}
@@ -101,10 +95,7 @@ namespace fangEngine::render
 			nullptr,
 			IID_PPV_ARGS(&m_readbackBuffer)
 		);
-		if (FAILED(result)) {
-			std::cerr << "読み出し用バッファの作成に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(result, L"読み出し用バッファの作成に失敗しました。")) return false;
 
 		return true;
 	}
@@ -120,10 +111,7 @@ namespace fangEngine::render
 
 		void* mappedData = nullptr;
 		HRESULT result = m_readbackBuffer->Map(0, &readRange, &mappedData);
-		if (FAILED(result)) {
-			std::cerr << "読み戻しのバッファを開けませんでした。" << std::endl;
-			return;
-		}
+		if (core::LogIfFailed(result, L"読み戻しのバッファを開けませんでした。")) return;
 
 		const UINT64* timestamps = static_cast<const UINT64*>(mappedData);
 		UINT64 timestampDifference = timestamps[firstTimestampIndex + 1] - timestamps[firstTimestampIndex];
