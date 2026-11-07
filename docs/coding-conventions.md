@@ -66,6 +66,7 @@
   UWPでは`MessageBoxW`を使えない➡UWPの構成を作るときに差し替える。
 - `HRESULT`の確認は`core::LogIfFailed`で行い、呼ぶ行と確認の行を分ける(`if (core::LogIfFailed(result, L"フェンスの作成に失敗しました。")) return false;`)。引数の多い関数でも、文が閉じ括弧の後ろに離れないようにするため。
 - 確認をマクロにしない。関数でも1行で書け、マクロにしても短くならず、`return`が見えなくなるだけのため。
+- コンソールの窓を出さない。`SubSystem`は3つの構成とも`Windows`にし、`EntryPointSymbol`に`mainCRTStartup`を指定して`int main()`を残す。ゲームの窓の上に黒い窓が重なるのを避けるため。
 
 ## クラスの形
 
