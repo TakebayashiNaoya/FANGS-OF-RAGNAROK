@@ -17,6 +17,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg
 namespace fangEngine::render
 {
 #ifdef FANG_DEBUG_OR_PROFILE
+
 	namespace
 	{
 		constexpr UINT SHADER_RESOURCE_VIEW_DESCRIPTOR_COUNT = 64; // ImGuiのサンプルと同じ数。今使うのはフォントの分だけ。
