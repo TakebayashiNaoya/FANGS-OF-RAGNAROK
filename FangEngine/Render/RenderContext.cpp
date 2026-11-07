@@ -140,12 +140,12 @@ namespace fangEngine::render
 
 	bool RenderContext::CreateDevice()
 	{
-		HRESULT createDeviceResult = D3D12CreateDevice(
+		HRESULT result = D3D12CreateDevice(
 			nullptr,
 			D3D_FEATURE_LEVEL_11_0,
 			IID_PPV_ARGS(&m_device)
 		);
-		if (FAILED(createDeviceResult)) {
+		if (FAILED(result)) {
 			std::cerr << "D3D12デバイスの作成に失敗しました。" << std::endl;
 			return false;
 		}
@@ -155,13 +155,13 @@ namespace fangEngine::render
 
 	bool RenderContext::CreateCommandQueue()
 	{
-		D3D12_COMMAND_QUEUE_DESC commandQueueDescription{};
-		commandQueueDescription.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-		HRESULT createCommandQueueResult = m_device->CreateCommandQueue(
-			&commandQueueDescription,
+		D3D12_COMMAND_QUEUE_DESC commandQueueDesc{};
+		commandQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+		HRESULT result = m_device->CreateCommandQueue(
+			&commandQueueDesc,
 			IID_PPV_ARGS(&m_commandQueue)
 		);
-		if (FAILED(createCommandQueueResult)) {
+		if (FAILED(result)) {
 			std::cerr << "D3D12コマンドキューの作成に失敗しました。" << std::endl;
 			return false;
 		}
@@ -187,20 +187,20 @@ namespace fangEngine::render
 		RECT clientRectangle{};
 		GetClientRect(window, &clientRectangle);
 
-		DXGI_SWAP_CHAIN_DESC1 swapChainDescription{};
-		swapChainDescription.Width            = clientRectangle.right - clientRectangle.left;
-		swapChainDescription.Height           = clientRectangle.bottom - clientRectangle.top;
-		swapChainDescription.Format           = RENDER_TARGET_FORMAT;
-		swapChainDescription.SampleDesc.Count = 1;
-		swapChainDescription.BufferUsage      = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapChainDescription.BufferCount      = RENDER_TARGET_COUNT;
-		swapChainDescription.SwapEffect       = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+		DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
+		swapChainDesc.Width            = clientRectangle.right - clientRectangle.left;
+		swapChainDesc.Height           = clientRectangle.bottom - clientRectangle.top;
+		swapChainDesc.Format           = RENDER_TARGET_FORMAT;
+		swapChainDesc.SampleDesc.Count = 1;
+		swapChainDesc.BufferUsage      = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDesc.BufferCount      = RENDER_TARGET_COUNT;
+		swapChainDesc.SwapEffect       = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
 		Microsoft::WRL::ComPtr<IDXGISwapChain1> createdSwapChain;
 		HRESULT createSwapChainResult = factory->CreateSwapChainForHwnd(
 			m_commandQueue.Get(),
 			window,
-			&swapChainDescription,
+			&swapChainDesc,
 			nullptr,
 			nullptr,
 			&createdSwapChain
@@ -224,13 +224,13 @@ namespace fangEngine::render
 	bool RenderContext::CreateRenderTargetViews()
 	{
 		// レンダーターゲットビュー用のディスクリプタヒープの作成
-		D3D12_DESCRIPTOR_HEAP_DESC renderTargetViewDescriptorHeapDescription{};
-		renderTargetViewDescriptorHeapDescription.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-		renderTargetViewDescriptorHeapDescription.NumDescriptors = RENDER_TARGET_COUNT;
-		renderTargetViewDescriptorHeapDescription.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc{};
+		descriptorHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+		descriptorHeapDesc.NumDescriptors = RENDER_TARGET_COUNT;
+		descriptorHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
 		HRESULT createDescriptorHeapResult = m_device->CreateDescriptorHeap(
-			&renderTargetViewDescriptorHeapDescription,
+			&descriptorHeapDesc,
 			IID_PPV_ARGS(&m_renderTargetViewDescriptorHeap)
 		);
 		if (FAILED(createDescriptorHeapResult)) {
@@ -299,8 +299,8 @@ namespace fangEngine::render
 
 	bool RenderContext::CreateFence()
 	{
-		HRESULT createFenceResult = m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence));
-		if (FAILED(createFenceResult)) {
+		HRESULT result = m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence));
+		if (FAILED(result)) {
 			std::cerr << "フェンスの作成に失敗しました。" << std::endl;
 			return false;
 		}
@@ -318,8 +318,8 @@ namespace fangEngine::render
 	{
 		// 新しい番号を発行して、Queueの最後に積む。GPUが前の処理を全部終えるとここへ届く。
 		m_fenceValue++;
-		HRESULT signalResult = m_commandQueue->Signal(m_fence.Get(), m_fenceValue);
-		if (FAILED(signalResult)) {
+		HRESULT result = m_commandQueue->Signal(m_fence.Get(), m_fenceValue);
+		if (FAILED(result)) {
 			std::cerr << "フェンスのシグナル送信に失敗しました。" << std::endl;
 			return false;
 		}
@@ -334,8 +334,8 @@ namespace fangEngine::render
 		if (m_fence->GetCompletedValue() >= fenceValue) return true;
 
 		// 届いたらm_fenceEventを立てるよう頼む
-		HRESULT setEventOnCompletionResult = m_fence->SetEventOnCompletion(fenceValue, m_fenceEvent);
-		if (FAILED(setEventOnCompletionResult)) {
+		HRESULT result = m_fence->SetEventOnCompletion(fenceValue, m_fenceEvent);
+		if (FAILED(result)) {
 			std::cerr << "フェンスのイベント設定に失敗しました。" << std::endl;
 			return false;
 		}

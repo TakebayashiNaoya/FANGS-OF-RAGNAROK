@@ -20,7 +20,7 @@
 - 同じ役割の型はProjectBeastの名前を借りる。
 - シングルトンの取得は`GetInstance()`。
 - 定数は大文字のスネークケース(`HEADER_SIZE`)。
-- ローカル変数は小文字で始める(`device`、`swapChainDescription`)。大文字で始まる型や関数と見分けるため。
+- ローカル変数は小文字で始める(`device`、`swapChainDesc`)。大文字で始まる型や関数と見分けるため。
 - メンバ変数は`m_`から始める(`m_size`)。
 - 名前は中身と合わせる。返り値の型を名前に書かない(`MallocMemoryPtr`ではなく`MallocMemory`)。
 - ポインタの変数名には、何を指すかを書く。ポインタであることは型でわかる(`ptr`ではなく、mallocが返した先頭なら`block`、呼ぶ側に返す番地なら`data`)。
@@ -33,7 +33,7 @@
 
 - メンバを外から直接読み書きしてよいデータの入れ物は`struct`、`private`なメンバを関数で守るものは`class`。
 - 大きさと個数は`size_t`。
-- 構造体の変数は`{}`を付けて宣言する(`DXGI_SWAP_CHAIN_DESC1 swapChainDescription{};`)。欄を書き忘れたときに、でたらめな値が残らないようにするため。
+- 構造体の変数は`{}`を付けて宣言する(`DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};`)。欄を書き忘れたときに、でたらめな値が残らないようにするため。
 - 値で返すゲッターの返り値に`const`を付けない。意味を持つのは参照やポインタで返すときだけ。
 - ポインタの判定は`nullptr`と比べて書く(`if (m_head != nullptr)`)。`if (m_head)`でも動くが、比べて書けば整数や`bool`の判定と見分けがつく。
 - 右辺から型が読めないときは型を書く(`HRESULT presentResult = swapChain->Present(1, 0);`)。読めるときは`auto`でよい(`auto currentFrameTime = std::chrono::steady_clock::now();`)。

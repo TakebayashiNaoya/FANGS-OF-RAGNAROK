@@ -152,16 +152,16 @@ namespace fangEngine::render
 	bool DebugOverlay::CreateShaderResourceViewDescriptorHeap(ID3D12Device* device)
 	{
 		// シェーダーリソースビュー用のディスクリプタヒープの作成
-		D3D12_DESCRIPTOR_HEAP_DESC shaderResourceViewDescriptorHeapDescription{};
-		shaderResourceViewDescriptorHeapDescription.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		shaderResourceViewDescriptorHeapDescription.NumDescriptors = SHADER_RESOURCE_VIEW_DESCRIPTOR_COUNT;
-		shaderResourceViewDescriptorHeapDescription.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc{};
+		descriptorHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		descriptorHeapDesc.NumDescriptors = SHADER_RESOURCE_VIEW_DESCRIPTOR_COUNT;
+		descriptorHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
-		HRESULT createDescriptorHeapResult = device->CreateDescriptorHeap(
-			&shaderResourceViewDescriptorHeapDescription,
+		HRESULT result = device->CreateDescriptorHeap(
+			&descriptorHeapDesc,
 			IID_PPV_ARGS(&m_shaderResourceViewDescriptorHeap)
 		);
-		if (FAILED(createDescriptorHeapResult)) {
+		if (FAILED(result)) {
 			std::cerr << "シェーダーリソースビュー用のディスクリプタヒープの作成に失敗しました。" << std::endl;
 			return false;
 		}
