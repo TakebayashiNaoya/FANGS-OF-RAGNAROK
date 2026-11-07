@@ -140,6 +140,13 @@ namespace fangEngine::render
 		 */
 		bool WaitForFenceValue(UINT64 fenceValue);
 
+		/**
+		 * @brief バックバッファの状態を変える
+		 * @param before 変える前の状態
+		 * @param after 変えた後の状態
+		 */
+		void TransitionBackBuffer(D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
+
 
 	private:
 		Microsoft::WRL::ComPtr<ID3D12Device>       m_device;

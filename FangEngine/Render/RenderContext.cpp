@@ -64,13 +64,7 @@ namespace fangEngine::render
 		m_gpuProfiler.BeginFrame(m_commandList.Get(), m_backBufferIndex);
 
 		// 今描くバッファをPRESENTからRENDER_TARGETへ
-		D3D12_RESOURCE_BARRIER resourceBarrier{};
-		resourceBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		resourceBarrier.Transition.pResource   = m_swapChainBufferResources[m_backBufferIndex].Get();
-		resourceBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-		resourceBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		m_commandList->ResourceBarrier(1, &resourceBarrier);
+		TransitionBackBuffer(D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 		// レンダーターゲットのクリア
 		const float clearColor[4] = { 0.0f, 0.2f, 0.4f, 1.0f };
@@ -86,13 +80,7 @@ namespace fangEngine::render
 	bool RenderContext::EndFrame()
 	{
 		// 今描いたバッファをRENDER_TARGETからPRESENTへ
-		D3D12_RESOURCE_BARRIER resourceBarrier{};
-		resourceBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		resourceBarrier.Transition.pResource   = m_swapChainBufferResources[m_backBufferIndex].Get();
-		resourceBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		resourceBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PRESENT;
-		m_commandList->ResourceBarrier(1, &resourceBarrier);
+		TransitionBackBuffer(D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
 		// GPUの処理時間を測り終える
 		m_gpuProfiler.EndFrame(m_commandList.Get(), m_backBufferIndex);
@@ -344,5 +332,17 @@ namespace fangEngine::render
 		WaitForSingleObject(m_fenceEvent, INFINITE);
 
 		return true;
+	}
+
+
+	void RenderContext::TransitionBackBuffer(D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after)
+	{
+		D3D12_RESOURCE_BARRIER resourceBarrier{};
+		resourceBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		resourceBarrier.Transition.pResource   = m_swapChainBufferResources[m_backBufferIndex].Get();
+		resourceBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		resourceBarrier.Transition.StateBefore = before;
+		resourceBarrier.Transition.StateAfter  = after;
+		m_commandList->ResourceBarrier(1, &resourceBarrier);
 	}
 } // namespace fangEngine::render
