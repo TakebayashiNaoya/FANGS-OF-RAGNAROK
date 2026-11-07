@@ -20,7 +20,7 @@
 - 同じ役割の型はProjectBeastの名前を借りる。
 - シングルトンの取得は`GetInstance()`。
 - 定数は大文字のスネークケース(`HEADER_SIZE`)。
-- ローカル変数は小文字で始める(`device`、`swapChainDescription`)。大文字で始まる型や関数と見分けるため。
+- ローカル変数は小文字で始める(`device`、`swapChainDesc`)。大文字で始まる型や関数と見分けるため。
 - メンバ変数は`m_`から始める(`m_size`)。
 - 名前は中身と合わせる。返り値の型を名前に書かない(`MallocMemoryPtr`ではなく`MallocMemory`)。
 - ポインタの変数名には、何を指すかを書く。ポインタであることは型でわかる(`ptr`ではなく、mallocが返した先頭なら`block`、呼ぶ側に返す番地なら`data`)。
@@ -33,7 +33,7 @@
 
 - メンバを外から直接読み書きしてよいデータの入れ物は`struct`、`private`なメンバを関数で守るものは`class`。
 - 大きさと個数は`size_t`。
-- 構造体の変数は`{}`を付けて宣言する(`DXGI_SWAP_CHAIN_DESC1 swapChainDescription{};`)。欄を書き忘れたときに、でたらめな値が残らないようにするため。
+- 構造体の変数は`{}`を付けて宣言する(`DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};`)。欄を書き忘れたときに、でたらめな値が残らないようにするため。
 - 値で返すゲッターの返り値に`const`を付けない。意味を持つのは参照やポインタで返すときだけ。
 - ポインタの判定は`nullptr`と比べて書く(`if (m_head != nullptr)`)。`if (m_head)`でも動くが、比べて書けば整数や`bool`の判定と見分けがつく。
 - 右辺から型が読めないときは型を書く(`HRESULT presentResult = swapChain->Present(1, 0);`)。読めるときは`auto`でよい(`auto currentFrameTime = std::chrono::steady_clock::now();`)。
@@ -58,6 +58,15 @@
   使う行ごとに書き分けると、囲み漏れが起きる。
 - `#endif`には、短いブロックでも`// FANG_DEBUG_OR_PROFILE`を付ける。ブロックは後から伸び、伸ばすときに付け足すのを忘れるため。
 - 構成で切り替えるための中身が空の関数は、空行を空けずに並べてよい。
+
+## エラーの出し方
+
+- エラーの文は`core::LogError`で出す。`std::cerr`は使わない。出し先を1か所で替えられるようにするため。
+- `LogError`はVSの出力と`MessageBoxW`の両方に出す。今のエラーは`GpuProfiler`の`Map`の1か所を除いてアプリの終了につながり、出力だけだとほかの文に埋もれ、VSの外では見えないため。
+  UWPでは`MessageBoxW`を使えない➡UWPの構成を作るときに差し替える。
+- `HRESULT`の確認は`core::LogIfFailed`で行い、呼ぶ行と確認の行を分ける(`if (core::LogIfFailed(result, L"フェンスの作成に失敗しました。")) return false;`)。引数の多い関数でも、文が閉じ括弧の後ろに離れないようにするため。
+- 確認をマクロにしない。関数でも1行で書け、マクロにしても短くならず、`return`が見えなくなるだけのため。
+- コンソールの窓を出さない。`SubSystem`は3つの構成とも`Windows`にし、`EntryPointSymbol`に`mainCRTStartup`を指定して`int main()`を残す。ゲームの窓の上に黒い窓が重なるのを避けるため。
 
 ## クラスの形
 
@@ -86,4 +95,5 @@
 
 ## 決めていないこと
 
+- ゲームを止めない知らせの出し先(ImGuiのコンソール)。素材が見つからないときの知らせなどを書くときに決める。
 - 1行のゲッターを強制インラインにするか(`__forceinline`とDebugの`/Ob1`)。今は`inline`。フレームループができてから決める。

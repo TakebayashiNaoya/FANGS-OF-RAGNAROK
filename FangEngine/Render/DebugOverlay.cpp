@@ -3,11 +3,11 @@
  * @brief デバッグ用オーバーレイ描画クラスの実装
  */
 #include "DebugOverlay.h"
-#include <iostream>
 #include "RenderContext.h"
 #include "imgui.h"
 #include "backends/imgui_impl_win32.h"
 #include "backends/imgui_impl_dx12.h"
+#include "Core/Log.h"
 #include "Core/Memory/Memory.h"
 
 
@@ -67,7 +67,7 @@ namespace fangEngine::render
 
 		// Win32側の初期化
 		if (ImGui_ImplWin32_Init(window) == false) {
-			std::cerr << "ImGui_ImplWin32_Initに失敗しました。" << std::endl;
+			core::LogError(L"ImGui_ImplWin32_Initに失敗しました。");
 			return false;
 		}
 
@@ -91,7 +91,7 @@ namespace fangEngine::render
 
 		// D3D12側の初期化
 		if (ImGui_ImplDX12_Init(&initInfo) == false) {
-			std::cerr << "ImGui_ImplDX12_Initに失敗しました。" << std::endl;
+			core::LogError(L"ImGui_ImplDX12_Initに失敗しました。");
 			return false;
 		}
 
@@ -152,19 +152,16 @@ namespace fangEngine::render
 	bool DebugOverlay::CreateShaderResourceViewDescriptorHeap(ID3D12Device* device)
 	{
 		// シェーダーリソースビュー用のディスクリプタヒープの作成
-		D3D12_DESCRIPTOR_HEAP_DESC shaderResourceViewDescriptorHeapDescription{};
-		shaderResourceViewDescriptorHeapDescription.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		shaderResourceViewDescriptorHeapDescription.NumDescriptors = SHADER_RESOURCE_VIEW_DESCRIPTOR_COUNT;
-		shaderResourceViewDescriptorHeapDescription.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+		D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc{};
+		descriptorHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		descriptorHeapDesc.NumDescriptors = SHADER_RESOURCE_VIEW_DESCRIPTOR_COUNT;
+		descriptorHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
-		HRESULT createDescriptorHeapResult = device->CreateDescriptorHeap(
-			&shaderResourceViewDescriptorHeapDescription,
+		HRESULT result = device->CreateDescriptorHeap(
+			&descriptorHeapDesc,
 			IID_PPV_ARGS(&m_shaderResourceViewDescriptorHeap)
 		);
-		if (FAILED(createDescriptorHeapResult)) {
-			std::cerr << "シェーダーリソースビュー用のディスクリプタヒープの作成に失敗しました。" << std::endl;
-			return false;
-		}
+		if (core::LogIfFailed(result, L"シェーダーリソースビュー用のディスクリプタヒープの作成に失敗しました。")) return false;
 
 		// ディスクリプタの増分サイズを取得
 		m_descriptorHandleIncrementSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
