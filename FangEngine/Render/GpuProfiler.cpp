@@ -9,10 +9,14 @@
 
 namespace fangEngine::render
 {
+#ifdef FANG_DEBUG_OR_PROFILE
+
 	namespace
 	{
 		constexpr UINT TIMESTAMP_COUNT_PER_FRAME = 2; // 先頭と末尾
 		constexpr UINT TIMESTAMP_COUNT           = TIMESTAMP_COUNT_PER_FRAME * RenderContext::RENDER_TARGET_COUNT;
+
+		constexpr float MILLISECONDS_PER_SECOND = 1000.0f;
 	}
 
 
@@ -28,6 +32,33 @@ namespace fangEngine::render
 		}
 
 		return true;
+	}
+
+
+	void GpuProfiler::BeginFrame(ID3D12GraphicsCommandList* commandList, UINT frameIndex)
+	{
+		ReadFrameMilliseconds(frameIndex);
+
+		// 測る処理の先頭でタイムスタンプを取る
+		commandList->EndQuery(m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, frameIndex * TIMESTAMP_COUNT_PER_FRAME);
+	}
+
+
+	void GpuProfiler::EndFrame(ID3D12GraphicsCommandList* commandList, UINT frameIndex)
+	{
+		UINT firstTimestampIndex = frameIndex * TIMESTAMP_COUNT_PER_FRAME;
+
+		// 測る処理の末尾でタイムスタンプを取る
+		commandList->EndQuery(m_queryHeap.Get(), D3D12_QUERY_TYPE_TIMESTAMP, firstTimestampIndex + 1);
+		// 読み戻しのバッファへ写す
+		commandList->ResolveQueryData(
+			m_queryHeap.Get(),
+			D3D12_QUERY_TYPE_TIMESTAMP,
+			firstTimestampIndex,
+			TIMESTAMP_COUNT_PER_FRAME,
+			m_readbackBuffer.Get(),
+			sizeof(UINT64) * firstTimestampIndex
+		);
 	}
 
 
@@ -77,4 +108,38 @@ namespace fangEngine::render
 
 		return true;
 	}
+
+
+	void GpuProfiler::ReadFrameMilliseconds(UINT frameIndex)
+	{
+		UINT firstTimestampIndex = frameIndex * TIMESTAMP_COUNT_PER_FRAME;
+
+		D3D12_RANGE readRange{};
+		readRange.Begin = sizeof(UINT64) * firstTimestampIndex;
+		readRange.End   = readRange.Begin + sizeof(UINT64) * TIMESTAMP_COUNT_PER_FRAME;
+
+		void* mappedData = nullptr;
+		HRESULT result = m_readbackBuffer->Map(0, &readRange, &mappedData);
+		if (FAILED(result)) {
+			std::cerr << "読み戻しのバッファを開けませんでした。" << std::endl;
+			return;
+		}
+
+		const UINT64* timestamps = static_cast<const UINT64*>(mappedData);
+		UINT64 timestampDifference = timestamps[firstTimestampIndex + 1] - timestamps[firstTimestampIndex];
+		double elapsedSeconds = static_cast<double>(timestampDifference) / static_cast<double>(m_timestampFrequency);
+		m_frameMilliseconds = static_cast<float>(elapsedSeconds * MILLISECONDS_PER_SECOND); // 秒をミリ秒に変換
+
+		D3D12_RANGE writtenRange{}; // CPUは書いていないため、範囲は空にする
+		m_readbackBuffer->Unmap(0, &writtenRange);
+	}
+
+#else
+
+	// Releaseでは計測しないため、何もしない関数を用意する
+	bool GpuProfiler::Initialize(ID3D12Device*, ID3D12CommandQueue*) { return true; }
+	void GpuProfiler::BeginFrame(ID3D12GraphicsCommandList*, UINT) {}
+	void GpuProfiler::EndFrame(ID3D12GraphicsCommandList*, UINT) {}
+
+#endif // FANG_DEBUG_OR_PROFILE
 } // namespace fangEngine::render

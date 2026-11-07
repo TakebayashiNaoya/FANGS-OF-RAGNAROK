@@ -63,6 +63,12 @@ namespace fangEngine::render
 		 */
 		bool CreateReadbackBuffer(ID3D12Device* device);
 
+		/**
+		 * @brief 測った時間を読み出す
+		 * @param frameIndex 読み出すフレームの番号
+		 */
+		void ReadFrameMilliseconds(UINT frameIndex);
+
 
 	private:
 		Microsoft::WRL::ComPtr<ID3D12QueryHeap> m_queryHeap;      // GPUが時刻を書く入れ物
