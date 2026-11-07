@@ -33,6 +33,9 @@
     <ClCompile Include="Render\CpuProfiler.cpp">
       <Filter>Render</Filter>
     </ClCompile>
+    <ClCompile Include="Render\GpuProfiler.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -90,6 +93,9 @@
       <Filter>ThirdParty\imgui</Filter>
     </ClInclude>
     <ClInclude Include="Render\CpuProfiler.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\GpuProfiler.h">
       <Filter>Render</Filter>
     </ClInclude>
   </ItemGroup>
