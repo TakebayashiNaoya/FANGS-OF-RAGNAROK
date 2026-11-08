@@ -48,6 +48,14 @@
     <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_win32.h" />
   </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\TrianglePixelShader.hlsl">
+      <ShaderType>Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\TriangleVertexShader.hlsl">
+      <ShaderType>Vertex</ShaderType>
+    </FxCompile>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -151,6 +159,11 @@
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup>
+    <FxCompile>
+      <ShaderModel>5.1</ShaderModel>
+    </FxCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
