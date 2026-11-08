@@ -39,6 +39,9 @@
     <ClCompile Include="Core\Log.cpp">
       <Filter>Core</Filter>
     </ClCompile>
+    <ClCompile Include="Render\Shader.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -106,6 +109,9 @@
     </ClInclude>
     <ClInclude Include="Core\Log.h">
       <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Shader.h">
+      <Filter>Render</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -29,6 +29,7 @@
     <ClCompile Include="..\ThirdParty\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="Render\Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
@@ -47,6 +48,7 @@
     <ClInclude Include="..\ThirdParty\imgui\imstb_truetype.h" />
     <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="Render\Shader.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\TrianglePixelShader.hlsl">
@@ -163,6 +165,7 @@
   <ItemDefinitionGroup>
     <FxCompile>
       <ShaderModel>5.1</ShaderModel>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
     </FxCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
