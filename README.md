@@ -10,5 +10,3 @@
 コードとビルド設定をいったん外し、下の層から作り直している。
 最初はメモリ確保(`malloc`を包むところ)から始め、Windows x64のコンソールexe 1本で進める。
 Xbox(UWP)向けの構成は、実機で動かす段で足す。
-
-設計は`docs/design/`にある(`ClassDiagram.drawio`と`README.md`)。
