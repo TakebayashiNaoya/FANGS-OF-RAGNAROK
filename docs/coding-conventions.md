@@ -7,10 +7,12 @@
 ## ファイル
 
 - C++のソースはBOM付きUTF-8・CRLF。MSVCが日本語のコメントを`/utf-8`なしで正しく読むため。
+- HLSLのソースはBOMなしUTF-8・CRLF。`fxc`はBOMを読めず、`X3000`で止まるため。
 - 字下げはタブ。行末コメントの位置合わせはスペース。
 - 連続する宣言・代入の`=`は縦にそろえる。そろえる空白はスペースで入れる(タブは幅の設定で崩れる)。
   整形はそろえないので手で入れる(`.editorconfig`の`cpp_space_around_assignment_operator = ignore`で、整形が消さないようにしてある)。
 - メンバの宣言は名前の位置も縦にそろえる。`*`は型に付ける(`void*        m_block`)。整形が`*`の周りの空白を消さないように、`.editorconfig`の`cpp_space_pointer_reference_alignment`を`ignore`にしてある。
+- HLSLの構造体の名札(`: POSITION`)は縦にそろえない。VSの整形が左に詰めるため。
 
 ## 命名
 
