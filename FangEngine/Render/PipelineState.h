@@ -19,10 +19,10 @@ namespace fangEngine::render
 	{
 	public:
 		/**
-		 * @brief パイプラインステートを初期化する
-		 * @param device デバイス
+		 * @brief パイプラインステートを作る
+		 * @param device パイプラインステートを作るためのID3D12Device
 		 * @param pipelineStateDesc パイプラインステートの設定
-		 * @return 初期化に成功した場合はtrue、失敗した場合はfalse
+		 * @return パイプラインステートを作れたらtrue、作れなかったらfalse
 		 */
 		bool Initialize(ID3D12Device* device, const D3D12_GRAPHICS_PIPELINE_STATE_DESC& pipelineStateDesc);
 
