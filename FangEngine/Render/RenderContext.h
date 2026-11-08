@@ -159,6 +159,9 @@ namespace fangEngine::render
 		UINT                                         m_descriptorHandleIncrementSize = 0;
 		UINT                                         m_backBufferIndex = 0;                           // 現在描画中のバッファのインデックス
 
+		D3D12_VIEWPORT m_viewport{};         // 描き先のどの範囲に描くか
+		D3D12_RECT     m_scissorRectangle{}; // この四角の外は描かない
+
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator>    m_commandAllocators[RENDER_TARGET_COUNT];
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
 

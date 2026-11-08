@@ -22,6 +22,7 @@
     <ClCompile Include="Render\CpuProfiler.cpp" />
     <ClCompile Include="Render\DebugOverlay.cpp" />
     <ClCompile Include="Render\GpuProfiler.cpp" />
+    <ClCompile Include="Render\PipelineState.cpp" />
     <ClCompile Include="Render\RenderContext.cpp" />
     <ClCompile Include="..\ThirdParty\imgui\imgui.cpp" />
     <ClCompile Include="..\ThirdParty\imgui\imgui_draw.cpp" />
@@ -29,6 +30,10 @@
     <ClCompile Include="..\ThirdParty\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="Render\RootSignature.cpp" />
+    <ClCompile Include="Render\Shader.cpp" />
+    <ClCompile Include="Render\TrianglePass.cpp" />
+    <ClCompile Include="Render\VertexBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Application.h" />
@@ -38,6 +43,7 @@
     <ClInclude Include="Render\CpuProfiler.h" />
     <ClInclude Include="Render\DebugOverlay.h" />
     <ClInclude Include="Render\GpuProfiler.h" />
+    <ClInclude Include="Render\PipelineState.h" />
     <ClInclude Include="Render\RenderContext.h" />
     <ClInclude Include="..\ThirdParty\imgui\imconfig.h" />
     <ClInclude Include="..\ThirdParty\imgui\imgui.h" />
@@ -47,6 +53,18 @@
     <ClInclude Include="..\ThirdParty\imgui\imstb_truetype.h" />
     <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="Render\RootSignature.h" />
+    <ClInclude Include="Render\Shader.h" />
+    <ClInclude Include="Render\TrianglePass.h" />
+    <ClInclude Include="Render\VertexBuffer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\TrianglePixelShader.hlsl">
+      <ShaderType>Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\TriangleVertexShader.hlsl">
+      <ShaderType>Vertex</ShaderType>
+    </FxCompile>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
@@ -151,6 +169,12 @@
     <Manifest>
       <EnableSegmentHeap>true</EnableSegmentHeap>
     </Manifest>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup>
+    <FxCompile>
+      <ShaderModel>5.1</ShaderModel>
+      <ObjectFileOutput>$(OutDir)Shaders\%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

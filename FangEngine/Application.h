@@ -7,6 +7,7 @@
 #include "Render/RenderContext.h"
 #include "Render/DebugOverlay.h"
 #include "Core/Memory/Memory.h"
+#include "Render/TrianglePass.h"
 
 
 namespace fangEngine
@@ -45,6 +46,7 @@ namespace fangEngine
 
 	private:
 		render::RenderContext m_renderContext;
+		render::TrianglePass  m_trianglePass;
 		render::DebugOverlay  m_debugOverlay; // RenderContextのDeviceを使うため、先に壊れるように下に置く
 
 		core::Memory m_memory;

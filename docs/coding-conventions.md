@@ -7,15 +7,18 @@
 ## ファイル
 
 - C++のソースはBOM付きUTF-8・CRLF。MSVCが日本語のコメントを`/utf-8`なしで正しく読むため。
+- HLSLのソースはBOMなしUTF-8・CRLF。`fxc`はBOMを読めず、`X3000`で止まるため。
 - 字下げはタブ。行末コメントの位置合わせはスペース。
 - 連続する宣言・代入の`=`は縦にそろえる。そろえる空白はスペースで入れる(タブは幅の設定で崩れる)。
   整形はそろえないので手で入れる(`.editorconfig`の`cpp_space_around_assignment_operator = ignore`で、整形が消さないようにしてある)。
 - メンバの宣言は名前の位置も縦にそろえる。`*`は型に付ける(`void*        m_block`)。整形が`*`の周りの空白を消さないように、`.editorconfig`の`cpp_space_pointer_reference_alignment`を`ignore`にしてある。
+- HLSLの構造体の名札(`: POSITION`)は縦にそろえない。VSの整形が左に詰めるため。
 
 ## 命名
 
 - 識別子は略さない(`previous`、`Initialize`、`position`)。略しても通じるかを毎回考えずに済むようにするため。`ptr`や`prev`のような広く通じる略語も例外にしない。
   例外として、`_DESC`の型のローカル変数は型名に合わせて`Desc`で終える(`D3D12_QUERY_HEAP_DESC`➡`queryHeapDesc`)。型名に同じ略があり、読み方に迷わないため。
+  拡張子そのものは略とみなさない(`exePath`、`csoFileName`)。ファイルに同じ綴りがあり、読み方に迷わないため。
   例外はウィンドウプロシージャの`wParam`と`lParam`だけ。中身がメッセージごとに変わり、合う名前を1つに決められないため。意味のある名前は、メッセージを受けて中身を取り出すところで付ける(`WM_SIZE`なら`width`)。
 - 同じ役割の型はProjectBeastの名前を借りる。
 - シングルトンの取得は`GetInstance()`。

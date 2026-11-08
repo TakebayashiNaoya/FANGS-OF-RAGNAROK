@@ -67,6 +67,11 @@ namespace fangEngine::render
 		// レンダーターゲットビューをセットする
 		m_commandList->OMSetRenderTargets(1, &renderTargetViewDescriptorHandle, FALSE, nullptr);
 
+		// ビューポートとシザー矩形をセットする。
+		// Resetで設定が消えるため、毎フレームセットする。
+		m_commandList->RSSetViewports(1, &m_viewport);
+		m_commandList->RSSetScissorRects(1, &m_scissorRectangle);
+
 		return true;
 	}
 
@@ -116,12 +121,21 @@ namespace fangEngine::render
 
 	bool RenderContext::CreateDevice()
 	{
-		HRESULT result = D3D12CreateDevice(
+#ifdef _DEBUG
+		// デバッグレイヤーの有効化
+		// デバイスを作ったあとに呼ぶと、そのデバイスが無効になるため、デバイスより先に有効にする
+		Microsoft::WRL::ComPtr<ID3D12Debug> debugController;
+		HRESULT getDebugInterfaceResult = D3D12GetDebugInterface(IID_PPV_ARGS(&debugController));
+		if (core::LogIfFailed(getDebugInterfaceResult, L"デバッグレイヤーの取得に失敗しました。")) return false;
+		debugController->EnableDebugLayer();
+#endif // _DEBUG
+
+		HRESULT createDeviceResult = D3D12CreateDevice(
 			nullptr,
 			D3D_FEATURE_LEVEL_11_0,
 			IID_PPV_ARGS(&m_device)
 		);
-		if (core::LogIfFailed(result, L"D3D12デバイスの作成に失敗しました。")) return false;
+		if (core::LogIfFailed(createDeviceResult, L"D3D12デバイスの作成に失敗しました。")) return false;
 		return true;
 	}
 
@@ -177,6 +191,15 @@ namespace fangEngine::render
 		// CreateSwapChainForHwndの引数はIDXGISwapChain1だが、GetCurrentBackBufferIndexを使うためにIDXGISwapChain3に変換する
 		HRESULT asResult = createdSwapChain.As(&m_swapChain);
 		if (core::LogIfFailed(asResult, L"DXGIスワップチェーンの変換に失敗しました。")) return false;
+
+		// ビューポートとシザー矩形の設定
+		// ビューポート : 頂点の座標(-1〜1)を、描き先のどのピクセルの範囲に広げるか。
+		// シザー : その中で、どの四角の外を描かずに切るか。
+		m_viewport.Width          = static_cast<float>(swapChainDesc.Width);
+		m_viewport.Height         = static_cast<float>(swapChainDesc.Height);
+		m_viewport.MaxDepth       = 1.0f;
+		m_scissorRectangle.right  = static_cast<LONG>(swapChainDesc.Width);
+		m_scissorRectangle.bottom = static_cast<LONG>(swapChainDesc.Height);
 
 		return true;
 	}
