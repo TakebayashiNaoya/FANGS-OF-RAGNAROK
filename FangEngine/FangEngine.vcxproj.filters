@@ -42,6 +42,9 @@
     <ClCompile Include="Render\Shader.cpp">
       <Filter>Render</Filter>
     </ClCompile>
+    <ClCompile Include="Render\RootSignature.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -111,6 +114,9 @@
       <Filter>Core</Filter>
     </ClInclude>
     <ClInclude Include="Render\Shader.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\RootSignature.h">
       <Filter>Render</Filter>
     </ClInclude>
   </ItemGroup>

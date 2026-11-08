@@ -29,6 +29,7 @@
     <ClCompile Include="..\ThirdParty\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_win32.cpp" />
+    <ClCompile Include="Render\RootSignature.cpp" />
     <ClCompile Include="Render\Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -48,6 +49,7 @@
     <ClInclude Include="..\ThirdParty\imgui\imstb_truetype.h" />
     <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_win32.h" />
+    <ClInclude Include="Render\RootSignature.h" />
     <ClInclude Include="Render\Shader.h" />
   </ItemGroup>
   <ItemGroup>
