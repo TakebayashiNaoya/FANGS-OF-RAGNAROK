@@ -55,10 +55,14 @@ namespace fangEngine
 		// Memoryの一覧を確認するためにメモリを確保する
 		m_firstBlock  = m_memory.MallocMemory(64, "Application");
 		m_secondBlock = m_memory.MallocMemory(32, "Application");
-
+		// ウィンドウを作る
 		HWND window = CreateMainWindow();
 		if (window == nullptr) return false;
-		if (m_renderContext.Initialize(window) == false)                 return false;
+		// RenderContextを作る
+		if (m_renderContext.Initialize(window) == false) return false;
+		// TrianglePassを作る
+		if (m_trianglePass.Initialize(m_renderContext.GetDevice()) == false) return false;
+		// DebugOverlayを作る
 		if (m_debugOverlay.Initialize(window, m_renderContext) == false) return false;
 
 		return true;
@@ -95,6 +99,8 @@ namespace fangEngine
 
 			// 描画の開始
 			if (m_renderContext.BeginFrame() == false) return false;
+			// 三角形の描画
+			m_trianglePass.Render(m_renderContext.GetCommandList());
 			// デバッグ情報の描画
 			m_debugOverlay.Render(m_renderContext.GetCommandList(), m_renderContext.GetCpuFrameMilliseconds(), m_renderContext.GetGpuFrameMilliseconds(), m_memory);
 			// 描画の終了

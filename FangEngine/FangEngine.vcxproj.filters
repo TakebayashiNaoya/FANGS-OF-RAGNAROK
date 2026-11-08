@@ -51,6 +51,9 @@
     <ClCompile Include="Render\VertexBuffer.cpp">
       <Filter>Render</Filter>
     </ClCompile>
+    <ClCompile Include="Render\TrianglePass.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Core">
@@ -129,6 +132,9 @@
       <Filter>Render</Filter>
     </ClInclude>
     <ClInclude Include="Render\VertexBuffer.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\TrianglePass.h">
       <Filter>Render</Filter>
     </ClInclude>
   </ItemGroup>
