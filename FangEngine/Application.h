@@ -52,5 +52,7 @@ namespace fangEngine
 		core::Memory m_memory;
 		void*        m_firstBlock  = nullptr; // 確認用に確保した64バイトのブロック
 		void*        m_secondBlock = nullptr; // 確認用に確保した32バイトのブロック
+
+		float m_triangleAngle = 0.0f; // 三角形の回転角度(ラジアン)
 	};
 } // namespace fangEngine
