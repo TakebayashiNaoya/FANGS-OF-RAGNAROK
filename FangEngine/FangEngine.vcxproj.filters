@@ -30,6 +30,9 @@
     <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_win32.cpp">
       <Filter>ThirdParty\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="Render\ConstantBuffer.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
     <ClCompile Include="Render\CpuProfiler.cpp">
       <Filter>Render</Filter>
     </ClCompile>
@@ -127,6 +130,9 @@
     </ClInclude>
     <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_win32.h">
       <Filter>ThirdParty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\ConstantBuffer.h">
+      <Filter>Render</Filter>
     </ClInclude>
     <ClInclude Include="Render\CpuProfiler.h">
       <Filter>Render</Filter>
