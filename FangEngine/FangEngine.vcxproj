@@ -38,6 +38,10 @@
   <ItemGroup>
     <ClInclude Include="Application.h" />
     <ClInclude Include="Core\Log.h" />
+    <ClInclude Include="Core\Math\Math.h" />
+    <ClInclude Include="Core\Math\Matrix.h" />
+    <ClInclude Include="Core\Math\Quaternion.h" />
+    <ClInclude Include="Core\Math\Vector.h" />
     <ClInclude Include="Core\Memory\Memory.h" />
     <ClInclude Include="Core\Noncopyable.h" />
     <ClInclude Include="Render\CpuProfiler.h" />
