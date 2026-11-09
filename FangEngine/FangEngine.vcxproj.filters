@@ -30,6 +30,9 @@
     <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_win32.cpp">
       <Filter>ThirdParty\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="Render\ConstantBuffer.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
     <ClCompile Include="Render\CpuProfiler.cpp">
       <Filter>Render</Filter>
     </ClCompile>
@@ -59,6 +62,9 @@
     <Filter Include="Core">
       <UniqueIdentifier>{2cd020fb-c60f-4a57-8a63-e3e12942e463}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Core\Math">
+      <UniqueIdentifier>{9dc18543-2fd6-4053-a1a1-31f94f470dd6}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Core\Memory">
       <UniqueIdentifier>{1e129c8a-1865-46e8-b550-22b904951da2}</UniqueIdentifier>
     </Filter>
@@ -76,6 +82,18 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Core\Math\Math.h">
+      <Filter>Core\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Math\Matrix.h">
+      <Filter>Core\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Math\Quaternion.h">
+      <Filter>Core\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Math\Vector.h">
+      <Filter>Core\Math</Filter>
+    </ClInclude>
     <ClInclude Include="Core\Memory\Memory.h">
       <Filter>Core\Memory</Filter>
     </ClInclude>
@@ -112,6 +130,9 @@
     </ClInclude>
     <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_win32.h">
       <Filter>ThirdParty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\ConstantBuffer.h">
+      <Filter>Render</Filter>
     </ClInclude>
     <ClInclude Include="Render\CpuProfiler.h">
       <Filter>Render</Filter>

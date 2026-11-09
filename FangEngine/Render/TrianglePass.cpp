@@ -37,11 +37,12 @@ namespace fangEngine::render
 
 	bool TrianglePass::Initialize(ID3D12Device* device)
 	{
-		// シェーダー、ルートシグネチャ、頂点バッファを作る
+		// シェーダー、ルートシグネチャ、頂点バッファ、定数バッファを作る
 		if (m_vertexShader.Load(L"TriangleVertexShader.cso") == false) return false;
 		if (m_pixelShader.Load(L"TrianglePixelShader.cso") == false)   return false;
 		if (m_rootSignature.Initialize(device) == false)               return false;
 		if (m_vertexBuffer.Initialize(device, VERTICES, sizeof(VERTICES), sizeof(Vertex)) == false) return false;
+		if (m_constantBuffer.Initialize(device, sizeof(core::Matrix)) == false) return false;
 
 		// パイプラインステートを作る
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineStateDesc{};
@@ -64,10 +65,15 @@ namespace fangEngine::render
 	}
 
 
-	void TrianglePass::Render(ID3D12GraphicsCommandList* commandList)
+
+	void TrianglePass::Render(ID3D12GraphicsCommandList* commandList, UINT frameIndex, const core::Matrix& world)
 	{
+		// 定数バッファに三角形の置き方を決める行列を書き込む
+		m_constantBuffer.Copy(frameIndex, &world);
 		// ルートシグネチャをセットする
 		commandList->SetGraphicsRootSignature(m_rootSignature.GetRootSignature());
+		// 定数バッファの番地をセットする
+		commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer.GetGpuVirtualAddress(frameIndex));
 		// パイプラインステートをセットする
 		commandList->SetPipelineState(m_pipelineState.GetPipelineState());
 		// 頂点3つにつき三角形1つを描くことを伝える(1つの頂点を複数の三角形で使用しない)

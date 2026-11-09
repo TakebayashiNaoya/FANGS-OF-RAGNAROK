@@ -88,6 +88,13 @@ namespace fangEngine::render
 		 */
 		inline float GetGpuFrameMilliseconds() const { return m_gpuProfiler.GetFrameMilliseconds(); }
 
+		/**
+		 * @brief 現在描画中のバッファのインデックスを取得する
+		 * @details BeginFrameのあとで呼ぶ。前に呼ぶと、前のフレームのインデックスが返るため。
+		 * @return バックバッファのインデックス
+		 */
+		inline UINT GetBackBufferIndex() const { return m_backBufferIndex; }
+
 
 	private:
 		/**

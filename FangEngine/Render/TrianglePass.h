@@ -8,6 +8,8 @@
 #include "RootSignature.h"
 #include "PipelineState.h"
 #include "VertexBuffer.h"
+#include "ConstantBuffer.h"
+#include "Core/Math/Matrix.h"
 
 
 namespace fangEngine::render
@@ -29,15 +31,18 @@ namespace fangEngine::render
 		/**
 		 * @brief 三角形を描く
 		 * @param commandList 描画の命令を積むコマンドリスト
+		 * @param frameIndex 書き込む定数バッファを決めるフレームの番号
+		 * @param world 三角形の置き方を決めるワールド行列
 		 */
-		void Render(ID3D12GraphicsCommandList* commandList);
+		void Render(ID3D12GraphicsCommandList* commandList, UINT frameIndex, const core::Matrix& world);
 
 
 	private:
-		Shader        m_vertexShader;  // 頂点の位置を決めるシェーダー
-		Shader        m_pixelShader;   // 三角形が覆うピクセルごとに動き、混ぜた頂点の色で塗るシェーダー
-		RootSignature m_rootSignature; // シェーダーに渡す値の場所を決めるルートシグネチャ
-		PipelineState m_pipelineState; // シェーダーやルートシグネチャなどをまとめたパイプラインステート
-		VertexBuffer  m_vertexBuffer;  // 頂点の位置と色を入れる頂点バッファ
+		Shader         m_vertexShader;   // 頂点の位置を決めるシェーダー
+		Shader         m_pixelShader;    // 三角形が覆うピクセルごとに動き、混ぜた頂点の色で塗るシェーダー
+		RootSignature  m_rootSignature;  // シェーダーに渡す値の場所を決めるルートシグネチャ
+		PipelineState  m_pipelineState;  // シェーダーやルートシグネチャなどをまとめたパイプラインステート
+		VertexBuffer   m_vertexBuffer;   // 頂点の位置と色を入れる頂点バッファ
+		ConstantBuffer m_constantBuffer; // 毎フレームの行列をGPUへ渡す定数バッファ
 	};
 } // namespace fangEngine::render

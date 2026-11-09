@@ -5,6 +5,7 @@
 #include "Application.h"
 #include <chrono>
 #include "Core/Log.h"
+#include "Core/Math/Math.h"
 
 
 namespace fangEngine
@@ -17,6 +18,8 @@ namespace fangEngine
 		constexpr int            WINDOW_HEIGHT       = 600;
 
 		constexpr float MAX_DELTA_TIME = 1.0f / 30.0f;
+
+		constexpr float TRIANGLE_ROTATION_SPEED = core::DegreesToRadians(90.0f);
 
 		/**
 		 * @brief WM_DESTROYの場合はループを抜ける指示を出し、それ以外の場合はWindowsの既定の処理に任せる
@@ -97,10 +100,13 @@ namespace fangEngine
 			}
 			previousFrameTime = currentFrameTime;
 
+			// 三角形の回転角度を更新する
+			m_triangleAngle = core::WrapAngle(m_triangleAngle + TRIANGLE_ROTATION_SPEED * deltaTime);
+
 			// 描画の開始
 			if (m_renderContext.BeginFrame() == false) return false;
 			// 三角形の描画
-			m_trianglePass.Render(m_renderContext.GetCommandList());
+			m_trianglePass.Render(m_renderContext.GetCommandList(), m_renderContext.GetBackBufferIndex(), core::Matrix::RotationZ(m_triangleAngle));
 			// デバッグ情報の描画
 			m_debugOverlay.Render(m_renderContext.GetCommandList(), m_renderContext.GetCpuFrameMilliseconds(), m_renderContext.GetGpuFrameMilliseconds(), m_memory);
 			// 描画の終了
