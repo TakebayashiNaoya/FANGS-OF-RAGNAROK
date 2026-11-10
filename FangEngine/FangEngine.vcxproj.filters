@@ -54,10 +54,16 @@
     <ClCompile Include="Render\VertexBuffer.cpp">
       <Filter>Render</Filter>
     </ClCompile>
-    <ClCompile Include="Render\CubePass.cpp">
+    <ClCompile Include="Render\IndexBuffer.cpp">
       <Filter>Render</Filter>
     </ClCompile>
-    <ClCompile Include="Render\IndexBuffer.cpp">
+    <ClCompile Include="Render\Model.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\ModelData.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\ModelPass.cpp">
       <Filter>Render</Filter>
     </ClCompile>
   </ItemGroup>
@@ -158,18 +164,24 @@
     <ClInclude Include="Render\VertexBuffer.h">
       <Filter>Render</Filter>
     </ClInclude>
-    <ClInclude Include="Render\CubePass.h">
+    <ClInclude Include="Render\IndexBuffer.h">
       <Filter>Render</Filter>
     </ClInclude>
-    <ClInclude Include="Render\IndexBuffer.h">
+    <ClInclude Include="Render\Model.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\ModelData.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\ModelPass.h">
       <Filter>Render</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shaders\CubePixelShader.hlsl">
+    <FxCompile Include="Shaders\ModelPixelShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\CubeVertexShader.hlsl">
+    <FxCompile Include="Shaders\ModelVertexShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

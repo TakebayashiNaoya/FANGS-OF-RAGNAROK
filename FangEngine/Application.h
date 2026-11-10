@@ -7,7 +7,7 @@
 #include "Render/RenderContext.h"
 #include "Render/DebugOverlay.h"
 #include "Core/Memory/Memory.h"
-#include "Render/CubePass.h"
+#include "Render/ModelPass.h"
 
 
 namespace fangEngine
@@ -46,7 +46,8 @@ namespace fangEngine
 
 	private:
 		render::RenderContext m_renderContext;
-		render::CubePass      m_cubePass;
+		render::ModelPass     m_modelPass;
+		render::Model         m_wolfModel;
 		render::DebugOverlay  m_debugOverlay; // RenderContextのDeviceを使うため、先に壊れるように下に置く
 
 		core::Memory m_memory;
@@ -55,6 +56,6 @@ namespace fangEngine
 
 		core::Matrix m_viewProjection{}; // カメラの見え方を決める行列。カメラの段まで仮に持つ
 
-		float m_cubeAngle = 0.0f; // 立方体の回転角度(ラジアン)
+		float m_modelAngle = 0.0f; // モデルの回転角度(ラジアン)
 	};
 } // namespace fangEngine

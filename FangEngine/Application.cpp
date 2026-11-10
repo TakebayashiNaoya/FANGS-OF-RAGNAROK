@@ -19,7 +19,8 @@ namespace fangEngine
 
 		constexpr float MAX_DELTA_TIME = 1.0f / 30.0f;
 
-		constexpr float CUBE_ROTATION_SPEED = core::DegreesToRadians(90.0f);
+		constexpr float          MODEL_ROTATION_SPEED = core::DegreesToRadians(90.0f);
+		constexpr const wchar_t* WOLF_MODEL_PATH = L"Assets/Models/Wolf/Wolf.fmodel";  // 作業フォルダから見た狼のモデルのパス
 
 		/**
 		 * @brief WM_DESTROYの場合はループを抜ける指示を出し、それ以外の場合はWindowsの既定の処理に任せる
@@ -63,8 +64,11 @@ namespace fangEngine
 		if (window == nullptr) return false;
 		// RenderContextを作る
 		if (m_renderContext.Initialize(window) == false) return false;
-		// CubePassを作る
-		if (m_cubePass.Initialize(m_renderContext.GetDevice()) == false) return false;
+		// Modelを作る
+		render::ModelData wolfModelData{};
+		if (render::LoadModel(WOLF_MODEL_PATH, wolfModelData) == false)                  return false;
+		if (m_wolfModel.Initialize(m_renderContext.GetDevice(), wolfModelData) == false) return false;
+		if (m_modelPass.Initialize(m_renderContext.GetDevice()) == false)                return false;
 		// カメラの行列を作る
 		const core::Matrix view       = core::Matrix::LookAt({ 0.0f, 1.5f, -3.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
 		const core::Matrix projection = core::Matrix::Perspective(core::DegreesToRadians(60.0f), static_cast<float>(WINDOW_WIDTH) / WINDOW_HEIGHT, 0.1f, 100.0f);
@@ -104,13 +108,13 @@ namespace fangEngine
 			}
 			previousFrameTime = currentFrameTime;
 
-			// 立方体の回転角度を更新する
-			m_cubeAngle = core::WrapAngle(m_cubeAngle + CUBE_ROTATION_SPEED * deltaTime);
+			// モデルの回転角度を更新する
+			m_modelAngle = core::WrapAngle(m_modelAngle + MODEL_ROTATION_SPEED * deltaTime);
 
 			// 描画の開始
 			if (m_renderContext.BeginFrame() == false) return false;
-			// 立方体の描画
-			m_cubePass.Render(m_renderContext.GetCommandList(), m_renderContext.GetBackBufferIndex(), core::Matrix::RotationY(m_cubeAngle), m_viewProjection);
+			// モデルの描画
+			m_modelPass.Render(m_renderContext.GetCommandList(), m_renderContext.GetBackBufferIndex(), m_wolfModel, core::Matrix::RotationY(m_modelAngle), m_viewProjection);
 			// デバッグ情報の描画
 			m_debugOverlay.Render(m_renderContext.GetCommandList(), m_renderContext.GetCpuFrameMilliseconds(), m_renderContext.GetGpuFrameMilliseconds(), m_memory);
 			// 描画の終了
