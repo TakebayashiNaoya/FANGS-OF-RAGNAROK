@@ -1,6 +1,6 @@
 /**
- * @file TrianglePixelShader.hlsl
- * @brief 三角形のピクセルシェーダー
+ * @file CubePixelShader.hlsl
+ * @brief 立方体のピクセルシェーダー
  */
 struct VertexOutput
 {

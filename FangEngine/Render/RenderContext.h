@@ -25,6 +25,7 @@ namespace fangEngine::render
 	public:
 		static constexpr int         RENDER_TARGET_COUNT  = 2;
 		static constexpr DXGI_FORMAT RENDER_TARGET_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM;
+		static constexpr DXGI_FORMAT DEPTH_STENCIL_FORMAT = DXGI_FORMAT_D32_FLOAT;
 
 
 	public:
@@ -123,6 +124,12 @@ namespace fangEngine::render
 		bool CreateRenderTargetViews();
 
 		/**
+		 * @brief デプスステンシルビューを作成する
+		 * @return デプスステンシルビューの作成に成功したらtrue、失敗したらfalse
+		 */
+		bool CreateDepthStencilView();
+
+		/**
 		 * @brief コマンドリストとアロケータを作成する
 		 * @return コマンドリストの作成に成功したらtrue、失敗したらfalse
 		 */
@@ -165,6 +172,9 @@ namespace fangEngine::render
 		D3D12_CPU_DESCRIPTOR_HANDLE                  m_renderTargetViewDescriptorHeapHandle{};
 		UINT                                         m_descriptorHandleIncrementSize = 0;
 		UINT                                         m_backBufferIndex = 0;                           // 現在描画中のバッファのインデックス
+
+		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_depthStencilViewDescriptorHeap;
+		Microsoft::WRL::ComPtr<ID3D12Resource>       m_depthStencilBufferResource;
 
 		D3D12_VIEWPORT m_viewport{};         // 描き先のどの範囲に描くか
 		D3D12_RECT     m_scissorRectangle{}; // この四角の外は描かない

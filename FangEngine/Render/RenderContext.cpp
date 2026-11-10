@@ -24,6 +24,7 @@ namespace fangEngine::render
 		if (CreateCommandQueue() == false)            return false;
 		if (CreateSwapChain(window) == false)         return false;
 		if (CreateRenderTargetViews() == false)       return false;
+		if (CreateDepthStencilView() == false)        return false;
 		if (CreateCommandAllocatorAndList() == false) return false;
 		if (CreateFence() == false)                   return false;
 
@@ -35,10 +36,14 @@ namespace fangEngine::render
 
 	bool RenderContext::BeginFrame()
 	{
-		// レンダーターゲットビューの取得
+		// 今描くバッファのインデックスを取得する
 		m_backBufferIndex = m_swapChain->GetCurrentBackBufferIndex();
+
+		// レンダーターゲットビューの取得
 		D3D12_CPU_DESCRIPTOR_HANDLE renderTargetViewDescriptorHandle{};
 		renderTargetViewDescriptorHandle.ptr = m_renderTargetViewDescriptorHeapHandle.ptr + m_backBufferIndex * m_descriptorHandleIncrementSize;
+		// デプスステンシルビューの取得
+		D3D12_CPU_DESCRIPTOR_HANDLE depthStencilViewDescriptorHandle = m_depthStencilViewDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 
 		// このアロケータのコマンドをGPUが終えるのを待つ。
 		// GPUが読んでいる途中にResetすると、コマンドが上書きされるため、Resetの前に待つ。
@@ -61,11 +66,12 @@ namespace fangEngine::render
 		TransitionBackBuffer(D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 		// レンダーターゲットのクリア
-		const float clearColor[4] = { 0.0f, 0.2f, 0.4f, 1.0f };
+		const float clearColor[4] = { 0.5f, 0.5f, 0.5f, 1.0f };
 		m_commandList->ClearRenderTargetView(renderTargetViewDescriptorHandle, clearColor, 0, nullptr);
-
-		// レンダーターゲットビューをセットする
-		m_commandList->OMSetRenderTargets(1, &renderTargetViewDescriptorHandle, FALSE, nullptr);
+		// デプスステンシルバッファのクリア
+		m_commandList->ClearDepthStencilView(depthStencilViewDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+		// レンダーターゲットと深度バッファをセットする
+		m_commandList->OMSetRenderTargets(1, &renderTargetViewDescriptorHandle, FALSE, &depthStencilViewDescriptorHandle);
 
 		// ビューポートとシザー矩形をセットする。
 		// Resetで設定が消えるため、毎フレームセットする。
@@ -232,6 +238,64 @@ namespace fangEngine::render
 				D3D12_CPU_DESCRIPTOR_HANDLE{ m_renderTargetViewDescriptorHeapHandle.ptr + renderTargetIndex * m_descriptorHandleIncrementSize }
 			);
 		}
+
+		return true;
+	}
+
+
+	bool RenderContext::CreateDepthStencilView()
+	{
+		// 深度バッファをバックバッファと同じ大きさで作るため、スワップチェーンの設定を読む
+		DXGI_SWAP_CHAIN_DESC1 swapChainDesc{};
+		HRESULT getSwapChainDescResult = m_swapChain->GetDesc1(&swapChainDesc);
+		if (core::LogIfFailed(getSwapChainDescResult, L"スワップチェーンの記述の取得に失敗しました。")) return false;
+
+		// デプスステンシルビュー用のディスクリプタヒープの作成
+		D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc{};
+		descriptorHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+		descriptorHeapDesc.NumDescriptors = 1;
+		descriptorHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+		HRESULT createDescriptorHeapResult = m_device->CreateDescriptorHeap(
+			&descriptorHeapDesc,
+			IID_PPV_ARGS(&m_depthStencilViewDescriptorHeap)
+		);
+		if (core::LogIfFailed(createDescriptorHeapResult, L"デプスステンシルビュー用のディスクリプタヒープの作成に失敗しました。")) return false;
+
+		// デプスステンシルバッファの作成
+		D3D12_HEAP_PROPERTIES heapProperties{};
+		heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+
+		D3D12_RESOURCE_DESC resourceDesc{};
+		resourceDesc.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		resourceDesc.Width            = swapChainDesc.Width;
+		resourceDesc.Height           = swapChainDesc.Height;
+		resourceDesc.DepthOrArraySize = 1;
+		resourceDesc.MipLevels        = 1;
+		resourceDesc.Format           = DEPTH_STENCIL_FORMAT;
+		resourceDesc.SampleDesc.Count = 1;
+		resourceDesc.Flags            = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+		D3D12_CLEAR_VALUE clearValue{};
+		clearValue.Format             = DEPTH_STENCIL_FORMAT;
+		clearValue.DepthStencil.Depth = 1.0f;
+
+		HRESULT createCommittedResourceResult = m_device->CreateCommittedResource(
+			&heapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&resourceDesc,
+			D3D12_RESOURCE_STATE_DEPTH_WRITE,
+			&clearValue,
+			IID_PPV_ARGS(&m_depthStencilBufferResource)
+		);
+		if (core::LogIfFailed(createCommittedResourceResult, L"デプスステンシルバッファの作成に失敗しました。")) return false;
+
+		// デプスステンシルビューの作成
+		m_device->CreateDepthStencilView(
+			m_depthStencilBufferResource.Get(),
+			nullptr,
+			m_depthStencilViewDescriptorHeap->GetCPUDescriptorHandleForHeapStart()
+		);
 
 		return true;
 	}
