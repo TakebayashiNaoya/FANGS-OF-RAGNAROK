@@ -54,7 +54,10 @@
     <ClCompile Include="Render\VertexBuffer.cpp">
       <Filter>Render</Filter>
     </ClCompile>
-    <ClCompile Include="Render\TrianglePass.cpp">
+    <ClCompile Include="Render\CubePass.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\IndexBuffer.cpp">
       <Filter>Render</Filter>
     </ClCompile>
   </ItemGroup>
@@ -155,15 +158,18 @@
     <ClInclude Include="Render\VertexBuffer.h">
       <Filter>Render</Filter>
     </ClInclude>
-    <ClInclude Include="Render\TrianglePass.h">
+    <ClInclude Include="Render\CubePass.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\IndexBuffer.h">
       <Filter>Render</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shaders\TrianglePixelShader.hlsl">
+    <FxCompile Include="Shaders\CubePixelShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="Shaders\TriangleVertexShader.hlsl">
+    <FxCompile Include="Shaders\CubeVertexShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

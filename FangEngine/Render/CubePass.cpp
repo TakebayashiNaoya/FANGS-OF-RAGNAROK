@@ -1,9 +1,10 @@
 ﻿/**
- * @file TrianglePass.cpp
- * @brief 三角形を描くパス
+ * @file CubePass.cpp
+ * @brief 立方体を描くパス
  */
-#include "TrianglePass.h"
+#include "CubePass.h"
 #include <cstddef>
+#include <cstdint>
 #include "RenderContext.h"
 
 
@@ -11,19 +12,35 @@ namespace fangEngine::render
 {
 	namespace
 	{
-		// 三角形の頂点の位置と色の構造体
+		// 立方体の頂点の位置と色の構造体
 		struct Vertex
 		{
 			float position[3]; // 頂点の位置
 			float color[4];    // 頂点の色
 		};
 
-		// 三角形の頂点の位置と色を入れる配列
+		// 立方体の頂点の位置と色を入れる配列
 		const Vertex VERTICES[] =
 		{
-			{ { 0.0f,  0.5f, 0.0f },{ 1.0f, 0.0f, 0.0f, 1.0f } }, // 上の頂点(赤)
-			{ { 0.5f, -0.5f, 0.0f },{ 0.0f, 1.0f, 0.0f, 1.0f } }, // 右下の頂点(緑)
-			{ { -0.5f, -0.5f, 0.0f },{ 0.0f, 0.0f, 1.0f, 1.0f } }  // 左下の頂点(青)
+			{ { -0.5f, 0.5f, -0.5f },{ 1.0f, 0.0f, 0.0f, 1.0f } },  // 手前の左上(赤)
+			{ { 0.5f, 0.5f, -0.5f },{ 0.0f, 1.0f, 0.0f, 1.0f } },   // 手前の右上(緑)
+			{ { 0.5f, -0.5f, -0.5f },{ 0.0f, 0.0f, 1.0f, 1.0f } },  // 手前の右下(青)
+			{ { -0.5f, -0.5f, -0.5f },{ 1.0f, 1.0f, 0.0f, 1.0f } }, // 手前の左下(黄)
+			{ { -0.5f, 0.5f, 0.5f },{ 1.0f, 0.0f, 1.0f, 1.0f } },   // 奥の左上(紫)
+			{ { 0.5f, 0.5f, 0.5f },{ 0.0f, 1.0f, 1.0f, 1.0f } },    // 奥の右上(水色)
+			{ { 0.5f, -0.5f, 0.5f },{ 1.0f, 1.0f, 1.0f, 1.0f } },   // 奥の右下(白)
+			{ { -0.5f, -0.5f, 0.5f },{ 0.0f, 0.0f, 0.0f, 1.0f } }   // 奥の左下(黒)
+		};
+
+		// インデックスの配列
+		const std::uint16_t INDICES[] =
+		{
+			0, 1, 2, 0, 2, 3, // 手前の面
+			5, 4, 7, 5, 7, 6, // 奥の面
+			0, 3, 7, 0, 7, 4, // 左の面
+			1, 5, 6, 1, 6, 2, // 右の面
+			4, 5, 1, 4, 1, 0, // 上の面
+			3, 2, 6, 3, 6, 7  // 下の面
 		};
 
 		// 頂点の位置と色の読み方を決める
@@ -35,14 +52,15 @@ namespace fangEngine::render
 	}
 
 
-	bool TrianglePass::Initialize(ID3D12Device* device)
+	bool CubePass::Initialize(ID3D12Device* device)
 	{
 		// シェーダー、ルートシグネチャ、頂点バッファ、定数バッファを作る
-		if (m_vertexShader.Load(L"TriangleVertexShader.cso") == false) return false;
-		if (m_pixelShader.Load(L"TrianglePixelShader.cso") == false)   return false;
-		if (m_rootSignature.Initialize(device) == false)               return false;
-		if (m_vertexBuffer.Initialize(device, VERTICES, sizeof(VERTICES), sizeof(Vertex)) == false) return false;
-		if (m_constantBuffer.Initialize(device, sizeof(core::Matrix)) == false) return false;
+		if (m_vertexShader.Load(L"CubeVertexShader.cso") == false)                                     return false;
+		if (m_pixelShader.Load(L"CubePixelShader.cso") == false)                                       return false;
+		if (m_rootSignature.Initialize(device) == false)                                               return false;
+		if (m_vertexBuffer.Initialize(device, VERTICES, sizeof(VERTICES), sizeof(Vertex)) == false)    return false;
+		if (m_indexBuffer.Initialize(device, INDICES, sizeof(INDICES), DXGI_FORMAT_R16_UINT) == false) return false;
+		if (m_constantBuffer.Initialize(device, sizeof(core::Matrix)) == false)                        return false;
 
 		// パイプラインステートを作る
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineStateDesc{};
@@ -70,21 +88,25 @@ namespace fangEngine::render
 
 
 
-	void TrianglePass::Render(ID3D12GraphicsCommandList* commandList, UINT frameIndex, const core::Matrix& world)
+	void CubePass::Render(ID3D12GraphicsCommandList* commandList, UINT frameIndex, const core::Matrix& world, const core::Matrix& viewProjection)
 	{
-		// 定数バッファに三角形の置き方を決める行列を書き込む
-		m_constantBuffer.Copy(frameIndex, &world);
+		// 立方体の置き方とカメラの見え方を決める行列を掛け合わせる
+		const core::Matrix worldViewProjection = world * viewProjection;
+		// 定数バッファに掛け合わせた行列を書き込む
+		m_constantBuffer.Copy(frameIndex, &worldViewProjection);
 		// ルートシグネチャをセットする
 		commandList->SetGraphicsRootSignature(m_rootSignature.GetRootSignature());
 		// 定数バッファの番地をセットする
 		commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer.GetGpuVirtualAddress(frameIndex));
 		// パイプラインステートをセットする
 		commandList->SetPipelineState(m_pipelineState.GetPipelineState());
-		// 頂点3つにつき三角形1つを描くことを伝える(1つの頂点を複数の三角形で使用しない)
+		// インデックス3つにつき三角形1つを描くことを伝える
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		// 頂点バッファをセットする
 		commandList->IASetVertexBuffers(0, 1, &m_vertexBuffer.GetView());
-		// 三角形を描く
-		commandList->DrawInstanced(_countof(VERTICES), 1, 0, 0);
+		// インデックスバッファをセットする
+		commandList->IASetIndexBuffer(&m_indexBuffer.GetView());
+		// 立方体を描く
+		commandList->DrawIndexedInstanced(_countof(INDICES), 1, 0, 0, 0);
 	}
 } // namespace fangEngine::render

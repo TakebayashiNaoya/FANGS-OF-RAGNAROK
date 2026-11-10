@@ -19,7 +19,7 @@ namespace fangEngine
 
 		constexpr float MAX_DELTA_TIME = 1.0f / 30.0f;
 
-		constexpr float TRIANGLE_ROTATION_SPEED = core::DegreesToRadians(90.0f);
+		constexpr float CUBE_ROTATION_SPEED = core::DegreesToRadians(90.0f);
 
 		/**
 		 * @brief WM_DESTROYの場合はループを抜ける指示を出し、それ以外の場合はWindowsの既定の処理に任せる
@@ -63,8 +63,12 @@ namespace fangEngine
 		if (window == nullptr) return false;
 		// RenderContextを作る
 		if (m_renderContext.Initialize(window) == false) return false;
-		// TrianglePassを作る
-		if (m_trianglePass.Initialize(m_renderContext.GetDevice()) == false) return false;
+		// CubePassを作る
+		if (m_cubePass.Initialize(m_renderContext.GetDevice()) == false) return false;
+		// カメラの行列を作る
+		const core::Matrix view       = core::Matrix::LookAt({ 0.0f, 1.5f, -3.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
+		const core::Matrix projection = core::Matrix::Perspective(core::DegreesToRadians(60.0f), static_cast<float>(WINDOW_WIDTH) / WINDOW_HEIGHT, 0.1f, 100.0f);
+		m_viewProjection = view * projection;
 		// DebugOverlayを作る
 		if (m_debugOverlay.Initialize(window, m_renderContext) == false) return false;
 
@@ -100,17 +104,17 @@ namespace fangEngine
 			}
 			previousFrameTime = currentFrameTime;
 
-			// 三角形の回転角度を更新する
-			m_triangleAngle = core::WrapAngle(m_triangleAngle + TRIANGLE_ROTATION_SPEED * deltaTime);
+			// 立方体の回転角度を更新する
+			m_cubeAngle = core::WrapAngle(m_cubeAngle + CUBE_ROTATION_SPEED * deltaTime);
 
 			// 描画の開始
 			if (m_renderContext.BeginFrame() == false) return false;
-			// 三角形の描画
-			m_trianglePass.Render(m_renderContext.GetCommandList(), m_renderContext.GetBackBufferIndex(), core::Matrix::RotationZ(m_triangleAngle));
+			// 立方体の描画
+			m_cubePass.Render(m_renderContext.GetCommandList(), m_renderContext.GetBackBufferIndex(), core::Matrix::RotationY(m_cubeAngle), m_viewProjection);
 			// デバッグ情報の描画
 			m_debugOverlay.Render(m_renderContext.GetCommandList(), m_renderContext.GetCpuFrameMilliseconds(), m_renderContext.GetGpuFrameMilliseconds(), m_memory);
 			// 描画の終了
-			if (m_renderContext.EndFrame() == false)   return false;
+			if (m_renderContext.EndFrame() == false) return false;
 		}
 
 		return true;
