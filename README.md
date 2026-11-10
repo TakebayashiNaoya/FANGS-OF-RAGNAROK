@@ -13,3 +13,5 @@
 ## 遊び方
 
 [Releases](https://github.com/TakebayashiNaoya/FANGS-OF-RAGNAROK/releases/tag/rom-latest)から`FangsOfRagnarok-rom.zip`をダウンロードし、展開した`FangEngine.exe`を起動する。
+
+起動を止められたときは、`FangEngine.exe`を右クリックして「プロパティ」の「許可する」にチェックを入れる。
