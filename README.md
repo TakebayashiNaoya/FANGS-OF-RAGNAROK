@@ -10,6 +10,10 @@
 - Windows 10 / 11(64bit)
 - DirectX 12に対応したGPU
 
+## 遊び方
+
+[Releases](https://github.com/TakebayashiNaoya/FANGS-OF-RAGNAROK/releases/tag/rom-latest)から`FangsOfRagnarok-rom.zip`をダウンロードし、展開した`FangEngine.exe`を起動する。
+
 ## 現在の状態
 
 コードとビルド設定をいったん外し、下の層から作り直している。
