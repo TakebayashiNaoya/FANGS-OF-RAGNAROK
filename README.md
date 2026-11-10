@@ -13,9 +13,3 @@
 ## 遊び方
 
 [Releases](https://github.com/TakebayashiNaoya/FANGS-OF-RAGNAROK/releases/tag/rom-latest)から`FangsOfRagnarok-rom.zip`をダウンロードし、展開した`FangEngine.exe`を起動する。
-
-## 現在の状態
-
-コードとビルド設定をいったん外し、下の層から作り直している。
-最初はメモリ確保(`malloc`を包むところ)から始め、Windows x64のコンソールexe 1本で進める。
-Xbox(UWP)向けの構成は、実機で動かす段で足す。
