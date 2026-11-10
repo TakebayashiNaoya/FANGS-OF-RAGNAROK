@@ -79,3 +79,6 @@ Desktop.ini
 *.swp
 *~
 ~$*
+
+# ---- 素材（Fabの規約で公開できないため、Plastic SCMで管理する）----
+/FangEngine/Assets/
