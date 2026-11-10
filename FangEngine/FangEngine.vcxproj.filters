@@ -60,6 +60,9 @@
     <ClCompile Include="Render\IndexBuffer.cpp">
       <Filter>Render</Filter>
     </ClCompile>
+    <ClCompile Include="Render\Model.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
     <ClCompile Include="Render\ModelData.cpp">
       <Filter>Render</Filter>
     </ClCompile>
@@ -165,6 +168,9 @@
       <Filter>Render</Filter>
     </ClInclude>
     <ClInclude Include="Render\IndexBuffer.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Model.h">
       <Filter>Render</Filter>
     </ClInclude>
     <ClInclude Include="Render\ModelData.h">
