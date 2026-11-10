@@ -21,12 +21,12 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Render\ConstantBuffer.cpp" />
     <ClCompile Include="Render\CpuProfiler.cpp" />
-    <ClCompile Include="Render\CubePass.cpp" />
     <ClCompile Include="Render\DebugOverlay.cpp" />
     <ClCompile Include="Render\GpuProfiler.cpp" />
     <ClCompile Include="Render\IndexBuffer.cpp" />
     <ClCompile Include="Render\Model.cpp" />
     <ClCompile Include="Render\ModelData.cpp" />
+    <ClCompile Include="Render\ModelPass.cpp" />
     <ClCompile Include="Render\PipelineState.cpp" />
     <ClCompile Include="Render\RenderContext.cpp" />
     <ClCompile Include="..\ThirdParty\imgui\imgui.cpp" />
@@ -50,12 +50,12 @@
     <ClInclude Include="Core\Noncopyable.h" />
     <ClInclude Include="Render\ConstantBuffer.h" />
     <ClInclude Include="Render\CpuProfiler.h" />
-    <ClInclude Include="Render\CubePass.h" />
     <ClInclude Include="Render\DebugOverlay.h" />
     <ClInclude Include="Render\GpuProfiler.h" />
     <ClInclude Include="Render\IndexBuffer.h" />
     <ClInclude Include="Render\Model.h" />
     <ClInclude Include="Render\ModelData.h" />
+    <ClInclude Include="Render\ModelPass.h" />
     <ClInclude Include="Render\PipelineState.h" />
     <ClInclude Include="Render\RenderContext.h" />
     <ClInclude Include="..\ThirdParty\imgui\imconfig.h" />
@@ -71,10 +71,10 @@
     <ClInclude Include="Render\VertexBuffer.h" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shaders\CubePixelShader.hlsl">
+    <FxCompile Include="Shaders\ModelPixelShader.hlsl">
       <ShaderType>Pixel</ShaderType>
     </FxCompile>
-    <FxCompile Include="Shaders\CubeVertexShader.hlsl">
+    <FxCompile Include="Shaders\ModelVertexShader.hlsl">
       <ShaderType>Vertex</ShaderType>
     </FxCompile>
   </ItemGroup>
