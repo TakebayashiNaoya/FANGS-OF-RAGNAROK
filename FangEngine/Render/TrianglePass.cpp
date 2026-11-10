@@ -54,10 +54,14 @@ namespace fangEngine::render
 		pipelineStateDesc.RasterizerState.FillMode                         = D3D12_FILL_MODE_SOLID;                  // 中を塗る
 		pipelineStateDesc.RasterizerState.CullMode                         = D3D12_CULL_MODE_BACK;                   // 裏面は描かない
 		pipelineStateDesc.RasterizerState.DepthClipEnable                  = TRUE;                                   // クリッピングする
+		pipelineStateDesc.DepthStencilState.DepthEnable                    = TRUE;                                   // 深度で前後を比べる
+		pipelineStateDesc.DepthStencilState.DepthWriteMask                 = D3D12_DEPTH_WRITE_MASK_ALL;             // 深度バッファに書き込む
+		pipelineStateDesc.DepthStencilState.DepthFunc                      = D3D12_COMPARISON_FUNC_LESS;             // 今より手前なら描く
 		pipelineStateDesc.InputLayout                                      = { INPUT_ELEMENT_DESCS, _countof(INPUT_ELEMENT_DESCS) };
 		pipelineStateDesc.PrimitiveTopologyType                            = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE; // 三角形を描く
 		pipelineStateDesc.NumRenderTargets                                 = 1;                                      // 描き先は1つ
 		pipelineStateDesc.RTVFormats[0]                                    = RenderContext::RENDER_TARGET_FORMAT;    // 描き先と同じ形式
+		pipelineStateDesc.DSVFormat                                        = RenderContext::DEPTH_STENCIL_FORMAT;    // 深度バッファと同じ形式
 		pipelineStateDesc.SampleDesc.Count                                 = 1;                                      // マルチサンプリングしない
 		if (m_pipelineState.Initialize(device, pipelineStateDesc) == false) return false;
 
