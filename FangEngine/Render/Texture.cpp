@@ -11,7 +11,35 @@
 
 namespace fangEngine::render
 {
+	struct Texture::UploadLayout
+	{
+		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints;           // ミップごとの置き場所と行の幅
+		std::vector<UINT>                               rowCounts;            // ミップごとの行の数
+		std::vector<UINT64>                             rowSizes;             // ミップごとの1行のバイト数
+		UINT64                                          uploadBufferSize = 0; // 一時置き場の全体のバイト数
+	};
+
+
 	bool Texture::Initialize(RenderContext& renderContext, const TextureData& textureData)
+	{
+		ID3D12Device* device = renderContext.GetDevice();
+		if (CreateTextureResource(device, textureData) == false) return false;
+
+		UploadLayout                           uploadLayout;
+		Microsoft::WRL::ComPtr<ID3D12Resource> uploadBuffer;
+		if (CreateUploadBuffer(device, uploadLayout, uploadBuffer) == false)                  return false;
+		if (CopyPixelsToUploadBuffer(uploadBuffer.Get(), uploadLayout, textureData) == false) return false;
+
+		RecordCopy(renderContext.GetCommandList(), uploadBuffer.Get(), uploadLayout);
+
+		// 一時置き場をGPUがコピーしている途中で消すと、消えたメモリを読んでしまうため、GPUの処理が終わるまで保持する
+		renderContext.KeepUntilUploaded(uploadBuffer);
+
+		return CreateShaderResourceView(renderContext, textureData);
+	}
+
+
+	bool Texture::CreateTextureResource(ID3D12Device* device, const TextureData& textureData)
 	{
 		// テクスチャバッファの作成
 		D3D12_HEAP_PROPERTIES heapProperties{};
@@ -24,7 +52,7 @@ namespace fangEngine::render
 		resourceDesc.MipLevels        = textureData.mipCount;
 		resourceDesc.Format           = textureData.format;
 		resourceDesc.SampleDesc.Count = 1;
-		HRESULT createTextureResult = renderContext.GetDevice()->CreateCommittedResource(
+		HRESULT createTextureResult = device->CreateCommittedResource(
 			&heapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&resourceDesc,
@@ -34,29 +62,34 @@ namespace fangEngine::render
 		);
 		if (core::LogIfFailed(createTextureResult, L"テクスチャバッファの作成に失敗しました。")) return false;
 
+		return true;
+	}
+
+
+	bool Texture::CreateUploadBuffer(ID3D12Device* device, UploadLayout& uploadLayout, Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer)
+	{
 		// テクスチャの一時置き場の大きさと、ミップごとの置き方をGPUに聞く。
 		// GPUは1行の幅を256バイトの倍数でしか読まないため、.ddsのバイト数のままでは置けない。
 		// BC圧縮は4×4ピクセルを16バイトの塊にするため、行と1行のバイト数は塊で数える（4096の段は16,384バイトの行が1,024行）。
-		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(textureData.mipCount); // ミップごとの置き場所と行の幅
-		std::vector<UINT>                               rowCounts(textureData.mipCount);  // ミップごとの行の数
-		std::vector<UINT64>                             rowSizes(textureData.mipCount);   // ミップごとの1行のバイト数
-		UINT64                                          uploadBufferSize = 0;             // 一時置き場の全体のバイト数
-		renderContext.GetDevice()->GetCopyableFootprints(&resourceDesc, 0, textureData.mipCount, 0, footprints.data(), rowCounts.data(), rowSizes.data(), &uploadBufferSize);
+		const D3D12_RESOURCE_DESC resourceDesc = m_resource->GetDesc();
+		uploadLayout.footprints.resize(resourceDesc.MipLevels);
+		uploadLayout.rowCounts.resize(resourceDesc.MipLevels);
+		uploadLayout.rowSizes.resize(resourceDesc.MipLevels);
+		device->GetCopyableFootprints(&resourceDesc, 0, resourceDesc.MipLevels, 0, uploadLayout.footprints.data(), uploadLayout.rowCounts.data(), uploadLayout.rowSizes.data(), &uploadLayout.uploadBufferSize);
 
 		// テクスチャの一時置き場を作る
 		D3D12_HEAP_PROPERTIES uploadHeapProperties{};
 		uploadHeapProperties.Type = D3D12_HEAP_TYPE_UPLOAD;
 		D3D12_RESOURCE_DESC uploadBufferDesc{};
 		uploadBufferDesc.Dimension        = D3D12_RESOURCE_DIMENSION_BUFFER;
-		uploadBufferDesc.Width            = uploadBufferSize;
+		uploadBufferDesc.Width            = uploadLayout.uploadBufferSize;
 		uploadBufferDesc.Height           = 1;
 		uploadBufferDesc.DepthOrArraySize = 1;
 		uploadBufferDesc.MipLevels        = 1;
 		uploadBufferDesc.Format           = DXGI_FORMAT_UNKNOWN;
 		uploadBufferDesc.SampleDesc.Count = 1;
 		uploadBufferDesc.Layout           = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		Microsoft::WRL::ComPtr<ID3D12Resource> uploadBuffer;
-		HRESULT createUploadBufferResult = renderContext.GetDevice()->CreateCommittedResource(
+		HRESULT createUploadBufferResult = device->CreateCommittedResource(
 			&uploadHeapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&uploadBufferDesc,
@@ -66,6 +99,12 @@ namespace fangEngine::render
 		);
 		if (core::LogIfFailed(createUploadBufferResult, L"テクスチャの一時置き場の作成に失敗しました。")) return false;
 
+		return true;
+	}
+
+
+	bool Texture::CopyPixelsToUploadBuffer(ID3D12Resource* uploadBuffer, const UploadLayout& uploadLayout, const TextureData& textureData)
+	{
 		// 一時置き場にピクセルを写す。
 		// CPUから書けるよう、一時置き場をCPUのアドレスに見えるようにする（Map）。
 		std::uint8_t* mappedData = nullptr;
@@ -83,22 +122,27 @@ namespace fangEngine::render
 		for (UINT mipIndex = 0; mipIndex < textureData.mipCount; mipIndex++)
 		{
 			// この段の、一時置き場での始まり（Offset）と行の幅（RowPitch）
-			const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = footprints[mipIndex];
+			const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint = uploadLayout.footprints[mipIndex];
 			// この段の行を上から回す
-			for (UINT rowIndex = 0; rowIndex < rowCounts[mipIndex]; rowIndex++)
+			for (UINT rowIndex = 0; rowIndex < uploadLayout.rowCounts[mipIndex]; rowIndex++)
 			{
 				// 写し先は、段の始まりから「行の番号×RowPitch」先。
 				// 写し元は、1行写すごとに「.ddsの1行のバイト数」だけ進める。
-				std::memcpy(mappedData + footprint.Offset + rowIndex * footprint.Footprint.RowPitch, source, rowSizes[mipIndex]);
-				source += rowSizes[mipIndex];
+				std::memcpy(mappedData + footprint.Offset + rowIndex * footprint.Footprint.RowPitch, source, uploadLayout.rowSizes[mipIndex]);
+				source += uploadLayout.rowSizes[mipIndex];
 			}
 		}
 		// 書き終えたため、CPUのアドレスから外す
 		uploadBuffer->Unmap(0, nullptr);
 
+		return true;
+	}
+
+
+	void Texture::RecordCopy(ID3D12GraphicsCommandList* commandList, ID3D12Resource* uploadBuffer, const UploadLayout& uploadLayout)
+	{
 		// 一時置き場からテクスチャへのコピーを、段ごとにリストへ予約する
-		ID3D12GraphicsCommandList* commandList = renderContext.GetCommandList();
-		for (UINT mipIndex = 0; mipIndex < textureData.mipCount; mipIndex++)
+		for (UINT mipIndex = 0; mipIndex < uploadLayout.footprints.size(); mipIndex++)
 		{
 			D3D12_TEXTURE_COPY_LOCATION copyDestination{}; // 写し先：m_resourceのmipIndex段目
 			copyDestination.pResource        = m_resource.Get();
@@ -106,9 +150,9 @@ namespace fangEngine::render
 			copyDestination.SubresourceIndex = mipIndex;
 
 			D3D12_TEXTURE_COPY_LOCATION copySource{}; // 写し元：一時置き場の、この段の置き場所
-			copySource.pResource       = uploadBuffer.Get();
+			copySource.pResource       = uploadBuffer;
 			copySource.Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-			copySource.PlacedFootprint = footprints[mipIndex];
+			copySource.PlacedFootprint = uploadLayout.footprints[mipIndex];
 
 			commandList->CopyTextureRegion(&copyDestination, 0, 0, 0, &copySource, nullptr);
 		}
@@ -121,10 +165,11 @@ namespace fangEngine::render
 		resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
 		resourceBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 		commandList->ResourceBarrier(1, &resourceBarrier);
+	}
 
-		// 一時置き場をGPUがコピーしている途中で消すと、消えたメモリを読んでしまうため、GPUの処理が終わるまで保持する
-		renderContext.KeepUntilUploaded(uploadBuffer);
 
+	bool Texture::CreateShaderResourceView(RenderContext& renderContext, const TextureData& textureData)
+	{
 		// シェーダーがテクスチャを読むための窓口（SRV）を作る
 		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
 		if (renderContext.AllocateShaderResourceView(&cpuHandle, &m_gpuHandle) == false) return false;
