@@ -37,6 +37,7 @@
     <ClCompile Include="..\ThirdParty\imgui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="Render\RootSignature.cpp" />
     <ClCompile Include="Render\Shader.cpp" />
+    <ClCompile Include="Render\TextureData.cpp" />
     <ClCompile Include="Render\VertexBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -68,6 +69,7 @@
     <ClInclude Include="..\ThirdParty\imgui\backends\imgui_impl_win32.h" />
     <ClInclude Include="Render\RootSignature.h" />
     <ClInclude Include="Render\Shader.h" />
+    <ClInclude Include="Render\TextureData.h" />
     <ClInclude Include="Render\VertexBuffer.h" />
   </ItemGroup>
   <ItemGroup>
