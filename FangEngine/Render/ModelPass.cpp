@@ -24,10 +24,23 @@ namespace fangEngine::render
 
 	bool ModelPass::Initialize(ID3D12Device* device)
 	{
+		// ルートパラメータを作る
+		D3D12_ROOT_PARAMETER rootParameter{};
+		rootParameter.ParameterType             = D3D12_ROOT_PARAMETER_TYPE_CBV;  // 定数バッファを使う
+		rootParameter.Descriptor.ShaderRegister = 0;                              // b0
+		rootParameter.Descriptor.RegisterSpace  = 0;                              // レジスタの空間の番号
+		rootParameter.ShaderVisibility          = D3D12_SHADER_VISIBILITY_VERTEX; // 頂点シェーダーで使う
+
+		// ルートシグネチャの設定を作る
+		D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
+		rootSignatureDesc.Flags         = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		rootSignatureDesc.NumParameters = 1;
+		rootSignatureDesc.pParameters   = &rootParameter;
+
 		// シェーダー、ルートシグネチャ、定数バッファを作る
 		if (m_vertexShader.Load(L"ModelVertexShader.cso") == false)             return false;
 		if (m_pixelShader.Load(L"ModelPixelShader.cso") == false)               return false;
-		if (m_rootSignature.Initialize(device) == false)                        return false;
+		if (m_rootSignature.Initialize(device, rootSignatureDesc) == false)     return false;
 		if (m_constantBuffer.Initialize(device, sizeof(core::Matrix)) == false) return false;
 
 		// パイプラインステートを作る
