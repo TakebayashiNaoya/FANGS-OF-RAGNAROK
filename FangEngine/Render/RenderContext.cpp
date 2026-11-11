@@ -125,6 +125,37 @@ namespace fangEngine::render
 	}
 
 
+	bool RenderContext::BeginUpload()
+	{
+		// コマンドアロケータのリセット
+		HRESULT resetCommandAllocatorResult = m_commandAllocators[0]->Reset();
+		if (core::LogIfFailed(resetCommandAllocatorResult, L"コマンドアロケータのリセットに失敗しました。")) return false;
+		// コマンドリストのリセット
+		HRESULT resetCommandListResult = m_commandList->Reset(m_commandAllocators[0].Get(), nullptr);
+		if (core::LogIfFailed(resetCommandListResult, L"コマンドリストのリセットに失敗しました。")) return false;
+
+		return true;
+	}
+
+
+	bool RenderContext::EndUpload()
+	{
+		// コマンドリストのクローズ
+		HRESULT closeCommandListResult = m_commandList->Close();
+		if (core::LogIfFailed(closeCommandListResult, L"コマンドリストのクローズに失敗しました。")) return false;
+
+		// コマンドリストの実行
+		ID3D12CommandList* commandLists[] = { m_commandList.Get() };
+		m_commandQueue->ExecuteCommandLists(1, commandLists);
+
+		// GPUがコピーしている途中でUPLOADのバッファを消すと、消えたメモリを読んでしまうため、GPUの処理が終わるまで待つ
+		if (WaitForGpu() == false) return false;
+		m_uploadBuffers.clear();
+
+		return true;
+	}
+
+
 	bool RenderContext::CreateDevice()
 	{
 #ifdef _DEBUG

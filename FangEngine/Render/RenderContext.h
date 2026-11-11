@@ -7,6 +7,7 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 #include <dxgi1_6.h>
+#include <vector>
 #include "Core/Noncopyable.h"
 #include "CpuProfiler.h"
 #include "GpuProfiler.h"
@@ -58,6 +59,25 @@ namespace fangEngine::render
 		 * @return GPUの処理が完了したらtrue、失敗したらfalse
 		 */
 		bool WaitForGpu();
+
+		/**
+		 * @brief アップロード処理を開始する
+		 * @details 起動のときだけ呼ぶ。GPUが何もしていない前提で、Resetの前に待たないため。
+		 * @return 成功したらtrue、失敗したらfalse
+		 */
+		bool BeginUpload();
+
+		/**
+		 * @brief アップロード処理を終了する
+		 * @return 成功したらtrue、失敗したらfalse
+		 */
+		bool EndUpload();
+
+		/**
+		 * @brief アップロード用のバッファを保持する
+		 * @param uploadBuffer アップロード用のバッファ
+		 */
+		inline void KeepUntilUploaded(Microsoft::WRL::ComPtr<ID3D12Resource> uploadBuffer) { m_uploadBuffers.push_back(uploadBuffer); }
 
 		/**
 		 * @brief デバイスを取得する
@@ -189,5 +209,7 @@ namespace fangEngine::render
 
 		CpuProfiler m_cpuProfiler; // 待ちを除いたCPUの処理時間を測る
 		GpuProfiler m_gpuProfiler; // GPUの処理時間を測る
+
+		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_uploadBuffers; // コピーを終えるまで預かるUPLOADのバッファ
 	};
 } // namespace fangEngine::render
