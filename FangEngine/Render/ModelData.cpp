@@ -12,7 +12,7 @@ namespace fangEngine::render
 {
 	namespace
 	{
-		const std::uint32_t MODEL_VERSION = 1; // .fmodelのバージョン
+		const std::uint32_t MODEL_VERSION = 2; // .fmodelのバージョン
 
 		// .fmodelのヘッダの構造体
 		struct FileHeader
@@ -29,6 +29,26 @@ namespace fangEngine::render
 			std::uint32_t indexCount;  // インデックスの数
 			std::uint32_t indexSize;   // インデックスの1つのバイト数
 		};
+
+		// .fmodelのマテリアルのヘッダの構造体
+		struct MaterialHeader
+		{
+			std::uint32_t alphaMode;  // アルファモード
+			float baseColorFactor[4]; // ベースカラーの係数
+		};
+
+		// 名前を読み、.fmodelのフォルダからのパスにする
+		void ReadTexturePath(std::ifstream& file, const std::filesystem::path& folder, std::filesystem::path& texturePath)
+		{
+			std::uint32_t pathLength{};
+			file.read(reinterpret_cast<char*>(&pathLength), sizeof(pathLength));
+			if (pathLength == 0) return;
+
+			std::u8string path;
+			path.resize(pathLength);
+			file.read(reinterpret_cast<char*>(path.data()), path.size());
+			texturePath = folder / std::filesystem::path(path);
+		}
 	}
 
 
@@ -46,6 +66,9 @@ namespace fangEngine::render
 		if (std::memcmp(header.magic, "FMDL", 4) != 0) { core::LogError(L"モデルの形式ではありません。"); return false; }
 		if (header.version != MODEL_VERSION) { core::LogError(L"サポートされていないモデルバージョンです。"); return false; }
 
+		// .fmodelのフォルダを取得する
+		const std::filesystem::path modelFolder = path.parent_path();
+
 		// メッシュの数だけデータを読み込む
 		modelData.meshes.resize(header.meshCount);
 		for (MeshData& mesh : modelData.meshes)
@@ -53,6 +76,22 @@ namespace fangEngine::render
 			// メッシュのヘッダを読み込む
 			MeshHeader meshHeader{};
 			file.read(reinterpret_cast<char*>(&meshHeader), sizeof(meshHeader));
+
+			// マテリアルのヘッダを読み込む
+			MaterialHeader materialHeader{};
+			file.read(reinterpret_cast<char*>(&materialHeader), sizeof(materialHeader));
+
+			// マテリアルのデータを設定する
+			mesh.alphaMode = static_cast<AlphaMode>(materialHeader.alphaMode);
+			mesh.baseColorFactor[0] = materialHeader.baseColorFactor[0];
+			mesh.baseColorFactor[1] = materialHeader.baseColorFactor[1];
+			mesh.baseColorFactor[2] = materialHeader.baseColorFactor[2];
+			mesh.baseColorFactor[3] = materialHeader.baseColorFactor[3];
+
+			// ベースカラーのテクスチャのパスを読み込む
+			ReadTexturePath(file, modelFolder, mesh.baseColorTexturePath);
+			// 透明度のテクスチャのパスを読み込む
+			ReadTexturePath(file, modelFolder, mesh.alphaTexturePath);
 
 			// メッシュのインデックス数を設定する
 			mesh.indexCount = meshHeader.indexCount;
