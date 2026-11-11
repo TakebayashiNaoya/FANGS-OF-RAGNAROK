@@ -51,6 +51,9 @@
     <ClCompile Include="Render\PipelineState.cpp">
       <Filter>Render</Filter>
     </ClCompile>
+    <ClCompile Include="Render\Texture.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
     <ClCompile Include="Render\TextureData.cpp">
       <Filter>Render</Filter>
     </ClCompile>
@@ -162,6 +165,9 @@
       <Filter>Render</Filter>
     </ClInclude>
     <ClInclude Include="Render\PipelineState.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Texture.h">
       <Filter>Render</Filter>
     </ClInclude>
     <ClInclude Include="Render\TextureData.h">
