@@ -20,13 +20,14 @@ namespace fangEngine::render
 
 	bool RenderContext::Initialize(HWND window)
 	{
-		if (CreateDevice() == false)                  return false;
-		if (CreateCommandQueue() == false)            return false;
-		if (CreateSwapChain(window) == false)         return false;
-		if (CreateRenderTargetViews() == false)       return false;
-		if (CreateDepthStencilView() == false)        return false;
-		if (CreateCommandAllocatorAndList() == false) return false;
-		if (CreateFence() == false)                   return false;
+		if (CreateDevice() == false)                           return false;
+		if (CreateCommandQueue() == false)                     return false;
+		if (CreateSwapChain(window) == false)                  return false;
+		if (CreateRenderTargetViews() == false)                return false;
+		if (CreateDepthStencilView() == false)                 return false;
+		if (CreateCommandAllocatorAndList() == false)          return false;
+		if (CreateFence() == false)                            return false;
+		if (CreateShaderResourceViewDescriptorHeap() == false) return false;
 
 		if (m_gpuProfiler.Initialize(m_device.Get(), m_commandQueue.Get()) == false) return false;
 
@@ -151,6 +152,24 @@ namespace fangEngine::render
 		// GPUがコピーしている途中でUPLOADのバッファを消すと、消えたメモリを読んでしまうため、GPUの処理が終わるまで待つ
 		if (WaitForGpu() == false) return false;
 		m_uploadBuffers.clear();
+
+		return true;
+	}
+
+
+	bool RenderContext::AllocateShaderResourceView(D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE* gpuHandle)
+	{
+		if (m_shaderResourceViewCount == SHADER_RESOURCE_VIEW_COUNT) {
+			core::LogError(L"SRV用のディスクリプタヒープの数が足りません。");
+			return false;
+		}
+
+		// 空いている番号を1つ取り出す
+		UINT descriptorIndex = m_shaderResourceViewCount;
+		m_shaderResourceViewCount++;
+		// 番号をCPUとGPUのアドレスに変える
+		cpuHandle->ptr = m_shaderResourceViewDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + descriptorIndex * m_shaderResourceViewDescriptorHandleIncrementSize;
+		gpuHandle->ptr = m_shaderResourceViewDescriptorHeap->GetGPUDescriptorHandleForHeapStart().ptr + descriptorIndex * m_shaderResourceViewDescriptorHandleIncrementSize;
 
 		return true;
 	}
@@ -411,5 +430,26 @@ namespace fangEngine::render
 		resourceBarrier.Transition.StateBefore = before;
 		resourceBarrier.Transition.StateAfter  = after;
 		m_commandList->ResourceBarrier(1, &resourceBarrier);
+	}
+
+
+	bool RenderContext::CreateShaderResourceViewDescriptorHeap()
+	{
+		// シェーダーリソースビュー用のディスクリプタヒープの作成
+		D3D12_DESCRIPTOR_HEAP_DESC descriptorHeapDesc{};
+		descriptorHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		descriptorHeapDesc.NumDescriptors = SHADER_RESOURCE_VIEW_COUNT;
+		descriptorHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+		HRESULT result = m_device->CreateDescriptorHeap(
+			&descriptorHeapDesc,
+			IID_PPV_ARGS(&m_shaderResourceViewDescriptorHeap)
+		);
+		if (core::LogIfFailed(result, L"シェーダーリソースビュー用のディスクリプタヒープの作成に失敗しました。")) return false;
+
+		// ディスクリプタの増分サイズを取得
+		m_shaderResourceViewDescriptorHandleIncrementSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		return true;
 	}
 } // namespace fangEngine::render
