@@ -76,7 +76,7 @@ namespace fangEngine::render
 		// .ddsでは行がすき間なく並ぶが、一時置き場では1行がRowPitchの幅（256の倍数）を取る。
 		// 並びの幅が違うため、1回のmemcpyでは写せず、1行ずつ置き直す。
 		// BC圧縮は4×4ピクセルを16バイトの塊にするため、解像度が4096×4096の段は、1024×1024の塊が並ぶ。
-		// 1行のバイト数は1024行×16バイト＝16,384バイトで、1行の幅はRowPitchの16,384バイト。（256の倍数なので問題なし）
+		// 1行のバイト数は1024個×16バイト＝16,384バイトで、1行の幅はRowPitchの16,384バイト。（256の倍数なので問題なし）
 		// 解像度が64×64未満の場合、一行が256バイト未満になるため、RowPitchを256バイトにそろえ、先頭を256バイトの倍数に置く必要がある。
 		const std::uint8_t* source = textureData.pixels.data(); // .ddsのピクセルの、次に写す位置
 		// ミップの段を大きい順（4096、2048、…、1）に回す
@@ -95,6 +95,46 @@ namespace fangEngine::render
 		}
 		// 書き終えたため、CPUのアドレスから外す
 		uploadBuffer->Unmap(0, nullptr);
+
+		// 一時置き場からテクスチャへのコピーを、段ごとにリストへ予約する
+		ID3D12GraphicsCommandList* commandList = renderContext.GetCommandList();
+		for (UINT mipIndex = 0; mipIndex < textureData.mipCount; mipIndex++)
+		{
+			D3D12_TEXTURE_COPY_LOCATION copyDestination{}; // 写し先：m_resourceのmipIndex段目
+			copyDestination.pResource        = m_resource.Get();
+			copyDestination.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+			copyDestination.SubresourceIndex = mipIndex;
+
+			D3D12_TEXTURE_COPY_LOCATION copySource{}; // 写し元：一時置き場の、この段の置き場所
+			copySource.pResource       = uploadBuffer.Get();
+			copySource.Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+			copySource.PlacedFootprint = footprints[mipIndex];
+
+			commandList->CopyTextureRegion(&copyDestination, 0, 0, 0, &copySource, nullptr);
+		}
+
+		// m_resourceを「コピーの書き込み先」から「シェーダーが読む物」に切り替える
+		D3D12_RESOURCE_BARRIER resourceBarrier{};
+		resourceBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		resourceBarrier.Transition.pResource   = m_resource.Get();
+		resourceBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		resourceBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		commandList->ResourceBarrier(1, &resourceBarrier);
+
+		// 一時置き場をGPUがコピーしている途中で消すと、消えたメモリを読んでしまうため、GPUの処理が終わるまで保持する
+		renderContext.KeepUntilUploaded(uploadBuffer);
+
+		// シェーダーがテクスチャを読むための窓口（SRV）を作る
+		D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
+		if (renderContext.AllocateShaderResourceView(&cpuHandle, &m_gpuHandle) == false) return false;
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC shaderResourceViewDesc{};
+		shaderResourceViewDesc.Format                  = textureData.format;
+		shaderResourceViewDesc.ViewDimension           = D3D12_SRV_DIMENSION_TEXTURE2D;
+		shaderResourceViewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		shaderResourceViewDesc.Texture2D.MipLevels     = textureData.mipCount;
+		renderContext.GetDevice()->CreateShaderResourceView(m_resource.Get(), &shaderResourceViewDesc, cpuHandle);
 
 		return true;
 	}

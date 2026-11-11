@@ -29,8 +29,15 @@ namespace fangEngine::render
 		 */
 		bool Initialize(RenderContext& renderContext, const TextureData& textureData);
 
+		/**
+		 * @brief テクスチャのGPUのアドレスを取得する
+		 * @return テクスチャのGPUのアドレス
+		 */
+		inline D3D12_GPU_DESCRIPTOR_HANDLE GetGpuHandle() const { return m_gpuHandle; }
+
 
 	private:
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_resource; // 色のデータを入れるテクスチャ
+		D3D12_GPU_DESCRIPTOR_HANDLE            m_gpuHandle{}; // シェーダーがSRVを探す場所
 	};
 } // namespace fangEngine::render
