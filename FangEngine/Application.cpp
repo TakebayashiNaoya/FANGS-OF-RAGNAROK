@@ -59,20 +59,32 @@ namespace fangEngine
 		// Memoryの一覧を確認するためにメモリを確保する
 		m_firstBlock  = m_memory.MallocMemory(64, "Application");
 		m_secondBlock = m_memory.MallocMemory(32, "Application");
+
 		// ウィンドウを作る
 		HWND window = CreateMainWindow();
 		if (window == nullptr) return false;
+
 		// RenderContextを作る
 		if (m_renderContext.Initialize(window) == false) return false;
+
 		// Modelを作る
 		render::ModelData wolfModelData{};
-		if (render::LoadModel(WOLF_MODEL_PATH, wolfModelData) == false)                  return false;
-		if (m_wolfModel.Initialize(m_renderContext.GetDevice(), wolfModelData) == false) return false;
-		if (m_modelPass.Initialize(m_renderContext.GetDevice()) == false)                return false;
+		if (render::LoadModel(WOLF_MODEL_PATH, wolfModelData) == false) return false;
+
+		// モデルを作り、テクスチャのコピーを1回でGPUに流す
+		// Texture::Initializeはコピーを積むだけで、EndUploadが流して待つまで中身が入らないため。
+		if (m_renderContext.BeginUpload() == false)                          return false;
+		if (m_wolfModel.Initialize(m_renderContext, wolfModelData) == false) return false;
+		if (m_renderContext.EndUpload() == false)                            return false;
+
+		// ModelPassを作る
+		if (m_modelPass.Initialize(m_renderContext.GetDevice()) == false) return false;
+
 		// カメラの行列を作る
 		const core::Matrix view       = core::Matrix::LookAt({ 0.0f, 1.5f, -3.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f });
 		const core::Matrix projection = core::Matrix::Perspective(core::DegreesToRadians(60.0f), static_cast<float>(WINDOW_WIDTH) / WINDOW_HEIGHT, 0.1f, 100.0f);
 		m_viewProjection = view * projection;
+
 		// DebugOverlayを作る
 		if (m_debugOverlay.Initialize(window, m_renderContext) == false) return false;
 
