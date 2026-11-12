@@ -115,6 +115,10 @@ namespace fangEngine::render
 		pipelineStateDesc.SampleDesc.Count                                 = 1;                                      // マルチサンプリングしない
 		if (m_pipelineState.Initialize(device, pipelineStateDesc) == false) return false;
 
+		// 毛は裏から見ると透けてしまうため、裏面も描く
+		pipelineStateDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+		if (m_doubleSidedPipelineState.Initialize(device, pipelineStateDesc) == false) return false;
+
 		return true;
 	}
 
@@ -139,8 +143,6 @@ namespace fangEngine::render
 		// テクスチャのSRVを探すヒープをセットする
 		ID3D12DescriptorHeap* descriptorHeaps[] = { shaderResourceViewDescriptorHeap };
 		commandList->SetDescriptorHeaps(1, descriptorHeaps);
-		// パイプラインステートをセットする
-		commandList->SetPipelineState(m_pipelineState.GetPipelineState());
 		// インデックス3つにつき三角形1つを描くことを伝える
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
@@ -149,6 +151,14 @@ namespace fangEngine::render
 		{
 			// 現状ブレンドの処理がないため、アルファブレンドのメッシュは描かない
 			if (mesh.alphaMode == AlphaMode::Blend) continue;
+
+			// Maskのメッシュは裏面も描くため、パイプラインステートを切り替える
+			if (mesh.alphaMode == AlphaMode::Mask) {
+				commandList->SetPipelineState(m_doubleSidedPipelineState.GetPipelineState());
+			}
+			else {
+				commandList->SetPipelineState(m_pipelineState.GetPipelineState());
+			}
 			// 頂点バッファをセットする
 			commandList->IASetVertexBuffers(0, 1, &mesh.vertexBuffer.GetView());
 			// インデックスバッファをセットする

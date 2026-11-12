@@ -48,10 +48,11 @@ namespace fangEngine::render
 
 
 	private:
-		Shader         m_vertexShader;   // 頂点の位置を決めるシェーダー
-		Shader         m_pixelShader;    // テクスチャの色で塗り、アルファが0.5未満のピクセルを描かないシェーダー
-		RootSignature  m_rootSignature;  // シェーダーに渡す値の場所を決めるルートシグネチャ
-		PipelineState  m_pipelineState;  // シェーダーやルートシグネチャなどをまとめたパイプラインステート
-		ConstantBuffer m_constantBuffer; // 毎フレームの行列をGPUへ渡す定数バッファ
+		Shader         m_vertexShader;             // 頂点の位置を決めるシェーダー
+		Shader         m_pixelShader;              // テクスチャの色で塗り、アルファが0.5未満のピクセルを描かないシェーダー
+		RootSignature  m_rootSignature;            // シェーダーに渡す値の場所を決めるルートシグネチャ
+		PipelineState  m_pipelineState;            // シェーダーやルートシグネチャなどをまとめたパイプラインステート
+		PipelineState  m_doubleSidedPipelineState; // MASKのメッシュ（毛など）を描くパイプラインステート
+		ConstantBuffer m_constantBuffer;           // 毎フレームの行列をGPUへ渡す定数バッファ
 	};
 } // namespace fangEngine::render
