@@ -12,30 +12,81 @@ namespace fangEngine::render
 {
 	namespace
 	{
-		// 頂点の位置、法線、UVの読み方を決める
+		// 頂点の位置、法線、UV、2つ目のUVの読み方を決める
 		const D3D12_INPUT_ELEMENT_DESC INPUT_ELEMENT_DESCS[] =
 		{
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(ModelVertex, position), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 			{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(ModelVertex, normal),   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, offsetof(ModelVertex, uv),       D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT,    0, offsetof(ModelVertex, secondUv), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		};
 	}
 
 
 	bool ModelPass::Initialize(ID3D12Device* device)
 	{
+		// ベースカラーのテクスチャを使うための設定を作る
+		D3D12_DESCRIPTOR_RANGE baseColorTextureDescriptorRange{};
+		baseColorTextureDescriptorRange.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;      // SRVを使う
+		baseColorTextureDescriptorRange.NumDescriptors                    = 1;                                    // 1つ使う
+		baseColorTextureDescriptorRange.BaseShaderRegister                = 0;                                    // t0
+		baseColorTextureDescriptorRange.RegisterSpace                     = 0;                                    // レジスタの空間の番号
+		baseColorTextureDescriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; // テーブルの最後に追加
+
+		// アルファのテクスチャを使うための設定を作る
+		D3D12_DESCRIPTOR_RANGE alphaTextureDescriptorRange{};
+		alphaTextureDescriptorRange.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;      // SRVを使う
+		alphaTextureDescriptorRange.NumDescriptors                    = 1;                                    // 1つ使う
+		alphaTextureDescriptorRange.BaseShaderRegister                = 1;                                    // t1
+		alphaTextureDescriptorRange.RegisterSpace                     = 0;                                    // レジスタの空間の番号
+		alphaTextureDescriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; // テーブルの最後に追加
+
 		// ルートパラメータを作る
-		D3D12_ROOT_PARAMETER rootParameter{};
-		rootParameter.ParameterType             = D3D12_ROOT_PARAMETER_TYPE_CBV;  // 定数バッファを使う
-		rootParameter.Descriptor.ShaderRegister = 0;                              // b0
-		rootParameter.Descriptor.RegisterSpace  = 0;                              // レジスタの空間の番号
-		rootParameter.ShaderVisibility          = D3D12_SHADER_VISIBILITY_VERTEX; // 頂点シェーダーで使う
+		D3D12_ROOT_PARAMETER rootParameters[4]{};
+
+		rootParameters[0].ParameterType             = D3D12_ROOT_PARAMETER_TYPE_CBV;  // 定数バッファを使う
+		rootParameters[0].Descriptor.ShaderRegister = 0;                              // b0
+		rootParameters[0].Descriptor.RegisterSpace  = 0;                              // レジスタの空間の番号
+		rootParameters[0].ShaderVisibility          = D3D12_SHADER_VISIBILITY_VERTEX; // 頂点シェーダーで使う
+
+		rootParameters[1].ParameterType            = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS; // 32ビットの定数を使う
+		rootParameters[1].Constants.ShaderRegister = 1;                                         // b1
+		rootParameters[1].Constants.RegisterSpace  = 0;                                         // レジスタの空間の番号
+		rootParameters[1].Constants.Num32BitValues = 4;                                         // 4つ使う
+		rootParameters[1].ShaderVisibility         = D3D12_SHADER_VISIBILITY_PIXEL;             // ピクセルシェーダーで使う
+
+		rootParameters[2].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // ディスクリプタテーブルを使う
+		rootParameters[2].DescriptorTable.NumDescriptorRanges = 1;                                          // 1つ使う
+		rootParameters[2].DescriptorTable.pDescriptorRanges   = &baseColorTextureDescriptorRange;           // ベースカラーのテクスチャを使う
+		rootParameters[2].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;              // ピクセルシェーダーで使う
+
+		rootParameters[3].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // ディスクリプタテーブルを使う
+		rootParameters[3].DescriptorTable.NumDescriptorRanges = 1;                                          // 1つ使う
+		rootParameters[3].DescriptorTable.pDescriptorRanges   = &alphaTextureDescriptorRange;               // アルファのテクスチャを使う
+		rootParameters[3].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;              // ピクセルシェーダーで使う
+
+		// サンプラーの設定を作る
+		D3D12_STATIC_SAMPLER_DESC staticSamplerDesc{};
+		staticSamplerDesc.Filter           = D3D12_FILTER_ANISOTROPIC;        // 斜めから見た面でも、ぼやけないように色を取る（異方性フィルタ）
+		staticSamplerDesc.AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP; // U座標の繰り返し
+		staticSamplerDesc.AddressV         = D3D12_TEXTURE_ADDRESS_MODE_WRAP; // V座標の繰り返し
+		staticSamplerDesc.AddressW         = D3D12_TEXTURE_ADDRESS_MODE_WRAP; // W座標の繰り返し
+		staticSamplerDesc.MipLODBias       = 0.0f;                            // ミップの段を計算どおりのまま使う（ずらさない）
+		staticSamplerDesc.MaxAnisotropy    = 16;                              // 異方性で色を取る回数を、一番多い16回にする
+		staticSamplerDesc.ComparisonFunc   = D3D12_COMPARISON_FUNC_NEVER;     // 比べないため使われないが、0は古いSDKで正しい値にならないため入れる
+		staticSamplerDesc.MinLOD           = 0.0f;                            // 一番細かい段から使う
+		staticSamplerDesc.MaxLOD           = D3D12_FLOAT32_MAX;               // ミップを全段使う
+		staticSamplerDesc.ShaderRegister   = 0;                               // s0
+		staticSamplerDesc.RegisterSpace    = 0;                               // レジスタの空間の番号
+		staticSamplerDesc.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;   // ピクセルシェーダーで使う
 
 		// ルートシグネチャの設定を作る
 		D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc{};
-		rootSignatureDesc.Flags         = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-		rootSignatureDesc.NumParameters = 1;
-		rootSignatureDesc.pParameters   = &rootParameter;
+		rootSignatureDesc.Flags             = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		rootSignatureDesc.NumParameters     = _countof(rootParameters);
+		rootSignatureDesc.pParameters       = rootParameters;
+		rootSignatureDesc.NumStaticSamplers = 1;
+		rootSignatureDesc.pStaticSamplers   = &staticSamplerDesc;
 
 		// シェーダー、ルートシグネチャ、定数バッファを作る
 		if (m_vertexShader.Load(L"ModelVertexShader.cso") == false)             return false;
