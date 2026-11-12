@@ -12,6 +12,8 @@ namespace fangEngine::render
 {
 	namespace
 	{
+		constexpr UINT MAX_TEXTURE_SIZE = 1024; // Xboxで動かすため、幅と高さをこの値までにする。
+
 		// DDSヘッダーの構造体（148バイト）
 		struct DdsHeader
 		{
@@ -74,6 +76,14 @@ namespace fangEngine::render
 		if (std::memcmp(header.fourCC, "DX10", 4) != 0) { core::LogError(L"DDSのfourCCが「DX10」ではありません。"); return false; }
 		if (header.resourceDimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) { core::LogError(L"DDSが2Dテクスチャではありません。"); return false; }
 		if (header.arraySize != 1) { core::LogError(L"DDSの配列サイズが1ではありません。"); return false; }
+
+		// 解像度が上限を超えていないか確かめる
+		if (header.width > MAX_TEXTURE_SIZE || header.height > MAX_TEXTURE_SIZE) {
+			std::wstring message = L"テクスチャの解像度が上限の" + std::to_wstring(MAX_TEXTURE_SIZE) + L"を超えています。"
+			                     + std::to_wstring(header.width) + L"x" + std::to_wstring(header.height) + L" " + path.wstring();
+			core::LogError(message.c_str());
+			return false;
+		}
 
 		// 大きさと形式を写す
 		textureData.format   = static_cast<DXGI_FORMAT>(header.dxgiFormat);
