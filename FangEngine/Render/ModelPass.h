@@ -31,17 +31,25 @@ namespace fangEngine::render
 		/**
 		 * @brief モデルを描く
 		 * @param commandList 描画の命令を積むコマンドリスト
+		 * @param shaderResourceViewDescriptorHeap モデルのテクスチャのSRVを持つディスクリプタヒープ
 		 * @param frameIndex 書き込む定数バッファを決めるフレームの番号
 		 * @param model 描画するモデル
 		 * @param world モデルの置き方を決めるワールド行列
 		 * @param viewProjection カメラの見え方を決めるビュー行列とプロジェクション行列の積
 		 */
-		void Render(ID3D12GraphicsCommandList* commandList, UINT frameIndex, const Model& model, const core::Matrix& world, const core::Matrix& viewProjection);
+		void Render(
+			ID3D12GraphicsCommandList* commandList,
+			ID3D12DescriptorHeap* shaderResourceViewDescriptorHeap,
+			UINT frameIndex,
+			const Model& model,
+			const core::Matrix& world,
+			const core::Matrix& viewProjection
+		);
 
 
 	private:
 		Shader         m_vertexShader;   // 頂点の位置を決めるシェーダー
-		Shader         m_pixelShader;    // 三角形が覆うピクセルごとに動き、法線の向きを色にして塗るシェーダー
+		Shader         m_pixelShader;    // テクスチャの色で塗り、アルファが0.5未満のピクセルを描かないシェーダー
 		RootSignature  m_rootSignature;  // シェーダーに渡す値の場所を決めるルートシグネチャ
 		PipelineState  m_pipelineState;  // シェーダーやルートシグネチャなどをまとめたパイプラインステート
 		ConstantBuffer m_constantBuffer; // 毎フレームの行列をGPUへ渡す定数バッファ

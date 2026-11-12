@@ -119,7 +119,14 @@ namespace fangEngine::render
 	}
 
 
-	void ModelPass::Render(ID3D12GraphicsCommandList* commandList, UINT frameIndex, const Model& model, const core::Matrix& world, const core::Matrix& viewProjection)
+	void ModelPass::Render(
+		ID3D12GraphicsCommandList* commandList,
+		ID3D12DescriptorHeap* shaderResourceViewDescriptorHeap,
+		UINT frameIndex,
+		const Model& model,
+		const core::Matrix& world,
+		const core::Matrix& viewProjection
+	)
 	{
 		// モデルの置き方とカメラの見え方を決める行列を掛け合わせる
 		const core::Matrix worldViewProjection = world * viewProjection;
@@ -129,18 +136,29 @@ namespace fangEngine::render
 		commandList->SetGraphicsRootSignature(m_rootSignature.GetRootSignature());
 		// 定数バッファの番地をセットする
 		commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer.GetGpuVirtualAddress(frameIndex));
+		// テクスチャのSRVを探すヒープをセットする
+		ID3D12DescriptorHeap* descriptorHeaps[] = { shaderResourceViewDescriptorHeap };
+		commandList->SetDescriptorHeaps(1, descriptorHeaps);
 		// パイプラインステートをセットする
 		commandList->SetPipelineState(m_pipelineState.GetPipelineState());
 		// インデックス3つにつき三角形1つを描くことを伝える
 		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-		// メッシュごとにバッファをセットして描く
+		// メッシュごとにバッファとテクスチャをセットして描く
 		for (const Mesh& mesh : model.GetMeshes())
 		{
+			// 現状ブレンドの処理がないため、アルファブレンドのメッシュは描かない
+			if (mesh.alphaMode == AlphaMode::Blend) continue;
 			// 頂点バッファをセットする
 			commandList->IASetVertexBuffers(0, 1, &mesh.vertexBuffer.GetView());
 			// インデックスバッファをセットする
 			commandList->IASetIndexBuffer(&mesh.indexBuffer.GetView());
+			// b1に色の係数の4値を入れる
+			commandList->SetGraphicsRoot32BitConstants(1, 4, mesh.baseColorFactor, 0);
+			// t0にベースカラーのテクスチャのSRVを入れる
+			commandList->SetGraphicsRootDescriptorTable(2, mesh.baseColorTexture->GetGpuHandle());
+			// t1にアルファのテクスチャのSRVを入れる
+			commandList->SetGraphicsRootDescriptorTable(3, mesh.alphaTexture->GetGpuHandle());
 			// メッシュを描く
 			commandList->DrawIndexedInstanced(mesh.indexCount, 1, 0, 0, 0);
 		}

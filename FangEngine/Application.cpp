@@ -126,9 +126,21 @@ namespace fangEngine
 			// 描画の開始
 			if (m_renderContext.BeginFrame() == false) return false;
 			// モデルの描画
-			m_modelPass.Render(m_renderContext.GetCommandList(), m_renderContext.GetBackBufferIndex(), m_wolfModel, core::Matrix::RotationY(m_modelAngle), m_viewProjection);
+			m_modelPass.Render(
+				m_renderContext.GetCommandList(),
+				m_renderContext.GetShaderResourceViewDescriptorHeap(),
+				m_renderContext.GetBackBufferIndex(),
+				m_wolfModel,
+				core::Matrix::RotationY(m_modelAngle),
+				m_viewProjection
+			);
 			// デバッグ情報の描画
-			m_debugOverlay.Render(m_renderContext.GetCommandList(), m_renderContext.GetCpuFrameMilliseconds(), m_renderContext.GetGpuFrameMilliseconds(), m_memory);
+			m_debugOverlay.Render(
+				m_renderContext.GetCommandList(),
+				m_renderContext.GetCpuFrameMilliseconds(),
+				m_renderContext.GetGpuFrameMilliseconds(),
+				m_memory
+			);
 			// 描画の終了
 			if (m_renderContext.EndFrame() == false) return false;
 		}
