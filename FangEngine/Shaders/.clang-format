@@ -1,0 +1,12 @@
+# HLSLの整形の設定（VSの外部ツールからclang-formatで当てる）。
+# VSの整形は.hlslの名札（: POSITION）を左に詰めるため、HLSLだけclang-formatで整える。
+# HLSLはC++として読ませる。名札は「: ビット幅」と同じ形のため、ビットフィールドの整列で縦にそろう。
+BasedOnStyle: Microsoft
+UseTab: ForIndentation
+IndentWidth: 4
+TabWidth: 4
+ColumnLimit: 0
+AlignConsecutiveAssignments: true
+AlignConsecutiveBitFields: true
+AlignConsecutiveDeclarations: true
+SortIncludes: Never
