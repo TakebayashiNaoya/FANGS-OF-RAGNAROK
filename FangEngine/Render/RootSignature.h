@@ -20,9 +20,10 @@ namespace fangEngine::render
 		/**
 		 * @brief ルートシグネチャを作る
 		 * @param device ルートシグネチャを作るためのID3D12Device
+		 * @param rootSignatureDesc ルートシグネチャの設定
 		 * @return ルートシグネチャを作れたらtrue、作れなかったらfalse
 		 */
-		bool Initialize(ID3D12Device* device);
+		bool Initialize(ID3D12Device* device, const D3D12_ROOT_SIGNATURE_DESC& rootSignatureDesc);
 
 		/**
 		 * @brief ルートシグネチャを返す

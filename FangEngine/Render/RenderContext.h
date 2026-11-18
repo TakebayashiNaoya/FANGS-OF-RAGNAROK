@@ -7,6 +7,7 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 #include <dxgi1_6.h>
+#include <vector>
 #include "Core/Noncopyable.h"
 #include "CpuProfiler.h"
 #include "GpuProfiler.h"
@@ -26,6 +27,8 @@ namespace fangEngine::render
 		static constexpr int         RENDER_TARGET_COUNT  = 2;
 		static constexpr DXGI_FORMAT RENDER_TARGET_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM;
 		static constexpr DXGI_FORMAT DEPTH_STENCIL_FORMAT = DXGI_FORMAT_D32_FLOAT;
+
+		static constexpr UINT SHADER_RESOURCE_VIEW_COUNT = 256; // ディスクリプタヒープのSRVの数。これ以上はSRVを作れない。
 
 
 	public:
@@ -58,6 +61,33 @@ namespace fangEngine::render
 		 * @return GPUの処理が完了したらtrue、失敗したらfalse
 		 */
 		bool WaitForGpu();
+
+		/**
+		 * @brief アップロード処理を開始する
+		 * @details 起動のときだけ呼ぶ。GPUが何もしていない前提で、Resetの前に待たないため。
+		 * @return 成功したらtrue、失敗したらfalse
+		 */
+		bool BeginUpload();
+
+		/**
+		 * @brief アップロード処理を終了する
+		 * @return 成功したらtrue、失敗したらfalse
+		 */
+		bool EndUpload();
+
+		/**
+		 * @brief アップロード用のバッファを保持する
+		 * @param uploadBuffer アップロード用のバッファ
+		 */
+		inline void KeepUntilUploaded(Microsoft::WRL::ComPtr<ID3D12Resource> uploadBuffer) { m_uploadBuffers.push_back(uploadBuffer); }
+
+		/**
+		 * @brief SRV用のディスクリプタヒープからSRVを割り当てる
+		 * @param cpuHandle 割り当てたSRVのCPU側のハンドルを返す
+		 * @param gpuHandle 割り当てたSRVのGPU側のハンドルを返す
+		 * @return 割り当てられたらtrue、割り当てられなかったらfalse
+		 */
+		bool AllocateShaderResourceView(D3D12_CPU_DESCRIPTOR_HANDLE* cpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE* gpuHandle);
 
 		/**
 		 * @brief デバイスを取得する
@@ -95,6 +125,12 @@ namespace fangEngine::render
 		 * @return バックバッファのインデックス
 		 */
 		inline UINT GetBackBufferIndex() const { return m_backBufferIndex; }
+
+		/**
+		 * @brief SRV用のディスクリプタヒープを取得する
+		 * @return SRV用のディスクリプタヒープのポインタ
+		 */
+		inline ID3D12DescriptorHeap* GetShaderResourceViewDescriptorHeap() const { return m_shaderResourceViewDescriptorHeap.Get(); }
 
 
 	private:
@@ -161,6 +197,12 @@ namespace fangEngine::render
 		 */
 		void TransitionBackBuffer(D3D12_RESOURCE_STATES before, D3D12_RESOURCE_STATES after);
 
+		/**
+		 * @brief SRV用のディスクリプタヒープを作る
+		 * @return 作れたらtrue、作れなかったらfalse
+		 */
+		bool CreateShaderResourceViewDescriptorHeap();
+
 
 	private:
 		Microsoft::WRL::ComPtr<ID3D12Device>       m_device;
@@ -189,5 +231,11 @@ namespace fangEngine::render
 
 		CpuProfiler m_cpuProfiler; // 待ちを除いたCPUの処理時間を測る
 		GpuProfiler m_gpuProfiler; // GPUの処理時間を測る
+
+		std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> m_uploadBuffers; // コピーを終えるまで預かるUPLOADのバッファ
+
+		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> m_shaderResourceViewDescriptorHeap; // SRV用のディスクリプタヒープ
+		UINT m_shaderResourceViewDescriptorHandleIncrementSize = 0;                      // SRV用のディスクリプタヒープの1つ分のサイズ
+		UINT m_shaderResourceViewCount = 0;                                              // これまでに配ったSRVの数。
 	};
 } // namespace fangEngine::render
