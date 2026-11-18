@@ -12,7 +12,8 @@ namespace fangEngine::render
 {
 	/**
 	 * @brief モデルの頂点情報をまとめた構造体
-	 * @details LoadModel()は.fmodelの1頂点40バイトをこの構造体へそのまま写すため、メンバの並びは.fmodelの並び（位置、法線、UV、2つ目のUV）と同じにする。
+	 * @details LoadModel()は.fmodelの1頂点56バイトをこの構造体へそのまま写すため、
+	 *          メンバの並びは.fmodelの並び（位置、法線、UV、2つ目のUV、接線）と同じにする。
 	 */
 	struct ModelVertex
 	{
@@ -20,6 +21,7 @@ namespace fangEngine::render
 		float normal[3];   // 頂点の法線
 		float uv[2];       // 頂点のUV座標
 		float secondUv[2]; // 頂点の2つ目のUV座標
+		float tangent[4];  // 頂点の接線
 	};
 
 
@@ -50,6 +52,7 @@ namespace fangEngine::render
 		float                     baseColorFactor[4]{}; // ベースカラーの係数
 		std::filesystem::path     baseColorTexturePath; // ベースカラーのテクスチャのパス（空ならテクスチャなし）
 		std::filesystem::path     alphaTexturePath;     // 透明度のテクスチャのパス（空ならテクスチャなし）
+		std::filesystem::path     normalTexturePath;    // 法線のテクスチャのパス（空ならテクスチャなし）
 	};
 
 

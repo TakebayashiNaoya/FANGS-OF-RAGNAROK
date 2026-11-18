@@ -14,6 +14,17 @@
 namespace fangEngine::render
 {
 	/**
+	 * @brief デフォルトのテクスチャの種類を表す列挙型
+	 * @details デフォルトのテクスチャは1×1の白、1×1の法線(0,0,1)。
+	 */
+	enum class DefaultTexture
+	{
+		White,
+		FlatNormal
+	};
+
+
+	/**
 	 * @brief メッシュ1つ分描くのに要るものを持つ構造体
 	 */
 	struct Mesh
@@ -25,6 +36,7 @@ namespace fangEngine::render
 		float          baseColorFactor[4]{}; // ベースカラーの係数
 		const Texture* baseColorTexture{};   // ベースカラーのテクスチャ（テクスチャのないメッシュは1×1の白）
 		const Texture* alphaTexture{};       // 透明度のテクスチャ（テクスチャのないメッシュは1×1の白）
+		const Texture* normalTexture{};      // 法線のテクスチャ（テクスチャのないメッシュは1×1の法線(0,0,1)）
 	};
 
 
@@ -54,10 +66,11 @@ namespace fangEngine::render
 		/**
 		 * @brief テクスチャを作るか、すでに作ったテクスチャを返す
 		 * @param renderContext テクスチャを作るためのRenderContext
-		 * @param path テクスチャのパス（空なら1×1の白）
+		 * @param path テクスチャのパス（空のときデフォルトのテクスチャを作る）
+		 * @param defaultTexture デフォルトのテクスチャの種類
 		 * @return 読めたら作ったテクスチャ、読めなかったらnullptr
 		 */
-		const Texture* GetOrCreateTexture(RenderContext& renderContext, const std::filesystem::path& path);
+		const Texture* GetOrCreateTexture(RenderContext& renderContext, const std::filesystem::path& path, DefaultTexture defaultTexture);
 
 
 	private:

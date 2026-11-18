@@ -8,6 +8,13 @@
 
 namespace fangEngine::render
 {
+	namespace
+	{
+		const std::filesystem::path WHITE_TEXTURE_KEY       = L"<white>";       // 空のパスで白を作るときの鍵
+		const std::filesystem::path FLAT_NORMAL_TEXTURE_KEY = L"<flat normal>"; // 空のパスで平らな法線を作るときの鍵
+	}
+
+
 	bool Model::Initialize(RenderContext& renderContext, const ModelData& modelData)
 	{
 		ID3D12Device* device = renderContext.GetDevice();
@@ -53,29 +60,45 @@ namespace fangEngine::render
 			mesh.baseColorFactor[3] = meshData.baseColorFactor[3];
 
 			// ベースカラーのテクスチャを作るか、すでに作ったテクスチャを返す
-			mesh.baseColorTexture = GetOrCreateTexture(renderContext, meshData.baseColorTexturePath);
+			mesh.baseColorTexture = GetOrCreateTexture(renderContext, meshData.baseColorTexturePath, DefaultTexture::White);
 			if (mesh.baseColorTexture == nullptr) return false;
 
 			// 透明度のテクスチャを作るか、すでに作ったテクスチャを返す
-			mesh.alphaTexture = GetOrCreateTexture(renderContext, meshData.alphaTexturePath);
+			mesh.alphaTexture = GetOrCreateTexture(renderContext, meshData.alphaTexturePath, DefaultTexture::White);
 			if (mesh.alphaTexture == nullptr) return false;
+
+			// 法線のテクスチャを作るか、すでに作ったテクスチャを返す
+			mesh.normalTexture = GetOrCreateTexture(renderContext, meshData.normalTexturePath, DefaultTexture::FlatNormal);
+			if (mesh.normalTexture == nullptr) return false;
 		}
 
 		return true;
 	}
 
 
-	const Texture* Model::GetOrCreateTexture(RenderContext& renderContext, const std::filesystem::path& path)
+
+	const Texture* Model::GetOrCreateTexture(RenderContext& renderContext, const std::filesystem::path& path, DefaultTexture defaultTexture)
 	{
+		// パスが空なら、作るテクスチャごとに別の鍵にする
+		std::filesystem::path key = path;
+		if (path.empty()) {
+			if (defaultTexture == DefaultTexture::White) {
+				key = WHITE_TEXTURE_KEY;
+			}
+			else {
+				key = FLAT_NORMAL_TEXTURE_KEY;
+			}
+		}
+
 		// 返り値は「要素を指すイテレータ」と「今作ったか（bool）」の組
-		const auto [textureIterator, created] = m_textures.try_emplace(path);
+		const auto [textureIterator, created] = m_textures.try_emplace(key);
 
 		// 今作っていなければ（すでにあれば）そのまま返す
 		if (created == false) return &textureIterator->second;
 
 		// 今作った場合、テクスチャを作る
 		TextureData textureData{};
-		// パスが空なら白を作る
+		// パスが空なら、defaultTextureで選んだ1×1を作る
 		if (path.empty())
 		{
 			textureData.format   = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -83,6 +106,11 @@ namespace fangEngine::render
 			textureData.height   = 1;
 			textureData.mipCount = 1;
 			textureData.pixels   = { 255, 255, 255, 255 }; // 白
+
+			if (defaultTexture == DefaultTexture::FlatNormal) {
+				textureData.format = DXGI_FORMAT_R8G8_UNORM;
+				textureData.pixels = { 128, 128 }; // 平らな法線
+			}
 		}
 		else
 		{

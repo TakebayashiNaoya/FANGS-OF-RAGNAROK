@@ -12,7 +12,7 @@ namespace fangEngine::render
 {
 	namespace
 	{
-		const std::uint32_t MODEL_VERSION = 2; // .fmodelのバージョン
+		const std::uint32_t MODEL_VERSION = 3; // .fmodelのバージョン
 
 		// .fmodelのヘッダの構造体
 		struct FileHeader
@@ -92,6 +92,8 @@ namespace fangEngine::render
 			ReadTexturePath(file, modelFolder, mesh.baseColorTexturePath);
 			// 透明度のテクスチャのパスを読み込む
 			ReadTexturePath(file, modelFolder, mesh.alphaTexturePath);
+			// 法線のテクスチャのパスを読み込む
+			ReadTexturePath(file, modelFolder, mesh.normalTexturePath);
 
 			// メッシュのインデックス数を設定する
 			mesh.indexCount = meshHeader.indexCount;
