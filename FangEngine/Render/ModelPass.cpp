@@ -20,6 +20,7 @@ namespace fangEngine::render
 			enRootParameter_LightConstants,    // b2：シーンの光（ピクセルシェーダー）
 			enRootParameter_BaseColorTexture,  // t0：ベースカラーのテクスチャ
 			enRootParameter_AlphaTexture,      // t1：透明度のテクスチャ
+			enRootParameter_NormalTexture,     // t2：法線のテクスチャ
 			enRootParameter_Num
 		};
 
@@ -43,6 +44,13 @@ namespace fangEngine::render
 			core::Vector3 ambientLightColor;   // アンビエントライトの色
 			float         padding2;
 		};
+
+		// 物ごとの行列をまとめた構造体
+		struct ObjectConstants
+		{
+			core::Matrix worldViewProjection; // ワールド行列とビュー行列とプロジェクション行列の積
+			core::Matrix world;               // ワールド行列
+		};
 	}
 
 
@@ -63,6 +71,14 @@ namespace fangEngine::render
 		alphaTextureDescriptorRange.BaseShaderRegister                = 1;                                    // t1
 		alphaTextureDescriptorRange.RegisterSpace                     = 0;                                    // レジスタの空間の番号
 		alphaTextureDescriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; // テーブルの最後に追加
+
+		// 法線のテクスチャを使うための設定を作る
+		D3D12_DESCRIPTOR_RANGE normalTextureDescriptorRange{};
+		normalTextureDescriptorRange.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;      // SRVを使う
+		normalTextureDescriptorRange.NumDescriptors                    = 1;                                    // 1つ使う
+		normalTextureDescriptorRange.BaseShaderRegister                = 2;                                    // t2
+		normalTextureDescriptorRange.RegisterSpace                     = 0;                                    // レジスタの空間の番号
+		normalTextureDescriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; // テーブルの最後に追加
 
 		// ルートパラメータを作る
 		D3D12_ROOT_PARAMETER rootParameters[enRootParameter_Num]{};
@@ -92,6 +108,11 @@ namespace fangEngine::render
 		rootParameters[enRootParameter_AlphaTexture].DescriptorTable.NumDescriptorRanges = 1;                                          // 1つ使う
 		rootParameters[enRootParameter_AlphaTexture].DescriptorTable.pDescriptorRanges   = &alphaTextureDescriptorRange;               // アルファのテクスチャを使う
 		rootParameters[enRootParameter_AlphaTexture].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;              // ピクセルシェーダーで使う
+		// t2：法線のテクスチャ（ピクセルシェーダー）
+		rootParameters[enRootParameter_NormalTexture].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // ディスクリプタテーブルを使う
+		rootParameters[enRootParameter_NormalTexture].DescriptorTable.NumDescriptorRanges = 1;                                          // 1つ使う
+		rootParameters[enRootParameter_NormalTexture].DescriptorTable.pDescriptorRanges   = &normalTextureDescriptorRange;              // 法線のテクスチャを使う
+		rootParameters[enRootParameter_NormalTexture].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;              // ピクセルシェーダーで使う
 
 		// サンプラーの設定を作る
 		D3D12_STATIC_SAMPLER_DESC staticSamplerDesc{};
@@ -120,7 +141,7 @@ namespace fangEngine::render
 		if (m_vertexShader.Load(L"ModelVertexShader.cso") == false)                    return false;
 		if (m_pixelShader.Load(L"ModelPixelShader.cso") == false)                      return false;
 		if (m_rootSignature.Initialize(device, rootSignatureDesc) == false)            return false;
-		if (m_constantBuffer.Initialize(device, sizeof(core::Matrix)) == false)        return false;
+		if (m_constantBuffer.Initialize(device, sizeof(ObjectConstants)) == false)     return false;
 		if (m_lightConstantBuffer.Initialize(device, sizeof(LightConstants)) == false) return false;
 
 		// パイプラインステートを作る
@@ -162,21 +183,24 @@ namespace fangEngine::render
 		const SceneLight& sceneLight
 	)
 	{
-		// モデルの置き方とカメラの見え方を決める行列を掛け合わせる
-		const core::Matrix worldViewProjection = world * viewProjection;
-		// 定数バッファに掛け合わせた行列を書き込む
-		m_constantBuffer.Copy(frameIndex, &worldViewProjection);
 		// ルートシグネチャをセットする
 		commandList->SetGraphicsRootSignature(m_rootSignature.GetRootSignature());
-		// 定数バッファの番地をセットする
+
+		// 物ごとの行列を定数バッファ（b0）に書き込む
+		ObjectConstants objectConstants{};
+		objectConstants.worldViewProjection = world * viewProjection;
+		objectConstants.world               = world;
+		m_constantBuffer.Copy(frameIndex, &objectConstants);
 		commandList->SetGraphicsRootConstantBufferView(enRootParameter_ObjectConstants, m_constantBuffer.GetGpuVirtualAddress(frameIndex));
-		// シーンの光の情報を定数バッファに書き込む
+
+		// シーンの光の情報を定数バッファ（b2）に書き込む
 		LightConstants lightConstants{};
 		lightConstants.direction           = sceneLight.directionLight.direction;
 		lightConstants.directionLightColor = sceneLight.directionLight.color;
 		lightConstants.ambientLightColor   = sceneLight.ambientColor;
 		m_lightConstantBuffer.Copy(frameIndex, &lightConstants);
 		commandList->SetGraphicsRootConstantBufferView(enRootParameter_LightConstants, m_lightConstantBuffer.GetGpuVirtualAddress(frameIndex));
+
 		// テクスチャのSRVを探すヒープをセットする
 		ID3D12DescriptorHeap* descriptorHeaps[] = { shaderResourceViewDescriptorHeap };
 		commandList->SetDescriptorHeaps(1, descriptorHeaps);
@@ -206,6 +230,8 @@ namespace fangEngine::render
 			commandList->SetGraphicsRootDescriptorTable(enRootParameter_BaseColorTexture, mesh.baseColorTexture->GetGpuHandle());
 			// t1にアルファのテクスチャのSRVを入れる
 			commandList->SetGraphicsRootDescriptorTable(enRootParameter_AlphaTexture, mesh.alphaTexture->GetGpuHandle());
+			// t2に法線のテクスチャのSRVを入れる
+			commandList->SetGraphicsRootDescriptorTable(enRootParameter_NormalTexture, mesh.normalTexture->GetGpuHandle());
 			// メッシュを描く
 			commandList->DrawIndexedInstanced(mesh.indexCount, 1, 0, 0, 0);
 		}
