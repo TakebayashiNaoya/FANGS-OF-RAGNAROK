@@ -188,6 +188,9 @@
     <ClInclude Include="Render\ModelPass.h">
       <Filter>Render</Filter>
     </ClInclude>
+    <ClInclude Include="Render\SceneLight.h">
+      <Filter>Render</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\ModelPixelShader.hlsl">

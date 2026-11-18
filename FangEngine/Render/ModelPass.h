@@ -10,6 +10,7 @@
 #include "ConstantBuffer.h"
 #include "Core/Math/Matrix.h"
 #include "Model.h"
+#include "SceneLight.h"
 
 
 namespace fangEngine::render
@@ -36,6 +37,7 @@ namespace fangEngine::render
 		 * @param model 描画するモデル
 		 * @param world モデルの置き方を決めるワールド行列
 		 * @param viewProjection カメラの見え方を決めるビュー行列とプロジェクション行列の積
+		 * @param sceneLight シーンの光
 		 */
 		void Render(
 			ID3D12GraphicsCommandList* commandList,
@@ -43,7 +45,8 @@ namespace fangEngine::render
 			UINT frameIndex,
 			const Model& model,
 			const core::Matrix& world,
-			const core::Matrix& viewProjection
+			const core::Matrix& viewProjection,
+			const SceneLight& sceneLight
 		);
 
 
@@ -54,5 +57,6 @@ namespace fangEngine::render
 		PipelineState  m_pipelineState;            // シェーダーやルートシグネチャなどをまとめたパイプラインステート
 		PipelineState  m_doubleSidedPipelineState; // MASKのメッシュ（毛など）を描くパイプラインステート
 		ConstantBuffer m_constantBuffer;           // 毎フレームの行列をGPUへ渡す定数バッファ
+		ConstantBuffer m_lightConstantBuffer;      // 毎フレームの光の情報をGPUへ渡す定数バッファ
 	};
 } // namespace fangEngine::render

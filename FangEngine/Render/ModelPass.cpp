@@ -12,6 +12,17 @@ namespace fangEngine::render
 {
 	namespace
 	{
+		// ルートパラメータの番号
+		enum EnRootParameter : UINT
+		{
+			enRootParameter_ObjectConstants,   // b0：物ごとの行列（頂点シェーダー）
+			enRootParameter_MaterialConstants, // b1：ベースカラーの係数（ピクセルシェーダー）
+			enRootParameter_LightConstants,    // b2：シーンの光（ピクセルシェーダー）
+			enRootParameter_BaseColorTexture,  // t0：ベースカラーのテクスチャ
+			enRootParameter_AlphaTexture,      // t1：透明度のテクスチャ
+			enRootParameter_Num
+		};
+
 		// 頂点の位置、法線、UV、2つ目のUV、接線の読み方を決める
 		const D3D12_INPUT_ELEMENT_DESC INPUT_ELEMENT_DESCS[] =
 		{
@@ -20,6 +31,17 @@ namespace fangEngine::render
 			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,       0, offsetof(ModelVertex, uv),       D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 			{ "TEXCOORD", 1, DXGI_FORMAT_R32G32_FLOAT,       0, offsetof(ModelVertex, secondUv), D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 			{ "TANGENT",  0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, offsetof(ModelVertex, tangent),  D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
+
+		// 光の情報をまとめた構造体
+		struct LightConstants
+		{
+			core::Vector3 direction;           // 光が進む向き
+			float         padding0;
+			core::Vector3 directionLightColor; // ディレクションライトの色
+			float         padding1;
+			core::Vector3 ambientLightColor;   // アンビエントライトの色
+			float         padding2;
 		};
 	}
 
@@ -43,28 +65,33 @@ namespace fangEngine::render
 		alphaTextureDescriptorRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND; // テーブルの最後に追加
 
 		// ルートパラメータを作る
-		D3D12_ROOT_PARAMETER rootParameters[4]{};
-
-		rootParameters[0].ParameterType             = D3D12_ROOT_PARAMETER_TYPE_CBV;  // 定数バッファを使う
-		rootParameters[0].Descriptor.ShaderRegister = 0;                              // b0
-		rootParameters[0].Descriptor.RegisterSpace  = 0;                              // レジスタの空間の番号
-		rootParameters[0].ShaderVisibility          = D3D12_SHADER_VISIBILITY_VERTEX; // 頂点シェーダーで使う
-
-		rootParameters[1].ParameterType            = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS; // 32ビットの定数を使う
-		rootParameters[1].Constants.ShaderRegister = 1;                                         // b1
-		rootParameters[1].Constants.RegisterSpace  = 0;                                         // レジスタの空間の番号
-		rootParameters[1].Constants.Num32BitValues = 4;                                         // 4つ使う
-		rootParameters[1].ShaderVisibility         = D3D12_SHADER_VISIBILITY_PIXEL;             // ピクセルシェーダーで使う
-
-		rootParameters[2].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // ディスクリプタテーブルを使う
-		rootParameters[2].DescriptorTable.NumDescriptorRanges = 1;                                          // 1つ使う
-		rootParameters[2].DescriptorTable.pDescriptorRanges   = &baseColorTextureDescriptorRange;           // ベースカラーのテクスチャを使う
-		rootParameters[2].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;              // ピクセルシェーダーで使う
-
-		rootParameters[3].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // ディスクリプタテーブルを使う
-		rootParameters[3].DescriptorTable.NumDescriptorRanges = 1;                                          // 1つ使う
-		rootParameters[3].DescriptorTable.pDescriptorRanges   = &alphaTextureDescriptorRange;               // アルファのテクスチャを使う
-		rootParameters[3].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;              // ピクセルシェーダーで使う
+		D3D12_ROOT_PARAMETER rootParameters[enRootParameter_Num]{};
+		// b0：物ごとの行列（頂点シェーダー）
+		rootParameters[enRootParameter_ObjectConstants].ParameterType             = D3D12_ROOT_PARAMETER_TYPE_CBV;  // 定数バッファを使う
+		rootParameters[enRootParameter_ObjectConstants].Descriptor.ShaderRegister = 0;                              // b0
+		rootParameters[enRootParameter_ObjectConstants].Descriptor.RegisterSpace  = 0;                              // レジスタの空間の番号
+		rootParameters[enRootParameter_ObjectConstants].ShaderVisibility          = D3D12_SHADER_VISIBILITY_VERTEX; // 頂点シェーダーで使う
+		// b1：ベースカラーの係数（ピクセルシェーダー）
+		rootParameters[enRootParameter_MaterialConstants].ParameterType            = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS; // 32ビットの定数を使う
+		rootParameters[enRootParameter_MaterialConstants].Constants.ShaderRegister = 1;                                         // b1
+		rootParameters[enRootParameter_MaterialConstants].Constants.RegisterSpace  = 0;                                         // レジスタの空間の番号
+		rootParameters[enRootParameter_MaterialConstants].Constants.Num32BitValues = 4;                                         // 4つ使う
+		rootParameters[enRootParameter_MaterialConstants].ShaderVisibility         = D3D12_SHADER_VISIBILITY_PIXEL;             // ピクセルシェーダーで使う
+		// b2：シーンの光（ピクセルシェーダー）
+		rootParameters[enRootParameter_LightConstants].ParameterType             = D3D12_ROOT_PARAMETER_TYPE_CBV; // 定数バッファを使う
+		rootParameters[enRootParameter_LightConstants].Descriptor.ShaderRegister = 2;                             // b2
+		rootParameters[enRootParameter_LightConstants].Descriptor.RegisterSpace  = 0;                             // レジスタの空間の番号
+		rootParameters[enRootParameter_LightConstants].ShaderVisibility          = D3D12_SHADER_VISIBILITY_PIXEL; // ピクセルシェーダーで使う
+		// t0：ベースカラーのテクスチャ（ピクセルシェーダー）
+		rootParameters[enRootParameter_BaseColorTexture].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // ディスクリプタテーブルを使う
+		rootParameters[enRootParameter_BaseColorTexture].DescriptorTable.NumDescriptorRanges = 1;                                          // 1つ使う
+		rootParameters[enRootParameter_BaseColorTexture].DescriptorTable.pDescriptorRanges   = &baseColorTextureDescriptorRange;           // ベースカラーのテクスチャを使う
+		rootParameters[enRootParameter_BaseColorTexture].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;              // ピクセルシェーダーで使う
+		// t1：透明度のテクスチャ（ピクセルシェーダー）
+		rootParameters[enRootParameter_AlphaTexture].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE; // ディスクリプタテーブルを使う
+		rootParameters[enRootParameter_AlphaTexture].DescriptorTable.NumDescriptorRanges = 1;                                          // 1つ使う
+		rootParameters[enRootParameter_AlphaTexture].DescriptorTable.pDescriptorRanges   = &alphaTextureDescriptorRange;               // アルファのテクスチャを使う
+		rootParameters[enRootParameter_AlphaTexture].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_PIXEL;              // ピクセルシェーダーで使う
 
 		// サンプラーの設定を作る
 		D3D12_STATIC_SAMPLER_DESC staticSamplerDesc{};
@@ -90,10 +117,11 @@ namespace fangEngine::render
 		rootSignatureDesc.pStaticSamplers   = &staticSamplerDesc;
 
 		// シェーダー、ルートシグネチャ、定数バッファを作る
-		if (m_vertexShader.Load(L"ModelVertexShader.cso") == false)             return false;
-		if (m_pixelShader.Load(L"ModelPixelShader.cso") == false)               return false;
-		if (m_rootSignature.Initialize(device, rootSignatureDesc) == false)     return false;
-		if (m_constantBuffer.Initialize(device, sizeof(core::Matrix)) == false) return false;
+		if (m_vertexShader.Load(L"ModelVertexShader.cso") == false)                    return false;
+		if (m_pixelShader.Load(L"ModelPixelShader.cso") == false)                      return false;
+		if (m_rootSignature.Initialize(device, rootSignatureDesc) == false)            return false;
+		if (m_constantBuffer.Initialize(device, sizeof(core::Matrix)) == false)        return false;
+		if (m_lightConstantBuffer.Initialize(device, sizeof(LightConstants)) == false) return false;
 
 		// パイプラインステートを作る
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC pipelineStateDesc{};
@@ -130,7 +158,8 @@ namespace fangEngine::render
 		UINT frameIndex,
 		const Model& model,
 		const core::Matrix& world,
-		const core::Matrix& viewProjection
+		const core::Matrix& viewProjection,
+		const SceneLight& sceneLight
 	)
 	{
 		// モデルの置き方とカメラの見え方を決める行列を掛け合わせる
@@ -140,7 +169,14 @@ namespace fangEngine::render
 		// ルートシグネチャをセットする
 		commandList->SetGraphicsRootSignature(m_rootSignature.GetRootSignature());
 		// 定数バッファの番地をセットする
-		commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer.GetGpuVirtualAddress(frameIndex));
+		commandList->SetGraphicsRootConstantBufferView(enRootParameter_ObjectConstants, m_constantBuffer.GetGpuVirtualAddress(frameIndex));
+		// シーンの光の情報を定数バッファに書き込む
+		LightConstants lightConstants{};
+		lightConstants.direction           = sceneLight.directionLight.direction;
+		lightConstants.directionLightColor = sceneLight.directionLight.color;
+		lightConstants.ambientLightColor   = sceneLight.ambientColor;
+		m_lightConstantBuffer.Copy(frameIndex, &lightConstants);
+		commandList->SetGraphicsRootConstantBufferView(enRootParameter_LightConstants, m_lightConstantBuffer.GetGpuVirtualAddress(frameIndex));
 		// テクスチャのSRVを探すヒープをセットする
 		ID3D12DescriptorHeap* descriptorHeaps[] = { shaderResourceViewDescriptorHeap };
 		commandList->SetDescriptorHeaps(1, descriptorHeaps);
@@ -165,11 +201,11 @@ namespace fangEngine::render
 			// インデックスバッファをセットする
 			commandList->IASetIndexBuffer(&mesh.indexBuffer.GetView());
 			// b1に色の係数の4値を入れる
-			commandList->SetGraphicsRoot32BitConstants(1, 4, mesh.baseColorFactor, 0);
+			commandList->SetGraphicsRoot32BitConstants(enRootParameter_MaterialConstants, 4, mesh.baseColorFactor, 0);
 			// t0にベースカラーのテクスチャのSRVを入れる
-			commandList->SetGraphicsRootDescriptorTable(2, mesh.baseColorTexture->GetGpuHandle());
+			commandList->SetGraphicsRootDescriptorTable(enRootParameter_BaseColorTexture, mesh.baseColorTexture->GetGpuHandle());
 			// t1にアルファのテクスチャのSRVを入れる
-			commandList->SetGraphicsRootDescriptorTable(3, mesh.alphaTexture->GetGpuHandle());
+			commandList->SetGraphicsRootDescriptorTable(enRootParameter_AlphaTexture, mesh.alphaTexture->GetGpuHandle());
 			// メッシュを描く
 			commandList->DrawIndexedInstanced(mesh.indexCount, 1, 0, 0, 0);
 		}

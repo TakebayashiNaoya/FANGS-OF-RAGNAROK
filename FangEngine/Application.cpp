@@ -85,6 +85,11 @@ namespace fangEngine
 		const core::Matrix projection = core::Matrix::Perspective(core::DegreesToRadians(60.0f), static_cast<float>(WINDOW_WIDTH) / WINDOW_HEIGHT, 0.1f, 100.0f);
 		m_viewProjection = view * projection;
 
+		// シーンの光を作る
+		m_sceneLight.directionLight.direction = core::Normalize(core::Vector3(0.0f, -1.0f, 0.0f));
+		m_sceneLight.directionLight.color     = core::Vector3(1.0f, 1.0f, 1.0f);
+		m_sceneLight.ambientColor             = core::Vector3(0.2f, 0.2f, 0.2f);
+
 		// DebugOverlayを作る
 		if (m_debugOverlay.Initialize(window, m_renderContext) == false) return false;
 
@@ -132,7 +137,8 @@ namespace fangEngine
 				m_renderContext.GetBackBufferIndex(),
 				m_wolfModel,
 				core::Matrix::RotationY(m_modelAngle),
-				m_viewProjection
+				m_viewProjection,
+				m_sceneLight
 			);
 			// デバッグ情報の描画
 			m_debugOverlay.Render(

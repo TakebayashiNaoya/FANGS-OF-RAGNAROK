@@ -56,6 +56,8 @@ namespace fangEngine
 
 		core::Matrix m_viewProjection{}; // カメラの見え方を決める行列。カメラの段まで仮に持つ
 
+		render::SceneLight m_sceneLight{}; // シーンの光。シーンの段まで仮に持つ
+
 		float m_modelAngle = 0.0f; // モデルの回転角度(ラジアン)
 	};
 } // namespace fangEngine

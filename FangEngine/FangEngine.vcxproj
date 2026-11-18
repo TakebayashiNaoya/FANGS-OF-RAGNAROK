@@ -58,6 +58,7 @@
     <ClInclude Include="Render\Model.h" />
     <ClInclude Include="Render\ModelData.h" />
     <ClInclude Include="Render\ModelPass.h" />
+    <ClInclude Include="Render\SceneLight.h" />
     <ClInclude Include="Render\PipelineState.h" />
     <ClInclude Include="Render\RenderContext.h" />
     <ClInclude Include="..\ThirdParty\imgui\imconfig.h" />
