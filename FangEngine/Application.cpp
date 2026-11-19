@@ -78,6 +78,10 @@ namespace fangEngine
 				OutputDebugStringW(text.c_str());
 				++m_updateCount;
 			}
+			void OnDestroy() override
+			{
+				OutputDebugStringW(std::format(L"{} OnDestroy\n", m_name).c_str());
+			}
 
 
 		private:
@@ -141,7 +145,8 @@ namespace fangEngine
 		// 呼ばれる順番を確かめる仮の物を作る
 		m_gameObjectManager.CreateObject<OrderLogObject>(L"C", gameObject::EnUpdateGroup::enUpdateGroup_Late);
 		m_gameObjectManager.CreateObject<OrderLogObject>(L"A", gameObject::EnUpdateGroup::enUpdateGroup_PreUpdate);
-		m_gameObjectManager.CreateObject<OrderLogObject>(L"B1", gameObject::EnUpdateGroup::enUpdateGroup_Gameplay);
+		auto* b1 = m_gameObjectManager.CreateObject<OrderLogObject>(L"B1", gameObject::EnUpdateGroup::enUpdateGroup_Gameplay);
+		m_gameObjectManager.RequestDestroy(b1);
 		m_gameObjectManager.CreateObject<OrderLogObject>(L"B2", gameObject::EnUpdateGroup::enUpdateGroup_Gameplay);
 
 		return true;
@@ -186,6 +191,9 @@ namespace fangEngine
 			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_PostAnimation);
 			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_Camera);
 			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_Late);
+
+			// 破棄予約したオブジェクトが描画されないように、描画前に破棄する
+			m_gameObjectManager.DestroyRequestedObjects();
 
 			// モデルの回転角度を更新する
 			m_modelAngle = core::WrapAngle(m_modelAngle + MODEL_ROTATION_SPEED * deltaTime);

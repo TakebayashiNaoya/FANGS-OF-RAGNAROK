@@ -42,6 +42,17 @@ namespace fangEngine::gameObject
 		 */
 		void Update(EnUpdateGroup group);
 
+		/**
+		 * @brief ゲームオブジェクトを破棄依頼を出す
+		 * @param object 破棄するゲームオブジェクト
+		 */
+		void RequestDestroy(IGameObject* object) { object->m_isDestroyRequested = true; }
+
+		/**
+		 * @brief 破棄依頼が出ているゲームオブジェクトを破棄する
+		 */
+		void DestroyRequestedObjects();
+
 
 	private:
 		std::vector<std::unique_ptr<IGameObject>> m_pendingObjects; // 待機中のゲームオブジェクト
