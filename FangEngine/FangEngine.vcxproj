@@ -16,6 +16,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp" />
+    <ClCompile Include="GameObject\GameObjectManager.cpp" />
     <ClCompile Include="Core\Log.cpp" />
     <ClCompile Include="Core\Memory\Memory.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -50,6 +51,10 @@
     <ClInclude Include="Core\Math\Vector.h" />
     <ClInclude Include="Core\Memory\Memory.h" />
     <ClInclude Include="Core\Noncopyable.h" />
+    <ClInclude Include="GameObject\IGameObject.h" />
+    <ClInclude Include="GameObject\UpdateGroup.h" />
+    <ClInclude Include="Core\GameTime.h" />
+    <ClInclude Include="GameObject\GameObjectManager.h" />
     <ClInclude Include="Render\ConstantBuffer.h" />
     <ClInclude Include="Render\CpuProfiler.h" />
     <ClInclude Include="Render\DebugOverlay.h" />

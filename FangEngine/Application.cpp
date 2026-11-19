@@ -6,6 +6,7 @@
 #include <chrono>
 #include "Core/Log.h"
 #include "Core/Math/Math.h"
+#include "Core/GameTime.h"
 
 
 namespace fangEngine
@@ -124,6 +125,20 @@ namespace fangEngine
 				deltaTime = MAX_DELTA_TIME;
 			}
 			previousFrameTime = currentFrameTime;
+			core::GameTime::GetInstance().SetDeltaTime(deltaTime);
+
+			// ゲームオブジェクトの更新
+			m_gameObjectManager.StartPendingObjects();
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_PreUpdate);
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_Gameplay);
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_ParallelGameplay);
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_PostPhysics);
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_PostAnimation);
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_Camera);
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_Late);
+
+			// 破棄予約したオブジェクトが描画されないように、描画前に破棄する
+			m_gameObjectManager.DestroyRequestedObjects();
 
 			// モデルの回転角度を更新する
 			m_modelAngle = core::WrapAngle(m_modelAngle + MODEL_ROTATION_SPEED * deltaTime);
