@@ -89,6 +89,9 @@
     <Filter Include="GameObject">
       <UniqueIdentifier>{0bf3483d-50d2-4ea7-8a18-647d3a3adbda}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Input">
+      <UniqueIdentifier>{47970746-9390-4d18-b115-3e774ac1e928}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Render">
       <UniqueIdentifier>{dfb629e9-1142-4859-a992-2dceb4e47427}</UniqueIdentifier>
     </Filter>
@@ -100,6 +103,9 @@
     </Filter>
     <Filter Include="ThirdParty\imgui">
       <UniqueIdentifier>{a94e7d13-2c58-4f6a-b1d0-7e62c8f3a915}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThirdParty\SDL3">
+      <UniqueIdentifier>{21165c6d-e1c7-49af-b0c7-63ffe59ae592}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -217,5 +223,10 @@
     <FxCompile Include="Shaders\ModelVertexShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="..\ThirdParty\SDL3\lib\x64\SDL3.dll">
+      <Filter>ThirdParty\SDL3</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>
