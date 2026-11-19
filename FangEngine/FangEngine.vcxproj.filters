@@ -83,6 +83,9 @@
     <Filter Include="Core\Memory">
       <UniqueIdentifier>{1e129c8a-1865-46e8-b550-22b904951da2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="GameObject">
+      <UniqueIdentifier>{0bf3483d-50d2-4ea7-8a18-647d3a3adbda}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Render">
       <UniqueIdentifier>{dfb629e9-1142-4859-a992-2dceb4e47427}</UniqueIdentifier>
     </Filter>
@@ -119,6 +122,12 @@
       <Filter>Render</Filter>
     </ClInclude>
     <ClInclude Include="Application.h" />
+    <ClInclude Include="GameObject\IGameObject.h">
+      <Filter>GameObject</Filter>
+    </ClInclude>
+    <ClInclude Include="GameObject\UpdateGroup.h">
+      <Filter>GameObject</Filter>
+    </ClInclude>
     <ClInclude Include="Core\Noncopyable.h">
       <Filter>Core</Filter>
     </ClInclude>

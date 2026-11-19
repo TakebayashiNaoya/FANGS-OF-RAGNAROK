@@ -50,6 +50,8 @@
     <ClInclude Include="Core\Math\Vector.h" />
     <ClInclude Include="Core\Memory\Memory.h" />
     <ClInclude Include="Core\Noncopyable.h" />
+    <ClInclude Include="GameObject\IGameObject.h" />
+    <ClInclude Include="GameObject\UpdateGroup.h" />
     <ClInclude Include="Render\ConstantBuffer.h" />
     <ClInclude Include="Render\CpuProfiler.h" />
     <ClInclude Include="Render\DebugOverlay.h" />
