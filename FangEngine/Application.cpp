@@ -6,6 +6,9 @@
 #include <chrono>
 #include "Core/Log.h"
 #include "Core/Math/Math.h"
+#include "Core/GameTime.h"
+#include <format>
+#include <string>
 
 
 namespace fangEngine
@@ -40,6 +43,48 @@ namespace fangEngine
 				return DefWindowProcW(window, message, wParam, lParam);
 			}
 		}
+
+
+		/**
+		 * @brief 呼ばれる順番を確かめる仮のクラス
+		 */
+		class OrderLogObject : public gameObject::IGameObject
+		{
+		public:
+			OrderLogObject(const wchar_t* name, gameObject::EnUpdateGroup group)
+				: m_name(name)
+				, m_group(group)
+			{
+			}
+
+			gameObject::EnUpdateGroup GetUpdateGroup() const override { return m_group; }
+
+
+		protected:
+			// OutputDebugStringW に「名前 Awake」を出す
+			void Awake() override
+			{
+				OutputDebugStringW(std::format(L"{} Awake\n", m_name).c_str());
+			}
+			// 「名前 Start」を出す
+			void Start() override
+			{
+				OutputDebugStringW(std::format(L"{} Start\n", m_name).c_str());
+			}
+			// m_updateCount を1増やして、「名前 Update 回数」を出す
+			void Update() override
+			{
+				std::wstring text = std::format(L"{} Update {}\n", m_name, m_updateCount);
+				OutputDebugStringW(text.c_str());
+				++m_updateCount;
+			}
+
+
+		private:
+			const wchar_t* m_name; //出力に使う名前
+			gameObject::EnUpdateGroup m_group; // 入るグループ
+			int m_updateCount = 0;
+		};
 	}
 
 
@@ -93,6 +138,12 @@ namespace fangEngine
 		// DebugOverlayを作る
 		if (m_debugOverlay.Initialize(window, m_renderContext) == false) return false;
 
+		// 呼ばれる順番を確かめる仮の物を作る
+		m_gameObjectManager.CreateObject<OrderLogObject>(L"C", gameObject::EnUpdateGroup::enUpdateGroup_Late);
+		m_gameObjectManager.CreateObject<OrderLogObject>(L"A", gameObject::EnUpdateGroup::enUpdateGroup_PreUpdate);
+		m_gameObjectManager.CreateObject<OrderLogObject>(L"B1", gameObject::EnUpdateGroup::enUpdateGroup_Gameplay);
+		m_gameObjectManager.CreateObject<OrderLogObject>(L"B2", gameObject::EnUpdateGroup::enUpdateGroup_Gameplay);
+
 		return true;
 	}
 
@@ -124,6 +175,17 @@ namespace fangEngine
 				deltaTime = MAX_DELTA_TIME;
 			}
 			previousFrameTime = currentFrameTime;
+			core::GameTime::GetInstance().SetDeltaTime(deltaTime);
+
+			// ゲームオブジェクトの更新
+			m_gameObjectManager.StartPendingObjects();
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_PreUpdate);
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_Gameplay);
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_ParallelGameplay);
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_PostPhysics);
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_PostAnimation);
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_Camera);
+			m_gameObjectManager.Update(gameObject::EnUpdateGroup::enUpdateGroup_Late);
 
 			// モデルの回転角度を更新する
 			m_modelAngle = core::WrapAngle(m_modelAngle + MODEL_ROTATION_SPEED * deltaTime);

@@ -12,6 +12,9 @@
       <Filter>Render</Filter>
     </ClCompile>
     <ClCompile Include="Application.cpp" />
+    <ClCompile Include="GameObject\GameObjectManager.cpp">
+      <Filter>GameObject</Filter>
+    </ClCompile>
     <ClCompile Include="..\ThirdParty\imgui\imgui.cpp">
       <Filter>ThirdParty\imgui</Filter>
     </ClCompile>
@@ -122,6 +125,12 @@
       <Filter>Render</Filter>
     </ClInclude>
     <ClInclude Include="Application.h" />
+    <ClInclude Include="Core\GameTime.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="GameObject\GameObjectManager.h">
+      <Filter>GameObject</Filter>
+    </ClInclude>
     <ClInclude Include="GameObject\IGameObject.h">
       <Filter>GameObject</Filter>
     </ClInclude>

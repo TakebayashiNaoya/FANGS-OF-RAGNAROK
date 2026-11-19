@@ -6,6 +6,7 @@
 #include <Windows.h>
 #include "Render/RenderContext.h"
 #include "Render/DebugOverlay.h"
+#include "GameObject/GameObjectManager.h"
 #include "Core/Memory/Memory.h"
 #include "Render/ModelPass.h"
 
@@ -49,6 +50,8 @@ namespace fangEngine
 		render::ModelPass     m_modelPass;
 		render::Model         m_wolfModel;
 		render::DebugOverlay  m_debugOverlay; // RenderContextのDeviceを使うため、先に壊れるように下に置く
+
+		gameObject::GameObjectManager m_gameObjectManager; // GameObjectが描画関連のものを持つ可能性があるため、描画より先に壊れるようにrenderの下に置く
 
 		core::Memory m_memory;
 		void*        m_firstBlock  = nullptr; // 確認用に確保した64バイトのブロック
